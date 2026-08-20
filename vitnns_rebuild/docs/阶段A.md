@@ -1,156 +1,143 @@
-# 阶段 A：可审计的 ViT 直接前向基线
+# 阶段 A：先把普通 ViT 分析做正确
 
-## 1. 阶段目标
+## 一句话说明
 
-阶段 A 的目标是在重写 NNS-ViT 之前，先建立一条数值可信、标签正确、结果可追溯的 ViT 直接前向基线。该阶段不复用旧扫描器的手工 Transformer 前向，而是以真实 timm 前向传播作为唯一数值来源。
+阶段 A **还没有进入 NNS 阶段**。
 
-本阶段代码位于 `vitnns_rebuild`。旧目录 `49_vit ` 只作为模型与数据归档读取，不在其中继续叠加修复脚本。
+这一阶段做的是普通 ViT 分析：让同一张图片经过真实的 ViT 模型，正确取得模型预测、每一层的 Q/K/V、attention 和层输入输出，并证明这些数据没有被提取程序改坏。
 
-## 2. 已完成内容
+真正的 NNS learning image、像素贡献传播和 NNS-ViT 方法，会从下一阶段 B 才开始实现。
 
-### 2.1 唯一模型基线
+## 为什么不能直接开始 NNS
 
-- 模型：`vit_base_patch16_224.augreg2_in21k_ft_in1k`
-- 正式加载来源：本地纯 `state_dict`
-- state_dict SHA-256：`2e718037429f18ec77aa629471beb2e99993d7383375188bab777aba04d5e4d0`
-- Transformer Block：12 层
-- 注意力头：12 个
-- head dimension：64
-- 224×224 输入对应 token 数：197
-- 参数量：86,567,656
+旧项目虽然已经生成了很多 NNS 图片和张量，但审计发现其中存在几个基础问题：
 
-完整模型 `.pth` 是 Python pickle，不作为正式运行依赖。它只在文件哈希匹配且显式允许不安全反序列化时，用于兼容性对照。
+- Q、K、V 的拆分顺序有误；
+- attention 使用了错误的缩放因子；
+- 扫描器手工模拟的前向过程与真实 timm ViT 不一致；
+- ImageNet 标签映射不正确；
+- 一些脚本失败后仍会显示“完成”。
 
-### 2.2 正确的模型预处理
+如果不先解决这些问题，即使换成更大的模型或生成更多图片，也无法判断 NNS 结果是否来自真实模型。
 
-预处理配置从该 checkpoint 的 timm 元数据读取：
+因此，阶段 A 的任务相当于先建立一把可靠的“尺子”。阶段 B 实现 NNS 后，所有 NNS 中间量和最终结果都必须与这条普通 ViT 基线对齐。
 
-- 图像统一转换为 RGB；
-- bicubic 插值；
+## 阶段 A 做了什么
+
+### 1. 固定一个可信模型
+
+当前统一使用：
+
+```text
+vit_base_patch16_224.augreg2_in21k_ft_in1k
+```
+
+这是标准 ViT-B/16，包含 12 层 Transformer Block、12 个注意力头和约 8657 万参数。
+
+正式运行只加载经过哈希校验的纯 `state_dict`。完整模型 pickle 只用于兼容性核对，不作为后续实验的主要加载方式。
+
+### 2. 使用模型真正需要的图像预处理
+
+预处理直接读取该模型的 timm 配置：
+
+- 图片转换为 RGB；
 - 短边缩放到 248；
 - 中心裁剪为 224×224；
-- mean 为 `(0.5, 0.5, 0.5)`；
-- std 为 `(0.5, 0.5, 0.5)`；
-- 开启 antialias。
+- 使用 bicubic 插值；
+- mean 和 std 都是 `(0.5, 0.5, 0.5)`。
 
-这与旧脚本硬编码的 torchvision ImageNet mean/std 不同。后续实验必须复用这一统一预处理，避免模型与输入协议错配。
+旧脚本中部分预处理与该模型不匹配，阶段 A 已统一修正。
 
-### 2.3 官方标签映射与数据清单
+### 3. 修正 ImageNet 标签
 
-已实现确定性的 manifest 生成流程：
+阶段 A 使用官方 ImageNet WNID 与类别索引映射：
 
-- `imagenet-scanner`：10 个 synset、100 张有标签图像；
-- `ILSVRC2012_val`：500 张平铺验证图，通过官方 ILSVRC2012 devkit 恢复真实标签。
+- `imagenet-scanner` 中的 100 张图片已按 synset 目录获得正确标签；
+- 平铺的 500 张 `ILSVRC2012_val` 图片已通过官方 devkit 恢复真实标签。
 
-标签规则如下：
+现在不再使用“目录枚举位置”“排序后每 50 张一类”或模型预测来代替真实标签。
 
-- synset 目录通过 ImageNet-1k 官方 WNID 顺序映射到模型输出索引；
-- 平铺验证图必须经过“图像编号 → ILSVRC ID → WNID → 模型索引”的官方映射；
-- 禁止使用目录枚举位置、排序后每 50 张一类、旧扫描日志或模型预测反推真值。
+### 4. 从真实 ViT 前向中提取中间量
 
-官方 devkit SHA-256：`b59243268c0d266621fd587d2018f69e906fb22875aca0e295b48cafaa927953`。
+程序通过 hook 观察 timm 的真实前向过程，可以取得：
 
-### 2.4 原生前向提取器
+- 12 层的输入和输出；
+- 每层的 Q、K、V；
+- 每层每个头的 attention；
+- 最终 1000 类 logits。
 
-提取器通过 hook 观察 timm 的真实前向，不自行重演 Transformer Block。当前可提取：
+这些属于 **direct ViT 数据**，不是 NNS 结果。
 
-- 12 层 Block 的输入与输出；
-- 12 层的 Q、K、V；
-- `attn_drop` 前后的 attention；
-- 最终分类 logits。
+### 5. 记录每次结果的来源
 
-Q/K/V 严格按 timm 0.9.16 的顺序拆分：
+每次正式运行都会记录：
 
-```text
-[B, N, 3C] -> [B, N, 3, heads, head_dim] -> [3, B, heads, N, head_dim]
-```
+- 使用的模型和模型哈希；
+- 输入图片和真实标签；
+- 图像预处理方式；
+- Python、PyTorch、timm 等版本；
+- Git 提交；
+- 设备、随机种子和数值误差；
+- top-1、top-5 和原始 logits。
 
-attention 按 timm 的实际运算顺序重算：
+这样后续看到一个实验结果时，可以明确知道它由什么代码、模型和输入生成。
 
-```text
-softmax((Q * head_dim**-0.5) @ K.T)
-```
+## 阶段 A 没有做什么
 
-对 ViT-B/16，缩放因子为 `64**-0.5 = 0.125`。
+为了避免概念混淆，阶段 A 明确没有完成以下工作：
 
-### 2.5 结果可追溯性
+- 没有实现新的 NNS-ViT；
+- 没有生成可信的 NNS learning image；
+- 没有实现像素贡献的逐层传播；
+- 没有证明 NNS 优于 attention、Grad-CAM 或其他方法；
+- 没有开始论文级 NNS 批量实验；
+- 没有把旧 NNS 图修复成有效论文结果。
 
-每次正式验证都会记录：
+阶段 A 的成果是“可信的普通 ViT 参照组”，不是论文最终方法。
 
-- Git commit 与工作区是否干净；
-- 模型、图像和依赖锁文件的 SHA-256；
-- 完整结构化预处理配置；
-- Python、PyTorch、torchvision、timm 和 NumPy 版本；
-- 设备、数据类型、随机种子和确定性设置；
-- ground truth、top-1、top-5 与原始 logits 产物；
-- logits、Block 和 attention 的全部验收误差。
+## 验证结果
 
-## 3. 验证结果
+阶段 A 已在 NVIDIA H20 上完成验证：
 
-正式端到端验证在 NVIDIA H20 上以 float32 运行，并开启 PyTorch 确定性算法。
+| 检查内容 | 结果 | 说明 |
+|---|---:|---|
+| 标准 ViT 前向与可观测前向的 logits 最大误差 | `8.58e-06` | 小于要求的 `1e-5` |
+| 添加 hook 前后 logits 误差 | `0.0` | 提取过程没有改变预测 |
+| 添加 hook 前后各层输入输出误差 | `0.0` | 提取过程没有改变层状态 |
+| 重算 attention 与模型真实 attention 误差 | `0.0` | Q/K 顺序和缩放正确 |
+| 本地完整模型与 state_dict 模型误差 | `0.0` | 两种模型资产一致 |
 
-| 验收项 | 实测结果 | 验收门槛 | 结论 |
-|---|---:|---:|---|
-| 标准 fused timm 前向 vs 提取器 logits | `8.58306884765625e-06` | `< 1e-5` | 通过 |
-| unfused 普通前向 vs 加 hook 后 logits | `0.0` | 不得改变 | 通过 |
-| 加 hook 前后 Block 输入最大误差 | `0.0` | 不得改变 | 通过 |
-| 加 hook 前后 Block 输出最大误差 | `0.0` | 不得改变 | 通过 |
-| 重算 attention vs timm 真实 attention | `0.0` | `< 1e-6` | 通过 |
-| 完整 pickle vs state_dict logits | `0.0` | `< 1e-5` | 通过 |
-| 完整 pickle vs state_dict Block 输入 | `0.0` | `< 1e-5` | 通过 |
-| 完整 pickle vs state_dict Block 输出 | `0.0` | `< 1e-5` | 通过 |
+用于端到端验证的样本真实类别索引为 `732`，模型 top-1 也预测为 `732`。
 
-端到端样本：
-
-- 样本：`imagenet-scanner/n03976467/n03976467_9546.JPEG`；
-- 真值：WNID `n03976467`，模型索引 `732`；
-- top-1：`732`；
-- top-5：`[732, 593, 710, 605, 662]`；
-- top-1 与 top-5 均预测正确。
-
-## 4. 自动测试结果
-
-常规安全测试：
+自动测试结果：
 
 ```text
 13 passed, 1 deselected
-```
-
-显式开启的完整 pickle 兼容测试：
-
-```text
-1 passed, 13 deselected
-```
-
-依赖一致性检查：
-
-```text
 No broken requirements found.
 ```
 
-## 5. 主要文件与产物
+## 当前代码在哪里
 
-核心实现：
+`vitnns_rebuild/` 是当前正式实现目录：
 
-- `src/vitnns/modeling.py`：唯一模型加载和预处理；
-- `src/vitnns/dataset.py`：数据清单与 Dataset；
-- `src/vitnns/labels.py`：官方 ImageNet 标签映射；
-- `src/vitnns/extractor.py`：真实前向 hook 提取器；
-- `src/vitnns/provenance.py`：结果来源记录与校验；
-- `src/vitnns/runner.py`：阶段 A 端到端验收入口。
+- `src/vitnns/modeling.py`：模型加载和预处理；
+- `src/vitnns/dataset.py`：数据集和 manifest；
+- `src/vitnns/labels.py`：ImageNet 官方标签映射；
+- `src/vitnns/extractor.py`：普通 ViT 中间量提取；
+- `src/vitnns/provenance.py`：结果来源记录；
+- `src/vitnns/runner.py`：阶段 A 验证入口；
+- `tests/`：阶段 A 自动测试。
 
-验证产物：
+旧目录 `49_vit `、`scan_vit/` 和 `ppt_results_nns/` 继续保留用于追溯，但不再作为新实现目录。
 
-- `artifacts/imagenet-scanner/manifest.csv`；
-- `artifacts/imagenet-val-subset/manifest.csv`；
-- `outputs/stage_a/extraction.pt`；
-- `outputs/stage_a/provenance.json`；
-- `outputs/stage_a/validation.json`。
+## 下一步：阶段 B
 
-大型数据、模型和运行产物均由 `.gitignore` 排除，不提交到 Git。正式 provenance 记录了当次验证所使用的代码提交与干净工作区状态；本文件随阶段 A 最终提交一并保存。
+阶段 B 才正式进入 NNS-ViT。它将以阶段 A 提取出的真实模型中间量为输入，逐步实现：
 
-## 6. 阶段结论与下一步
+1. 明确 NNS 要解释的目标，例如类别 logit、某个 attention head 或 Value 路径；
+2. 为 LayerNorm、GELU、残差连接、QK 乘法和 softmax 定义贡献传播规则；
+3. 生成真正可验证的 learning image；
+4. 检查像素贡献之和是否与目标激活变化守恒；
+5. 与 direct attention、attention rollout、Grad-CAM 等方法做同图公平比较。
 
-阶段 A 已完成并达到全部验收门槛。当前已经具备可信的真实 ViT 前向、正确标签、Q/K/V/A 中间量、可复现实验配置与完整来源记录。
-
-下一步进入阶段 B：以阶段 A 保存的真实中间张量为基础重写 NNS-ViT 归因传播，为 LayerNorm、GELU、残差连接、QK 乘法和 softmax 建立明确的传播规则与 conservation 测试；不再继续修补旧扫描器的手工前向。
+只有阶段 B 的传播规则和守恒测试通过后，才进入阶段 C 的多图片小型试验。
