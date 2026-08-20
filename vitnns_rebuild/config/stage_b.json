@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "method": "conditional_fixed_attention_value_path_ig",
+  "class_target": {
+    "mode": "predicted"
+  },
+  "value_target": {
+    "head": 0,
+    "query_token": 0,
+    "head_channel": 0
+  },
+  "baseline": "zero_normalized",
+  "blocks": [
+    0,
+    3,
+    6,
+    9,
+    11
+  ],
+  "ig": {
+    "quadrature": "gauss_legendre",
+    "steps_schedule": [
+      512,
+      1024,
+      2048,
+      4096,
+      8192
+    ],
+    "step_chunk_size": 8,
+    "atol": 0.0001,
+    "rtol": 0.01
+  },
+  "profile": "paper",
+  "budget_bytes": 67108864,
+  "repeatability": {
+    "enabled": true,
+    "atol": 1e-06,
+    "rtol": 1e-05
+  },
+  "sanity": {
+    "enabled": true,
+    "perturbation": "seeded_gaussian_noise",
+    "seed": 20260821,
+    "noise_std": 0.05,
+    "clamp_to_valid_range": true,
+    "min_relative_l1_change": 0.05,
+    "epsilon": 1e-12
+  },
+  "compute_budget": {
+    "max_forward_calls": 30000,
+    "max_backward_calls": 30000
+  },
+  "formal": true
+}

@@ -1,4 +1,4 @@
-# ViT-NNS rebuild: Stage A baseline
+# ViT-NNS rebuild: auditable baseline and Stage B attribution
 
 This directory is the clean, auditable replacement for the legacy experiment
 tree. Stage A deliberately uses one model and one numerical forward path:
@@ -10,6 +10,12 @@ tree. Stage A deliberately uses one model and one numerical forward path:
 
 The legacy directories are inputs/archives and are never modified here. Large
 models, images, tensors, and runtime outputs are excluded from Git.
+
+Stage B adds a deliberately narrow, testable method instead of patching the
+legacy scanner.  For a selected block it freezes the attention matrix actually
+used at the input endpoint and attributes one pre-projection scalar of
+`O = A @ V` back to the canonical model input with Integrated Gradients.  It
+does not claim to be full Q/K/V attribution or a class-logit explanation.
 
 ## Environment
 
@@ -78,4 +84,28 @@ VITNNS_ALLOW_UNSAFE_PICKLE=1 python -m pytest -m unsafe_pickle
 
 The second command deserializes the known local pickle and should only run when
 the artifact is trusted.
+
+## Stage B
+
+Stage B implements conditional fixed-attention integrated gradients for one
+block-internal pre-projection scalar `O_h = A_h @ V_h`. It consumes tensors from
+the real timm forward path and does not replay a Transformer block. The complete
+method boundary is in `docs/阶段B.md`; formal gates are in
+`docs/stage_b_acceptance.md`.
+
+```bash
+vitnns-stage-b estimate --config config/stage_b.json
+
+CUBLAS_WORKSPACE_CONFIG=:4096:8 CUDA_VISIBLE_DEVICES=1 vitnns-stage-b attribute \
+  --config config/stage_b.json \
+  --device cuda \
+  --relative-image n03976467/n03976467_9546.JPEG \
+  --output-dir outputs/stage_b
+```
+
+The default schedule is `[512, 1024, 2048, 4096, 8192]`. The checked-in
+configuration caps output at 64 MiB and caps batched forward and backward
+model invocations at 30,000 each. A development run is not formal unless saved
+provenance explicitly records `formal=true` on a clean committed tree with
+every required gate enabled and passing.
 

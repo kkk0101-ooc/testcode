@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vitnns-rebuild"
-version = "0.1.0"
-description = "Auditable native-forward baseline for NNS-ViT research"
+version = "0.2.0"
+description = "Auditable native-forward and Value-path attribution for NNS-ViT research"
 requires-python = ">=3.10,<3.11"
 dependencies = [
   "numpy==1.26.4",
@@ -21,6 +21,7 @@ test = ["pytest==8.4.2"]
 
 [project.scripts]
 vitnns-stage-a = "vitnns.cli:main"
+vitnns-stage-b = "vitnns.stage_b_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

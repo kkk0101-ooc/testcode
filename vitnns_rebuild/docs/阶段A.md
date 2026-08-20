@@ -130,9 +130,10 @@ No broken requirements found.
 
 旧目录 `49_vit `、`scan_vit/` 和 `ppt_results_nns/` 继续保留用于追溯，但不再作为新实现目录。
 
-## 下一步：阶段 B
+## 阶段 B 衔接
 
-阶段 B 才正式进入 NNS-ViT。它将以阶段 A 提取出的真实模型中间量为输入，逐步实现：
+阶段 B 已在 `vitnns_rebuild` 中实现首个受约束、可验证的 NNS-ViT
+Value-path 版本。它以阶段 A 提取出的真实模型中间量为输入，实现了：
 
 1. 明确 NNS 要解释的目标，例如类别 logit、某个 attention head 或 Value 路径；
 2. 为 LayerNorm、GELU、残差连接、QK 乘法和 softmax 定义贡献传播规则；
@@ -140,4 +141,6 @@ No broken requirements found.
 4. 检查像素贡献之和是否与目标激活变化守恒；
 5. 与 direct attention、attention rollout、Grad-CAM 等方法做同图公平比较。
 
-只有阶段 B 的传播规则和守恒测试通过后，才进入阶段 C 的多图片小型试验。
+具体方法边界、验收结果和命令见 `docs/阶段B.md` 与
+`docs/stage_b_acceptance.md`。阶段 B 的实现门槛通过后，下一步是阶段 C 的
+多图片小型试验，而不是直接开始大规模扫描。
