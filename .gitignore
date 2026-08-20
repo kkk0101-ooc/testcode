@@ -24,7 +24,11 @@ __pycache__/
 # Explicitly exclude large datasets, model artifacts, media, and result dumps.
 scan_vit/
 chatlog1/
-vitnns_rebuild/
+# Stage A rebuild is versioned selectively; its own .gitignore excludes outputs.
+!vitnns_rebuild/
+!vitnns_rebuild/**/
+!vitnns_rebuild/pyproject.toml
+!vitnns_rebuild/config/*.json
 **/scan_results/
 **/analysis_results*/
 **/PPT_Images/
