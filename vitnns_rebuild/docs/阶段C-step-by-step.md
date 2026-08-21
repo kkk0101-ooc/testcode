@@ -2,7 +2,7 @@
 
 > 文档性质：阶段 C 的路线图、任务状态表和跨对话交接日志。  
 > 创建日期：2026-08-21。  
-> 当前状态：阶段 A、阶段 B、阶段 C/C0 已完成；下一任务是 C1。  
+> 当前状态：阶段 A、阶段 B、阶段 C/C0–C1 已完成；下一任务是 C2。
 > 使用规则：每个新对话必须先完整阅读本文，只执行一个指定的 `C_i`；该任务未更新本文并写出下一任务提示词时，不算完成。
 
 ## 1. 为什么使用这份文档
@@ -296,8 +296,8 @@ delta_fid = 0.5 * [
 | 任务 | 当前状态 | 目标 | 关键产物 | 前置 |
 |---|---|---|---|---|
 | C0 | PASS | 冻结协议与样本 registry | protocol、acceptance、sample registry、配置草案 | A/B |
-| C1 | NOT_STARTED（NEXT） | 严格配置、统一 map 与指标合同 | config/map/metrics 模块和测试 | C0 |
-| C2 | NOT_STARTED | direct raw CLS attention 与 rollout | 两种方法实现、方法合同测试 | C1 |
+| C1 | PASS | 严格配置、统一 map 与指标合同 | config/map/metrics 模块和测试 | C0 |
+| C2 | NOT_STARTED（NEXT） | direct raw CLS attention 与 rollout | 两种方法实现、方法合同测试 | C1 |
 | C3 | NOT_STARTED | Grad-CAM 与 full-model class-logit IG | 两种方法适配、真实模型 smoke test | C1 |
 | C4 | NOT_STARTED | head 级 NNS 与 matched patch baseline | 同目标实现、守恒与退化测试 | C1 |
 | C5 | NOT_STARTED | fidelity、扰动稳定性、资源仪表 | fidelity/perturbation/stability/resource 模块 | C2–C4 |
@@ -339,6 +339,8 @@ delta_fid = 0.5 * [
 - 更新本文并生成 C2 提示词。
 
 验收：指标只能读取 metric-ready 数值数组；display 数据无法回流；所有公式和实现与 protocol 一致；全量非 GPU 测试通过。
+
+C1 已完成。简单说，后续方法现在必须先把结果放进同一个、可检查的数据盒子：写清方法和目标，保留原始数值，再生成统一的 14×14 定量图。像素图变 patch 图时用求和，patch 图展开时均分质量；展示图片不能送回指标。配置和数值只要有未知字段、错误组合、非有限值或非法 shape，就会明确失败或返回带原因的 NA，不会偷偷补默认值或把失败当成 0。
 
 ### C2：direct raw CLS attention 与 attention rollout
 
@@ -619,7 +621,7 @@ C1 范围与交付物：
 - 一任务一提交，最终工作树 clean，completion record 的 commit/hash/test 信息完整。
 ```
 
-## 12. 新对话执行 C0 的完整提示词
+### C0 启动时使用的历史完整提示词
 
 ```text
 你现在只执行 ViT-NNS 重建工程“阶段 C”的 C0：冻结实验协议与 20 图样本 registry。不要开始 C1，不要实现比较方法，也不要运行昂贵 GPU attribution。
@@ -691,4 +693,87 @@ C0 必须完成以下工作：
 - commit SHA、registry/config/protocol 的 SHA-256、git clean 状态；
 - 已知限制；
 - 与 step-by-step 文档中完全一致的 C1 完整提示词。
+```
+
+### 2026-08-21 18:17 +0800 — C1 completion record
+
+- status: PASS
+- objective_completed: 只实现 C1 的共同数据合同。新增生产级严格、深不可变 Stage C config loader；新增统一 MethodResult、11 种结构化 NA、显式 raw/metric-ready/display 边界；新增 signed RGB channel sum、224×224↔14×14 和 4×4 cell 的质量守恒投影；新增 Pearson、average-rank Spearman、base-2 JSD、双向 base-2 KL、top-10%/20% Jaccard 和 normalized entropy。没有实现或运行 C2–C5 方法、fidelity、扰动或 GPU attribution。
+- git_sha_before: 05b0290b7caacc772a7c20a724f1491b3057524a
+- git_sha_after: SELF（即包含本 completion record 的单一 C1 commit；精确 SHA 在提交后由 git rev-parse HEAD 产生并在最终回复报告）
+- tree_clean: true（C1 commit 后复验）
+- files_added_or_changed: src/vitnns/stage_c_config.py；src/vitnns/stage_c_maps.py；src/vitnns/stage_c_metrics.py；tests/test_stage_c_config.py；tests/test_stage_c_maps.py；tests/test_stage_c_metrics.py；tests/test_stage_c_contract.py；docs/阶段C-step-by-step.md。
+- inputs_and_sha256: C0 commit 05b0290b7caacc772a7c20a724f1491b3057524a；Stage C registry 9a6667bec6a27c715d272382a494f06924db881dca991dc4fac4751dbe7f37f0；Stage A 500 manifest 042cfd7845b49f8949de13c78bc40c68192179d6fc004bcdbecf55e502c2eb89；Stage B formal status 2129134ff256fe9421a599e420ac2f79a19342b005d0f0ce34ecdba670d7a846；Stage B manifest 57b2ff7e3189c086650d6680252e16373617260e14f404b9ba78223c3963c7eb，status→manifest→artifact hash/bytes、commit 30732c9...、formal=true、dirty=false 全部通过。
+- configs_and_sha256: frozen Stage C config 0ee57c32b0fcb3116f91fddce5d918c8eb1ae05606c3616b6a2ec9afa9f0e669；protocol ff958a9455ae15307827a9e40fc6d7d03c9baa10bf1fb8b83650a10bd85ff7b8；acceptance f4629105d411b32d4f7700caa22d7d6b6c1bf4b8e01f37e4e2ac6ac4851dfafd。冻结 config、registry、角色、方法目标、阈值和 decision gates 均未修改。
+- artifacts_and_absolute_paths: 无 runtime/GPU artifact。生产源码位于 /data00/home/yeziqi.831/testcode/vitnns_rebuild/src/vitnns/stage_c_config.py、stage_c_maps.py、stage_c_metrics.py。
+- artifact_manifest_or_status_hashes: 不适用；C1 不生成实验 artifact。
+- tests_and_results: 启动时首次裸 conda 因非交互 shell 的 PATH 无 conda 而 exit 127，未执行测试、未写文件；随后用 /data00/home/yeziqi.831/miniforge3/bin/conda run -n vitnns。C0 clean/tracked validator PASS；C1 focused 最终 78 passed；C0/Stage B config/display/retention focused 67 passed；提交前全量非 GPU 184 passed, 1 deselected；python -O production loader smoke PASS。提交后仍须重跑 clean/tracked validator、C1 focused 和全量非 GPU；实际结果在最终回复报告。
+- acceptance_results: C1 六项通过。严格 loader 拒绝 duplicate、NaN/Infinity、unknown/missing、bool-as-int、类型/枚举/范围/顺序/重复/引用/跨字段非法组合，且 frozen config exact round-trip 不注入默认；MethodResult 绑定方法版本、两条 comparison line、explanation/fidelity target、native/metric map、注册 projection、sign、mask、NA、provenance，并阻止 class-agnostic class explanation；projection 对正/负/零/随机 map 在 atol=rtol=1e-6 下守恒并做 patch-mass round-trip；指标用 float64 累加且符合 base-2/average-rank/ceil/row-major/epsilon 规则；display/raw/裸数组不能作为指标输入；Stage A/B 非 GPU 回归通过。
+- deviations_or_protocol_amendments: 无 protocol amendment。method_version 是每个运行时 MethodResult 的必填字段，不向 frozen config 注入字段；metric-ready/L1 为 float32、指标公式内部累加为 float64；sufficiency_gap_20=1-sufficiency_20 留给 C5 fidelity 实现，C1 未越界实现。
+- failures_retained: 保留上述首次 conda PATH 失败；开发中近常量测试初始构造未达到冻结相对阈值而出现 1 个测试失败，修正测试构造后通过。独立 review 曾误报 JSD 使用自然对数；代码和手算测试实际使用 np.log2 且互斥分布 JSD=1，因此未据此改公式。
+- known_limitations: C1 只提供共同合同，不生成任何方法 map；patch→pixel/fine 是质量守恒均分，不是原生像素证据；结构化 degenerate_direction 和目标方向 u=(g(x)-g(x0))/||g(x)-g(x0)||₂ 的实际计算留给 C4，阈值仍是冻结相对 1e-6；fidelity/扰动/runner/selection 尚未实现。
+- next_task: C2
+
+#### 下一对话完整提示词
+
+```text
+你现在只执行 ViT-NNS 重建工程“阶段 C”的 C2：实现 direct raw CLS attention 与 attention rollout。不要开始 C3，不要实现 Grad-CAM、full-model class-logit IG 的 Stage C 适配、head-level NNS、matched patch baseline、fidelity、扰动稳定性、runner 或批量实验，也不要运行昂贵 GPU attribution。
+
+工作目录：
+/data00/home/yeziqi.831/testcode/vitnns_rebuild
+
+前置冻结基线：
+- C1 commit: SELF，即包含本 completion record 的当前 clean HEAD；启动 C2 时先运行 git rev-parse HEAD，其精确 SHA 应与 C1 最终回复给出的 commit SHA 一致。
+- C0 commit: 05b0290b7caacc772a7c20a724f1491b3057524a
+- Stage C registry SHA-256: 9a6667bec6a27c715d272382a494f06924db881dca991dc4fac4751dbe7f37f0
+- Stage C config SHA-256: 0ee57c32b0fcb3116f91fddce5d918c8eb1ae05606c3616b6a2ec9afa9f0e669
+- Stage C protocol SHA-256: ff958a9455ae15307827a9e40fc6d7d03c9baa10bf1fb8b83650a10bd85ff7b8
+- Stage C acceptance SHA-256: f4629105d411b32d4f7700caa22d7d6b6c1bf4b8e01f37e4e2ac6ac4851dfafd
+- Stage A 500 manifest SHA-256: 042cfd7845b49f8949de13c78bc40c68192179d6fc004bcdbecf55e502c2eb89
+
+第一步必须完整阅读：
+1. docs/阶段C-step-by-step.md，尤其 C0/C1 completion record 与 C2 边界
+2. docs/阶段C_protocol.md
+3. docs/stage_c_acceptance.md
+4. docs/stage_c_config_contract.md
+5. config/stage_c.json 与 config/stage_c.schema.json
+6. src/vitnns/stage_c_config.py
+7. src/vitnns/stage_c_maps.py
+8. src/vitnns/stage_c_metrics.py
+9. src/vitnns/extractor.py、src/vitnns/modeling.py 和相关 Stage A extractor/parity 测试
+10. docs/阶段A.md、docs/stage_a_acceptance.md、docs/阶段B.md、docs/stage_b_acceptance.md
+11. README.md
+
+开始前必须：
+- 检查 git status 和 HEAD，要求 HEAD 等于 C1 最终回复 SHA 且工作树 clean；若不一致，查明归属，不覆盖用户改动。
+- 运行 conda run -n vitnns python tests/test_stage_c_contract.py --require-tracked --require-clean，核验冻结 hash、500 图官方标签链与 Stage B formal status→manifest→artifact 链。
+- 运行 C1 focused tests，确认严格配置、map/projection/metrics 合同仍通过。
+- 不从 __pycache__/.pyc 恢复任何 Stage C 源码，不读取 display PNG，不复用旧数值结果。
+
+C2 范围与交付物：
+1. 实现 direct raw CLS attention，必须直接消费真实 NativeViTExtractor 捕获的 attention_used，不得手工重演 Transformer block、QK 或 softmax。
+2. 验证 eval 下 extractor 的 attention 与 attention_used 语义；direct 数值必须与模型实际使用值精确一致。
+3. Value-path 线的 per-head direct 必须使用匹配的 block/head；class-logit 线 direct 固定 block 11、先对 12 heads 算术平均，再删除 CLS key，并把 196 patch mass 重新归一到 1。分母非正或非有限必须 fail closed。
+4. 实现 attention rollout：每层 B_l=row_norm(I+mean_h A_lh)，顺序严格为 B_11 B_10 ... B_0；取 CLS→patch、排除 CLS、归一到 1。不得偷偷改为其他 residual weight、head fusion 或乘法方向。
+5. 两种方法都必须输出 C1 MethodResult，使用冻结 method ID/version、comparison line、null explanation target、正确 fidelity target、nonnegative sign semantics、metric-ready float32 14×14 map、全有效 mask和 provenance。class-agnostic map 不得冒充类别解释；per-head raw attention 只是不同目标的 spatial structure similarity，不是 Value-path fidelity。
+6. 测试必须覆盖：手算 toy matrices、CLS key 排除、归一化、head mean 顺序、row normalization、identity/residual、rollout 乘法顺序、单层退化、非法 shape/非有限/零或负 mass、错误 block/head、method contract、hook/model mode 在成功与异常后恢复，以及低成本真实 extractor parity。不得保留 raw attention 的全笛卡尔积。
+7. 真实模型测试只做验收所需的低成本 smoke/parity；显式禁用 GPU 或用 CPU，不运行 attribution，不处理 20 图 pilot。
+8. 更新 docs/阶段C-step-by-step.md：C2 标 PASS 或 BLOCKED；若 PASS 将 C3 标 NEXT；追加完整 completion record 和“新对话执行 C3”的完整可复制提示词。
+9. 检查 diff，只提交 C2 tracked 文件；提交后重跑 C0 validator（含 tracked/clean）、C1+C2 focused tests和全量非 GPU suite，最终确认 clean。
+
+禁止事项：
+- 不修改冻结 registry、config、protocol、acceptance、角色、阈值、目标或 decision gates；确有矛盾必须停止并走带旧/新 hash 的 protocol amendment。
+- 不实现 Grad-CAM、full-model class-logit IG Stage C wrapper、head-direction NNS、matched patch contribution、fidelity/扰动/runner/selection。
+- 不把 raw attention 或 rollout 称为类别归因、完整 attention attribution 或与 Value-path NNS 同目标的 fidelity。
+- 不把 14×14 patch map 的质量守恒上采样称为原生像素证据。
+- 不运行高成本 GPU attribution或 C8/C9 数据。
+
+验收标准：
+- docs/stage_c_acceptance.md 的 C2 四项全部通过；
+- direct 从 attention_used 得到并精确一致，CLS 排除/head 规则/归一化正确；
+- rollout 行和为 1、数值有限、手算乘法方向正确；
+- C1 MethodResult/map/metric/display 边界不被绕过；
+- hook、model mode 和捕获状态在成功/异常后恢复；
+- 全量非 GPU pytest 通过，没有运行 GPU attribution；
+- 一任务一提交，最终工作树 clean，completion record 的 commit/hash/test 信息完整，文档写得简单易懂。
 ```

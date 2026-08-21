@@ -898,9 +898,12 @@ def _validate_docs() -> None:
             assert unresolved not in text, f"Unresolved marker {unresolved!r} in {relative}"
     step_text = (REPO_ROOT / "docs/阶段C-step-by-step.md").read_text(encoding="utf-8")
     assert "| C0 | PASS |" in step_text
-    assert "| C1 | NOT_STARTED（NEXT） |" in step_text
+    assert "| C1 | PASS |" in step_text
+    assert "| C2 | NOT_STARTED（NEXT） |" in step_text
     assert "### 2026-08-21 16:05 +0800 — C0 completion record" in step_text
+    assert "C1 completion record" in step_text
     assert "你现在只执行 ViT-NNS 重建工程“阶段 C”的 C1" in step_text
+    assert "你现在只执行 ViT-NNS 重建工程“阶段 C”的 C2" in step_text
     for token in (
         "C0_COMMIT_SHA",
         "STAGE_C_CONFIG_SHA256", "STAGE_C_PROTOCOL_SHA256",
@@ -933,6 +936,12 @@ def validate_all(*, require_tracked: bool = False, require_clean: bool = False) 
             "manifests/stage_c_flat_val_500/manifest_metadata.json",
             "manifests/stage_c_sample_registry.csv",
             "manifests/stage_c_sample_registry_metadata.json",
+            "src/vitnns/stage_c_config.py",
+            "src/vitnns/stage_c_maps.py",
+            "src/vitnns/stage_c_metrics.py",
+            "tests/test_stage_c_config.py",
+            "tests/test_stage_c_maps.py",
+            "tests/test_stage_c_metrics.py",
             "tests/test_stage_c_contract.py",
         ]
         for relative in tracked:
