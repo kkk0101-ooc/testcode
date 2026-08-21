@@ -897,16 +897,28 @@ def _validate_docs() -> None:
         for unresolved in ("TBD", "TODO", "待 C8", "待 C9", "结果后决定"):
             assert unresolved not in text, f"Unresolved marker {unresolved!r} in {relative}"
     step_text = (REPO_ROOT / "docs/阶段C-step-by-step.md").read_text(encoding="utf-8")
+    assert (
+        "当前状态：阶段 A、阶段 B、阶段 C/C0–C3 已完成；下一任务是 C4。"
+        in step_text
+    )
     assert "| C0 | PASS |" in step_text
     assert "| C1 | PASS |" in step_text
     assert "| C2 | PASS |" in step_text
-    assert "| C3 | NOT_STARTED（NEXT） |" in step_text
+    assert step_text.count("| C3 | PASS |") == 1
+    assert step_text.count("| C4 | NOT_STARTED（NEXT） |") == 1
     assert "### 2026-08-21 16:05 +0800 — C0 completion record" in step_text
     assert "C1 completion record" in step_text
     assert "C2 completion record" in step_text
+    assert step_text.count("C3 completion record") == 2  # heading + C4 prompt
     assert "你现在只执行 ViT-NNS 重建工程“阶段 C”的 C1" in step_text
     assert "你现在只执行 ViT-NNS 重建工程“阶段 C”的 C2" in step_text
     assert "你现在只执行 ViT-NNS 重建工程“阶段 C”的 C3" in step_text
+    assert step_text.count("你现在只执行 ViT-NNS 重建工程“阶段 C”的 C4") == 1
+    c3_record = step_text.split(
+        "### 2026-08-21 22:15 +0800 — C3 completion record", 1
+    )[1]
+    assert c3_record.count("- status: PASS") == 1
+    assert c3_record.count("- next_task: C4") == 1
     for token in (
         "C0_COMMIT_SHA",
         "STAGE_C_CONFIG_SHA256", "STAGE_C_PROTOCOL_SHA256",
@@ -943,10 +955,12 @@ def validate_all(*, require_tracked: bool = False, require_clean: bool = False) 
             "src/vitnns/stage_c_maps.py",
             "src/vitnns/stage_c_metrics.py",
             "src/vitnns/stage_c_attention.py",
+            "src/vitnns/stage_c_class_logit.py",
             "tests/test_stage_c_config.py",
             "tests/test_stage_c_maps.py",
             "tests/test_stage_c_metrics.py",
             "tests/test_stage_c_attention.py",
+            "tests/test_stage_c_class_logit.py",
             "tests/test_stage_c_contract.py",
         ]
         for relative in tracked:
