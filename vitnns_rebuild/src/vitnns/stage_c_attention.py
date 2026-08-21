@@ -24,6 +24,7 @@ from .stage_c_maps import (
     raw_array,
     stage_c_metric_ready,
 )
+from .stage_c_class_logit import _tensor_sha256
 
 
 METHOD_VERSION = "1.0.0"
@@ -406,6 +407,45 @@ def attention_rollout_mean_head_residual_all_blocks(
     )
 
 
+def class_attention_maps_at_intervention(
+    extractor: Any,
+    intervention_inputs: torch.Tensor,
+    *,
+    fidelity_target_identity: Mapping[str, Any],
+    provenance: Mapping[str, Any] | None = None,
+) -> tuple[MethodResult, MethodResult]:
+    """Recompute the two C2 class-line maps at one bound intervention."""
+
+    if not hasattr(extractor, "extract") or not callable(extractor.extract):
+        raise TypeError("extractor must expose a callable extract method")
+    if not isinstance(intervention_inputs, torch.Tensor):
+        raise TypeError("intervention_inputs must be a torch.Tensor")
+    if intervention_inputs.dtype is not torch.float32 or tuple(
+        intervention_inputs.shape
+    ) != (1, 3, 224, 224):
+        raise StageCAttentionError(
+            "intervention_inputs must be float32 with shape [1,3,224,224]"
+        )
+    if not bool(torch.isfinite(intervention_inputs.detach()).all().item()):
+        raise StageCAttentionError("intervention_inputs must be finite")
+    if not isinstance(fidelity_target_identity, Mapping) or not fidelity_target_identity:
+        raise TypeError("fidelity_target_identity must be a non-empty mapping")
+    context = dict(provenance or {})
+    context["fidelity_target_identity"] = dict(fidelity_target_identity)
+    context["intervention_input_sha256"] = _tensor_sha256(intervention_inputs)
+    caller_sha = _tensor_sha256(intervention_inputs)
+    extraction = extractor.extract(intervention_inputs)
+    if _tensor_sha256(intervention_inputs) != caller_sha:
+        raise StageCAttentionError("extractor mutated intervention_inputs")
+    direct = direct_raw_cls_attention_last_block_head_mean(
+        extraction, provenance=context
+    )
+    rollout = attention_rollout_mean_head_residual_all_blocks(
+        extraction, provenance=context
+    )
+    return direct, rollout
+
+
 __all__ = [
     "CLASS_DIRECT_BLOCK_INDEX",
     "CLS_TOKEN_INDEX",
@@ -416,6 +456,7 @@ __all__ = [
     "StageCAttentionError",
     "TOKENS",
     "attention_rollout_mean_head_residual_all_blocks",
+    "class_attention_maps_at_intervention",
     "direct_raw_cls_attention_last_block_head_mean",
     "direct_raw_cls_attention_per_head",
     "rollout_attention_matrices",

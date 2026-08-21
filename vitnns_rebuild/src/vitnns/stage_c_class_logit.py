@@ -58,6 +58,80 @@ class StageCClassLogitError(ValueError):
     """Raised when a C3 class-logit attribution violates its contract."""
 
 
+@dataclass(frozen=True, init=False)
+class FrozenScalarEvaluation:
+    """One frozen-target scalar evaluated at an arbitrary normalized input."""
+
+    value: float
+    target_kind: str
+    class_index: int
+    clean_input_sha256: str
+    intervention_input_sha256: str
+    runtime_model_binding_sha256: str
+
+    def __init__(self, *_args: Any, **_kwargs: Any) -> None:
+        raise TypeError(
+            "FrozenScalarEvaluation can only be issued by "
+            "evaluate_frozen_class_logit_target"
+        )
+
+    @classmethod
+    def _create(
+        cls,
+        *,
+        value: float,
+        class_index: int,
+        clean_input_sha256: str,
+        intervention_input_sha256: str,
+        runtime_model_binding_sha256: str,
+        issuer_secret: bytes,
+    ) -> "FrozenScalarEvaluation":
+        if issuer_secret is not _TARGET_ISSUER_SECRET:
+            raise TypeError("scalar evaluations can only be issued by the evaluator")
+        instance = object.__new__(cls)
+        for name, field_value in {
+            "value": value,
+            "target_kind": TARGET_REF,
+            "class_index": class_index,
+            "clean_input_sha256": clean_input_sha256,
+            "intervention_input_sha256": intervention_input_sha256,
+            "runtime_model_binding_sha256": runtime_model_binding_sha256,
+        }.items():
+            object.__setattr__(instance, name, field_value)
+        instance.__post_init__()
+        return instance
+
+    def __post_init__(self) -> None:
+        if isinstance(self.value, bool) or not isinstance(self.value, (int, float)):
+            raise TypeError("value must be numeric")
+        value = float(self.value)
+        if not math.isfinite(value):
+            raise StageCClassLogitError("scalar evaluation value must be finite")
+        object.__setattr__(self, "value", value)
+        if self.target_kind != TARGET_REF:
+            raise StageCClassLogitError("scalar target_kind is not the frozen class target")
+        if type(self.class_index) is not int or self.class_index < 0:
+            raise TypeError("class_index must be a non-negative integer (not bool)")
+        for name in (
+            "clean_input_sha256",
+            "intervention_input_sha256",
+            "runtime_model_binding_sha256",
+        ):
+            if not re.fullmatch(r"[0-9a-f]{64}", getattr(self, name)):
+                raise ValueError(f"{name} must be a lowercase SHA-256")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "value": self.value,
+            "target_kind": self.target_kind,
+            "class_index": self.class_index,
+            "clean_input_sha256": self.clean_input_sha256,
+            "intervention_input_sha256": self.intervention_input_sha256,
+            "runtime_model_binding_sha256": self.runtime_model_binding_sha256,
+            "class_index_frozen": True,
+        }
+
+
 def _strict_optional_class_index(value: Any, *, name: str) -> int | None:
     if value is None:
         return None
@@ -444,6 +518,104 @@ def _verify_frozen_target(
     return frozen_target
 
 
+def resolve_natural_prediction_observation(
+    model: nn.Module,
+    clean_inputs: torch.Tensor,
+    intervention_inputs: torch.Tensor,
+    target: FrozenClassLogitTarget,
+) -> dict[str, Any]:
+    """Observe natural argmax at ``z`` while binding the frozen model context."""
+
+    clean = _validate_clean_input(clean_inputs)
+    intervention = _validate_clean_input(intervention_inputs)
+    frozen = _verify_frozen_target(target, clean, model)
+    caller_hash = _tensor_sha256(intervention)
+    owned = intervention.detach().clone()
+    with _preserve_model_attribution_state(model, freeze_parameters=True):
+        with torch.no_grad():
+            logits = _require_logits(model(owned), expected_classes=frozen.class_count)
+            class_index = int(torch.argmax(logits[0]).item())
+    _verify_frozen_target(frozen, clean, model)
+    if _tensor_sha256(intervention) != caller_hash:
+        raise StageCClassLogitError(
+            "natural prediction observation mutated intervention_inputs"
+        )
+    return {
+        "class_index": class_index, "class_count": frozen.class_count,
+        "intervention_input_sha256": caller_hash,
+        "runtime_model_binding_sha256": frozen.runtime_model_binding_sha256,
+        "source": "natural_raw_logits_argmax",
+    }
+
+
+def evaluate_frozen_class_logit_target(
+    model: nn.Module,
+    clean_inputs: torch.Tensor,
+    intervention_inputs: torch.Tensor,
+    target: FrozenClassLogitTarget,
+) -> FrozenScalarEvaluation:
+    """Evaluate the originally resolved class logit at normalized ``z``.
+
+    ``clean_inputs`` is validation context only.  Class selection is never
+    repeated: the evaluator indexes the immutable resolver-issued class.
+    """
+
+    clean = _validate_clean_input(clean_inputs)
+    intervention = _validate_clean_input(intervention_inputs)
+    if clean.device != intervention.device:
+        raise StageCClassLogitError(
+            "intervention input device must match the clean input context"
+        )
+    frozen = _verify_frozen_target(target, clean, model)
+    caller_clean_sha256 = _tensor_sha256(clean)
+    caller_intervention_sha256 = _tensor_sha256(intervention)
+    owned_intervention = intervention.detach().clone()
+    owned_sha256 = _tensor_sha256(owned_intervention)
+    model_state_before = _model_state_signature(model)
+    target_identity_before = _target_identity_snapshot(frozen)
+    try:
+        with _preserve_model_attribution_state(model, freeze_parameters=True):
+            with torch.no_grad():
+                logits = _require_logits(
+                    model(owned_intervention), expected_classes=frozen.class_count
+                )
+            if logits.dtype is not torch.float32:
+                raise TypeError(
+                    f"model raw logits must have float32 dtype, got {logits.dtype}"
+                )
+            value = float(logits[0, frozen.class_index].item())
+    finally:
+        violations: list[str] = []
+        if _model_state_signature(model) != model_state_before:
+            violations.append("model parameter/buffer state")
+        if _tensor_sha256(clean) != caller_clean_sha256:
+            violations.append("caller clean-input tensor")
+        if _tensor_sha256(intervention) != caller_intervention_sha256:
+            violations.append("caller intervention-input tensor")
+        if _tensor_sha256(owned_intervention) != owned_sha256:
+            violations.append("private intervention-input clone")
+        if (
+            _ISSUED_TARGETS.get(frozen) != target_identity_before
+            or _target_identity_snapshot(frozen) != target_identity_before
+        ):
+            violations.append("frozen class target")
+        if violations:
+            raise StageCClassLogitError(
+                "frozen class scalar evaluation mutated " + ", ".join(violations)
+            )
+    _verify_frozen_target(frozen, clean, model)
+    if not math.isfinite(value):
+        raise StageCClassLogitError("frozen class scalar is non-finite")
+    return FrozenScalarEvaluation._create(
+        value=value,
+        class_index=frozen.class_index,
+        clean_input_sha256=frozen.clean_input_sha256,
+        intervention_input_sha256=caller_intervention_sha256,
+        runtime_model_binding_sha256=frozen.runtime_model_binding_sha256,
+        issuer_secret=_TARGET_ISSUER_SECRET,
+    )
+
+
 def _resolve_grad_cam_layer(model: nn.Module) -> nn.Module:
     blocks = getattr(model, "blocks", None)
     if blocks is None:
@@ -576,59 +748,69 @@ def _base_provenance(
     return result
 
 
-def vit_grad_cam_block11_norm1(
+def vit_grad_cam_block11_norm1_at_intervention(
     model: nn.Module,
     clean_inputs: torch.Tensor,
+    intervention_inputs: torch.Tensor,
     frozen_target: FrozenClassLogitTarget,
     *,
     provenance: Mapping[str, Any] | None = None,
 ) -> MethodResult:
-    """Compute ViT Grad-CAM for the frozen clean predicted raw logit."""
+    """Compute frozen-class ViT Grad-CAM at arbitrary normalized ``z``."""
 
     if torch.is_inference_mode_enabled():
         raise RuntimeError(
             "ViT Grad-CAM cannot run inside torch.inference_mode()"
         )
-    inputs = _validate_clean_input(clean_inputs)
-    target = _verify_frozen_target(frozen_target, inputs, model)
-    target_layer = _resolve_grad_cam_layer(model)
-
-    with _preserve_model_attribution_state(
-        model, freeze_parameters=True
-    ), _ActivationCapture(target_layer) as capture, torch.enable_grad():
-        probe = inputs.detach().clone().requires_grad_(True)
-        logits = _require_logits(
-            model(probe), expected_classes=target.class_count
+    clean = _validate_clean_input(clean_inputs)
+    inputs = _validate_clean_input(intervention_inputs)
+    if clean.device != inputs.device:
+        raise StageCClassLogitError(
+            "intervention input device must match the clean input context"
         )
-        if capture.call_count != 1 or capture.activation is None:
-            raise StageCClassLogitError(
-                f"{TARGET_LAYER} must execute exactly once, got {capture.call_count}"
-            )
-        activation = capture.activation
-        if activation.shape != (1, TOKENS, EMBED_DIM):
-            raise StageCClassLogitError(
-                f"{TARGET_LAYER} must have shape [1,{TOKENS},{EMBED_DIM}], "
-                f"got {tuple(activation.shape)}"
-            )
-        selected_logit = target.target_spec.select(logits)
-        if not selected_logit.requires_grad:
-            raise StageCClassLogitError(
-                "frozen target logit is not differentiable from the target layer"
-            )
-        gradient = torch.autograd.grad(
-            selected_logit.sum(),
-            activation,
-            retain_graph=False,
-            create_graph=False,
-            allow_unused=True,
-        )[0]
-        if gradient is None:
-            raise StageCClassLogitError(
-                "frozen target logit does not depend on blocks[11].norm1"
-            )
-        cam = vit_grad_cam_patch_map(activation, gradient)
+    target = _verify_frozen_target(frozen_target, clean, model)
+    target_layer = _resolve_grad_cam_layer(model)
+    caller_intervention_sha256 = _tensor_sha256(inputs)
 
-    _verify_frozen_target(target, inputs, model)
+    try:
+        with _preserve_model_attribution_state(
+            model, freeze_parameters=True
+        ), _ActivationCapture(target_layer) as capture, torch.enable_grad():
+            probe = inputs.detach().clone().requires_grad_(True)
+            logits = _require_logits(
+                model(probe), expected_classes=target.class_count
+            )
+            if capture.call_count != 1 or capture.activation is None:
+                raise StageCClassLogitError(
+                    f"{TARGET_LAYER} must execute exactly once, got {capture.call_count}"
+                )
+            activation = capture.activation
+            if activation.shape != (1, TOKENS, EMBED_DIM):
+                raise StageCClassLogitError(
+                    f"{TARGET_LAYER} must have shape [1,{TOKENS},{EMBED_DIM}], "
+                    f"got {tuple(activation.shape)}"
+                )
+            selected_logit = target.target_spec.select(logits)
+            if not selected_logit.requires_grad:
+                raise StageCClassLogitError(
+                    "frozen target logit is not differentiable from the target layer"
+                )
+            gradient = torch.autograd.grad(
+                selected_logit.sum(), activation, retain_graph=False,
+                create_graph=False, allow_unused=True,
+            )[0]
+            if gradient is None:
+                raise StageCClassLogitError(
+                    "frozen target logit does not depend on blocks[11].norm1"
+                )
+            cam = vit_grad_cam_patch_map(activation, gradient)
+    finally:
+        if _tensor_sha256(inputs) != caller_intervention_sha256:
+            raise StageCClassLogitError(
+                "Grad-CAM mutated caller intervention_inputs"
+            )
+
+    _verify_frozen_target(target, clean, model)
     values = cam.to(device="cpu", dtype=torch.float32).numpy().copy()
     method_provenance = _base_provenance(
         exact_name=(
@@ -637,6 +819,7 @@ def vit_grad_cam_block11_norm1(
         frozen_target=target,
         provenance=provenance,
     )
+    method_provenance["intervention_input_sha256"] = caller_intervention_sha256
     method_provenance["algorithm"] = {
         "target_layer": TARGET_LAYER,
         "activation_layout": "batch_token_channel",
@@ -669,7 +852,26 @@ def vit_grad_cam_block11_norm1(
     )
 
 
-def _validate_ig_result(result: Any, *, target: FrozenClassLogitTarget) -> IGResult:
+def vit_grad_cam_block11_norm1(
+    model: nn.Module,
+    clean_inputs: torch.Tensor,
+    frozen_target: FrozenClassLogitTarget,
+    *,
+    provenance: Mapping[str, Any] | None = None,
+) -> MethodResult:
+    """Compute ViT Grad-CAM at the clean input for the frozen class."""
+
+    return vit_grad_cam_block11_norm1_at_intervention(
+        model, clean_inputs, clean_inputs, frozen_target, provenance=provenance
+    )
+
+
+def _validate_ig_result(
+    result: Any,
+    *,
+    target: FrozenClassLogitTarget,
+    expected_delta: float | None = None,
+) -> IGResult:
     if not isinstance(result, IGResult):
         raise TypeError("full_model_ig must return IGResult")
     if not result.converged:
@@ -786,6 +988,10 @@ def _validate_ig_result(result: Any, *, target: FrozenClassLogitTarget) -> IGRes
             )
     attribution_sum = native.flatten(1).sum(dim=1)
     report_delta = result.conservation["delta"].to(torch.float32)
+    if expected_delta is not None and report_delta[0].item() != expected_delta:
+        raise StageCClassLogitError(
+            "full-model IG conservation delta does not equal t(z)-t(x0)"
+        )
     report_sum = result.conservation["sum"].to(torch.float32)
     report_abs = result.conservation["abs"].to(torch.float32)
     report_rel = result.conservation["rel"].to(torch.float32)
@@ -940,9 +1146,115 @@ def full_model_class_logit_ig(
     )
 
 
+def full_model_class_logit_ig_at_intervention(
+    model: nn.Module,
+    clean_inputs: torch.Tensor,
+    intervention_inputs: torch.Tensor,
+    frozen_target: FrozenClassLogitTarget,
+    *,
+    provenance: Mapping[str, Any] | None = None,
+) -> MethodResult:
+    """Run full-model IG from normalized zero to arbitrary ``z``."""
+
+    if torch.is_inference_mode_enabled():
+        raise RuntimeError(
+            "full-model class-logit IG cannot run inside torch.inference_mode()"
+        )
+    clean = _validate_clean_input(clean_inputs)
+    inputs = _validate_clean_input(intervention_inputs)
+    if clean.device != inputs.device:
+        raise StageCClassLogitError(
+            "intervention input device must match the clean input context"
+        )
+    target = _verify_frozen_target(frozen_target, clean, model)
+    baseline = torch.zeros_like(inputs)
+    intervention_sha256 = _tensor_sha256(inputs)
+    owned_inputs = inputs.detach().clone()
+    try:
+        with _preserve_model_attribution_state(
+            model, freeze_parameters=True
+        ), torch.enable_grad():
+            with torch.no_grad():
+                endpoint = _require_logits(
+                    model(owned_inputs.detach()), expected_classes=target.class_count
+                )[0, target.class_index]
+                baseline_endpoint = _require_logits(
+                    model(baseline), expected_classes=target.class_count
+                )[0, target.class_index]
+                if endpoint.dtype is not torch.float32 or (
+                    baseline_endpoint.dtype is not torch.float32
+                ):
+                    raise TypeError(
+                        "model raw logits must have float32 dtype for intervention IG"
+                    )
+                expected_delta = float((endpoint - baseline_endpoint).item())
+            result = attribution.full_model_ig(
+                model, owned_inputs, baseline, target.target_spec,
+                steps=IG_STEPS, step_chunk_size=IG_STEP_CHUNK_SIZE,
+                atol=IG_ATOL, rtol=IG_RTOL,
+            )
+    finally:
+        if _tensor_sha256(inputs) != intervention_sha256:
+            raise StageCClassLogitError(
+                "full-model intervention IG mutated caller intervention input"
+            )
+    result = _validate_ig_result(
+        result, target=target, expected_delta=expected_delta
+    )
+    _verify_frozen_target(target, clean, model)
+    native_values = result.attribution[0].detach().to(
+        device="cpu", dtype=torch.float32
+    ).numpy().copy()
+    native = raw_array(native_values)
+    metric = pixel_to_patch_mass(signed_rgb_channel_sum(native))
+    if int(np.count_nonzero(metric.data)) == 0:
+        raise StageCClassLogitError(
+            "full-model IG signed channel-sum patch map is all zero"
+        )
+    method_provenance = _base_provenance(
+        exact_name="full-model class-logit IG",
+        frozen_target=target, provenance=provenance,
+    )
+    if _tensor_sha256(inputs) != intervention_sha256:
+        raise StageCClassLogitError(
+            "full-model intervention IG mutated the caller intervention input"
+        )
+    method_provenance["intervention_input_sha256"] = intervention_sha256
+    method_provenance["algorithm"] = {
+        "model_scope": "real_unmodified_full_model",
+        "scalar": "frozen_clean_predicted_class_raw_logit",
+        "baseline": {
+            "id": "zero_normalized", "normalized_value": 0.0,
+            "canonical_rgb_value": 0.5, "is_black_image": False,
+        },
+        "quadrature": "gauss_legendre",
+        "integration_dtype": "float32",
+        "steps_schedule": list(IG_STEPS),
+        "step_chunk_size": IG_STEP_CHUNK_SIZE, "atol": IG_ATOL,
+        "rtol": IG_RTOL,
+        "native_attribution": "signed_rgb_float32_3x224x224",
+        "rgb_reduction": "signed_channel_sum_before_projection",
+        "projection": "nonoverlapping_16x16_pixel_mass_to_patch_sum",
+        "absolute_value_before_projection": False,
+        "claim_boundary": "full_model_raw_class_logit_attribution",
+        "is_complete_attention_attribution": False,
+    }
+    method_provenance["ig_result"] = _ig_provenance_summary(result)
+    return MethodResult(
+        method_id="full_model_class_logit_ig", method_version=METHOD_VERSION,
+        comparison_line=ComparisonLine.CLASS_LOGIT, explanation_target=TARGET_REF,
+        fidelity_target=TARGET_REF, class_agnostic=False, native_tensor=native,
+        metric_map=metric, projection="pixel_mass_to_patch_sum",
+        sign_semantics=SignSemantics.SIGNED,
+        valid_mask=np.ones(PATCH_SHAPE, dtype=np.bool_),
+        provenance=method_provenance,
+    )
+
+
 __all__ = [
     "EMBED_DIM",
     "FrozenClassLogitTarget",
+    "FrozenScalarEvaluation",
     "IG_ATOL",
     "IG_RTOL",
     "IG_STEPS",
@@ -953,7 +1265,11 @@ __all__ = [
     "TARGET_LAYER",
     "TOKENS",
     "full_model_class_logit_ig",
+    "full_model_class_logit_ig_at_intervention",
+    "evaluate_frozen_class_logit_target",
     "resolve_clean_class_logit_target",
+    "resolve_natural_prediction_observation",
     "vit_grad_cam_block11_norm1",
+    "vit_grad_cam_block11_norm1_at_intervention",
     "vit_grad_cam_patch_map",
 ]

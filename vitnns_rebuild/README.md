@@ -1,4 +1,4 @@
-# ViT-NNS rebuild: auditable baseline and Stage B attribution
+# ViT-NNS rebuild: auditable baseline and Stage C primitives
 
 This directory is the clean, auditable replacement for the legacy experiment
 tree. Stage A deliberately uses one model and one numerical forward path:
@@ -108,4 +108,16 @@ configuration caps output at 64 MiB and caps batched forward and backward
 model invocations at 30,000 each. A development run is not formal unless saved
 provenance explicitly records `formal=true` on a clean committed tree with
 every required gate enabled and passing.
+
+## Stage C
+
+Stage C now includes strict config/map/metric contracts, the registered
+attention and class-logit methods, fixed-clean-attention head-direction
+Value-path methods, and C5 primitives for fidelity, canonical perturbation
+stability, within-patch residuals, and resource measurement. See
+`docs/阶段C_protocol.md`, `docs/stage_c_acceptance.md`, and the live handoff log
+`docs/阶段C-step-by-step.md`.
+
+C5 is intentionally not a runner: it creates no execution-unit directories,
+manifest/status/resume state, selection, bootstrap, or Go/No-Go decision.
 

@@ -2,7 +2,7 @@
 
 > 文档性质：阶段 C 的路线图、任务状态表和跨对话交接日志。  
 > 创建日期：2026-08-21。  
-> 当前状态：阶段 A、阶段 B、阶段 C/C0–C4 已完成；下一任务是 C5。
+> 当前状态：阶段 A、阶段 B、阶段 C/C0–C5 已完成；下一任务是 C6。
 > 使用规则：每个新对话必须先完整阅读本文，只执行一个指定的 `C_i`；该任务未更新本文并写出下一任务提示词时，不算完成。
 
 ## 1. 为什么使用这份文档
@@ -300,12 +300,30 @@ delta_fid = 0.5 * [
 | C2 | PASS | direct raw CLS attention 与 rollout | 两种方法实现、方法合同测试 | C1 |
 | C3 | PASS | Grad-CAM 与 full-model class-logit IG | 两种方法适配、真实模型 smoke test | C1 |
 | C4 | PASS | head 级 NNS 与 matched patch baseline | 同目标实现、守恒与退化测试 | C1 |
-| C5 | NOT_STARTED（NEXT） | fidelity、扰动稳定性、资源仪表 | fidelity/perturbation/stability/resource 模块 | C2–C4 |
-| C6 | NOT_STARTED | 单图/批量 runner、留存、provenance、CLI | 可恢复批量流水线及测试 | C1–C5 |
+| C5 | PASS | fidelity、扰动稳定性、资源仪表 | fidelity/perturbation/stability/resource 模块 | C2–C4 |
+| C6 | NOT_STARTED（NEXT） | 单图/批量 runner、留存、provenance、CLI | 可恢复批量流水线及测试 | C1–C5 |
 | C7 | NOT_STARTED | 单图 smoke benchmark 与预算冻结 | benchmark、总预算和可运行性结论 | C6 |
 | C8 | NOT_STARTED | 5 图全层/全头校准和 selection 冻结 | calibration 产物、`selection.json` | C7 |
 | C9 | NOT_STARTED | 全 20 图冻结配置 pilot | 完整逐样本产物和 failure table | C8 commit clean |
 | C10 | NOT_STARTED | 汇总统计和 Go/No-Go | per-sample 表、summary、decision、报告 | C9 |
+
+### 8.1 增量回归策略（自 C5 起）
+
+进入 `C_{i+1}` 时，不要求机械地再次运行 `C1–Ci` 的全部 focused tests。若同时满足以下条件，可直接复用 `Ci` completion record 中已经完成的提交后验证，把它记为“复用已验证基线”，而不能写成“本次重新通过”：
+
+- 当前 `HEAD` 与 `Ci` completion record 的精确 commit SHA 一致，且工作树 clean；
+- C0 clean/tracked validator 通过，冻结 registry/config/schema/protocol/acceptance、Stage A 500 manifest 和 Stage B 正式产物链均未漂移；
+- `Ci` completion record 已记录同一提交上的累计 focused tests 与全量非 GPU suite 通过，且没有未解决失败、跳过项或环境/lock 变化；
+- 本任务尚未修改共享代码，且没有其他证据提示历史合同可能回归。
+
+每个后续任务采用以下最小测试集合：
+
+1. 启动时运行 HEAD/clean 检查和 C0 validator；满足上述复用条件时，跳过累计历史 focused baseline。
+2. 开发中运行本任务测试，以及所有被实际修改或直接依赖的历史模块测试。修改跨阶段共享代码时，必须补跑其所有受影响历史测试；无法可靠判断影响面时，回退到累计 focused tests。
+3. 最终 tracked 状态只需运行一次本任务及受影响 focused tests、一次 C0 clean/tracked validator和一次全量非 GPU suite。全量 suite 已包含的历史 tests 不在其前后机械重复；只有 marker/条件 skip 使其未覆盖、失败定位或明确验收条款另有要求时才单独补跑。
+4. completion record 必须区分“复用的上一提交证据”和“本任务实际执行的测试”，记录 commit、命令、结果、环境差异与 skip/deselect 情况；不得把复用证据伪装成本次执行。
+
+出现 HEAD 不一致、dirty 归属不明、冻结 hash/依赖/lock/运行环境变化、上一记录缺失或失败、共享基础设施改动、异常 skip，或任何回归迹象时，不适用豁免，必须按影响面补跑；必要时恢复 `C1–Ci` 累计 focused tests。该策略只消除重复回归，不豁免当前任务验收、提交前全量非 GPU suite，也不允许运行昂贵 GPU attribution 来替代单元测试。
 
 ## 9. 每个任务的具体边界
 
@@ -1010,7 +1028,7 @@ C4 范围与交付物：
 开始前必须：
 - 检查 git status 和 HEAD，要求 HEAD 等于 C4 最终回复 SHA 且工作树 clean；若不一致，查明归属，不覆盖用户改动。
 - 运行 `CUDA_VISIBLE_DEVICES='' conda run -n vitnns python tests/test_stage_c_contract.py --require-tracked --require-clean`，核验冻结 hash、500 图官方标签链与 Stage B formal status→manifest→artifact 链。
-- 运行 C1–C4 focused tests，确认配置、MethodResult/map/metric/display、六种方法、同目标 Value-path、lifecycle 合同仍通过。
+- 按 8.1 的增量回归策略处理 C1–C4 基线：若精确 C4 clean HEAD、validator 和 C4 completion record 的提交后证据均成立，可复用该证据而不重复累计 focused tests；否则按影响面补跑。本次 C5 启动已实际运行 C1–C4 focused tests。
 - 不从 `__pycache__`/`.pyc` 恢复源码，不读取 display PNG，不复用旧数值结果。
 
 C5 范围与交付物：
@@ -1030,7 +1048,7 @@ C5 范围与交付物：
 14. 测试必须覆盖：手算 S、delta退化与正负方向；patch/fine corruption identity及端点；ceil fraction/实际横轴/AUC/no-clip；tie与hash seed重复性、paired共享；random/center sanity；top-20%；Value-path matched delta与跨线拒绝；三种扰动精确值/hash共享；inverse geometry/Jacobian/mask round-trip；residual/rho及边界/零/常量；fixed clean targets与prediction flip字段；resource CPU和conditional CUDA；非法shape/dtype/非有限/空mask/错误target fail closed；成功和异常后的 hooks、全部 module mode、parameter grad与requires_grad精确恢复。
 15. 真实模型只做验收所需的低成本 CPU target/intervention smoke，显式 `CUDA_VISIBLE_DEVICES=''`。用 toy/受控替身验证21点、5 tie repeats和完整调度；不得在真实 ViT 上运行512–8192-step attribution、整条3136-cell曲线或批量扰动，不得处理5图/20图集合。
 16. 更新 docs/阶段C-step-by-step.md：C5 标 PASS 或 BLOCKED；若 PASS 将 C6 标 NEXT；追加完整 completion record 和“新对话执行 C6”的完整可复制提示词。
-17. 检查 diff，只提交 C5 tracked 文件；提交后重跑 C0 validator（含 tracked/clean）、C1–C5 focused tests和全量非 GPU suite，最终确认 clean。
+17. 检查 diff，只提交 C5 tracked 文件；按 8.1 运行 C5 及受影响 focused tests、C0 validator（含 tracked/clean）和一次全量非 GPU suite，避免在全量 suite 前后机械重复其已覆盖的 C1–C4 tests，最终确认 clean。
 
 禁止事项：
 - 不修改冻结 registry、config、protocol、acceptance、schema、角色、阈值、扰动、seed、目标、schedule、资源 cap 或 decision gates；确有矛盾必须停止并走带旧/新 hash 的 protocol amendment。
@@ -1050,4 +1068,56 @@ C5 范围与交付物：
 - 一任务一提交，最终工作树clean，completion record的commit/hash/test信息完整，文档简单易懂。
 
 C5只实现评价与测量原语，不实现运行编排或统计决策。Value-path继续冻结clean A/u；patch→pixel/fine只表示质量守恒均分，不是原生像素证据。
+~~~
+
+### 2026-08-22 02:45 +0800 — C5 completion record
+
+- status: PASS
+- objective_completed: 只完成 C5。新增冻结标量 fidelity、patch/4×4-cell corruption、21 点曲线、五次 paired tie、random/center sanity、top-20%、fine-4 Value-path `delta_fid`；新增三种 canonical RGB 扰动、inverse/Jacobian/mask、C1 sign-view stability、NNS patch-inner residual，以及 wall/CUDA/call/bytes 资源仪表。为 C2–C4 增加 arbitrary-intervention 方法级入口，但未实现 C6 runner、CLI、execution-unit、manifest/status/resume、retention orchestration、selection、批量实验、bootstrap 或统计决策。
+- git_sha_before: `a4ada3374ad167fb0b691e29b3d3eb6709efa826`
+- git_sha_after: SELF（即包含本 completion record 的单一 C5 commit；精确 SHA 在提交后由 `git rev-parse HEAD` 产生并在最终回复报告）
+- tree_clean: true（C5 commit 后复验）
+- files_added_or_changed: `src/vitnns/stage_c_fidelity.py`、`stage_c_perturbations.py`、`stage_c_stability.py`、`stage_c_resources.py`；`stage_c_attention.py`、`stage_c_class_logit.py`、`stage_c_value_path.py` 的 frozen-target arbitrary-z 原语；对应 C5/C2–C4 tests；`tests/test_stage_c_contract.py`；`README.md`；本文。未修改冻结 registry/config/schema/protocol/acceptance。
+- inputs_and_sha256: C4 commit `a4ada3374ad167fb0b691e29b3d3eb6709efa826`；C3 `38a9d6493bc8694ab320850d8164699b737c075e`；C2 `3ddc5b7d86d85729a644be49791aebb06f5285b6`；C1 `bd518afc7a479fb2c5dcf5ede31287d2d514147e`；C0 `05b0290b7caacc772a7c20a724f1491b3057524a`；registry `9a6667bec6a27c715d272382a494f06924db881dca991dc4fac4751dbe7f37f0`；Stage A 500 manifest `042cfd7845b49f8949de13c78bc40c68192179d6fc004bcdbecf55e502c2eb89`。
+- configs_and_sha256: Stage C config `0ee57c32b0fcb3116f91fddce5d918c8eb1ae05606c3616b6a2ec9afa9f0e669`；config schema `94209b7c8a63a62ef27f3396810c8d5be8f6fbbf0a4df22e663b3661b9ed3f4b`；registry schema `4ce0ac8cd5bff93ae2b323c3e0447a87fc825c3243ad46c54c9b48e05e9b2d6d`；selection schema `867a3cf22519b2a045d81751a20c5cd52570ddeadede26a2da2bb79973f0b59d`；protocol `ff958a9455ae15307827a9e40fc6d7d03c9baa10bf1fb8b83650a10bd85ff7b8`；acceptance `f4629105d411b32d4f7700caa22d7d6b6c1bf4b8e01f37e4e2ac6ac4851dfafd`；lock `81beabd6aba9ede777e973e2ee5f0c60ce2aa88ce55b29d025e95d67ab175984`。
+- artifacts_and_absolute_paths: 无实验/GPU artifact、execution-unit、manifest/status、selection 或 display PNG。所有 toy tensor 仅存内存；生产原语位于 `/data00/home/yeziqi.831/testcode/vitnns_rebuild/src/vitnns/stage_c_*.py`。
+- artifact_manifest_or_status_hashes: 不适用；C5 不写 runtime artifact。
+- tests_and_results: 启动 C0 clean/tracked validator PASS；启动 C1–C4 focused `246 passed`。开发末受影响 focused 最近一次 `372 passed, 1 skipped`（conditional CUDA 因本会话显式无 CUDA而跳过）；C3/C4 arbitrary-z lifecycle、完整 21 点与五次 nuisance 调度均由 toy/CPU 覆盖。提交前/后的 validator 和全量非 GPU suite 最终计数在本任务最终回复报告。
+- acceptance_results: C5 六项全部通过。`S(z)` 严格 signed endpoint normalization、不 clip；normalized-zero RGB coupled corruption、ceil/actual fraction/trapezoid、paired seed与 fine-4 delta均 fail closed 绑定 method/target/map/score/tensor。扰动生成器签发 canonical 与 normalized tensor/hash；translation/crop/noise、inverse Jacobian和 mask 精确。stability 只从 bound perturbed native map 执行 inverse/project，C1 全 sign views、prediction flip和 residual 绑定 method/target/perturbation。资源边界同步、reset、allocated/reserved、异常、调用和完整文件树 bytes 可解释。
+- deviations_or_protocol_amendments: 无 protocol amendment。五个预注册 tie repeats 是完整 nuisance set，结果保留五次原值并报告 population SD（ddof=0），明确不当作独立统计样本；图像 sample SD 仍由冻结统计合同在 C10 使用 ddof=1。crop inverse multiplier使用冻结十进制 `1.075445816186557`。
+- failures_retained: 开发中对抗审查依次发现并修复 frozen evaluator adapter缺失、target/map/score/tensor pairing不足、通用 stability/sign views缺失、loose perturbation hash、resource异常遮蔽、arbitrary-z map缺失、canonical/normalized hash域混用、matched-z map缺失及可变 alias。一次裸系统 Python import 因未进入 conda 环境失败、一次代理环境报告缺 timm，均未写文件；主线程 `conda run -n vitnns` 回归正常。没有 GPU/OOM/真实高步数 attribution 失败。
+- known_limitations: C5 只提供方法级逐次原语和 JSON-safe结果，不写持久化 provenance/inventory，不提供并发 runner、批量/恢复/留存或预算决策。patch→pixel/fine仍只是质量守恒均分；4×4-cell不是单像素证据。真实 canonical ViT 高步数 IG、3136-cell整曲线、5图/20图集合均未运行。
+- next_task: C6
+
+#### 下一对话完整提示词
+
+~~~text
+你现在只执行 ViT-NNS 重建工程“阶段 C”的 C6：实现单图/批量 runner、留存、完整 provenance、预算预检、恢复与 CLI。不要开始 C7 benchmark，不要运行5图 calibration或20图 pilot，不要实现 C8 selection、C9 数据、C10 bootstrap/统计决策，也不要修改 C0–C5 冻结科学语义。
+
+工作目录：
+/data00/home/yeziqi.831/testcode/vitnns_rebuild
+
+前置冻结基线：
+- C5 commit: SELF，即包含本 completion record 的当前 clean HEAD；启动 C6 时先运行 `git rev-parse HEAD`，其精确 SHA 应与 C5 最终回复一致。
+- C4 commit: a4ada3374ad167fb0b691e29b3d3eb6709efa826
+- C3 commit: 38a9d6493bc8694ab320850d8164699b737c075e
+- C2 commit: 3ddc5b7d86d85729a644be49791aebb06f5285b6
+- C1 commit: bd518afc7a479fb2c5dcf5ede31287d2d514147e
+- C0 commit: 05b0290b7caacc772a7c20a724f1491b3057524a
+- Stage C registry/config/schema/protocol/acceptance 与 Stage A manifest SHA-256 沿用 C5 completion record。
+
+第一步必须完整阅读 `docs/阶段C-step-by-step.md`（尤其 C5 record、8.1与C6边界）、冻结 protocol 第9节、acceptance C6、config/schema/contract、C1–C5生产模块与测试、Stage A/B runner/retention/provenance/CLI及其测试、README。检查 HEAD/clean，运行 C0 validator；按8.1仅在基线或影响面异常时重复历史 focused。
+
+C6范围：
+1. 从冻结 registry/config/selection 合同实现 estimate、run-sample、run-batch、validate、aggregate或等价接口；C8前 selection 尚不存在时不得伪造选择。
+2. preflight精确展开 sample×method×config×target×clean/三扰动×repeatability×21点×五tie及全部普通文件；任何 hard cap在GPU/写盘前拒绝。
+3. execution unit写全新独立目录；只有 `complete=true`、manifest hash与全部artifact hash/bytes匹配才resume-skip。失败/incomplete/tampered不得追加或报成功，重跑用新空目录。
+4. 实现冻结 L0/L1/L2/L3：L2只限两个audit；L3不能回流指标；禁止逐step/逐pixel/逐dimension文件爆炸。
+5. provenance绑定clean/dirty commit、model/image/lock/registry/protocol/config/selection、角色/audit、精确method/target/map/baseline/schedule/seeds/扰动、status/failure、resource和inventory。failure table覆盖每个expected unit；batch complete要求全部显式终态。
+6. 组合C5 frozen scalar、fidelity、perturbation/stability/residual和resource原语，不重写公式；canonical与normalized perturbation hash域不得混用；class与Value line不得跨算。
+7. CLI保持非交互、可验证、可恢复；crash/resume/hash tamper/partial failure/missing row/non-overwrite/budget测试必须覆盖。
+8. 测试以toy/CPU为主；conditional CUDA仅小边界。真实模型只做最低成本CPU或单次小GPU orchestration smoke，不运行C7 benchmark、完整IG、5图或20图。
+9. 更新本文：C6 PASS/BLOCKED；PASS时C7 NEXT；追加completion record与完整C7提示词。一任务一提交，提交后按8.1运行validator、受影响focused及一次全量非GPU，确认clean。
+
+禁止修改冻结 registry/config/schema/protocol/acceptance、方法语义、阈值、seed、target、schedule、扰动、caps或decision gates；有矛盾必须走带旧/新hash的protocol amendment。C6只做运行编排与可审计留存，不读取display PNG，不进行selection或统计决策。
 ~~~

@@ -105,6 +105,90 @@ class StageCValuePathError(ValueError):
     """Raised when a C4 Value-path contract is violated."""
 
 
+@dataclass(frozen=True, init=False)
+class FrozenScalarEvaluation:
+    """One fixed-A, fixed-direction Value-path scalar evaluation."""
+
+    value: float
+    target_kind: str
+    block_index: int
+    head_index: int
+    query_token: int
+    clean_input_sha256: str
+    intervention_input_sha256: str
+    runtime_model_binding_sha256: str
+
+    def __init__(self, *_args: Any, **_kwargs: Any) -> None:
+        raise TypeError(
+            "FrozenScalarEvaluation can only be issued by "
+            "evaluate_frozen_head_direction_target"
+        )
+
+    @classmethod
+    def _create(
+        cls,
+        *,
+        value: float,
+        block_index: int,
+        head_index: int,
+        clean_input_sha256: str,
+        intervention_input_sha256: str,
+        runtime_model_binding_sha256: str,
+        issuer_secret: bytes,
+    ) -> "FrozenScalarEvaluation":
+        if issuer_secret is not _TARGET_ISSUER_SECRET:
+            raise TypeError("scalar evaluations can only be issued by the evaluator")
+        instance = object.__new__(cls)
+        for name, field_value in {
+            "value": value,
+            "target_kind": TARGET_REF,
+            "block_index": block_index,
+            "head_index": head_index,
+            "query_token": CLS_TOKEN_INDEX,
+            "clean_input_sha256": clean_input_sha256,
+            "intervention_input_sha256": intervention_input_sha256,
+            "runtime_model_binding_sha256": runtime_model_binding_sha256,
+        }.items():
+            object.__setattr__(instance, name, field_value)
+        instance.__post_init__()
+        return instance
+
+    def __post_init__(self) -> None:
+        if isinstance(self.value, bool) or not isinstance(self.value, (int, float)):
+            raise TypeError("value must be numeric")
+        value = float(self.value)
+        if not math.isfinite(value):
+            raise StageCValuePathError("scalar evaluation value must be finite")
+        object.__setattr__(self, "value", value)
+        if self.target_kind != TARGET_REF:
+            raise StageCValuePathError("scalar target_kind is not the frozen head target")
+        _strict_index(self.block_index, name="block_index", upper_bound=MODEL_BLOCKS)
+        _strict_index(self.head_index, name="head_index", upper_bound=HEADS_PER_BLOCK)
+        if self.query_token != CLS_TOKEN_INDEX:
+            raise StageCValuePathError("query_token must be the frozen CLS token")
+        for name in (
+            "clean_input_sha256",
+            "intervention_input_sha256",
+            "runtime_model_binding_sha256",
+        ):
+            if not re.fullmatch(r"[0-9a-f]{64}", getattr(self, name)):
+                raise ValueError(f"{name} must be a lowercase SHA-256")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "value": self.value,
+            "target_kind": self.target_kind,
+            "block_index": self.block_index,
+            "head_index": self.head_index,
+            "query_token": self.query_token,
+            "clean_input_sha256": self.clean_input_sha256,
+            "intervention_input_sha256": self.intervention_input_sha256,
+            "runtime_model_binding_sha256": self.runtime_model_binding_sha256,
+            "fixed_clean_attention": True,
+            "frozen_direction": True,
+        }
+
+
 class StageCValuePathConvergenceError(StageCValuePathError):
     """Raised after the complete frozen IG schedule fails conservation.
 
@@ -1244,9 +1328,62 @@ def matched_token_contributions(
     unit = resolved.direction_unit
     if unit is None:
         raise StageCValuePathError("OK direction unexpectedly has no unit vector")
-    value_delta = resolved.clean_values - resolved.baseline_values
-    projected = torch.sum(value_delta * unit[None, :], dim=1)
-    contributions = _owned_tensor(resolved.clean_attention * projected)
+    return _matched_token_contributions_from_values(
+        candidate=resolved.candidate,
+        clean_attention=resolved.clean_attention,
+        intervention_values=resolved.clean_values,
+        baseline_values=resolved.baseline_values,
+        direction_unit=unit,
+        conservation_reference=resolved.direction_norm,
+    )
+
+
+def _matched_token_contributions_from_values(
+    *,
+    candidate: HeadCandidate,
+    clean_attention: torch.Tensor,
+    intervention_values: torch.Tensor,
+    baseline_values: torch.Tensor,
+    direction_unit: torch.Tensor,
+    conservation_reference: float,
+) -> MatchedTokenContribution:
+    if clean_attention.shape != (TOKENS,):
+        raise StageCValuePathError(
+            "matched token contribution requires exactly 197 tokens"
+        )
+    if clean_attention.dtype is not torch.float32:
+        raise TypeError("clean_attention must be float32")
+    if not bool(torch.isfinite(clean_attention).all().item()):
+        raise StageCValuePathError("clean_attention must be finite")
+    if direction_unit.ndim != 1:
+        raise StageCValuePathError("direction_unit must be rank-1")
+    head_width = int(direction_unit.shape[0])
+    for name, value in (
+        ("intervention_values", intervention_values),
+        ("baseline_values", baseline_values),
+    ):
+        if value.shape != (TOKENS, head_width):
+            raise StageCValuePathError(
+                f"{name} must have shape ({TOKENS}, {head_width})"
+            )
+        if value.dtype is not torch.float32:
+            raise TypeError(f"{name} must be float32")
+        if not bool(torch.isfinite(value).all().item()):
+            raise StageCValuePathError(f"{name} must be finite")
+    if direction_unit.dtype is not torch.float32:
+        raise TypeError("direction_unit must be float32")
+    if not bool(torch.isfinite(direction_unit).all().item()):
+        raise StageCValuePathError("direction_unit must be finite")
+    if isinstance(conservation_reference, bool) or not isinstance(
+        conservation_reference, (int, float)
+    ):
+        raise TypeError("conservation_reference must be finite numeric")
+    conservation_target = float(conservation_reference)
+    if not math.isfinite(conservation_target):
+        raise StageCValuePathError("conservation_reference must be finite")
+    value_delta = intervention_values - baseline_values
+    projected = torch.sum(value_delta * direction_unit[None, :], dim=1)
+    contributions = _owned_tensor(clean_attention * projected)
     if contributions.dtype is not torch.float32 or not bool(
         torch.isfinite(contributions).all().item()
     ):
@@ -1256,9 +1393,9 @@ def matched_token_contributions(
     contribution_sum = float(
         torch.sum(contributions.to(torch.float64)).item()
     )
-    conservation_error = abs(contribution_sum - resolved.direction_norm)
+    conservation_error = abs(contribution_sum - conservation_target)
     conservation_tolerance = TOKEN_CONSERVATION_ATOL + (
-        TOKEN_CONSERVATION_RTOL * abs(resolved.direction_norm)
+        TOKEN_CONSERVATION_RTOL * abs(conservation_target)
     )
     if conservation_error > conservation_tolerance:
         raise StageCValuePathError(
@@ -1287,13 +1424,13 @@ def matched_token_contributions(
     if positive_fraction < POSITIVE_PATCH_EVIDENCE_MINIMUM:
         reasons.append(DEGENERATE_POSITIVE_PATCH_EVIDENCE)
     return MatchedTokenContribution(
-        candidate=resolved.candidate,
+        candidate=candidate,
         status=STATUS_OK,
         token_contributions=contributions,
         cls_contribution=cls_contribution,
         patch_contributions=patch,
         patch_map=patch_map,
-        direction_norm=resolved.direction_norm,
+        direction_norm=conservation_target,
         conservation_sum=contribution_sum,
         conservation_error=conservation_error,
         conservation_tolerance=conservation_tolerance,
@@ -1543,6 +1680,25 @@ def _capture_real_endpoints(
                 "model output for clean replay parity must be non-empty floating point"
             )
         return captures.finish(), _owned_tensor(model_output)
+
+
+def _capture_selected_head_values(
+    model: nn.Module,
+    inputs: torch.Tensor,
+    *,
+    block_index: int,
+    head_index: int,
+) -> torch.Tensor:
+    attention_module = _resolve_production_attention_modules(
+        model, (block_index,)
+    )[block_index]
+    endpoints, _model_output = _capture_real_endpoints(
+        model, inputs, {block_index: attention_module}
+    )
+    values, _attention_used, _head_outputs = _validate_endpoint_block_data(
+        endpoints[block_index], block_index=block_index
+    )
+    return _owned_tensor(values[0, head_index])
 
 
 def _validate_endpoint_block_data(
@@ -2023,6 +2179,72 @@ def _verify_target_live_state(
     return verified
 
 
+def evaluate_frozen_head_direction_target(
+    model: nn.Module,
+    clean_inputs: torch.Tensor,
+    intervention_inputs: torch.Tensor,
+    target: FrozenHeadDirectionTarget,
+) -> FrozenScalarEvaluation:
+    """Evaluate the issued fixed-clean-A, fixed-u head scalar at ``z``."""
+
+    clean = _validate_clean_input(clean_inputs)
+    intervention = _validate_clean_input(intervention_inputs)
+    if clean.device != intervention.device:
+        raise StageCValuePathError(
+            "intervention input device must match the clean input context"
+        )
+    frozen = _verify_frozen_head_target(target, model, clean)
+    if frozen.status != STATUS_OK or frozen.direction_unit is None:
+        raise StageCValuePathError(
+            "frozen head-direction scalar is undefined for a degenerate target"
+        )
+    attention_module = _resolve_production_attention_modules(
+        model, (frozen.block_index,)
+    )[frozen.block_index]
+    owned_inputs = intervention.detach().clone()
+    fixed_attention = _owned_tensor(frozen.fixed_attention)
+    frozen_direction = _owned_tensor(frozen.direction_unit)
+    with _preserve_model_attribution_state(
+        model, freeze_parameters=True
+    ), _RuntimeIntegrityGuard(
+        model, intervention, owned_inputs,
+        context="frozen head-direction scalar evaluation", target=frozen,
+    ), _UnfusedSelectedBlocks((attention_module,)):
+        with _SelectedHeadIntervention(
+            attention_module, {frozen.head_index: fixed_attention}
+        ) as intervention_hook, _DifferentiableHeadOutputCapture(
+            attention_module.proj
+        ) as pre_projection, torch.no_grad():
+            before_projection = pre_projection.call_count
+            model(owned_inputs)
+            if intervention_hook.call_count != 1:
+                raise StageCValuePathError(
+                    "selected attn_drop must execute exactly once per scalar evaluation"
+                )
+            scalar = pre_projection.scalar(
+                before_calls=before_projection,
+                head_index=frozen.head_index,
+                direction_unit=frozen_direction,
+            )
+            if scalar.dtype is not torch.float32 or scalar.shape != (1,):
+                raise StageCValuePathError(
+                    "frozen head-direction scalar must have shape [1] and float32 dtype"
+                )
+            if not bool(torch.isfinite(scalar).all().item()):
+                raise StageCValuePathError("frozen head-direction scalar is non-finite")
+            value = float(scalar.item())
+    _verify_frozen_head_target(frozen, model, clean)
+    return FrozenScalarEvaluation._create(
+        value=value,
+        block_index=frozen.block_index,
+        head_index=frozen.head_index,
+        clean_input_sha256=frozen.clean_input_sha256,
+        intervention_input_sha256=_tensor_sha256(intervention),
+        runtime_model_binding_sha256=frozen.runtime_model_binding_sha256,
+        issuer_secret=_TARGET_ISSUER_SECRET,
+    )
+
+
 class _DifferentiableHeadOutputCapture(
     AbstractContextManager["_DifferentiableHeadOutputCapture"]
 ):
@@ -2102,7 +2324,10 @@ def _attempt_numeric(
 
 
 def _validate_head_direction_ig_result(
-    result: Any, *, target: FrozenHeadDirectionTarget
+    result: Any,
+    *,
+    target: FrozenHeadDirectionTarget,
+    expected_delta: float | None = None,
 ) -> IGResult:
     if not isinstance(result, IGResult):
         raise TypeError("integrated_gradients must return IGResult")
@@ -2263,7 +2488,12 @@ def _validate_head_direction_ig_result(
     # endpoints in float32.  Bind that scalar to r under the registered IG
     # numerical tolerance; the separately measured replay parities above keep
     # their strict max-absolute-error < 1e-6 gates.
-    delta_identity_error = abs(float(report_delta.item()) - target.direction_norm)
+    bound_delta = (
+        target.direction_norm
+        if expected_delta is None
+        else float(expected_delta)
+    )
+    delta_identity_error = abs(float(report_delta.item()) - bound_delta)
     delta_identity_tolerance = IG_ATOL + IG_RTOL * abs(float(report_delta.item()))
     if delta_identity_error > delta_identity_tolerance:
         raise StageCValuePathError(
@@ -2372,26 +2602,33 @@ def _ig_provenance_summary(result: IGResult) -> dict[str, Any]:
     }
 
 
-def conditional_fixed_clean_attention_head_direction_value_path_ig(
+def conditional_fixed_clean_attention_head_direction_value_path_ig_at_intervention(
     model: nn.Module,
     clean_inputs: torch.Tensor,
+    intervention_inputs: torch.Tensor,
     target: FrozenHeadDirectionTarget,
     provenance: Mapping[str, Any] | None = None,
 ) -> MethodResult:
-    """Attribute the issued fixed-clean-attention head scalar to RGB."""
+    """Attribute the issued fixed-clean-attention head scalar to RGB at ``z``."""
 
     if torch.is_inference_mode_enabled():
         raise RuntimeError(
             "head-direction Value-path IG cannot run inside "
             "torch.inference_mode()"
         )
-    inputs = _validate_clean_input(clean_inputs)
-    frozen = _verify_frozen_head_target(target, model, inputs)
+    clean = _validate_clean_input(clean_inputs)
+    inputs = _validate_clean_input(intervention_inputs)
+    if clean.device != inputs.device:
+        raise StageCValuePathError(
+            "intervention input device must match the clean input context"
+        )
+    frozen = _verify_frozen_head_target(target, model, clean)
     method_provenance = _base_provenance(
         exact_name=NNS_METHOD_NAME,
         target=frozen,
         provenance=provenance,
     )
+    method_provenance["intervention_input_sha256"] = _tensor_sha256(inputs)
     method_provenance["algorithm"] = {
         "model_scope": "real_upstream_value_path_to_selected_block",
         "attention_source": "clean_real_forward_attention_used",
@@ -2444,6 +2681,15 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig(
             na=frozen.na,
         )
 
+    baseline_inputs = torch.zeros_like(inputs)
+    intervention_endpoint = evaluate_frozen_head_direction_target(
+        model, clean, inputs, frozen
+    )
+    baseline_endpoint = evaluate_frozen_head_direction_target(
+        model, clean, baseline_inputs, frozen
+    )
+    expected_delta = intervention_endpoint.value - baseline_endpoint.value
+
     attention_module = _resolve_production_attention_modules(
         model, (frozen.block_index,)
     )[frozen.block_index]
@@ -2458,6 +2704,7 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig(
     frozen_direction = _owned_tensor(direction_unit)
     caller_inputs = inputs
     owned_inputs = inputs.detach().clone()
+    owned_baseline = baseline_inputs.detach().clone()
     with _preserve_model_attribution_state(
         model, freeze_parameters=True
     ), _RuntimeIntegrityGuard(
@@ -2488,7 +2735,7 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig(
             result = attribution.integrated_gradients(
                 callback,
                 owned_inputs,
-                torch.zeros_like(owned_inputs),
+                owned_baseline,
                 steps=IG_STEPS,
                 step_chunk_size=IG_STEP_CHUNK_SIZE,
                 atol=IG_ATOL,
@@ -2521,9 +2768,9 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig(
             },
         )
         validated = _validate_head_direction_ig_result(
-            result_with_counts, target=frozen
+            result_with_counts, target=frozen, expected_delta=expected_delta
         )
-        _verify_frozen_head_target(frozen, model, caller_inputs)
+        _verify_frozen_head_target(frozen, model, clean)
     if not validated.converged:
         raise StageCValuePathConvergenceError(
             "head-direction Value-path IG did not converge on the complete "
@@ -2560,6 +2807,26 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig(
         valid_mask=np.ones(PATCH_SHAPE, dtype=np.bool_),
         provenance=method_provenance,
     )
+
+
+def conditional_fixed_clean_attention_head_direction_value_path_ig(
+    model: nn.Module,
+    clean_inputs: torch.Tensor,
+    target: FrozenHeadDirectionTarget,
+    provenance: Mapping[str, Any] | None = None,
+) -> MethodResult:
+    """Attribute the issued fixed-clean-attention head scalar to RGB."""
+
+    result = conditional_fixed_clean_attention_head_direction_value_path_ig_at_intervention(
+        model,
+        clean_inputs,
+        clean_inputs,
+        target,
+        provenance=provenance,
+    )
+    provenance_dict = dict(result.provenance)
+    provenance_dict.pop("intervention_input_sha256", None)
+    return replace(result, provenance=provenance_dict)
 
 
 def matched_fixed_clean_attention_patch_token_contribution(
@@ -2664,6 +2931,166 @@ def matched_fixed_clean_attention_patch_token_contribution(
     )
 
 
+def matched_fixed_clean_attention_patch_token_contribution_at_intervention(
+    model: nn.Module,
+    clean_inputs: torch.Tensor,
+    intervention_inputs: torch.Tensor,
+    target: FrozenHeadDirectionTarget,
+    provenance: Mapping[str, Any] | None = None,
+) -> MethodResult:
+    """Return the issued target's exact matched token map at arbitrary ``z``."""
+
+    clean = _validate_clean_input(clean_inputs)
+    inputs = _validate_clean_input(intervention_inputs)
+    if clean.device != inputs.device:
+        raise StageCValuePathError(
+            "intervention input device must match the clean input context"
+        )
+    frozen = _verify_frozen_head_target(target, model, clean)
+    method_provenance = _base_provenance(
+        exact_name=MATCHED_METHOD_NAME,
+        target=frozen,
+        provenance=provenance,
+    )
+    method_provenance["stage"] = "C5"
+    method_provenance["intervention_input_sha256"] = _tensor_sha256(inputs)
+    method_provenance["algorithm"] = {
+        "formula": "c_j(z)=A_clean_cls_j*dot(u,V(z)_j-V(x0)_j)",
+        "token_count": TOKENS,
+        "patch_token_count": PATCH_TOKENS,
+        "cls_contribution_retained_separately": True,
+        "cls_given_spatial_location": False,
+        "patch_order": "native_row_major_14x14",
+        "projection": "patch_mass_to_pixel_uniform",
+        "projection_semantics": (
+            "mass_conserving_uniform_distribution_not_native_pixel_evidence"
+        ),
+        "patch_to_pixel_divisor": 256,
+        "patch_to_fine_cell_divisor": 16,
+        "intervention_values_source": (
+            "real_selected_block_head_qkv_value_endpoint"
+        ),
+        "fixed_attention_source": "issued_clean_attention_row",
+        "frozen_direction_source": "issued_clean_head_direction_unit",
+        "baseline_values_source": "issued_frozen_baseline_value_endpoint",
+        "target_resolution_reused_without_reresolution": True,
+        "replays_qk_or_transformer_block": False,
+        "is_complete_attention_attribution": False,
+        "claim_boundary": "matched_fixed_clean_attention_token_value_delta_only",
+    }
+    if frozen.status == DEGENERATE_DIRECTION:
+        if frozen.na is None:
+            raise StageCValuePathError(
+                "degenerate contribution does not contain structured NA"
+            )
+        method_provenance["status"] = DEGENERATE_DIRECTION
+        method_provenance["matched_contribution"] = {
+            "status": DEGENERATE_DIRECTION,
+            "degeneracy_reasons": [DEGENERATE_DIRECTION],
+        }
+        return _na_method_result(
+            method_id=MATCHED_METHOD_ID,
+            projection="patch_mass_to_pixel_uniform",
+            provenance=method_provenance,
+            na=frozen.na,
+        )
+    direction_unit = frozen.direction_unit
+    if direction_unit is None:
+        raise StageCValuePathError(
+            "nondegenerate target unexpectedly has no unit direction"
+        )
+    caller_inputs = inputs
+    owned_inputs = inputs.detach().clone()
+    with _preserve_model_attribution_state(
+        model, freeze_parameters=True
+    ), _RuntimeIntegrityGuard(
+        model, caller_inputs, owned_inputs,
+        context="matched fixed-clean-attention patch-token contribution",
+        target=frozen,
+    ):
+        intervention_values = _capture_selected_head_values(
+            model,
+            owned_inputs,
+            block_index=frozen.block_index,
+            head_index=frozen.head_index,
+        )
+        intervention_scalar = evaluate_frozen_head_direction_target(
+            model, clean, owned_inputs, frozen
+        )
+        baseline_scalar = float(torch.dot(frozen.u, frozen.g_baseline).item())
+        contribution = _matched_token_contributions_from_values(
+            candidate=frozen.candidate,
+            clean_attention=frozen.clean_attention,
+            intervention_values=intervention_values,
+            baseline_values=frozen.baseline_values,
+            direction_unit=direction_unit,
+            conservation_reference=(
+                intervention_scalar.value - baseline_scalar
+            ),
+        )
+        _verify_frozen_head_target(frozen, model, clean)
+
+    patch_map = contribution.patch_map
+    if patch_map is None:
+        raise StageCValuePathError(
+            "OK matched contribution unexpectedly has no patch map"
+        )
+    patch_values = (
+        patch_map.detach().to(device="cpu", dtype=torch.float32).numpy().copy()
+    )
+    method_provenance["status"] = STATUS_OK
+    method_provenance["matched_contribution"] = {
+        "status": STATUS_OK,
+        "token_contribution_count": TOKENS,
+        "token_contributions_sha256": _tensor_sha256(
+            contribution.token_contributions
+        ),
+        "cls_contribution": contribution.cls_contribution,
+        "patch_contributions_sha256": _tensor_sha256(
+            contribution.patch_contributions
+        ),
+        "token_sum": contribution.conservation_sum,
+        "scalar_delta_f_z_minus_f_x0": contribution.direction_norm,
+        "conservation_abs_error": contribution.conservation_error,
+        "conservation_tolerance": contribution.conservation_tolerance,
+        "patch_support": contribution.patch_support,
+        "positive_patch_evidence_fraction": (
+            contribution.positive_patch_evidence_fraction
+        ),
+        "degeneracy_reasons": list(contribution.degeneracy_reasons),
+        "patch_support_minimum": PATCH_SUPPORT_MINIMUM,
+        "positive_patch_evidence_minimum": (
+            POSITIVE_PATCH_EVIDENCE_MINIMUM
+        ),
+        "all_zero_patch_map_retained": bool(
+            int(torch.count_nonzero(patch_map).item()) == 0
+        ),
+        "intervention_values_sha256": _tensor_sha256(intervention_values),
+        "frozen_baseline_values_sha256": _tensor_sha256(
+            frozen.baseline_values
+        ),
+        "fixed_clean_attention_row_sha256": _tensor_sha256(
+            frozen.clean_attention
+        ),
+        "frozen_direction_sha256": _tensor_sha256(direction_unit),
+    }
+    native = raw_array(patch_values)
+    return MethodResult(
+        method_id=MATCHED_METHOD_ID,
+        method_version=METHOD_VERSION,
+        comparison_line=ComparisonLine.VALUE_PATH,
+        explanation_target=TARGET_REF,
+        fidelity_target=TARGET_REF,
+        class_agnostic=True,
+        native_tensor=native,
+        metric_map=stage_c_metric_ready(patch_values),
+        projection="patch_mass_to_pixel_uniform",
+        sign_semantics=SignSemantics.SIGNED,
+        valid_mask=np.ones(PATCH_SHAPE, dtype=np.bool_),
+        provenance=method_provenance,
+    )
+
+
 __all__ = [
     "CLS_TOKEN_INDEX",
     "DEGENERATE_DIRECTION",
@@ -2674,6 +3101,7 @@ __all__ = [
     "EMBED_DIM",
     "ENDPOINT_PARITY_MAX_ABS",
     "FrozenHeadDirectionTarget",
+    "FrozenScalarEvaluation",
     "HEADS_PER_BLOCK",
     "HEAD_DIM",
     "HEAD_DIRECTION_TARGET",
@@ -2706,7 +3134,10 @@ __all__ = [
     "all_head_candidates",
     "chunk_head_candidates",
     "conditional_fixed_clean_attention_head_direction_value_path_ig",
+    "conditional_fixed_clean_attention_head_direction_value_path_ig_at_intervention",
+    "evaluate_frozen_head_direction_target",
     "matched_fixed_clean_attention_patch_token_contribution",
+    "matched_fixed_clean_attention_patch_token_contribution_at_intervention",
     "matched_token_contributions",
     "resolve_fixed_clean_attention_head_direction",
     "resolve_fixed_clean_attention_head_directions",

@@ -23,11 +23,19 @@ from vitnns.stage_c_class_logit import (
     IG_STEP_CHUNK_SIZE,
     METHOD_VERSION,
     FrozenClassLogitTarget,
+    FrozenScalarEvaluation,
     StageCClassLogitError,
+    evaluate_frozen_class_logit_target,
     full_model_class_logit_ig,
+    full_model_class_logit_ig_at_intervention,
     resolve_clean_class_logit_target,
+    resolve_natural_prediction_observation,
     vit_grad_cam_block11_norm1,
+    vit_grad_cam_block11_norm1_at_intervention,
     vit_grad_cam_patch_map,
+)
+from vitnns.stage_c_fidelity import (
+    ClassLogitScalarAdapter, resolve_target_response,
 )
 from vitnns.stage_c_maps import ComparisonLine, MethodResult, SignSemantics
 from vitnns.targets import TargetSpec
@@ -245,6 +253,147 @@ def test_resolve_clean_target_argmax_once_records_wrong_truth_without_exclusion(
     _assert_grad_snapshot(model, grads_before)
     with pytest.raises(dataclasses.FrozenInstanceError):
         target.class_index = 1
+
+
+def test_frozen_class_scalar_uses_fixed_index_and_restores_caller_lifecycle():
+    model = _ToyClassModel()
+    image = _clean_image()
+    target = resolve_clean_class_logit_target(model, image)
+    intervention = torch.zeros_like(image)
+    intervention[:, 1] = 2.0
+    assert torch.argmax(model(intervention)[0]).item() == 1
+    _mixed_caller_state(model)
+    persistent = model.blocks[2].register_forward_hook(
+        lambda _module, _arguments, _output: None
+    )
+    hooks_before = _hook_inventory(model)
+    modes_before = _mode_flags(model)
+    requires_before = _requires_grad_flags(model)
+    grads_before = _grad_snapshot(model)
+    try:
+        result = evaluate_frozen_class_logit_target(
+            model, image, intervention, target
+        )
+        assert isinstance(result, FrozenScalarEvaluation)
+        assert result.value == pytest.approx(-0.5)
+        assert result.class_index == target.class_index == 0
+        assert result.target_kind == TARGET_REF
+        assert result.clean_input_sha256 == target.clean_input_sha256
+        assert result.intervention_input_sha256 == class_logit._tensor_sha256(
+            intervention
+        )
+        assert result.runtime_model_binding_sha256 == (
+            target.runtime_model_binding_sha256
+        )
+        json.dumps(result.to_dict(), allow_nan=False)
+        with pytest.raises(dataclasses.FrozenInstanceError):
+            result.value = 0.0
+        with pytest.raises(TypeError, match="only be issued"):
+            FrozenScalarEvaluation()
+        assert _hook_inventory(model) == hooks_before
+        assert _mode_flags(model) == modes_before
+        assert _requires_grad_flags(model) == requires_before
+        _assert_grad_snapshot(model, grads_before)
+    finally:
+        persistent.remove()
+
+
+def test_natural_prediction_observation_binds_model_and_intervention_hash():
+    model = _ToyClassModel().eval()
+    image = _clean_image()
+    target = resolve_clean_class_logit_target(model, image)
+    intervention = torch.zeros_like(image)
+    intervention[:, 1] = 2.0
+    observed = resolve_natural_prediction_observation(
+        model, image, intervention, target
+    )
+    assert observed["class_index"] == 1
+    assert observed["class_count"] == target.class_count
+    assert observed["intervention_input_sha256"] == class_logit._tensor_sha256(
+        intervention
+    )
+    assert observed["runtime_model_binding_sha256"] == (
+        target.runtime_model_binding_sha256
+    )
+
+
+def test_c5_class_adapter_resolves_endpoints_without_reselecting_class():
+    model = _ToyClassModel().eval()
+    image = _clean_image()
+    target = resolve_clean_class_logit_target(model, image)
+    adapter = ClassLogitScalarAdapter(model, image, target)
+    response = resolve_target_response(adapter, image, torch.zeros_like(image))
+    assert response.comparison_line is ComparisonLine.CLASS_LOGIT
+    assert response.target_identity["clean_input_sha256"] == (
+        target.clean_input_sha256
+    )
+    assert response.target_identity["frozen_target"]["class_index"] == (
+        target.class_index
+    )
+    assert response.clean_value == pytest.approx(target.clean_raw_logit)
+    assert response.normalize(response.clean_value) == pytest.approx(1.0)
+    assert response.normalize(response.baseline_value) == pytest.approx(0.0)
+
+
+@pytest.mark.parametrize(
+    ("make_bad", "exception", "message"),
+    [
+        (lambda image: image.to(torch.float64), TypeError, "float32"),
+        (lambda image: image[:, :, :-1], StageCClassLogitError, "shape"),
+        (
+            lambda image: image.clone().masked_fill(
+                torch.zeros_like(image, dtype=torch.bool).index_fill(3, torch.tensor([0]), True),
+                float("nan"),
+            ),
+            StageCClassLogitError,
+            "finite",
+        ),
+    ],
+)
+def test_frozen_class_scalar_rejects_invalid_intervention(
+    make_bad, exception, message
+):
+    model = _ToyClassModel().eval()
+    image = _clean_image()
+    target = resolve_clean_class_logit_target(model, image)
+    with pytest.raises(exception, match=message):
+        evaluate_frozen_class_logit_target(
+            model, image, make_bad(image), target
+        )
+
+
+def test_frozen_class_scalar_exception_restores_state_and_rejects_context():
+    model = _ToyClassModel()
+    image = _clean_image()
+    target = resolve_clean_class_logit_target(model, image)
+    changed_clean = image.clone()
+    changed_clean[0, 0, 0, 0] += 1.0
+    with pytest.raises(StageCClassLogitError, match="bytes"):
+        evaluate_frozen_class_logit_target(model, changed_clean, image, target)
+    with pytest.raises(StageCClassLogitError, match="model instance"):
+        evaluate_frozen_class_logit_target(
+            _ToyClassModel(), image, image, target
+        )
+
+    _mixed_caller_state(model)
+    failing = model.register_forward_pre_hook(
+        lambda _module, _arguments: (_ for _ in ()).throw(
+            RuntimeError("synthetic scalar failure")
+        )
+    )
+    hooks_before = _hook_inventory(model)
+    modes_before = _mode_flags(model)
+    requires_before = _requires_grad_flags(model)
+    grads_before = _grad_snapshot(model)
+    try:
+        with pytest.raises(RuntimeError, match="synthetic scalar failure"):
+            evaluate_frozen_class_logit_target(model, image, image, target)
+        assert _hook_inventory(model) == hooks_before
+        assert _mode_flags(model) == modes_before
+        assert _requires_grad_flags(model) == requires_before
+        _assert_grad_snapshot(model, grads_before)
+    finally:
+        failing.remove()
 
 
 @pytest.mark.parametrize(
@@ -498,9 +647,108 @@ def test_grad_cam_wrapper_target_sensitivity_repeatability_and_method_contract()
     assert algorithm["percentile_enhancement"] is False
     assert algorithm["display_resize"] is False
     assert first.provenance["target"]["class_index"] == 0
+    assert first.provenance["intervention_input_sha256"] == (
+        class_logit._tensor_sha256(image)
+    )
 
     caller_context["nested"]["values"].append(3)
     assert first.provenance["caller_context"]["nested"]["values"] == (1, 2)
+
+
+def test_grad_cam_at_intervention_uses_fixed_class_and_maps_z():
+    model = _ToyClassModel().eval()
+    image = _clean_image()
+    target = resolve_clean_class_logit_target(model, image)
+    intervention = image.clone()
+    intervention[:, 0] *= 0.5
+    intervention[:, 1] += 1.0
+    assert torch.argmax(model(intervention)[0]).item() == 1
+
+    clean_result = vit_grad_cam_block11_norm1(model, image, target)
+    result = vit_grad_cam_block11_norm1_at_intervention(
+        model, image, intervention, target
+    )
+
+    assert result.provenance["target"]["class_index"] == target.class_index == 0
+    assert result.provenance["intervention_input_sha256"] == (
+        class_logit._tensor_sha256(intervention)
+    )
+    assert not np.array_equal(result.metric_map.data, clean_result.metric_map.data)
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        torch.zeros((1, 3, 223, 224), dtype=torch.float32),
+        torch.zeros((1, 3, 224, 224), dtype=torch.float64),
+        torch.full((1, 3, 224, 224), float("nan"), dtype=torch.float32),
+    ],
+)
+def test_grad_cam_at_intervention_rejects_invalid_z(bad):
+    model = _ToyClassModel().eval()
+    image = _clean_image()
+    target = resolve_clean_class_logit_target(model, image)
+    with pytest.raises((TypeError, StageCClassLogitError)):
+        vit_grad_cam_block11_norm1_at_intervention(model, image, bad, target)
+
+
+@pytest.mark.parametrize("should_raise", [False, True], ids=["success", "failure"])
+def test_grad_cam_at_intervention_restores_lifecycle(should_raise):
+    model = _ToyClassModel().eval()
+    image = _clean_image()
+    target = resolve_clean_class_logit_target(model, image)
+    intervention = image * 0.75
+    _mixed_caller_state(model)
+
+    def caller_hook(_module, _arguments, _output):
+        model.blocks[4].train()
+        model.scale.requires_grad_(True)
+        model.scale.grad.add_(-50.0)
+        if should_raise:
+            raise RuntimeError("synthetic intervention Grad-CAM failure")
+
+    handle = model.register_forward_hook(caller_hook)
+    hooks_before = _hook_inventory(model)
+    modes_before = _mode_flags(model)
+    requires_before = _requires_grad_flags(model)
+    grads_before = _grad_snapshot(model)
+    try:
+        if should_raise:
+            with pytest.raises(RuntimeError, match="intervention Grad-CAM failure"):
+                vit_grad_cam_block11_norm1_at_intervention(
+                    model, image, intervention, target
+                )
+        else:
+            result = vit_grad_cam_block11_norm1_at_intervention(
+                model, image, intervention, target
+            )
+            assert np.count_nonzero(result.metric_map.data) > 0
+        assert _hook_inventory(model) == hooks_before
+        assert _mode_flags(model) == modes_before
+        assert _requires_grad_flags(model) == requires_before
+        _assert_grad_snapshot(model, grads_before)
+    finally:
+        handle.remove()
+
+
+def test_grad_cam_exception_detects_caller_intervention_mutation():
+    model = _ToyClassModel().eval()
+    image = _clean_image()
+    target = resolve_clean_class_logit_target(model, image)
+    intervention = image.clone()
+
+    def hostile(_module, _arguments, _output):
+        intervention.add_(1.0)
+        raise RuntimeError("hostile hook")
+
+    handle = model.register_forward_hook(hostile)
+    try:
+        with pytest.raises(StageCClassLogitError, match="mutated caller"):
+            vit_grad_cam_block11_norm1_at_intervention(
+                model, image, intervention, target
+            )
+    finally:
+        handle.remove()
 
 
 def test_grad_cam_is_target_sensitive_on_the_same_activation():
@@ -773,6 +1021,96 @@ def test_full_model_ig_dispatches_exact_frozen_contract_and_projects_signed_rgb(
     assert algorithm["absolute_value_before_projection"] is False
     assert algorithm["native_attribution"] == "signed_rgb_float32_3x224x224"
     assert result.provenance["ig_result"]["selected_steps"] == 512
+    assert result.provenance.get("intervention_input_sha256") is None
+
+
+def test_full_model_ig_at_intervention_uses_z_delta_fixed_class_and_hash(
+    monkeypatch,
+):
+    model = _ToyClassModel().eval()
+    image = _clean_image()
+    target = resolve_clean_class_logit_target(model, image)
+    intervention = image.clone()
+    intervention[:, 0] *= 0.25
+    intervention[:, 1] += 2.0
+    assert torch.argmax(model(intervention)[0]).item() == 1
+    expected_delta = float(
+        (
+            model(intervention)[0, target.class_index]
+            - model(torch.zeros_like(intervention))[0, target.class_index]
+        ).item()
+    )
+    calls: dict[str, Any] = {}
+
+    def fake(received_model, received_inputs, baseline, received_target, **kwargs):
+        calls["inputs"] = received_inputs
+        calls["target"] = received_target
+        native = torch.zeros_like(received_inputs)
+        native[0, 0, 0, 0] = expected_delta
+        result = _ig_result(target, attribution=native)
+        result.conservation["delta"][0] = expected_delta
+        result.conservation["sum"][0] = expected_delta
+        for attempt in result.attempts:
+            attempt["delta"][0] = expected_delta
+            attempt["sum"][0] = expected_delta
+        return result
+
+    monkeypatch.setattr(class_logit.attribution, "full_model_ig", fake)
+    result = full_model_class_logit_ig_at_intervention(
+        model, image, intervention, target
+    )
+    assert calls["inputs"] is not intervention
+    torch.testing.assert_close(calls["inputs"], intervention)
+    assert calls["target"] == TargetSpec.class_logit(target.class_index)
+    assert result.provenance["target"]["class_index"] == target.class_index
+    assert result.provenance["intervention_input_sha256"] == (
+        class_logit._tensor_sha256(intervention)
+    )
+    assert result.provenance["ig_result"]["conservation"]["delta"] == (
+        pytest.approx(expected_delta),
+    )
+
+
+def test_full_model_ig_at_intervention_rejects_wrong_delta_and_restores(
+    monkeypatch,
+):
+    model = _ToyClassModel().eval()
+    image = _clean_image()
+    target = resolve_clean_class_logit_target(model, image)
+    intervention = image * 0.5
+    _mixed_caller_state(model)
+    hooks_before = _hook_inventory(model)
+    modes_before = _mode_flags(model)
+    requires_before = _requires_grad_flags(model)
+    grads_before = _grad_snapshot(model)
+    monkeypatch.setattr(
+        class_logit.attribution, "full_model_ig",
+        lambda *_args, **_kwargs: _ig_result(target),
+    )
+    with pytest.raises(StageCClassLogitError, match=r"t\(z\)-t\(x0\)"):
+        full_model_class_logit_ig_at_intervention(
+            model, image, intervention, target
+        )
+    assert _hook_inventory(model) == hooks_before
+    assert _mode_flags(model) == modes_before
+    assert _requires_grad_flags(model) == requires_before
+    _assert_grad_snapshot(model, grads_before)
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        torch.zeros((1, 3, 223, 224), dtype=torch.float32),
+        torch.zeros((1, 3, 224, 224), dtype=torch.float64),
+        torch.full((1, 3, 224, 224), float("inf"), dtype=torch.float32),
+    ],
+)
+def test_full_model_ig_at_intervention_rejects_invalid_z(bad):
+    model = _ToyClassModel().eval()
+    image = _clean_image()
+    target = resolve_clean_class_logit_target(model, image)
+    with pytest.raises((TypeError, StageCClassLogitError)):
+        full_model_class_logit_ig_at_intervention(model, image, bad, target)
 
 
 @pytest.mark.parametrize(

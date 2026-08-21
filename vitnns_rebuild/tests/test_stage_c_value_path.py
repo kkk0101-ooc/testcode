@@ -24,6 +24,11 @@ from vitnns.stage_c_maps import (
     MethodResult,
     NAReason,
     SignSemantics,
+    raw_array,
+    stage_c_metric_ready,
+)
+from vitnns.stage_c_fidelity import (
+    ValuePathScalarAdapter, resolve_target_response,
 )
 from vitnns.stage_c_value_path import (
     DEGENERATE_DIRECTION,
@@ -35,10 +40,13 @@ from vitnns.stage_c_value_path import (
     IG_STEPS,
     IG_STEP_CHUNK_SIZE,
     METHOD_VERSION,
+    NNS_METHOD_ID,
+    NNS_METHOD_NAME,
     PATCH_SUPPORT_MINIMUM,
     POSITIVE_PATCH_EVIDENCE_MINIMUM,
     STATUS_OK,
     FrozenHeadDirectionTarget,
+    FrozenScalarEvaluation,
     HeadCandidate,
     HeadDirectionResolution,
     MatchedTokenContribution,
@@ -47,7 +55,10 @@ from vitnns.stage_c_value_path import (
     all_head_candidates,
     chunk_head_candidates,
     conditional_fixed_clean_attention_head_direction_value_path_ig,
+    conditional_fixed_clean_attention_head_direction_value_path_ig_at_intervention,
+    evaluate_frozen_head_direction_target,
     matched_fixed_clean_attention_patch_token_contribution,
+    matched_fixed_clean_attention_patch_token_contribution_at_intervention,
     matched_token_contributions,
     resolve_fixed_clean_attention_head_direction,
     resolve_fixed_clean_attention_head_directions,
@@ -681,6 +692,108 @@ def _issued_target(
     return model, image, target
 
 
+def test_frozen_head_scalar_reuses_fixed_a_u_and_restores_caller_lifecycle():
+    model, image, target = _issued_target(block_index=2, head_index=3)
+    _mixed_caller_state(model)
+    persistent = model.blocks[6].attn.qkv.register_forward_hook(
+        lambda _module, _arguments, _output: None
+    )
+    hooks_before = _hook_inventory(model)
+    modes_before = _mode_flags(model)
+    requires_before = _requires_grad_flags(model)
+    grads_before = _grad_snapshot(model)
+    try:
+        clean_result = evaluate_frozen_head_direction_target(
+            model, image, image, target
+        )
+        baseline_result = evaluate_frozen_head_direction_target(
+            model, image, torch.zeros_like(image), target
+        )
+        assert isinstance(clean_result, FrozenScalarEvaluation)
+        assert clean_result.value == pytest.approx(
+            float(torch.dot(target.u, target.g_clean).item()), abs=2e-6
+        )
+        assert baseline_result.value == pytest.approx(
+            float(torch.dot(target.u, target.g_baseline).item()), abs=2e-6
+        )
+        assert clean_result.block_index == target.block_index == 2
+        assert clean_result.head_index == target.head_index == 3
+        assert clean_result.query_token == 0
+        assert clean_result.target_kind == TARGET_REF
+        assert clean_result.intervention_input_sha256 == value_path._tensor_sha256(
+            image
+        )
+        assert baseline_result.intervention_input_sha256 == value_path._tensor_sha256(
+            torch.zeros_like(image)
+        )
+        assert clean_result.to_dict()["fixed_clean_attention"] is True
+        assert clean_result.to_dict()["frozen_direction"] is True
+        json.dumps(clean_result.to_dict(), allow_nan=False)
+        with pytest.raises(dataclasses.FrozenInstanceError):
+            clean_result.value = 0.0
+        with pytest.raises(TypeError, match="only be issued"):
+            FrozenScalarEvaluation()
+        assert _hook_inventory(model) == hooks_before
+        assert _mode_flags(model) == modes_before
+        assert _requires_grad_flags(model) == requires_before
+        _assert_grad_snapshot(model, grads_before)
+    finally:
+        persistent.remove()
+
+
+def test_c5_value_adapter_resolves_same_fixed_a_u_endpoints():
+    model, image, target = _issued_target(block_index=2, head_index=3)
+    adapter = ValuePathScalarAdapter(model, image, target)
+    response = resolve_target_response(adapter, image, torch.zeros_like(image))
+    assert response.comparison_line is ComparisonLine.VALUE_PATH
+    assert response.sigma == 1
+    assert response.clean_value == pytest.approx(
+        float(torch.dot(target.u, target.g_clean).item()), abs=2e-6
+    )
+    assert response.baseline_value == pytest.approx(
+        float(torch.dot(target.u, target.g_baseline).item()), abs=2e-6
+    )
+    assert response.target_identity["frozen_target"]["candidate"] == {
+        "block_index": 2, "head_index": 3,
+    }
+    assert response.normalize(response.clean_value) == pytest.approx(1.0)
+    assert response.normalize(response.baseline_value) == pytest.approx(0.0)
+
+
+def test_frozen_head_scalar_fail_closed_and_restores_after_exception():
+    model, image, target = _issued_target()
+    with pytest.raises(TypeError, match="float32"):
+        evaluate_frozen_head_direction_target(
+            model, image, image.to(torch.float64), target
+        )
+    changed_clean = image.clone()
+    changed_clean[0, 0, 0, 0] += 1.0
+    with pytest.raises(StageCValuePathError, match="input bytes"):
+        evaluate_frozen_head_direction_target(
+            model, changed_clean, image, target
+        )
+
+    _mixed_caller_state(model)
+    failing = model.register_forward_pre_hook(
+        lambda _module, _arguments: (_ for _ in ()).throw(
+            RuntimeError("synthetic scalar failure")
+        )
+    )
+    hooks_before = _hook_inventory(model)
+    modes_before = _mode_flags(model)
+    requires_before = _requires_grad_flags(model)
+    grads_before = _grad_snapshot(model)
+    try:
+        with pytest.raises(RuntimeError, match="synthetic scalar failure"):
+            evaluate_frozen_head_direction_target(model, image, image, target)
+        assert _hook_inventory(model) == hooks_before
+        assert _mode_flags(model) == modes_before
+        assert _requires_grad_flags(model) == requires_before
+        _assert_grad_snapshot(model, grads_before)
+    finally:
+        failing.remove()
+
+
 def _signed_native(total: float) -> torch.Tensor:
     native = torch.zeros((1, 3, 224, 224), dtype=torch.float32)
     native[0, 0, :16, :16] = total / 256.0
@@ -785,7 +898,7 @@ def _ig_result(
 
 
 def _assert_method_result(
-    result: MethodResult, *, method_id: str, projection: str
+    result: MethodResult, *, method_id: str, projection: str, stage: str = "C4"
 ) -> None:
     assert {field.name for field in dataclasses.fields(result)} == {
         "method_id",
@@ -820,7 +933,7 @@ def _assert_method_result(
     assert np.isfinite(result.metric_map.data).all()
     assert result.valid_mask.dtype == np.bool_
     assert bool(result.valid_mask.all())
-    assert result.provenance["stage"] == "C4"
+    assert result.provenance["stage"] == stage
     assert result.provenance["comparison_line"] == "value_path"
     assert result.provenance["class_agnostic"] is True
     assert result.provenance["method_implementation_version"] == METHOD_VERSION
@@ -1031,6 +1144,197 @@ def test_matched_wrapper_retains_cls_only_result_without_fake_spatial_location()
     )
 
 
+def test_matched_wrapper_at_intervention_uses_real_z_values_and_binds_hash():
+    model, image, target = _issued_target(block_index=2, head_index=3)
+    intervention = image.clone()
+    intervention[:, 0] *= -0.5
+    intervention[:, 1] += 1.25
+    assert not torch.equal(intervention, image)
+
+    clean = matched_fixed_clean_attention_patch_token_contribution(target)
+    result = matched_fixed_clean_attention_patch_token_contribution_at_intervention(
+        model,
+        image,
+        intervention,
+        target,
+        provenance={"sample_id": "matched-z"},
+    )
+    _assert_method_result(
+        result,
+        method_id="matched_fixed_clean_attention_patch_token_contribution",
+        projection="patch_mass_to_pixel_uniform",
+        stage="C5",
+    )
+
+    retained = result.provenance["matched_contribution"]
+    assert result.provenance["stage"] == "C5"
+    assert result.provenance["intervention_input_sha256"] == (
+        value_path._tensor_sha256(intervention)
+    )
+    assert result.provenance["caller_context"]["sample_id"] == "matched-z"
+    assert result.provenance["algorithm"]["formula"] == (
+        "c_j(z)=A_clean_cls_j*dot(u,V(z)_j-V(x0)_j)"
+    )
+    assert result.provenance["algorithm"][
+        "target_resolution_reused_without_reresolution"
+    ] is True
+    assert result.provenance["algorithm"]["replays_qk_or_transformer_block"] is False
+    assert retained["token_contribution_count"] == TOKENS
+    assert retained["fixed_clean_attention_row_sha256"] == value_path._tensor_sha256(
+        target.A
+    )
+    assert retained["frozen_direction_sha256"] == value_path._tensor_sha256(target.u)
+    assert retained["frozen_baseline_values_sha256"] == value_path._tensor_sha256(
+        target.baseline_values
+    )
+    assert retained["token_contributions_sha256"] != clean.provenance[
+        "matched_contribution"
+    ]["token_contributions_sha256"]
+    assert result.provenance["intervention_input_sha256"] != target.clean_input_sha256
+    assert retained["token_sum"] == pytest.approx(
+        retained["scalar_delta_f_z_minus_f_x0"],
+        abs=retained["conservation_tolerance"],
+    )
+    assert retained["cls_contribution"] != pytest.approx(
+        float(result.metric_map.data.reshape(-1)[0])
+    )
+    assert retained["cls_contribution"] == pytest.approx(
+        float(
+            target.A[0].item()
+            * torch.dot(
+                target.u,
+                _capture_selected_values(model, intervention, target)[0]
+                - target.baseline_values[0],
+            ).item()
+        ),
+        abs=2e-6,
+    )
+    np.testing.assert_array_equal(
+        result.native_tensor.data,
+        result.metric_map.data,
+    )
+    assert result.metric_map.data.shape == PATCH_SHAPE
+
+
+def _capture_selected_values(
+    model: nn.Module, inputs: torch.Tensor, target: FrozenHeadDirectionTarget
+) -> torch.Tensor:
+    endpoints, _ = value_path._capture_real_endpoints(
+        model,
+        inputs,
+        value_path._resolve_production_attention_modules(model, (target.block_index,)),
+    )
+    values, _attention, _pre_projection = value_path._validate_endpoint_block_data(
+        endpoints[target.block_index], block_index=target.block_index
+    )
+    return values[0, target.head_index]
+
+
+def test_matched_wrapper_at_intervention_conserves_and_keeps_cls_separate():
+    model, image, target = _issued_target(block_index=2, head_index=3)
+    intervention = image.clone()
+    intervention[:, :, :16, :16] = 0.0
+    result = matched_fixed_clean_attention_patch_token_contribution_at_intervention(
+        model, image, intervention, target
+    )
+
+    retained = result.provenance["matched_contribution"]
+    patch = torch.from_numpy(result.metric_map.data.reshape(-1).copy())
+    intervention_scalar = evaluate_frozen_head_direction_target(
+        model, image, intervention, target
+    )
+    baseline_scalar = float(torch.dot(target.u, target.g_baseline).item())
+
+    assert patch.shape == (PATCHES,)
+    assert result.provenance["stage"] == "C5"
+    assert retained["scalar_delta_f_z_minus_f_x0"] == pytest.approx(
+        intervention_scalar.value - baseline_scalar,
+        abs=2e-6,
+    )
+    assert patch.sum().item() + retained["cls_contribution"] == pytest.approx(
+        retained["token_sum"], abs=2e-6
+    )
+    assert retained["conservation_abs_error"] <= retained["conservation_tolerance"]
+    assert retained["cls_contribution"] != pytest.approx(float(patch[0].item()))
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        torch.zeros((1, 3, 223, 224), dtype=torch.float32),
+        torch.zeros((1, 3, 224, 224), dtype=torch.float64),
+        torch.full((1, 3, 224, 224), float("nan"), dtype=torch.float32),
+    ],
+)
+def test_matched_wrapper_at_intervention_rejects_invalid_z(bad):
+    model, image, target = _issued_target()
+    with pytest.raises((TypeError, ValueError, StageCValuePathError)):
+        matched_fixed_clean_attention_patch_token_contribution_at_intervention(
+            model, image, bad, target
+        )
+
+
+def test_matched_wrapper_at_intervention_degenerate_target_short_circuits_without_forward(
+    monkeypatch,
+):
+    model = _ToyValueModel().eval()
+    image = torch.zeros((1, 3, 224, 224), dtype=torch.float32)
+    target = resolve_fixed_clean_attention_head_direction(model, image, 0, 0)
+    assert target.status == DEGENERATE_DIRECTION
+    calls_before = model.forward_calls
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("degenerate matched-z wrapper must not capture endpoints")
+
+    monkeypatch.setattr(value_path, "_capture_selected_head_values", forbidden)
+    result = matched_fixed_clean_attention_patch_token_contribution_at_intervention(
+        model, image, image, target
+    )
+
+    assert model.forward_calls == calls_before
+    assert result.na is not None
+    assert result.na.reason is NAReason.DEGENERATE_DIRECTION
+    assert result.native_tensor is None
+    assert result.metric_map is None
+    assert not result.valid_mask.any()
+    assert result.provenance["status"] == DEGENERATE_DIRECTION
+    assert result.provenance["intervention_input_sha256"] == (
+        value_path._tensor_sha256(image)
+    )
+
+
+def test_matched_wrapper_at_intervention_restores_lifecycle_on_error():
+    model, image, target = _issued_target(block_index=4, head_index=1)
+    _mixed_caller_state(model)
+    intervention = image.clone()
+    intervention[:, 0] *= -1.0
+    failing = model.register_forward_pre_hook(
+        lambda _module, _arguments: (_ for _ in ()).throw(
+            RuntimeError("synthetic matched-z failure")
+        )
+    )
+    persistent = model.blocks[4].attn.qkv.register_forward_hook(
+        lambda _module, _arguments, _output: None
+    )
+    hooks_before = _hook_inventory(model)
+    modes_before = _mode_flags(model)
+    requires_before = _requires_grad_flags(model)
+    grads_before = _grad_snapshot(model)
+    try:
+        with pytest.raises(RuntimeError, match="synthetic matched-z failure"):
+            matched_fixed_clean_attention_patch_token_contribution_at_intervention(
+                model, image, intervention, target
+            )
+        assert _hook_inventory(model) == hooks_before
+        assert _mode_flags(model) == modes_before
+        assert _requires_grad_flags(model) == requires_before
+        _assert_grad_snapshot(model, grads_before)
+        assert persistent.id in model.blocks[4].attn.qkv._forward_hooks
+    finally:
+        persistent.remove()
+        failing.remove()
+
+
 def test_ig_wrapper_dispatches_frozen_schedule_keeps_a_u_fixed_and_projects_signed_rgb(
     monkeypatch,
 ):
@@ -1098,6 +1402,131 @@ def test_ig_wrapper_dispatches_frozen_schedule_keeps_a_u_fixed_and_projects_sign
     assert result.provenance["caller_context"]["sample_id"] == "ig-synthetic"
     torch.testing.assert_close(target.fixed_attention, fixed_before)
     torch.testing.assert_close(target.u, direction_before)
+
+
+def test_ig_at_intervention_uses_changed_z_but_frozen_clean_context_and_hash(
+    monkeypatch,
+):
+    model, image, target = _issued_target()
+    intervention = image.clone()
+    intervention[:, 0] *= -0.5
+    intervention[:, 1] += 1.25
+    assert not torch.equal(intervention, image)
+    calls: dict[str, Any] = {}
+
+    def fake_ig(forward_fn, inputs, baseline, **kwargs):
+        calls["inputs_same_object"] = inputs is intervention
+        calls["baseline"] = baseline.detach().clone()
+        calls["kwargs"] = kwargs
+        calls["clean_eval"] = float(forward_fn(image).item())
+        calls["intervention_eval"] = float(forward_fn(intervention).item())
+        calls["baseline_eval"] = float(forward_fn(baseline).item())
+        native = torch.zeros_like(inputs)
+        native[0, 0, 0, 0] = calls["intervention_eval"] - calls["baseline_eval"]
+        return _ig_result(
+            target,
+            attribution=native,
+            report_delta=calls["intervention_eval"] - calls["baseline_eval"],
+        )
+
+    monkeypatch.setattr(value_path.attribution, "integrated_gradients", fake_ig)
+    result = conditional_fixed_clean_attention_head_direction_value_path_ig_at_intervention(
+        model,
+        image,
+        intervention,
+        target,
+        provenance={"sample_id": "ig-z"},
+    )
+
+    assert calls["inputs_same_object"] is False
+    torch.testing.assert_close(calls["baseline"], torch.zeros_like(intervention))
+    assert calls["clean_eval"] != pytest.approx(calls["intervention_eval"])
+    assert result.provenance["intervention_input_sha256"] == (
+        value_path._tensor_sha256(intervention)
+    )
+    assert result.provenance["caller_context"]["sample_id"] == "ig-z"
+    assert result.provenance["target"]["clean_input_sha256"] == (
+        value_path._tensor_sha256(image)
+    )
+    assert result.provenance["ig_result"]["conservation"]["delta"] == (
+        pytest.approx(calls["intervention_eval"] - calls["baseline_eval"])
+    ,)
+    assert np.count_nonzero(result.metric_map.data) == 1
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        torch.zeros((1, 3, 223, 224), dtype=torch.float32),
+        torch.zeros((1, 3, 224, 224), dtype=torch.float64),
+        torch.full((1, 3, 224, 224), float("nan"), dtype=torch.float32),
+    ],
+)
+def test_ig_at_intervention_rejects_invalid_z(bad):
+    model, image, target = _issued_target()
+    with pytest.raises((TypeError, ValueError, StageCValuePathError)):
+        conditional_fixed_clean_attention_head_direction_value_path_ig_at_intervention(
+            model, image, bad, target
+        )
+
+
+def test_clean_ig_wrapper_delegates_without_semantic_change(monkeypatch):
+    model, image, target = _issued_target()
+    calls: list[tuple[torch.Tensor, torch.Tensor, FrozenHeadDirectionTarget, Any]] = []
+
+    def fake_delegate(
+        received_model,
+        clean_inputs,
+        intervention_inputs,
+        received_target,
+        provenance=None,
+    ):
+        calls.append(
+            (clean_inputs, intervention_inputs, received_target, provenance)
+        )
+        native = np.zeros((3, 224, 224), dtype=np.float32)
+        native[0, :16, :16] = np.float32(1.0 / 256.0)
+        metric = np.zeros(PATCH_SHAPE, dtype=np.float32)
+        metric[0, 0] = 1.0
+        return MethodResult(
+            method_id=NNS_METHOD_ID,
+            method_version=METHOD_VERSION,
+            comparison_line=ComparisonLine.VALUE_PATH,
+            explanation_target=TARGET_REF,
+            fidelity_target=TARGET_REF,
+            class_agnostic=True,
+            native_tensor=raw_array(native),
+            metric_map=stage_c_metric_ready(metric),
+            projection="pixel_mass_to_patch_sum",
+            sign_semantics=SignSemantics.SIGNED,
+            valid_mask=np.ones(PATCH_SHAPE, dtype=np.bool_),
+            provenance={
+                "stage": "C4",
+                "exact_method_name": NNS_METHOD_NAME,
+                "method_implementation_version": METHOD_VERSION,
+                "comparison_line": "value_path",
+                "class_agnostic": True,
+                "target": target.to_dict(),
+                "intervention_input_sha256": value_path._tensor_sha256(image),
+            },
+        )
+
+    monkeypatch.setattr(
+        value_path,
+        "conditional_fixed_clean_attention_head_direction_value_path_ig_at_intervention",
+        fake_delegate,
+    )
+    result = conditional_fixed_clean_attention_head_direction_value_path_ig(
+        model, image, target, provenance={"sample_id": "clean"}
+    )
+
+    assert len(calls) == 1
+    assert calls[0][0] is image
+    assert calls[0][1] is image
+    assert calls[0][2] is target
+    assert calls[0][3] == {"sample_id": "clean"}
+    assert result.method_id == NNS_METHOD_ID
+    assert result.provenance.get("intervention_input_sha256") is None
 
 
 def test_production_wrapper_callback_with_real_ig_core_conserves(monkeypatch):
@@ -1374,6 +1803,66 @@ def test_ig_wrapper_restores_hooks_all_modes_requires_grad_and_grad_objects(
         caller_hook.remove()
 
 
+@pytest.mark.parametrize("should_raise", [False, True], ids=["success", "error"])
+def test_ig_at_intervention_restores_hooks_all_modes_requires_grad_and_grad_objects(
+    monkeypatch, should_raise
+):
+    model, image, target = _issued_target()
+    intervention = image.clone()
+    intervention[:, 0] *= 0.0
+    intervention[:, 2] -= 0.75
+    _mixed_caller_state(model)
+    caller_hook = model.blocks[6].register_forward_pre_hook(
+        lambda _module, _arguments: None
+    )
+    hooks_before = _hook_inventory(model)
+    modes_before = _mode_flags(model)
+    requires_before = _requires_grad_flags(model)
+    grads_before = _grad_snapshot(model)
+
+    def fake(received_forward, *_args, **_kwargs):
+        assert not any(_mode_flags(model))
+        assert not any(_requires_grad_flags(model))
+        model.blocks[7].train()
+        parameters = tuple(model.parameters())
+        parameters[1].requires_grad_(False)
+        parameters[1].grad.add_(91.0)
+        received_forward(intervention)
+        if should_raise:
+            raise RuntimeError("synthetic controlled IG failure")
+        expected_delta = (
+            evaluate_frozen_head_direction_target(
+                model, image, intervention, target
+            ).value
+            - evaluate_frozen_head_direction_target(
+                model, image, torch.zeros_like(intervention), target
+            ).value
+        )
+        native = torch.zeros((1, 3, 224, 224), dtype=torch.float32)
+        native[0, 0, 0, 0] = expected_delta
+        return _ig_result(target, attribution=native, report_delta=expected_delta)
+
+    monkeypatch.setattr(value_path.attribution, "integrated_gradients", fake)
+    try:
+        if should_raise:
+            with pytest.raises(RuntimeError, match="controlled IG failure"):
+                conditional_fixed_clean_attention_head_direction_value_path_ig_at_intervention(
+                    model, image, intervention, target
+                )
+        else:
+            result = conditional_fixed_clean_attention_head_direction_value_path_ig_at_intervention(
+                model, image, intervention, target
+            )
+            assert result.na is None
+        assert _hook_inventory(model) == hooks_before
+        assert _mode_flags(model) == modes_before
+        assert _requires_grad_flags(model) == requires_before
+        _assert_grad_snapshot(model, grads_before)
+        assert caller_hook.id in model.blocks[6]._forward_pre_hooks
+    finally:
+        caller_hook.remove()
+
+
 def test_caller_attention_hook_cannot_override_fixed_clean_attention():
     model, image, target = _issued_target(block_index=2, head_index=3)
 
@@ -1578,6 +2067,13 @@ def test_degenerate_issued_target_wrappers_return_same_structured_na(monkeypatch
         assert result.metric_map is None
         assert not result.valid_mask.any()
         assert result.provenance["status"] == DEGENERATE_DIRECTION
+
+    adapter = ValuePathScalarAdapter(model, image, target)
+    response = resolve_target_response(adapter, image, torch.zeros_like(image))
+    assert response.na is not None
+    assert response.na.reason is NAReason.DEGENERATE_TARGET_DELTA
+    assert response.clean_value is None and response.baseline_value is None
+    assert response.delta is None and response.sigma is None
 
 
 @pytest.mark.integration

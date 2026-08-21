@@ -15,6 +15,7 @@ from vitnns.stage_c_attention import (
     METHOD_VERSION,
     StageCAttentionError,
     attention_rollout_mean_head_residual_all_blocks,
+    class_attention_maps_at_intervention,
     direct_raw_cls_attention_last_block_head_mean,
     direct_raw_cls_attention_per_head,
     rollout_attention_matrices,
@@ -28,6 +29,16 @@ TOKENS = 197
 PATCHES = 196
 PATCH_SHAPE = (14, 14)
 ATTENTION_SOURCE = "NativeViTExtractor.LayerCapture.attention_used"
+
+
+class _ToyExtractor:
+    def __init__(self, extraction):
+        self.extraction = extraction
+        self.inputs = None
+
+    def extract(self, inputs):
+        self.inputs = inputs
+        return self.extraction
 
 
 def _zero_attention(
@@ -179,6 +190,31 @@ def test_per_head_direct_reads_only_attention_used_and_exact_matched_block_head(
     assert result.provenance["caller_context"]["nested"]["indices"] == (7, 5)
     with pytest.raises(TypeError):
         result.provenance["attention_source"] = "tampered"
+
+
+def test_class_attention_intervention_recomputes_both_maps_and_binds_tensor_hash():
+    used = _zero_attention()
+    used[:, :, :, 1:] = torch.arange(1, PATCHES + 1, dtype=torch.float32)
+    extractor = _ToyExtractor(_extraction({index: used for index in range(BLOCKS)}))
+    intervention = torch.zeros((1, 3, 224, 224), dtype=torch.float32)
+    identity = {
+        "comparison_line": "class_logit",
+        "target_ref": "clean_predicted_class_raw_logit",
+        "clean_input_sha256": "a" * 64,
+        "frozen_target": {"target_kind": "raw_logit"},
+    }
+    direct, rollout = class_attention_maps_at_intervention(
+        extractor, intervention, fidelity_target_identity=identity,
+        provenance={"sample_id": "toy"},
+    )
+    assert extractor.inputs is intervention
+    for result in (direct, rollout):
+        context = result.provenance["caller_context"]
+        assert context["sample_id"] == "toy"
+        assert context["fidelity_target_identity"]["target_ref"] == (
+            "clean_predicted_class_raw_logit"
+        )
+        assert len(context["intervention_input_sha256"]) == 64
 
 
 def test_per_head_direct_excludes_cls_preserves_patch_order_and_reshapes_196():
