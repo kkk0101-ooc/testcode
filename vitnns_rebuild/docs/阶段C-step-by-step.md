@@ -2,7 +2,7 @@
 
 > 文档性质：阶段 C 的路线图、任务状态表和跨对话交接日志。  
 > 创建日期：2026-08-21。  
-> 当前状态：阶段 A、阶段 B、阶段 C/C0–C3 已完成；下一任务是 C4。
+> 当前状态：阶段 A、阶段 B、阶段 C/C0–C4 已完成；下一任务是 C5。
 > 使用规则：每个新对话必须先完整阅读本文，只执行一个指定的 `C_i`；该任务未更新本文并写出下一任务提示词时，不算完成。
 
 ## 1. 为什么使用这份文档
@@ -299,8 +299,8 @@ delta_fid = 0.5 * [
 | C1 | PASS | 严格配置、统一 map 与指标合同 | config/map/metrics 模块和测试 | C0 |
 | C2 | PASS | direct raw CLS attention 与 rollout | 两种方法实现、方法合同测试 | C1 |
 | C3 | PASS | Grad-CAM 与 full-model class-logit IG | 两种方法适配、真实模型 smoke test | C1 |
-| C4 | NOT_STARTED（NEXT） | head 级 NNS 与 matched patch baseline | 同目标实现、守恒与退化测试 | C1 |
-| C5 | NOT_STARTED | fidelity、扰动稳定性、资源仪表 | fidelity/perturbation/stability/resource 模块 | C2–C4 |
+| C4 | PASS | head 级 NNS 与 matched patch baseline | 同目标实现、守恒与退化测试 | C1 |
+| C5 | NOT_STARTED（NEXT） | fidelity、扰动稳定性、资源仪表 | fidelity/perturbation/stability/resource 模块 | C2–C4 |
 | C6 | NOT_STARTED | 单图/批量 runner、留存、provenance、CLI | 可恢复批量流水线及测试 | C1–C5 |
 | C7 | NOT_STARTED | 单图 smoke benchmark 与预算冻结 | benchmark、总预算和可运行性结论 | C6 |
 | C8 | NOT_STARTED | 5 图全层/全头校准和 selection 冻结 | calibration 产物、`selection.json` | C7 |
@@ -952,4 +952,102 @@ C4 范围与交付物：
 - 一任务一提交，最终工作树 clean，completion record 的 commit/hash/test 信息完整，文档简单易懂。
 
 方向继续冻结为 `u=(g(x)-g(x0))/||g(x)-g(x0)||₂`，积分期间固定；退化阈值继续是相对 `1e-6`。patch→pixel/fine 只表示质量守恒均分，不是原生像素证据。
+~~~
+
+### 2026-08-22 00:43 +0800 — C4 completion record
+
+- status: PASS
+- objective_completed: 只完成 C4。新增精确方法 `conditional_fixed_clean_attention_head_direction_value_path_ig`（`NNS fixed-clean-attention head-direction Value-path IG`）和 `matched_fixed_clean_attention_patch_token_contribution`（`matched fixed-clean-attention patch-token contribution`）。两者共享同一个冻结的 `fixed_clean_attention_cls_head_direction` 标量；前者沿真实上游 Value path 做 fixed-clean-A、fixed-u IG，后者解析分解全部 197 个 token 并把 CLS contribution 单独保留。没有实现或运行 C5–C10 的 fidelity、扰动稳定性、资源仪表、runner、CLI、selection、批量实验或统计决策。
+- git_sha_before: `38a9d6493bc8694ab320850d8164699b737c075e`
+- git_sha_after: SELF（即包含本 completion record 的单一 C4 commit；精确 SHA 在提交后由 `git rev-parse HEAD` 产生并在最终回复报告）
+- tree_clean: true（C4 commit 后复验）
+- files_added_or_changed: `src/vitnns/stage_c_value_path.py`；`tests/test_stage_c_value_path.py`；`tests/test_stage_c_contract.py`（只推进活文档状态/交接断言，并把 C4 源码与测试加入 tracked 检查）；`docs/阶段C-step-by-step.md`。
+- inputs_and_sha256: C3 commit `38a9d6493bc8694ab320850d8164699b737c075e`；C2 commit `3ddc5b7d86d85729a644be49791aebb06f5285b6`；C1 commit `bd518afc7a479fb2c5dcf5ede31287d2d514147e`；C0 commit `05b0290b7caacc772a7c20a724f1491b3057524a`；Stage C registry `9a6667bec6a27c715d272382a494f06924db881dca991dc4fac4751dbe7f37f0`；Stage A 500 manifest `042cfd7845b49f8949de13c78bc40c68192179d6fc004bcdbecf55e502c2eb89`；启动 validator 再次通过 500 图官方标签链和 Stage B formal status→manifest→artifact hash/bytes 链。
+- configs_and_sha256: frozen Stage C config `0ee57c32b0fcb3116f91fddce5d918c8eb1ae05606c3616b6a2ec9afa9f0e669`；config schema `94209b7c8a63a62ef27f3396810c8d5be8f6fbbf0a4df22e663b3661b9ed3f4b`；registry schema `4ce0ac8cd5bff93ae2b323c3e0447a87fc825c3243ad46c54c9b48e05e9b2d6d`；selection schema `867a3cf22519b2a045d81751a20c5cd52570ddeadede26a2da2bb79973f0b59d`；protocol `ff958a9455ae15307827a9e40fc6d7d03c9baa10bf1fb8b83650a10bd85ff7b8`；acceptance `f4629105d411b32d4f7700caa22d7d6b6c1bf4b8e01f37e4e2ac6ac4851dfafd`。冻结 registry/config/protocol/acceptance/schema、方法注册、角色、方向、baseline、阈值、schedule、目标和 decision gates 均未修改。
+- artifacts_and_absolute_paths: 无 runtime/GPU artifact、manifest、status 或 display PNG。生产实现位于 `/data00/home/yeziqi.831/testcode/vitnns_rebuild/src/vitnns/stage_c_value_path.py`；测试位于 `/data00/home/yeziqi.831/testcode/vitnns_rebuild/tests/test_stage_c_value_path.py`。测试只在内存中生成 toy attribution，并对 canonical ViT 做最低成本 CPU endpoint smoke。
+- artifact_manifest_or_status_hashes: 不适用；C4 不写实验 artifact，没有读取旧数值结果、display PNG、5 图 calibration 或 20 图 pilot。
+- tests_and_results: 启动 C0 clean/tracked validator PASS；启动 C1–C3 focused 216 passed。C4 非集成最终 69 passed, 1 deselected；显式 `CUDA_VISIBLE_DEVICES=''` 的 canonical ViT CPU endpoint smoke 1 passed, 69 deselected；此前 C1–C4 联合 focused 286 passed。提交后的 clean/tracked validator、最终 C1–C4 focused 与全量非 GPU suite 结果在本任务最终回复报告。全程未运行 GPU attribution、真实 ViT 512–8192-step IG、5 图 calibration 或 20 图 pilot。
+- acceptance_results: C4 四项全部通过。resolver 从真实 forward 的 `attention_used` 和 fused-QKV Value 捕获 clean/baseline endpoint，baseline 固定使用 `A(x)@V(x0)`；clean natural output、fixed-A replay 和独立 endpoint reference 分别做严格 parity。方向严格为 `d=g(x)-g(x0)`、`r=||d||₂`、`u=d/r`，阈值为 `1e-6*max(1,||g(x)||₂,||g(x0)||₂)`，A/d/u 在积分前成为私有 detached clones，非有限或阈值内方向结构化返回 `DEGENERATE_DIRECTION`。IG 使用 Gauss-Legendre float32 `[512,1024,2048,4096,8192]`、chunk 8、首个 conservation pass 并保留全部 attempts。matched 方法手算全部 197 个 `c_j`，验证含 CLS 的 conservation，只把 196 patch token reshape 为 14×14，并保留 support/positive-evidence 退化状态。两个方法输出严格 C1 `MethodResult`；NNS 保留 signed RGB native tensor后做 signed channel sum与16×16求和，matched 保留 signed patch mass与独立 CLS scalar；patch→pixel/fine 只声明质量守恒均分。选择性和 candidate chunk 接口覆盖全部 12×12 且不改变值；Stage B 单-channel API 和既有语义未修改。成功、异常及 hook-remove 异常路径均恢复 caller hooks、逐 module mode、parameter grad 与 `requires_grad`。
+- deviations_or_protocol_amendments: 无 protocol amendment。float32 toy 路径中，独立 endpoint 运算次序可使 callback delta 与解析 r 出现约 `2.38e-6` 舍入差，因此两者一致性使用冻结的 IG conservation 容差验证；协议要求的 clean/baseline intervention replay parity 仍严格使用排他 `<1e-6`，方向、baseline、阈值和 schedule 均未改变。C4 增加 live model/input/state 绑定用于单进程防篡改；它不替代 C6 的跨运行完整 provenance。
+- failures_retained: 开发首轮测试捕获缺少 `dataclasses.replace` 导入；resolver 改为同时返回 capture/model output 后捕获一次漏 unpack；新增 baseline decoy 测试最初因零 baseline 的 toy Value 也为零而不能区分错误 attention，随后仅增强测试的 QKV baseline offset。上述均修复并回归通过。独立合同、归因、测试缺口和最终代码审查均无剩余 high/medium issue。没有 GPU、OOM、真实高步数 attribution 或实验 artifact 失败。
+- known_limitations: C4 只提供方法级不可变 provenance fragment和选择性/分块计算原语，不提供 C5 fidelity/stability/resource，不提供 C6 runner/retention/CLI。运行时 target 绑定用于当前进程防漂移，不是 canonical state-dict artifact hash，也不声明并发/重入线程安全。真实 canonical ViT 只验证 A/V endpoint、fixed-A baseline、token identity、shape和 lifecycle，没有执行昂贵完整 IG schedule；完整 schedule dispatch/conservation 由 toy/受控替身覆盖。matched patch→pixel/fine 仍只是质量守恒均分，不是原生像素证据；Value-path 方法也不是类别 logit、完整 Q/K/V 或完整 attention attribution。
+- next_task: C5
+
+#### 下一对话完整提示词
+
+~~~text
+你现在只执行 ViT-NNS 重建工程“阶段 C”的 C5：实现 fidelity、扰动稳定性与资源仪表原语。不要开始 C6，不要实现 runner、CLI、retention orchestration、selection、批量实验或统计决策，也不要运行昂贵 GPU attribution。
+
+工作目录：
+/data00/home/yeziqi.831/testcode/vitnns_rebuild
+
+前置冻结基线：
+- C4 commit: SELF，即包含本 completion record 的当前 clean HEAD；启动 C5 时先运行 git rev-parse HEAD，其精确 SHA 应与 C4 最终回复给出的 commit SHA 一致。
+- C3 commit: 38a9d6493bc8694ab320850d8164699b737c075e
+- C2 commit: 3ddc5b7d86d85729a644be49791aebb06f5285b6
+- C1 commit: bd518afc7a479fb2c5dcf5ede31287d2d514147e
+- C0 commit: 05b0290b7caacc772a7c20a724f1491b3057524a
+- Stage C registry SHA-256: 9a6667bec6a27c715d272382a494f06924db881dca991dc4fac4751dbe7f37f0
+- Stage C config SHA-256: 0ee57c32b0fcb3116f91fddce5d918c8eb1ae05606c3616b6a2ec9afa9f0e669
+- Stage C config schema SHA-256: 94209b7c8a63a62ef27f3396810c8d5be8f6fbbf0a4df22e663b3661b9ed3f4b
+- Stage C protocol SHA-256: ff958a9455ae15307827a9e40fc6d7d03c9baa10bf1fb8b83650a10bd85ff7b8
+- Stage C acceptance SHA-256: f4629105d411b32d4f7700caa22d7d6b6c1bf4b8e01f37e4e2ac6ac4851dfafd
+- Stage A 500 manifest SHA-256: 042cfd7845b49f8949de13c78bc40c68192179d6fc004bcdbecf55e502c2eb89
+
+第一步必须完整阅读：
+1. docs/阶段C-step-by-step.md，尤其 C4 completion record 与 C5 边界
+2. docs/阶段C_protocol.md，尤其第 5–7 节 map/fidelity/扰动稳定性与第 9 节资源测量边界
+3. docs/stage_c_acceptance.md 的 C5 六项
+4. docs/stage_c_config_contract.md
+5. config/stage_c.json 与 config/stage_c.schema.json
+6. src/vitnns/stage_c_config.py、stage_c_maps.py、stage_c_metrics.py、stage_c_attention.py、stage_c_class_logit.py、stage_c_value_path.py
+7. src/vitnns/attribution.py、targets.py、extractor.py、modeling.py
+8. src/vitnns/stage_b_runner.py 中已有 fidelity/sensitivity/resource 边界及其测试，只复用合适原语，不把 Stage B sensitivity sanity 改名为 Stage C stability
+9. tests/test_stage_c_config.py、test_stage_c_maps.py、test_stage_c_metrics.py、test_stage_c_attention.py、test_stage_c_class_logit.py、test_stage_c_value_path.py，以及相关 intervention/hook/mode/grad 测试
+10. docs/阶段A.md、docs/stage_a_acceptance.md、docs/阶段B.md、docs/stage_b_acceptance.md
+11. README.md
+
+开始前必须：
+- 检查 git status 和 HEAD，要求 HEAD 等于 C4 最终回复 SHA 且工作树 clean；若不一致，查明归属，不覆盖用户改动。
+- 运行 `CUDA_VISIBLE_DEVICES='' conda run -n vitnns python tests/test_stage_c_contract.py --require-tracked --require-clean`，核验冻结 hash、500 图官方标签链与 Stage B formal status→manifest→artifact 链。
+- 运行 C1–C4 focused tests，确认配置、MethodResult/map/metric/display、六种方法、同目标 Value-path、lifecycle 合同仍通过。
+- 不从 `__pycache__`/`.pyc` 恢复源码，不读取 display PNG，不复用旧数值结果。
+
+C5 范围与交付物：
+1. 实现两条目标线各自正确的 fidelity 原语。对冻结标量 t，严格使用 `Delta=t(x)-t(x0)`、`sigma=sign(Delta)`、`S(z)=sigma*(t(z)-t(x0))/abs(Delta)`；不 clip S。Value-path 使用 C4 同一 fixed-clean-A/u/head target，按构造 sigma=+1；class-logit 使用 C3 frozen clean predicted-class raw logit。不得混用目标，也不得在 intervention 中重选 class、A、u、block/head 或 baseline。
+2. target delta 阈值严格为 `1e-6*max(1,abs(t(x)),abs(t(x0)))`；退化返回结构化 `degenerate_target_delta`。Value-path 中它与 direction validity failure 对齐；class-logit 中保留为合法 NA，不得换 class/baseline，也不得伪造为 0。
+3. ranking score 只能是 target-oriented signed map `sigma*M` 的正部。replacement 固定 normalized-zero baseline，RGB 三通道作为一个空间单位共同替换。deletion 从 clean 替换，insertion 从 baseline 恢复；禁止 blur、随机颜色或动态均值。
+4. patch fidelity 固定 196 个 16×16 unit；fine fidelity 固定 3136 个 4×4 cell。NNS pixel map在 cell 内按 signed mass 求和；matched patch mass 每 patch均分到16个 cell，这只叫 4×4-cell/subpatch fidelity，不是单像素 fidelity。所有方法必须共享完全相同的 intervention tensors。
+5. 曲线严格使用 21 个 fraction `0,0.05,...,1.0`；`k0=0`，其余 `k=ceil(fraction*N)`，横轴用实际 `k/N`，AUC 用 trapezoid。tie group 使用5个预注册 hash seed permutation；seed 字符串严格为 `stage-c-fidelity|20260821|sample_id|block|head|replicate` 的 SHA-256 前8 bytes big-endian unsigned。五次是配对 nuisance resolution，不是独立样本。另实现五次 global-random mean 和 center-distance-then-row-major sanity ranking。
+6. Value-path `delta_fid` 只在同一 C4 target 上比较 NNS 与 matched patch，并严格用 fine-4：`0.5*((InsertionAUC_NNS-InsertionAUC_matched)+(DeletionAUC_matched-DeletionAUC_NNS))`。patch 结果只作支持性分析；class-logit 四方法只在同一 frozen raw logit 内比较，不得跨 line 混算。
+7. patch/fine 都报告 top-20% sufficiency、`sufficiency_gap=1-sufficiency` 和 comprehensiveness，使用同一个 corruption operator与 `ceil(0.2*N)`，但不新增 decision gate。
+8. 实现并严格验证三种 canonical RGB [0,1]、normalize 前扰动：右下整数平移 `dx=dy=4` + reflection padding；中心裁剪 `[4:220,4:220]` 后 bicubic antialias resize 224；CPU float32 iid Gaussian `std=0.01`、seed `20260821+selection_order` 后 clamp。每个 sample 的同一预生成 tensor/hash必须被所有方法/config共享。
+9. 实现协议规定的 inverse geometry、质量 Jacobian与 mask：translation 共同有效 220×220、完整 patch rows/cols 0..12；crop-scale inverse bilinear antialias回216、乘 `(224/216)^2` 并放回 `[4:220]^2`、完整 patch rows/cols 1..12；noise identity/full mask。几何指标只读取完全有效 patch，residual 指标读取共同有效像素。
+10. 稳定性使用 C1 指标合同计算 clean 与逆对齐 perturbed map 的 Pearson、Spearman、JS、top-10/20 Jaccard；所有 sample 主报告固定 clean target，natural perturbed prediction、unchanged subset和flip rate只作为区分明确的描述字段。不得把 Stage B normalized-space std=0.05 sensitivity sanity 当作本稳定性结果。
+11. 对 NNS native 224×224 map实现 `R(M)=M-U(P(M))` 与 `rho=||R(M)||1/||M||1`。几何边界 patch只用有效像素构造该 patch有效区域的均匀 mass；零分母/常量 residual结构化标记 spatial failure。C5 只实现逐样本/逐扰动原语和结果合同，不实现 C10 的15图 bootstrap、门槛计数或 Go/No-Go。
+12. 实现独立、可组合的资源仪表：CUDA 测量边界前后 synchronize、每单元开始前 reset peak，分别记录 peak allocated/reserved；记录 wall time、实际 artifact bytes和可解释的 forward/backward call count。CPU 返回明确的无 CUDA状态；conditional CUDA 测试必须很小，不得运行完整 attribution。不得在 C5 实现 C6 execution-unit目录、manifest/status、resume或 retention orchestration。
+13. 输出严格、不可变、JSON 可序列化的逐次 fidelity/perturbation/stability/resource 结果；所有 shape/dtype/有限性/mask/target/method pairing/seed/tensor identity错误 fail closed，合法 NA保留原因，不把 missing/invalid/degenerate静默剔除或填0。
+14. 测试必须覆盖：手算 S、delta退化与正负方向；patch/fine corruption identity及端点；ceil fraction/实际横轴/AUC/no-clip；tie与hash seed重复性、paired共享；random/center sanity；top-20%；Value-path matched delta与跨线拒绝；三种扰动精确值/hash共享；inverse geometry/Jacobian/mask round-trip；residual/rho及边界/零/常量；fixed clean targets与prediction flip字段；resource CPU和conditional CUDA；非法shape/dtype/非有限/空mask/错误target fail closed；成功和异常后的 hooks、全部 module mode、parameter grad与requires_grad精确恢复。
+15. 真实模型只做验收所需的低成本 CPU target/intervention smoke，显式 `CUDA_VISIBLE_DEVICES=''`。用 toy/受控替身验证21点、5 tie repeats和完整调度；不得在真实 ViT 上运行512–8192-step attribution、整条3136-cell曲线或批量扰动，不得处理5图/20图集合。
+16. 更新 docs/阶段C-step-by-step.md：C5 标 PASS 或 BLOCKED；若 PASS 将 C6 标 NEXT；追加完整 completion record 和“新对话执行 C6”的完整可复制提示词。
+17. 检查 diff，只提交 C5 tracked 文件；提交后重跑 C0 validator（含 tracked/clean）、C1–C5 focused tests和全量非 GPU suite，最终确认 clean。
+
+禁止事项：
+- 不修改冻结 registry、config、protocol、acceptance、schema、角色、阈值、扰动、seed、目标、schedule、资源 cap 或 decision gates；确有矛盾必须停止并走带旧/新 hash 的 protocol amendment。
+- 不实现 C6 runner/CLI/retention/provenance orchestration；不运行 C7 benchmark；不实现 selection、C8/C9 数据、C10 bootstrap或统计决策。
+- 不重新实现或改写 C2–C4 方法语义；不把 class-logit fidelity 用来证明 Value-path 守恒，不把 raw attention 与 NNS 的结构相似性称为同目标 fidelity。
+- 不把 patch→pixel 或 patch→fine质量均分称为原生像素证据，不把4×4-cell fidelity称为单像素 fidelity。
+- 不读取 display PNG作为数值输入，不运行昂贵 GPU attribution、5图 calibration或20图 pilot。
+
+验收标准：
+- docs/stage_c_acceptance.md 的 C5 六项全部通过；
+- 两条 line 的 frozen scalar、S归一化、normalized-zero replacement、RGB coupling、21点、ceil/actual fraction、trapezoid/no-clip与协议逐项一致；
+- patch/fine operator、五个paired tie seed、sanity ranking、top-20%与Value-path fine-4 delta严格正确，所有方法共享同一扰动tensor；
+- translation/crop/noise、inverse/Jacobian/mask、fixed clean targets、residual/rho和prediction flip记录严格正确；
+- wall time/CUDA peak allocated+reserved/artifact bytes边界可解释，CPU与conditional CUDA测试通过；
+- 错误输入fail closed、合法NA不填0，hook、全部module mode、parameter grad和requires_grad在成功/异常后精确恢复；
+- 全量非 GPU pytest通过，没有运行昂贵GPU attribution、5图calibration或20图pilot；
+- 一任务一提交，最终工作树clean，completion record的commit/hash/test信息完整，文档简单易懂。
+
+C5只实现评价与测量原语，不实现运行编排或统计决策。Value-path继续冻结clean A/u；patch→pixel/fine只表示质量守恒均分，不是原生像素证据。
 ~~~
