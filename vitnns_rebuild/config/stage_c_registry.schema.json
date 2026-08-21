@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vitnns.local/schemas/stage_c_registry.schema.json",
+  "title": "ViT-NNS Stage C CSV registry row contract",
+  "description": "The CSV header must equal required_columns exactly and in order; semantic constraints are in docs/stage_c_config_contract.md and tests/test_stage_c_contract.py.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "document_type", "required_columns", "row_contract"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_c_sample_registry_csv_schema"},
+    "required_columns": {
+      "const": [
+        "schema_version", "sample_id", "image_id", "relative_path",
+        "image_sha256", "size_bytes", "width", "height", "official_wnid",
+        "imagenet1k_index", "label_source", "role", "audit",
+        "selection_order", "source_selection_index", "selection_rule"
+      ]
+    },
+    "row_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version", "sample_id", "image_id", "relative_path",
+        "image_sha256", "size_bytes", "width", "height", "official_wnid",
+        "imagenet1k_index", "label_source", "role", "audit",
+        "selection_order", "source_selection_index", "selection_rule"
+      ],
+      "properties": {
+        "schema_version": {"const": 1},
+        "sample_id": {"type": "string", "pattern": "^ILSVRC2012_val/ILSVRC2012_val_[0-9]{8}\\.JPEG$"},
+        "image_id": {"type": "string", "pattern": "^ILSVRC2012_val_[0-9]{8}$"},
+        "relative_path": {"type": "string", "pattern": "^ILSVRC2012_val_[0-9]{8}\\.JPEG$"},
+        "image_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "size_bytes": {"type": "integer", "minimum": 1},
+        "width": {"type": "integer", "minimum": 1},
+        "height": {"type": "integer", "minimum": 1},
+        "official_wnid": {"type": "string", "pattern": "^n[0-9]{8}$"},
+        "imagenet1k_index": {"type": "integer", "minimum": 0, "maximum": 999},
+        "label_source": {"const": "official_devkit_val_gt"},
+        "role": {"enum": ["calibration", "holdout"]},
+        "audit": {"type": "boolean"},
+        "selection_order": {"type": "integer", "minimum": 0, "maximum": 19},
+        "source_selection_index": {"type": "integer", "minimum": 0, "maximum": 499},
+        "selection_rule": {"const": "legacy_sorted_500_linspace20_then_fixed_role_positions_0_4_9_14_19_audit_0_19"}
+      }
+    }
+  }
+}

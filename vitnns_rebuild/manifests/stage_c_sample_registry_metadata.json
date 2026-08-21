@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "document_type": "stage_c_sample_registry_metadata",
+  "dataset": {
+    "logical_root": "ILSVRC2012_val_flat_500",
+    "runtime_root_relative_to_workspace": "49_vit /datas/ILSVRC2012_val",
+    "source_manifest_path": "manifests/stage_c_flat_val_500/manifest.csv",
+    "source_manifest_sha256": "042cfd7845b49f8949de13c78bc40c68192179d6fc004bcdbecf55e502c2eb89",
+    "source_manifest_metadata_path": "manifests/stage_c_flat_val_500/manifest_metadata.json",
+    "source_manifest_metadata_sha256": "9a8df6201fe85c8529e2d307ee09142b3b55960dca059a29882d2e03f933ad5b"
+  },
+  "official_labels": {
+    "devkit_relative_path": "artifacts/sources/ILSVRC2012_devkit_t12.tar.gz",
+    "devkit_sha256": "b59243268c0d266621fd587d2018f69e906fb22875aca0e295b48cafaa927953",
+    "label_source": "official_devkit_val_gt",
+    "synset_order_sha256": "70002b0ff5de60a3a17a82dbfcff291931f96225ddf941ad2e182fc39e183d15"
+  },
+  "registry": {
+    "path": "manifests/stage_c_sample_registry.csv",
+    "sha256": "9a6667bec6a27c715d272382a494f06924db881dca991dc4fac4751dbe7f37f0",
+    "sample_count": 20,
+    "calibration_count": 5,
+    "holdout_count": 15,
+    "audit_count": 2
+  },
+  "selection": {
+    "legacy_source_read_only": true,
+    "legacy_list_path": "49_vit /analysis_results_20images/README.md",
+    "legacy_list_sha256": "1f61dcd2f1a76b49d5ea8d6aac1fdc09f3a8f0261719474b80473eea716a9057",
+    "legacy_script_path": "49_vit /run_20images_analysis.py",
+    "legacy_script_sha256": "e2380da105d093d16c92c7274351db275389c0a8e2d7142f3762e362943af113",
+    "rule_id": "legacy_sorted_500_linspace20_then_fixed_role_positions_0_4_9_14_19_audit_0_19",
+    "source_selection_indices_zero_based": [
+      0, 26, 52, 78, 105, 131, 157, 183, 210, 236,
+      262, 288, 315, 341, 367, 393, 420, 446, 472, 499
+    ],
+    "calibration_selection_orders_zero_based": [0, 4, 9, 14, 19],
+    "audit_selection_orders_zero_based": [0, 19],
+    "selection_information_used": "legacy filename order and fixed positions only",
+    "forbidden_selection_information": [
+      "image_content",
+      "model_prediction",
+      "prediction_correctness",
+      "attribution_map",
+      "candidate_metric"
+    ]
+  },
+  "generation": {
+    "stage_a_command": "python -m vitnns.cli manifest --data-root '../49_vit /datas/ILSVRC2012_val' --devkit artifacts/sources/ILSVRC2012_devkit_t12.tar.gz --output-dir manifests/stage_c_flat_val_500",
+    "base_git_commit": "30732c9f1413c58a36dd6a8d85ba8ea5788e0c8a",
+    "tree_dirty_during_generation": true,
+    "dirty_reason": "C0 was in progress and the user-authorized Stage C step-by-step document was untracked; the generated manifest is deterministic and is revalidated byte-for-byte after commit.",
+    "dependency_lock_sha256": "81beabd6aba9ede777e973e2ee5f0c60ce2aa88ce55b29d025e95d67ab175984"
+  },
+  "asset_findings": [
+    {
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00012573.JPEG",
+      "finding": "original_dimensions_90x90_below_canonical_224x224_input",
+      "disposition": "retained_in_holdout_because_file_hash_label_and_decode_are_valid; no native-high-resolution claim is permitted"
+    },
+    {
+      "scope": "registry",
+      "finding": "historical_filename-spacing selection contains repeated classes and is not class-balanced",
+      "disposition": "retain frozen sample set and limit claims to this pilot"
+    }
+  ]
+}

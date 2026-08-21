@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vitnns.local/schemas/stage_c_selection.schema.json",
+  "title": "ViT-NNS Stage C C8 selection output contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "document_type", "generated_by", "holdout_accessed",
+    "input_hashes", "calibration_sample_ids", "candidate_records",
+    "depth_band_winners", "primary", "failure_records"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_c_selection"},
+    "generated_by": {"type": "string", "minLength": 1},
+    "holdout_accessed": {"const": false},
+    "input_hashes": {"$ref": "#/$defs/input_hashes"},
+    "calibration_sample_ids": {
+      "const": [
+        "ILSVRC2012_val/ILSVRC2012_val_00000079.JPEG",
+        "ILSVRC2012_val/ILSVRC2012_val_00009888.JPEG",
+        "ILSVRC2012_val/ILSVRC2012_val_00023229.JPEG",
+        "ILSVRC2012_val/ILSVRC2012_val_00035680.JPEG",
+        "ILSVRC2012_val/ILSVRC2012_val_00049970.JPEG"
+      ]
+    },
+    "candidate_records": {
+      "type": "array",
+      "minItems": 144,
+      "maxItems": 144,
+      "items": {"$ref": "#/$defs/candidate"}
+    },
+    "depth_band_winners": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {"$ref": "#/$defs/candidate_ref"}
+    },
+    "primary": {"$ref": "#/$defs/candidate_ref"},
+    "failure_records": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/failure"}
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "input_hashes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code_commit", "code_tree_clean", "model_sha256",
+        "dependency_lock_sha256", "registry_sha256",
+        "registry_metadata_sha256", "protocol_sha256",
+        "acceptance_sha256", "config_sha256", "config_schema_sha256",
+        "calibration_artifact_manifest_sha256"
+      ],
+      "properties": {
+        "code_commit": {"$ref": "#/$defs/commit"},
+        "code_tree_clean": {"const": true},
+        "model_sha256": {"$ref": "#/$defs/sha256"},
+        "dependency_lock_sha256": {"$ref": "#/$defs/sha256"},
+        "registry_sha256": {"$ref": "#/$defs/sha256"},
+        "registry_metadata_sha256": {"$ref": "#/$defs/sha256"},
+        "protocol_sha256": {"$ref": "#/$defs/sha256"},
+        "acceptance_sha256": {"$ref": "#/$defs/sha256"},
+        "config_sha256": {"$ref": "#/$defs/sha256"},
+        "config_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "calibration_artifact_manifest_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "candidate_key": {
+      "type": "string",
+      "pattern": "^block_(0[0-9]|1[01])_head_(0[0-9]|1[01])$"
+    },
+    "nullable_finite_number": {
+      "type": ["number", "null"]
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_key", "block_index", "head_index", "depth_band",
+        "calibration_sample_count", "eligible", "validity_failures",
+        "count_delta_fid_fine4_gt_zero", "median_delta_fid_fine4",
+        "minimum_perturbation_median_residual_spearman",
+        "median_patch_residual_l1_ratio", "rounded_rank_tuple",
+        "resource_within_hard_budget", "artifact_manifest_sha256",
+        "rank_within_depth_band", "selected_depth_band_winner",
+        "selected_primary"
+      ],
+      "properties": {
+        "candidate_key": {"$ref": "#/$defs/candidate_key"},
+        "block_index": {"type": "integer", "minimum": 0, "maximum": 11},
+        "head_index": {"type": "integer", "minimum": 0, "maximum": 11},
+        "depth_band": {"type": "integer", "minimum": 0, "maximum": 3},
+        "calibration_sample_count": {"const": 5},
+        "eligible": {"type": "boolean"},
+        "validity_failures": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "count_delta_fid_fine4_gt_zero": {"type": ["integer", "null"], "minimum": 0, "maximum": 5},
+        "median_delta_fid_fine4": {"$ref": "#/$defs/nullable_finite_number"},
+        "minimum_perturbation_median_residual_spearman": {"$ref": "#/$defs/nullable_finite_number"},
+        "median_patch_residual_l1_ratio": {"$ref": "#/$defs/nullable_finite_number"},
+        "rounded_rank_tuple": {
+          "type": ["array", "null"],
+          "minItems": 6,
+          "maxItems": 6,
+          "items": {"type": "number"}
+        },
+        "resource_within_hard_budget": {"type": "boolean"},
+        "artifact_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "rank_within_depth_band": {"type": ["integer", "null"], "minimum": 1, "maximum": 36},
+        "selected_depth_band_winner": {"type": "boolean"},
+        "selected_primary": {"type": "boolean"}
+      }
+    },
+    "candidate_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidate_key", "block_index", "head_index", "depth_band"],
+      "properties": {
+        "candidate_key": {"$ref": "#/$defs/candidate_key"},
+        "block_index": {"type": "integer", "minimum": 0, "maximum": 11},
+        "head_index": {"type": "integer", "minimum": 0, "maximum": 11},
+        "depth_band": {"type": "integer", "minimum": 0, "maximum": 3}
+      }
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidate_key", "sample_id", "reason"],
+      "properties": {
+        "candidate_key": {"$ref": "#/$defs/candidate_key"},
+        "sample_id": {
+          "type": ["string", "null"],
+          "pattern": "^ILSVRC2012_val/ILSVRC2012_val_[0-9]{8}\\.JPEG$"
+        },
+        "reason": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}
