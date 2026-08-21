@@ -71,11 +71,25 @@ class NativeViTExtractor:
     """Observe the real timm forward; never reimplement a transformer block."""
 
     def __init__(self, model: torch.nn.Module):
-        if model.training:
-            raise ValueError("Extraction requires model.eval()")
-        if any(block.attn.fused_attn for block in model.blocks):
-            raise ValueError("Extraction requires unfused attention so actual A can be hooked")
         self.model = model
+        self._validate_observable_state()
+
+    def _validate_observable_state(self) -> None:
+        """Fail closed without changing caller-owned model state.
+
+        The check is repeated for every extraction because callers can switch a
+        model back to training mode or re-enable fused attention after this
+        extractor is constructed.  In particular, ``attn_drop`` must remain an
+        eval-mode identity for ``attention`` and ``attention_used`` to have the
+        frozen Stage A/C semantics.
+        """
+
+        if self.model.training or any(
+            module.training for module in self.model.modules()
+        ):
+            raise ValueError("Extraction requires every model module to remain in eval mode")
+        if any(block.attn.fused_attn for block in self.model.blocks):
+            raise ValueError("Extraction requires unfused attention so actual A can be hooked")
 
     @staticmethod
     def _save_output(store: dict, name: str) -> Callable:
@@ -94,28 +108,54 @@ class NativeViTExtractor:
         return hook
 
     def extract(self, images: torch.Tensor) -> ExtractionResult:
+        self._validate_observable_state()
         captures: dict[str, torch.Tensor] = {}
         handles = []
-        for index, block in enumerate(self.model.blocks):
-            prefix = f"blocks.{index}"
-            handles.extend([
-                block.register_forward_pre_hook(self._save_input(captures, f"{prefix}.input")),
-                block.register_forward_hook(self._save_output(captures, f"{prefix}.output")),
-                block.attn.qkv.register_forward_hook(self._save_output(captures, f"{prefix}.qkv")),
-                block.attn.q_norm.register_forward_hook(self._save_output(captures, f"{prefix}.q")),
-                block.attn.k_norm.register_forward_hook(self._save_output(captures, f"{prefix}.k")),
-                block.attn.attn_drop.register_forward_pre_hook(
-                    self._save_input(captures, f"{prefix}.attention")
-                ),
-                block.attn.attn_drop.register_forward_hook(
-                    self._save_output(captures, f"{prefix}.attention_used")
-                ),
-            ])
         try:
+            # Register and append one hook at a time inside the protected
+            # region.  If a later registration itself raises, every earlier
+            # successfully registered hook is still removed below.
+            for index, block in enumerate(self.model.blocks):
+                prefix = f"blocks.{index}"
+                handles.append(
+                    block.register_forward_pre_hook(
+                        self._save_input(captures, f"{prefix}.input")
+                    )
+                )
+                handles.append(
+                    block.register_forward_hook(
+                        self._save_output(captures, f"{prefix}.output")
+                    )
+                )
+                handles.append(
+                    block.attn.qkv.register_forward_hook(
+                        self._save_output(captures, f"{prefix}.qkv")
+                    )
+                )
+                handles.append(
+                    block.attn.q_norm.register_forward_hook(
+                        self._save_output(captures, f"{prefix}.q")
+                    )
+                )
+                handles.append(
+                    block.attn.k_norm.register_forward_hook(
+                        self._save_output(captures, f"{prefix}.k")
+                    )
+                )
+                handles.append(
+                    block.attn.attn_drop.register_forward_pre_hook(
+                        self._save_input(captures, f"{prefix}.attention")
+                    )
+                )
+                handles.append(
+                    block.attn.attn_drop.register_forward_hook(
+                        self._save_output(captures, f"{prefix}.attention_used")
+                    )
+                )
             with torch.inference_mode():
                 logits = self.model(images).detach().clone()
         finally:
-            for handle in handles:
+            for handle in reversed(handles):
                 handle.remove()
 
         layers = []
