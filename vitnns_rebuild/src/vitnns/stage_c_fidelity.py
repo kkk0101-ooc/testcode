@@ -40,6 +40,7 @@ from .stage_c_maps import (
     raw_array,
     signed_rgb_channel_sum,
 )
+from .stage_c_integrity import CheapTensorSnapshot
 from .stage_c_value_path import (
     DEGENERATE_DIRECTION,
     FrozenHeadDirectionTarget,
@@ -254,7 +255,10 @@ class ClassLogitScalarAdapter:
             raise TypeError("target must be a resolver-issued FrozenClassLogitTarget")
         clean = _validate_normalized_tensor(clean_inputs, name="clean_inputs")
         self._model = model
-        self._clean_inputs = clean.detach().clone()
+        # Keep the resolver-bound clean tensor object.  It is never passed to a
+        # model without a private clone, and target verification requires this
+        # exact live identity to reject a substituted same-content context.
+        self._clean_inputs = clean
         self._target = target
         _verify_frozen_class_target(target, clean, model)
         identity = {
@@ -284,17 +288,34 @@ class ClassLogitScalarAdapter:
         return None
 
     def evaluate(self, inputs: torch.Tensor) -> float:
+        return self._evaluate(inputs, input_sha256=None)
+
+    def evaluate_prehashed(
+        self, inputs: torch.Tensor, *, input_sha256: str
+    ) -> float:
+        """Evaluate a schedule tensor whose digest was bound at construction."""
+
+        return self._evaluate(inputs, input_sha256=input_sha256)
+
+    def _evaluate(
+        self, inputs: torch.Tensor, *, input_sha256: str | None
+    ) -> float:
         value = _validate_normalized_tensor(inputs, name="intervention_inputs")
         if value.device != self._clean_inputs.device:
             raise FidelityContractError(
                 "intervention and frozen clean context must share a device"
             )
         result = evaluate_frozen_class_logit_target(
-            self._model, self._clean_inputs, value, self._target
+            self._model, self._clean_inputs, value, self._target,
+            clean_input_sha256=self._target.clean_input_sha256,
+            intervention_input_sha256=input_sha256,
         )
         if not isinstance(result, ClassScalarEvaluation):
             raise FidelityContractError("class scalar evaluator returned the wrong type")
-        expected_intervention = _frozen_target_tensor_sha256(value)
+        expected_intervention = (
+            _frozen_target_tensor_sha256(value)
+            if input_sha256 is None else input_sha256
+        )
         if (
             result.target_kind != CLASS_TARGET_REF
             or result.class_index != self._target.class_index
@@ -323,7 +344,7 @@ class ValuePathScalarAdapter:
             raise TypeError("target must be a resolver-issued FrozenHeadDirectionTarget")
         clean = _validate_normalized_tensor(clean_inputs, name="clean_inputs")
         self._model = model
-        self._clean_inputs = clean.detach().clone()
+        self._clean_inputs = clean
         self._target = target
         _verify_frozen_head_target(target, model, clean)
         identity = {
@@ -358,17 +379,34 @@ class ValuePathScalarAdapter:
         return None
 
     def evaluate(self, inputs: torch.Tensor) -> float:
+        return self._evaluate(inputs, input_sha256=None)
+
+    def evaluate_prehashed(
+        self, inputs: torch.Tensor, *, input_sha256: str
+    ) -> float:
+        """Evaluate a schedule tensor whose digest was bound at construction."""
+
+        return self._evaluate(inputs, input_sha256=input_sha256)
+
+    def _evaluate(
+        self, inputs: torch.Tensor, *, input_sha256: str | None
+    ) -> float:
         value = _validate_normalized_tensor(inputs, name="intervention_inputs")
         if value.device != self._clean_inputs.device:
             raise FidelityContractError(
                 "intervention and frozen clean context must share a device"
             )
         result = evaluate_frozen_head_direction_target(
-            self._model, self._clean_inputs, value, self._target
+            self._model, self._clean_inputs, value, self._target,
+            clean_input_sha256=self._target.clean_input_sha256,
+            intervention_input_sha256=input_sha256,
         )
         if not isinstance(result, ValueScalarEvaluation):
             raise FidelityContractError("Value-path scalar evaluator returned the wrong type")
-        expected_intervention = _frozen_target_tensor_sha256(value)
+        expected_intervention = (
+            _frozen_target_tensor_sha256(value)
+            if input_sha256 is None else input_sha256
+        )
         if (
             result.target_kind != VALUE_TARGET_REF
             or result.block_index != self._target.block_index
@@ -427,13 +465,20 @@ def _evaluate_scalar(
     inputs: torch.Tensor,
     *,
     expected_identity_sha256: str | None = None,
+    expected_input_sha256: str | None = None,
 ) -> float:
-    before = tensor_sha256(inputs)
+    guard = CheapTensorSnapshot.capture(inputs)
     try:
-        value = _finite_float(evaluator.evaluate(inputs), "frozen scalar evaluation")
+        evaluate_prehashed = getattr(evaluator, "evaluate_prehashed", None)
+        if expected_input_sha256 is not None and callable(evaluate_prehashed):
+            raw_value = evaluate_prehashed(
+                inputs, input_sha256=expected_input_sha256
+            )
+        else:
+            raw_value = evaluator.evaluate(inputs)
+        value = _finite_float(raw_value, "frozen scalar evaluation")
     finally:
-        after = tensor_sha256(inputs)
-        if after != before:
+        if not guard.verify(inputs).matched:
             raise FidelityContractError(
                 "frozen scalar evaluator mutated an intervention tensor"
             )
@@ -654,10 +699,13 @@ def resolve_target_response(
             threshold=None, na=endpoint_na,
         )
     clean_value = _evaluate_scalar(
-        evaluator, clean, expected_identity_sha256=_digest
+        evaluator, clean, expected_identity_sha256=_digest,
+        expected_input_sha256=identity["clean_input_sha256"],
     )
+    baseline_sha256 = tensor_sha256(baseline)
     baseline_value = _evaluate_scalar(
-        evaluator, baseline, expected_identity_sha256=_digest
+        evaluator, baseline, expected_identity_sha256=_digest,
+        expected_input_sha256=baseline_sha256,
     )
     # Re-check identity after arbitrary model callbacks.
     _line_after, _ref_after, identity_after, _ = _evaluator_contract(evaluator)
@@ -1121,7 +1169,9 @@ class InterventionSchedule:
         self.intervention_sha256 = tuple(
             tensor_sha256(value) for value in self._interventions
         )
-        self.verify_integrity()
+        self._intervention_live_state = tuple(
+            CheapTensorSnapshot.capture(value) for value in self._interventions
+        )
         self._sealed = True
 
     def __len__(self) -> int:
@@ -1130,7 +1180,7 @@ class InterventionSchedule:
     def tensor_at(self, index: int) -> torch.Tensor:
         if type(index) is not int or not 0 <= index < len(self._interventions):
             raise IndexError(index)
-        self.verify_integrity()
+        self._verify_point_integrity(index)
         return self._interventions[index].detach().clone()
 
     def evaluate_at(self, index: int, consumer: Any) -> Any:
@@ -1140,17 +1190,32 @@ class InterventionSchedule:
             raise IndexError(index)
         if not callable(consumer):
             raise TypeError("consumer must be callable")
-        self.verify_integrity()
         shared = self._interventions[index]
+        live_state = self._intervention_live_state[index]
+        if not live_state.verify(shared).matched:
+            raise FidelityContractError(
+                f"intervention tensor {index} changed live state"
+            )
         try:
             result = consumer(shared)
         finally:
-            self.verify_integrity()
+            if not live_state.verify(shared).matched:
+                raise FidelityContractError(
+                    f"intervention tensor {index} was mutated"
+                )
         if isinstance(result, torch.Tensor):
             raise FidelityContractError(
                 "intervention consumer must return a scalar, not a tensor alias"
             )
         return result
+
+    def _verify_point_integrity(self, index: int) -> None:
+        if not self._intervention_live_state[index].verify(
+            self._interventions[index]
+        ).matched:
+            raise FidelityContractError(
+                f"intervention tensor {index} changed live state"
+            )
 
     def verify_integrity(self) -> None:
         if len(self._interventions) != 21:
@@ -1446,34 +1511,42 @@ def evaluate_fidelity_curve(
         raise FidelityContractError(
             "intervention schedule clean tensor does not match the frozen target context"
         )
-    schedule.verify_integrity()
     values: tuple[float, ...] | None
     auc: float | None
-    if response.na is not None:
-        values = None
-        auc = None
-    else:
-        computed: list[float] = []
-        for index in range(len(schedule)):
-            scalar = schedule.evaluate_at(
-                index,
-                lambda intervention: _evaluate_scalar(
-                    evaluator, intervention,
-                    expected_identity_sha256=digest,
-                ),
-            )
-            normalized = response.normalize(scalar)
-            if isinstance(normalized, StructuredNA):
-                raise FidelityContractError("nondegenerate curve produced unexpected NA")
-            computed.append(normalized)
+    schedule.verify_integrity()
+    try:
+        if response.na is not None:
+            values = None
+            auc = None
+        else:
+            computed: list[float] = []
+            for index in range(len(schedule)):
+                scalar = schedule.evaluate_at(
+                    index,
+                    lambda intervention, index=index: _evaluate_scalar(
+                        evaluator, intervention,
+                        expected_identity_sha256=digest,
+                        expected_input_sha256=schedule.intervention_sha256[index],
+                    ),
+                )
+                normalized = response.normalize(scalar)
+                if isinstance(normalized, StructuredNA):
+                    raise FidelityContractError(
+                        "nondegenerate curve produced unexpected NA"
+                    )
+                computed.append(normalized)
+            # Endpoints are mathematical identities and must not be silently repaired.
+            if computed[0] != (1.0 if schedule.direction is CurveDirection.DELETION else 0.0):
+                raise FidelityContractError("curve start does not equal its frozen endpoint")
+            if computed[-1] != (0.0 if schedule.direction is CurveDirection.DELETION else 1.0):
+                raise FidelityContractError("curve end does not equal its frozen endpoint")
+            values = tuple(computed)
+            auc = trapezoid_auc(schedule.actual_fractions, values)
+    finally:
+        # The group is strongly content-checked exactly at the curve exit,
+        # including NA and consumer-exception paths and `.data` writes that do
+        # not advance a version counter.
         schedule.verify_integrity()
-        # Endpoints are mathematical identities and must not be silently repaired.
-        if computed[0] != (1.0 if schedule.direction is CurveDirection.DELETION else 0.0):
-            raise FidelityContractError("curve start does not equal its frozen endpoint")
-        if computed[-1] != (0.0 if schedule.direction is CurveDirection.DELETION else 1.0):
-            raise FidelityContractError("curve end does not equal its frozen endpoint")
-        values = tuple(computed)
-        auc = trapezoid_auc(schedule.actual_fractions, values)
     _line_after, _target_after, _identity_after, digest_after = _evaluator_contract(
         evaluator
     )

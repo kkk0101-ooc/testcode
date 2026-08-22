@@ -37,6 +37,11 @@ from vitnns.stage_c_class_logit import (
 from vitnns.stage_c_fidelity import (
     ClassLogitScalarAdapter, resolve_target_response,
 )
+from vitnns.stage_c_integrity import (
+    ModelIntegrityBoundary,
+    ModelIntegrityError,
+    StrongModelSnapshot,
+)
 from vitnns.stage_c_maps import ComparisonLine, MethodResult, SignSemantics
 from vitnns.targets import TargetSpec
 
@@ -298,6 +303,69 @@ def test_frozen_class_scalar_uses_fixed_index_and_restores_caller_lifecycle():
         persistent.remove()
 
 
+def test_frozen_class_scalar_prehashed_path_skips_tensor_content_hashes(monkeypatch):
+    model = _ToyClassModel().eval()
+    image = _clean_image()
+    target = resolve_clean_class_logit_target(model, image)
+    intervention = image * 0.5
+    intervention_digest = class_logit._tensor_sha256(intervention)
+
+    def unexpected_hash(_value):
+        raise AssertionError("prehashed scalar path must not hash tensors")
+
+    monkeypatch.setattr(class_logit, "_tensor_sha256", unexpected_hash)
+    result = evaluate_frozen_class_logit_target(
+        model, image, intervention, target,
+        clean_input_sha256=target.clean_input_sha256,
+        intervention_input_sha256=intervention_digest,
+    )
+
+    assert result.intervention_input_sha256 == intervention_digest
+
+
+@pytest.mark.parametrize(
+    "name,value",
+    [
+        ("clean_input_sha256", "A" * 64),
+        ("intervention_input_sha256", "not-a-digest"),
+    ],
+)
+def test_frozen_class_scalar_rejects_invalid_prebound_digest(name, value):
+    model = _ToyClassModel().eval()
+    image = _clean_image()
+    target = resolve_clean_class_logit_target(model, image)
+    kwargs = {
+        "clean_input_sha256": target.clean_input_sha256,
+        "intervention_input_sha256": target.clean_input_sha256,
+    }
+    kwargs[name] = value
+    with pytest.raises(ValueError, match="lowercase SHA-256"):
+        evaluate_frozen_class_logit_target(
+            model, image, image, target, **kwargs
+        )
+
+
+def test_frozen_target_requires_resolver_clean_tensor_identity_and_live_state():
+    model = _ToyClassModel().eval()
+    image = _clean_image()
+    target = resolve_clean_class_logit_target(model, image)
+
+    with pytest.raises(StageCClassLogitError, match="clean input object"):
+        evaluate_frozen_class_logit_target(
+            model, image.clone(), image, target,
+            clean_input_sha256=target.clean_input_sha256,
+            intervention_input_sha256=target.clean_input_sha256,
+        )
+
+    image.add_(0.0)
+    with pytest.raises(StageCClassLogitError, match="clean input live state"):
+        evaluate_frozen_class_logit_target(
+            model, image, image, target,
+            clean_input_sha256=target.clean_input_sha256,
+            intervention_input_sha256=target.clean_input_sha256,
+        )
+
+
 def test_natural_prediction_observation_binds_model_and_intervention_hash():
     model = _ToyClassModel().eval()
     image = _clean_image()
@@ -368,7 +436,7 @@ def test_frozen_class_scalar_exception_restores_state_and_rejects_context():
     target = resolve_clean_class_logit_target(model, image)
     changed_clean = image.clone()
     changed_clean[0, 0, 0, 0] += 1.0
-    with pytest.raises(StageCClassLogitError, match="bytes"):
+    with pytest.raises(StageCClassLogitError, match="object"):
         evaluate_frozen_class_logit_target(model, changed_clean, image, target)
     with pytest.raises(StageCClassLogitError, match="model instance"):
         evaluate_frozen_class_logit_target(
@@ -428,6 +496,7 @@ def test_frozen_target_rejects_direct_construction_other_model_and_weight_drift(
     with pytest.raises(TypeError, match="only be issued"):
         FrozenClassLogitTarget._create(
             model=model,
+            clean_inputs=image,
             class_index=1,
             clean_raw_logit=-999.0,
             class_count=target.class_count,
@@ -445,10 +514,12 @@ def test_frozen_target_rejects_direct_construction_other_model_and_weight_drift(
         vit_grad_cam_block11_norm1(model, image, target)
 
     data_mutated = _ToyClassModel().eval()
-    data_target = resolve_clean_class_logit_target(data_mutated, image)
-    data_mutated.scale.data.add_(0.25)
-    with pytest.raises(StageCClassLogitError, match="state changed"):
-        vit_grad_cam_block11_norm1(data_mutated, image, data_target)
+    load_snapshot = StrongModelSnapshot.capture(data_mutated)
+    with pytest.raises(ModelIntegrityError, match="integrity verification failed"):
+        with ModelIntegrityBoundary(
+            data_mutated, reference_snapshot=load_snapshot
+        ):
+            data_mutated.scale.data.add_(0.25)
 
 
 def test_multiple_resolver_issued_targets_remain_independently_valid():
@@ -493,7 +564,7 @@ def test_target_resolver_rejects_model_mutation_during_clean_forward():
     image = _clean_image()
 
     def mutate_parameter(_module, _args, _output):
-        model.scale.data.add_(0.5)
+        model.scale.add_(0.5)
 
     handle = model.register_forward_hook(mutate_parameter)
     try:
@@ -781,8 +852,8 @@ def test_grad_cam_rejects_input_or_target_drift_and_inference_mode():
     target = resolve_clean_class_logit_target(model, image)
     changed = image.clone()
     changed[0, 0, 0, 0] += 1.0
-    with pytest.raises(StageCClassLogitError, match="bytes.*frozen target"):
-        vit_grad_cam_block11_norm1(model, changed, target)
+    with pytest.raises(StageCClassLogitError, match="object.*frozen target"):
+        evaluate_frozen_class_logit_target(model, changed, image, target)
     with pytest.raises(TypeError, match="frozen_target"):
         vit_grad_cam_block11_norm1(model, image, target.target_spec)
     with torch.inference_mode():
@@ -1292,8 +1363,8 @@ def test_full_model_ig_repeatability_and_target_input_guards(monkeypatch):
 
     changed = image.clone()
     changed[0, 0, 0, 0] += 1.0
-    with pytest.raises(StageCClassLogitError, match="bytes.*frozen target"):
-        full_model_class_logit_ig(model, changed, target)
+    with pytest.raises(StageCClassLogitError, match="object.*frozen target"):
+        evaluate_frozen_class_logit_target(model, changed, image, target)
     with torch.inference_mode():
         with pytest.raises(RuntimeError, match="inference_mode"):
             full_model_class_logit_ig(model, image, target)

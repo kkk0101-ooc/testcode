@@ -17,6 +17,7 @@ from vitnns.stage_c_artifacts import (
     InjectedArtifactCrash,
     StageCArtifactWriter,
     attempt_directories,
+    canonical_json_bytes,
     next_attempt_directory,
     unit_identity_sha256,
     validate_execution_unit,
@@ -96,6 +97,126 @@ def rewrite_json(path: Path, transform) -> None:
     )
 
 
+def runner_telemetry() -> dict[str, object]:
+    digest = "d" * 64
+    phase_names = (
+        "attribution_or_map_compute",
+        "fidelity_compute",
+        "integrity_checking",
+        "artifact_finalize",
+    )
+    return {
+        "schema_version": 1,
+        "phase_timings": {
+            "clock": "perf_counter",
+            "synchronization": "device_before_and_after_each_phase",
+            "phases_are_mutually_exclusive": False,
+            "total_boundary": (
+                "unit_start_through_first_complete_validation_"
+                "excluding_telemetry_publication"
+            ),
+            "synchronized_total_wall_time_seconds": 10.0,
+            "phases": {
+                name: {"wall_time_seconds": 1.0, "invocations": 1}
+                for name in phase_names
+            },
+        },
+        "lifecycle": {
+            "integrity": {
+                "schema_version": 1,
+                "algorithm": "stage_c_strong_model_sha256_v1",
+                "checked": [
+                    "module_topology_and_object_identity",
+                    "all_module_training_modes",
+                    (
+                        "all_module_forward_backward_and_state_dict_"
+                        "hook_identities"
+                    ),
+                    "attention_fused_attn_flags",
+                    (
+                        "parameter_name_object_storage_metadata_version_"
+                        "and_content"
+                    ),
+                    (
+                        "persistent_buffer_name_object_storage_metadata_"
+                        "version_and_content"
+                    ),
+                    "all_parameter_requires_grad_flags",
+                    (
+                        "all_parameter_grad_identity_storage_metadata_"
+                        "and_content"
+                    ),
+                ],
+                "entry_sha256": digest,
+                "exit_sha256": digest,
+                "matched": True,
+                "restored": True,
+                "differences": [],
+                "signature_calls": 2,
+                "verification_error_type": None,
+                "verification_error_message": None,
+                "body_exception_type": None,
+            },
+            "restoration": {
+                "schema_version": 1,
+                "checked": [
+                    "all_module_training_modes",
+                    "all_module_hook_mapping_identities_and_entries",
+                    "all_parameter_requires_grad_flags",
+                    (
+                        "all_parameter_grad_identity_storage_metadata_"
+                        "and_content"
+                    ),
+                    "attention_fused_attn_flags",
+                ],
+                "changes_detected": False,
+                "restored": True,
+                "differences": [],
+                "errors": [],
+            },
+        },
+        "measurement_environment": {
+            "device_type": "cpu",
+            "device": "cpu",
+            "device_name": None,
+            "cuda_runtime_version": None,
+            "cudnn_version": None,
+        },
+    }
+
+
+def rewrite_status(writer: StageCArtifactWriter, transform) -> None:
+    status = json.loads(writer.status_path.read_text(encoding="utf-8"))
+    transform(status)
+    try:
+        telemetry_payload = canonical_json_bytes(status["runner_telemetry"])
+    except ValueError:
+        # JSON has no canonical representation for NaN/Infinity.  Leaving the
+        # existing digest in place still exercises fail-closed validation.
+        pass
+    else:
+        manifest = json.loads(
+            writer.manifest_path.read_text(encoding="utf-8")
+        )
+        manifest["runner_telemetry_sha256"] = hashlib.sha256(
+            telemetry_payload
+        ).hexdigest()
+        writer.manifest_path.write_text(
+            json.dumps(
+                manifest, indent=2, sort_keys=True, ensure_ascii=False
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+    status["manifest_sha256"] = hashlib.sha256(
+        writer.manifest_path.read_bytes()
+    ).hexdigest()
+    writer.status_path.write_text(
+        json.dumps(status, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+
 def test_complete_inventory_and_identity_provenance_bindings(tmp_path):
     attempt, writer = complete_unit(
         tmp_path / "unit", audit=True, l2=True, l3=True
@@ -160,6 +281,121 @@ def test_attempts_are_fresh_sorted_and_never_reopened(tmp_path):
     assert attempt_directories(root) == (first, second)
     with pytest.raises(AttemptNotEmptyError):
         StageCArtifactWriter(first, unit_identity=identity(), audit=False)
+
+
+def test_legacy_terminal_without_runner_telemetry_is_valid_by_default(
+    tmp_path,
+):
+    attempt, _writer = complete_unit(tmp_path / "legacy-terminal")
+
+    legacy_report = validate_execution_unit(attempt)
+    required_report = validate_execution_unit(
+        attempt, require_runner_telemetry=True
+    )
+
+    assert legacy_report.valid and legacy_report.resumable
+    assert not required_report.valid and not required_report.resumable
+    assert any(
+        "missing runner_telemetry" in error
+        for error in required_report.errors
+    )
+
+
+def test_published_runner_telemetry_satisfies_required_validation(tmp_path):
+    attempt, writer = complete_unit(tmp_path / "telemetry")
+    telemetry = runner_telemetry()
+
+    published = writer.publish_runner_telemetry(telemetry)
+    report = validate_execution_unit(
+        attempt, require_runner_telemetry=True
+    )
+
+    assert published["runner_telemetry"] == telemetry
+    assert report.valid and report.complete and report.terminal
+    assert report.resumable and report.status == "complete"
+
+
+@pytest.mark.parametrize(
+    ("damage", "expected_error"),
+    (
+        ("missing", "phase_timings phases are invalid"),
+        ("nonfinite", "non-finite JSON number"),
+        ("negative", "artifact_finalize duration is invalid"),
+        ("exceeds_total", "artifact_finalize exceeds total wall"),
+    ),
+)
+def test_tampered_runner_phase_timings_are_invalid(
+    tmp_path, damage, expected_error
+):
+    attempt, writer = complete_unit(tmp_path / f"phase-{damage}")
+    writer.publish_runner_telemetry(runner_telemetry())
+
+    def tamper(status) -> None:
+        timings = status["runner_telemetry"]["phase_timings"]
+        phases = timings["phases"]
+        if damage == "missing":
+            phases.pop("artifact_finalize")
+        elif damage == "nonfinite":
+            phases["artifact_finalize"]["wall_time_seconds"] = float(
+                "nan"
+            )
+        elif damage == "negative":
+            phases["artifact_finalize"]["wall_time_seconds"] = -1.0
+        else:
+            phases["artifact_finalize"]["wall_time_seconds"] = (
+                timings["synchronized_total_wall_time_seconds"] + 1.0
+            )
+
+    rewrite_status(writer, tamper)
+
+    report = validate_execution_unit(
+        attempt, require_runner_telemetry=True
+    )
+    assert not report.valid and not report.resumable
+    assert any(expected_error in error for error in report.errors)
+
+
+@pytest.mark.parametrize(
+    ("damage", "expected_error"),
+    (
+        ("missing", "integrity has missing or unknown fields"),
+        ("digest_mismatch", "matched digests disagree"),
+    ),
+)
+def test_tampered_runner_integrity_evidence_is_invalid(
+    tmp_path, damage, expected_error
+):
+    attempt, writer = complete_unit(tmp_path / f"integrity-{damage}")
+    writer.publish_runner_telemetry(runner_telemetry())
+
+    def tamper(status) -> None:
+        integrity = status["runner_telemetry"]["lifecycle"]["integrity"]
+        if damage == "missing":
+            integrity.pop("signature_calls")
+        else:
+            integrity["exit_sha256"] = "e" * 64
+
+    rewrite_status(writer, tamper)
+
+    report = validate_execution_unit(
+        attempt, require_runner_telemetry=True
+    )
+    assert not report.valid and not report.resumable
+    assert any(expected_error in error for error in report.errors)
+
+
+def test_running_attempt_cannot_publish_runner_telemetry(tmp_path):
+    attempt = next_attempt_directory(tmp_path / "running-telemetry")
+    writer = StageCArtifactWriter(
+        attempt, unit_identity=identity(), audit=False
+    )
+
+    with pytest.raises(ArtifactWriterStateError, match="terminal attempt"):
+        writer.publish_runner_telemetry(runner_telemetry())
+
+    status = json.loads(writer.status_path.read_text(encoding="utf-8"))
+    assert status["status"] == "running"
+    assert "runner_telemetry" not in status
 
 
 @pytest.mark.parametrize(

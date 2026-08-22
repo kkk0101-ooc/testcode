@@ -15,6 +15,7 @@ separately enforces the canonical 12 x 12 x 197 x 64 ViT geometry.
 from __future__ import annotations
 
 import math
+import json
 import re
 import weakref
 from collections.abc import Mapping, Sequence
@@ -37,6 +38,7 @@ from .stage_c_class_logit import (
     _tensor_sha256,
     _validate_clean_input,
 )
+from .stage_c_integrity import CheapTensorSnapshot, model_live_signature
 from .stage_c_maps import (
     ComparisonLine,
     MethodResult,
@@ -218,6 +220,14 @@ def _strict_index(value: Any, *, name: str, upper_bound: int) -> int:
     return value
 
 
+def _prebound_sha256(value: str | None, *, name: str) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value):
+        raise ValueError(f"{name} must be a lowercase SHA-256 or None")
+    return value
+
+
 @dataclass(frozen=True, order=True)
 class HeadCandidate:
     """One explicit canonical block/head candidate."""
@@ -316,7 +326,7 @@ def _owned_tensor(value: torch.Tensor) -> torch.Tensor:
 
 
 class _RuntimeIntegrityGuard(AbstractContextManager[tuple[tuple[Any, ...], ...]]):
-    """Diagnose model/input/target mutation on success and exceptions."""
+    """Diagnose cheap live-state drift on success and exceptions."""
 
     def __init__(
         self,
@@ -333,8 +343,11 @@ class _RuntimeIntegrityGuard(AbstractContextManager[tuple[tuple[Any, ...], ...]]
         self.context = context
         self.target = target
         self.model_signature = _model_state_signature(model)
-        self.caller_input_sha256 = _tensor_sha256(caller_inputs)
-        self.owned_input_sha256 = _tensor_sha256(owned_inputs)
+        self.model_lifecycle_signature = model_live_signature(
+            model, include_lifecycle=True
+        )
+        self.caller_input_state = CheapTensorSnapshot.capture(caller_inputs)
+        self.owned_input_state = CheapTensorSnapshot.capture(owned_inputs)
         self.target_identity = (
             None if target is None else _target_identity_snapshot(target)
         )
@@ -346,9 +359,14 @@ class _RuntimeIntegrityGuard(AbstractContextManager[tuple[tuple[Any, ...], ...]]
         violations: list[str] = []
         if _model_state_signature(self.model) != self.model_signature:
             violations.append("model parameter/buffer state")
-        if _tensor_sha256(self.caller_inputs) != self.caller_input_sha256:
+        if (
+            model_live_signature(self.model, include_lifecycle=True)
+            != self.model_lifecycle_signature
+        ):
+            violations.append("model lifecycle state")
+        if not self.caller_input_state.verify(self.caller_inputs).matched:
             violations.append("caller clean-input tensor")
-        if _tensor_sha256(self.owned_inputs) != self.owned_input_sha256:
+        if not self.owned_input_state.verify(self.owned_inputs).matched:
             violations.append("private clean-input clone")
         if self.target is not None and (
             _ISSUED_TARGETS.get(self.target) != self.target_identity
@@ -953,7 +971,7 @@ def _float_identity(value: float | None) -> str | None:
     return None if value is None else float(value).hex()
 
 
-def _resolution_identity(
+def _resolution_content_identity(
     resolution: HeadDirectionResolution,
 ) -> tuple[Any, ...]:
     return (
@@ -969,6 +987,34 @@ def _resolution_identity(
         None
         if resolution.direction_unit is None
         else _tensor_sha256(resolution.direction_unit),
+        _float_identity(resolution.direction_threshold),
+        None if resolution.na is None else resolution.na.to_dict(),
+    )
+
+
+def _resolution_live_identity(
+    resolution: HeadDirectionResolution,
+) -> tuple[Any, ...]:
+    """Content-free identity used by method and scalar hot paths."""
+
+    def tensor_state(value: torch.Tensor | None) -> tuple[Any, ...] | None:
+        return (
+            None
+            if value is None
+            else CheapTensorSnapshot.capture(value).signature
+        )
+
+    return (
+        resolution.candidate,
+        resolution.status,
+        tensor_state(resolution.clean_attention),
+        tensor_state(resolution.clean_values),
+        tensor_state(resolution.baseline_values),
+        tensor_state(resolution.clean_head_output),
+        tensor_state(resolution.baseline_head_output),
+        tensor_state(resolution.direction_delta),
+        _float_identity(resolution.direction_norm),
+        tensor_state(resolution.direction_unit),
         _float_identity(resolution.direction_threshold),
         None if resolution.na is None else resolution.na.to_dict(),
     )
@@ -994,6 +1040,14 @@ class FrozenHeadDirectionTarget:
     _model_state_signature: tuple[tuple[Any, ...], ...] = field(
         repr=False, compare=False
     )
+    _clean_input_ref: weakref.ReferenceType[torch.Tensor] = field(
+        repr=False, compare=False
+    )
+    _clean_input_live_signature: tuple[Any, ...] = field(
+        repr=False, compare=False
+    )
+    _content_identity: tuple[Any, ...] = field(repr=False, compare=False)
+    _serialized_target_json: str = field(repr=False, compare=False)
     _issuer_nonce: bytes = field(repr=False, compare=False)
 
     def __init__(self, *_args: Any, **_kwargs: Any) -> None:
@@ -1009,6 +1063,7 @@ class FrozenHeadDirectionTarget:
         model: nn.Module,
         model_state_signature: tuple[tuple[Any, ...], ...],
         clean_inputs: torch.Tensor,
+        clean_input_context: torch.Tensor | None = None,
         candidate: HeadCandidate,
         resolution: HeadDirectionResolution,
         fixed_attention: torch.Tensor,
@@ -1036,11 +1091,36 @@ class FrozenHeadDirectionTarget:
             "_fixed_attention": _owned_tensor(fixed_attention),
             "_model_ref": weakref.ref(model),
             "_model_state_signature": model_state_signature,
+            "_clean_input_ref": weakref.ref(
+                clean_inputs if clean_input_context is None else clean_input_context
+            ),
+            "_clean_input_live_signature": CheapTensorSnapshot.capture(
+                clean_inputs if clean_input_context is None else clean_input_context
+            ).signature,
             "_issuer_nonce": token_bytes(32),
+            "_serialized_target_json": "",
         }
         for name, value in values.items():
             object.__setattr__(instance, name, value)
+        object.__setattr__(
+            instance, "_content_identity",
+            (
+                _resolution_content_identity(instance.resolution),
+                _tensor_sha256(instance._fixed_attention),
+            ),
+        )
         instance.__post_init__()
+        object.__setattr__(
+            instance,
+            "_serialized_target_json",
+            json.dumps(
+                instance.to_dict(),
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=True,
+                allow_nan=False,
+            ),
+        )
         _ISSUED_TARGETS[instance] = _target_identity_snapshot(instance)
         return instance
 
@@ -1117,8 +1197,14 @@ class FrozenHeadDirectionTarget:
             )
         if not isinstance(self._model_ref, weakref.ReferenceType):
             raise TypeError("target has an invalid live-model reference")
+        if not isinstance(self._clean_input_ref, weakref.ReferenceType):
+            raise TypeError("target has an invalid clean-input reference")
+        if not isinstance(self._clean_input_live_signature, tuple):
+            raise TypeError("target has an invalid clean-input live signature")
         if not isinstance(self._model_state_signature, tuple):
             raise TypeError("target has an invalid model-state signature")
+        if not isinstance(self._content_identity, tuple):
+            raise TypeError("target has an invalid content identity")
         if not isinstance(self._issuer_nonce, bytes) or len(self._issuer_nonce) != 32:
             raise TypeError("target has an invalid issuer nonce")
 
@@ -1196,6 +1282,11 @@ class FrozenHeadDirectionTarget:
     tau = property(lambda self: self.direction_threshold)
 
     def to_dict(self) -> dict[str, Any]:
+        if self._serialized_target_json:
+            result = json.loads(self._serialized_target_json)
+            if not isinstance(result, dict):
+                raise RuntimeError("cached target JSON is not an object")
+            return result
         resolution = self.resolution
         result: dict[str, Any] = {
             "target_kind": TARGET_REF,
@@ -1258,7 +1349,7 @@ def _target_identity_snapshot(
     return (
         target._issuer_nonce,
         target.candidate,
-        _resolution_identity(target.resolution),
+        _resolution_live_identity(target.resolution),
         _float_identity(target.clean_value_max_abs_error),
         _float_identity(target.clean_replay_max_abs_error),
         _float_identity(target.clean_model_output_max_abs_error),
@@ -1266,9 +1357,13 @@ def _target_identity_snapshot(
         target.clean_input_sha256,
         target.clean_input_shape,
         target.runtime_model_binding_sha256,
-        _tensor_sha256(target._fixed_attention),
+        CheapTensorSnapshot.capture(target._fixed_attention).signature,
         id(target._model_ref),
         target._model_state_signature,
+        id(target._clean_input_ref),
+        target._clean_input_live_signature,
+        target._content_identity,
+        target._serialized_target_json,
     )
 
 
@@ -1906,11 +2001,11 @@ def resolve_fixed_clean_attention_head_directions(
     fixed_attention: dict[HeadCandidate, torch.Tensor] = {}
     parity: dict[HeadCandidate, tuple[float, float, float, float]] = {}
 
-    with _preserve_model_attribution_state(
-        model, freeze_parameters=True
-    ), _RuntimeIntegrityGuard(
+    with _RuntimeIntegrityGuard(
         model, caller_inputs, inputs, context="head-direction resolution"
-    ) as model_state_before:
+    ) as model_state_before, _preserve_model_attribution_state(
+        model, freeze_parameters=True
+    ):
         clean_capture, clean_model_output = _capture_real_endpoints(
             model, inputs, attention_modules
         )
@@ -2098,6 +2193,7 @@ def resolve_fixed_clean_attention_head_directions(
                 model=model,
                 model_state_signature=model_state_before,
                 clean_inputs=inputs,
+                clean_input_context=caller_inputs,
                 candidate=candidate,
                 resolution=resolution,
                 fixed_attention=fixed_attention[candidate],
@@ -2129,7 +2225,11 @@ def resolve_fixed_clean_attention_head_direction(
 
 
 def _verify_frozen_head_target(
-    target: Any, model: nn.Module, clean_inputs: torch.Tensor
+    target: Any,
+    model: nn.Module,
+    clean_inputs: torch.Tensor,
+    *,
+    clean_input_sha256: str | None = None,
 ) -> FrozenHeadDirectionTarget:
     verified = _require_untampered_target_identity(target)
     if verified._model_ref() is not model:
@@ -2140,7 +2240,20 @@ def _verify_frozen_head_target(
         raise StageCValuePathError(
             "clean input shape does not match the frozen head target"
         )
-    if _tensor_sha256(clean_inputs) != verified.clean_input_sha256:
+    if (
+        verified._clean_input_ref() is not clean_inputs
+        or CheapTensorSnapshot.capture(clean_inputs).signature
+        != verified._clean_input_live_signature
+    ):
+        raise StageCValuePathError(
+            "clean input bytes/live identity do not match the frozen head target"
+        )
+    clean_digest = _prebound_sha256(
+        clean_input_sha256, name="clean_input_sha256"
+    )
+    if clean_digest is None:
+        clean_digest = _tensor_sha256(clean_inputs)
+    if clean_digest != verified.clean_input_sha256:
         raise StageCValuePathError(
             "clean input bytes do not match the frozen head target"
         )
@@ -2184,6 +2297,9 @@ def evaluate_frozen_head_direction_target(
     clean_inputs: torch.Tensor,
     intervention_inputs: torch.Tensor,
     target: FrozenHeadDirectionTarget,
+    *,
+    clean_input_sha256: str | None = None,
+    intervention_input_sha256: str | None = None,
 ) -> FrozenScalarEvaluation:
     """Evaluate the issued fixed-clean-A, fixed-u head scalar at ``z``."""
 
@@ -2193,7 +2309,19 @@ def evaluate_frozen_head_direction_target(
         raise StageCValuePathError(
             "intervention input device must match the clean input context"
         )
-    frozen = _verify_frozen_head_target(target, model, clean)
+    clean_digest = _prebound_sha256(
+        clean_input_sha256, name="clean_input_sha256"
+    )
+    intervention_digest = _prebound_sha256(
+        intervention_input_sha256, name="intervention_input_sha256"
+    )
+    frozen = _verify_frozen_head_target(
+        target, model, clean, clean_input_sha256=clean_digest
+    )
+    if clean_digest is None:
+        clean_digest = frozen.clean_input_sha256
+    if intervention_digest is None:
+        intervention_digest = _tensor_sha256(intervention)
     if frozen.status != STATUS_OK or frozen.direction_unit is None:
         raise StageCValuePathError(
             "frozen head-direction scalar is undefined for a degenerate target"
@@ -2204,11 +2332,11 @@ def evaluate_frozen_head_direction_target(
     owned_inputs = intervention.detach().clone()
     fixed_attention = _owned_tensor(frozen.fixed_attention)
     frozen_direction = _owned_tensor(frozen.direction_unit)
-    with _preserve_model_attribution_state(
-        model, freeze_parameters=True
-    ), _RuntimeIntegrityGuard(
+    with _RuntimeIntegrityGuard(
         model, intervention, owned_inputs,
         context="frozen head-direction scalar evaluation", target=frozen,
+    ), _preserve_model_attribution_state(
+        model, freeze_parameters=True
     ), _UnfusedSelectedBlocks((attention_module,)):
         with _SelectedHeadIntervention(
             attention_module, {frozen.head_index: fixed_attention}
@@ -2233,13 +2361,15 @@ def evaluate_frozen_head_direction_target(
             if not bool(torch.isfinite(scalar).all().item()):
                 raise StageCValuePathError("frozen head-direction scalar is non-finite")
             value = float(scalar.item())
-    _verify_frozen_head_target(frozen, model, clean)
+    _verify_frozen_head_target(
+        frozen, model, clean, clean_input_sha256=clean_digest
+    )
     return FrozenScalarEvaluation._create(
         value=value,
         block_index=frozen.block_index,
         head_index=frozen.head_index,
         clean_input_sha256=frozen.clean_input_sha256,
-        intervention_input_sha256=_tensor_sha256(intervention),
+        intervention_input_sha256=intervention_digest,
         runtime_model_binding_sha256=frozen.runtime_model_binding_sha256,
         issuer_secret=_TARGET_ISSUER_SECRET,
     )
@@ -2608,6 +2738,9 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig_at_interventi
     intervention_inputs: torch.Tensor,
     target: FrozenHeadDirectionTarget,
     provenance: Mapping[str, Any] | None = None,
+    *,
+    clean_input_sha256: str | None = None,
+    intervention_input_sha256: str | None = None,
 ) -> MethodResult:
     """Attribute the issued fixed-clean-attention head scalar to RGB at ``z``."""
 
@@ -2622,13 +2755,25 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig_at_interventi
         raise StageCValuePathError(
             "intervention input device must match the clean input context"
         )
-    frozen = _verify_frozen_head_target(target, model, clean)
+    clean_digest = _prebound_sha256(
+        clean_input_sha256, name="clean_input_sha256"
+    )
+    if clean_digest is None:
+        clean_digest = _tensor_sha256(clean)
+    intervention_digest = _prebound_sha256(
+        intervention_input_sha256, name="intervention_input_sha256"
+    )
+    if intervention_digest is None:
+        intervention_digest = _tensor_sha256(inputs)
+    frozen = _verify_frozen_head_target(
+        target, model, clean, clean_input_sha256=clean_digest
+    )
     method_provenance = _base_provenance(
         exact_name=NNS_METHOD_NAME,
         target=frozen,
         provenance=provenance,
     )
-    method_provenance["intervention_input_sha256"] = _tensor_sha256(inputs)
+    method_provenance["intervention_input_sha256"] = intervention_digest
     method_provenance["algorithm"] = {
         "model_scope": "real_upstream_value_path_to_selected_block",
         "attention_source": "clean_real_forward_attention_used",
@@ -2683,10 +2828,15 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig_at_interventi
 
     baseline_inputs = torch.zeros_like(inputs)
     intervention_endpoint = evaluate_frozen_head_direction_target(
-        model, clean, inputs, frozen
+        model, clean, inputs, frozen,
+        clean_input_sha256=clean_digest,
+        intervention_input_sha256=intervention_digest,
     )
+    baseline_digest = _tensor_sha256(baseline_inputs)
     baseline_endpoint = evaluate_frozen_head_direction_target(
-        model, clean, baseline_inputs, frozen
+        model, clean, baseline_inputs, frozen,
+        clean_input_sha256=clean_digest,
+        intervention_input_sha256=baseline_digest,
     )
     expected_delta = intervention_endpoint.value - baseline_endpoint.value
 
@@ -2705,11 +2855,11 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig_at_interventi
     caller_inputs = inputs
     owned_inputs = inputs.detach().clone()
     owned_baseline = baseline_inputs.detach().clone()
-    with _preserve_model_attribution_state(
-        model, freeze_parameters=True
-    ), _RuntimeIntegrityGuard(
+    with _RuntimeIntegrityGuard(
         model, caller_inputs, owned_inputs,
         context="head-direction Value-path IG", target=frozen,
+    ), _preserve_model_attribution_state(
+        model, freeze_parameters=True
     ), _UnfusedSelectedBlocks((attention_module,)):
         with _SelectedHeadIntervention(
             attention_module, {frozen.head_index: fixed_attention}
@@ -2770,7 +2920,10 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig_at_interventi
         validated = _validate_head_direction_ig_result(
             result_with_counts, target=frozen, expected_delta=expected_delta
         )
-        _verify_frozen_head_target(frozen, model, clean)
+        _verify_frozen_head_target(
+            frozen, model, clean,
+            clean_input_sha256=clean_digest,
+        )
     if not validated.converged:
         raise StageCValuePathConvergenceError(
             "head-direction Value-path IG did not converge on the complete "
@@ -2823,6 +2976,8 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig(
         clean_inputs,
         target,
         provenance=provenance,
+        clean_input_sha256=target.clean_input_sha256,
+        intervention_input_sha256=target.clean_input_sha256,
     )
     provenance_dict = dict(result.provenance)
     provenance_dict.pop("intervention_input_sha256", None)
@@ -2937,6 +3092,9 @@ def matched_fixed_clean_attention_patch_token_contribution_at_intervention(
     intervention_inputs: torch.Tensor,
     target: FrozenHeadDirectionTarget,
     provenance: Mapping[str, Any] | None = None,
+    *,
+    clean_input_sha256: str | None = None,
+    intervention_input_sha256: str | None = None,
 ) -> MethodResult:
     """Return the issued target's exact matched token map at arbitrary ``z``."""
 
@@ -2946,14 +3104,26 @@ def matched_fixed_clean_attention_patch_token_contribution_at_intervention(
         raise StageCValuePathError(
             "intervention input device must match the clean input context"
         )
-    frozen = _verify_frozen_head_target(target, model, clean)
+    clean_digest = _prebound_sha256(
+        clean_input_sha256, name="clean_input_sha256"
+    )
+    if clean_digest is None:
+        clean_digest = _tensor_sha256(clean)
+    intervention_digest = _prebound_sha256(
+        intervention_input_sha256, name="intervention_input_sha256"
+    )
+    if intervention_digest is None:
+        intervention_digest = _tensor_sha256(inputs)
+    frozen = _verify_frozen_head_target(
+        target, model, clean, clean_input_sha256=clean_digest
+    )
     method_provenance = _base_provenance(
         exact_name=MATCHED_METHOD_NAME,
         target=frozen,
         provenance=provenance,
     )
     method_provenance["stage"] = "C5"
-    method_provenance["intervention_input_sha256"] = _tensor_sha256(inputs)
+    method_provenance["intervention_input_sha256"] = intervention_digest
     method_provenance["algorithm"] = {
         "formula": "c_j(z)=A_clean_cls_j*dot(u,V(z)_j-V(x0)_j)",
         "token_count": TOKENS,
@@ -3001,12 +3171,12 @@ def matched_fixed_clean_attention_patch_token_contribution_at_intervention(
         )
     caller_inputs = inputs
     owned_inputs = inputs.detach().clone()
-    with _preserve_model_attribution_state(
-        model, freeze_parameters=True
-    ), _RuntimeIntegrityGuard(
+    with _RuntimeIntegrityGuard(
         model, caller_inputs, owned_inputs,
         context="matched fixed-clean-attention patch-token contribution",
         target=frozen,
+    ), _preserve_model_attribution_state(
+        model, freeze_parameters=True
     ):
         intervention_values = _capture_selected_head_values(
             model,
@@ -3015,7 +3185,9 @@ def matched_fixed_clean_attention_patch_token_contribution_at_intervention(
             head_index=frozen.head_index,
         )
         intervention_scalar = evaluate_frozen_head_direction_target(
-            model, clean, owned_inputs, frozen
+            model, clean, owned_inputs, frozen,
+            clean_input_sha256=clean_digest,
+            intervention_input_sha256=intervention_digest,
         )
         baseline_scalar = float(torch.dot(frozen.u, frozen.g_baseline).item())
         contribution = _matched_token_contributions_from_values(
@@ -3028,7 +3200,10 @@ def matched_fixed_clean_attention_patch_token_contribution_at_intervention(
                 intervention_scalar.value - baseline_scalar
             ),
         )
-        _verify_frozen_head_target(frozen, model, clean)
+        _verify_frozen_head_target(
+            frozen, model, clean,
+            clean_input_sha256=clean_digest,
+        )
 
     patch_map = contribution.patch_map
     if patch_map is None:

@@ -24,6 +24,7 @@ from torch import nn
 
 from . import attribution
 from .attribution import IGResult
+from .stage_c_integrity import CheapTensorSnapshot, model_live_signature
 from .stage_c_maps import (
     ComparisonLine,
     MethodResult,
@@ -170,42 +171,29 @@ def _tensor_sha256(value: torch.Tensor) -> str:
     return digest.hexdigest()
 
 
-def _model_state_signature(model: nn.Module) -> tuple[tuple[Any, ...], ...]:
-    """Bind a target to one live model topology and tensor-state revision."""
+def _prebound_sha256(value: str | None, *, name: str) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value):
+        raise ValueError(f"{name} must be a lowercase SHA-256 or None")
+    return value
 
-    signature: list[tuple[Any, ...]] = []
-    for name, module in model.named_modules(remove_duplicate=False):
-        signature.append(
-            (
-                "module",
-                name,
-                id(module),
-                f"{type(module).__module__}.{type(module).__qualname__}",
-            )
-        )
-    for kind, named_tensors in (
-        ("parameter", model.named_parameters(remove_duplicate=False)),
-        ("buffer", model.named_buffers(remove_duplicate=False)),
-    ):
-        for name, value in named_tensors:
-            detached_cpu = value.detach().to(device="cpu").contiguous()
-            content_sha256 = hashlib.sha256(
-                detached_cpu.numpy().tobytes(order="C")
-            ).hexdigest()
-            signature.append(
-                (
-                    kind,
-                    name,
-                    id(value),
-                    int(value.data_ptr()),
-                    int(value._version),
-                    tuple(value.shape),
-                    str(value.dtype),
-                    str(value.device),
-                    content_sha256,
-                )
-            )
-    return tuple(signature)
+
+def _model_state_signature(model: nn.Module) -> tuple[tuple[Any, ...], ...]:
+    """Bind a target to cheap live model state, never tensor contents.
+
+    The historical private name is retained because frozen target fields and
+    downstream imports use it.  Full-content verification now lives only in
+    :func:`stage_c_integrity.strong_model_signature` at model-load and
+    execution-unit boundaries.
+    """
+
+    # ``requires_grad`` is caller lifecycle state, not part of the target's
+    # persistent model binding.  Operation guards snapshot it separately and
+    # verify it after the attribution-state context has restored the caller.
+    return model_live_signature(
+        model, include_lifecycle=False, include_requires_grad=False
+    )
 
 
 def _model_binding_sha256(signature: tuple[tuple[Any, ...], ...]) -> str:
@@ -232,7 +220,46 @@ def _target_identity_snapshot(
         target.runtime_model_binding_sha256,
         id(target._model_ref),
         target._model_state_signature,
+        id(target._clean_input_ref),
+        id(target._clean_input_state),
+        target._clean_input_state.signature,
     )
+
+
+@contextmanager
+def _cheap_runtime_integrity_guard(
+    model: nn.Module,
+    *,
+    tensors: tuple[tuple[str, torch.Tensor], ...],
+    target: "FrozenClassLogitTarget",
+    context: str,
+) -> Iterator[None]:
+    """Guard one hot-path operation without reading tensor contents."""
+
+    model_state = model_live_signature(model, include_lifecycle=True)
+    tensor_states = tuple(
+        (name, tensor, CheapTensorSnapshot.capture(tensor))
+        for name, tensor in tensors
+    )
+    target_identity = _target_identity_snapshot(target)
+    try:
+        yield
+    finally:
+        violations: list[str] = []
+        if model_live_signature(model, include_lifecycle=True) != model_state:
+            violations.append("model parameter/buffer state")
+        for name, tensor, snapshot in tensor_states:
+            if not snapshot.verify(tensor).matched:
+                violations.append(name)
+        if (
+            _ISSUED_TARGETS.get(target) != target_identity
+            or _target_identity_snapshot(target) != target_identity
+        ):
+            violations.append("frozen class target")
+        if violations:
+            raise StageCClassLogitError(
+                f"{context} mutated " + ", ".join(violations)
+            )
 
 
 @dataclass(frozen=True, init=False, eq=False)
@@ -253,6 +280,10 @@ class FrozenClassLogitTarget:
     _model_state_signature: tuple[tuple[Any, ...], ...] = field(
         repr=False, compare=False
     )
+    _clean_input_ref: weakref.ReferenceType[torch.Tensor] = field(
+        repr=False, compare=False
+    )
+    _clean_input_state: CheapTensorSnapshot = field(repr=False, compare=False)
     _issuer_nonce: bytes = field(repr=False, compare=False)
 
     def __init__(self, *_args: Any, **_kwargs: Any) -> None:
@@ -266,6 +297,7 @@ class FrozenClassLogitTarget:
         cls,
         *,
         model: nn.Module,
+        clean_inputs: torch.Tensor,
         class_index: int,
         clean_raw_logit: float,
         class_count: int,
@@ -294,6 +326,8 @@ class FrozenClassLogitTarget:
             "runtime_model_binding_sha256": _model_binding_sha256(signature),
             "_model_ref": weakref.ref(model),
             "_model_state_signature": signature,
+            "_clean_input_ref": weakref.ref(clean_inputs),
+            "_clean_input_state": CheapTensorSnapshot.capture(clean_inputs),
             "_issuer_nonce": issuer_nonce,
         }.items():
             object.__setattr__(instance, name, value)
@@ -347,6 +381,10 @@ class FrozenClassLogitTarget:
             raise TypeError("frozen target has an invalid live-model reference")
         if not isinstance(self._model_state_signature, tuple):
             raise TypeError("frozen target has an invalid model-state signature")
+        if not isinstance(self._clean_input_ref, weakref.ReferenceType):
+            raise TypeError("frozen target has an invalid clean-input reference")
+        if not isinstance(self._clean_input_state, CheapTensorSnapshot):
+            raise TypeError("frozen target has an invalid clean-input snapshot")
         if not isinstance(self._issuer_nonce, bytes) or len(self._issuer_nonce) != 32:
             raise TypeError("frozen target has an invalid issuer nonce")
 
@@ -467,6 +505,7 @@ def resolve_clean_class_logit_target(
     clean_raw_logit = float(logits[0, class_index].item())
     return FrozenClassLogitTarget._create(
         model=model,
+        clean_inputs=inputs,
         class_index=class_index,
         clean_raw_logit=clean_raw_logit,
         class_count=class_count,
@@ -479,7 +518,11 @@ def resolve_clean_class_logit_target(
 
 
 def _verify_frozen_target(
-    frozen_target: Any, clean_inputs: torch.Tensor, model: nn.Module
+    frozen_target: Any,
+    clean_inputs: torch.Tensor,
+    model: nn.Module,
+    *,
+    clean_input_sha256: str | None = None,
 ) -> FrozenClassLogitTarget:
     if not isinstance(frozen_target, FrozenClassLogitTarget):
         raise TypeError(
@@ -495,7 +538,20 @@ def _verify_frozen_target(
         raise StageCClassLogitError(
             "clean input shape does not match the frozen target context"
         )
-    if _tensor_sha256(clean_inputs) != frozen_target.clean_input_sha256:
+    if frozen_target._clean_input_ref() is not clean_inputs:
+        raise StageCClassLogitError(
+            "clean input object does not match the frozen target context"
+        )
+    if not frozen_target._clean_input_state.verify(clean_inputs).matched:
+        raise StageCClassLogitError(
+            "clean input live state changed after target resolution"
+        )
+    clean_digest = _prebound_sha256(
+        clean_input_sha256, name="clean_input_sha256"
+    )
+    if clean_digest is None:
+        clean_digest = _tensor_sha256(clean_inputs)
+    if clean_digest != frozen_target.clean_input_sha256:
         raise StageCClassLogitError(
             "clean input bytes do not match the frozen target context"
         )
@@ -553,6 +609,9 @@ def evaluate_frozen_class_logit_target(
     clean_inputs: torch.Tensor,
     intervention_inputs: torch.Tensor,
     target: FrozenClassLogitTarget,
+    *,
+    clean_input_sha256: str | None = None,
+    intervention_input_sha256: str | None = None,
 ) -> FrozenScalarEvaluation:
     """Evaluate the originally resolved class logit at normalized ``z``.
 
@@ -566,14 +625,30 @@ def evaluate_frozen_class_logit_target(
         raise StageCClassLogitError(
             "intervention input device must match the clean input context"
         )
-    frozen = _verify_frozen_target(target, clean, model)
-    caller_clean_sha256 = _tensor_sha256(clean)
-    caller_intervention_sha256 = _tensor_sha256(intervention)
+    clean_digest = _prebound_sha256(
+        clean_input_sha256, name="clean_input_sha256"
+    )
+    intervention_digest = _prebound_sha256(
+        intervention_input_sha256, name="intervention_input_sha256"
+    )
+    if clean_digest is None:
+        clean_digest = _tensor_sha256(clean)
+    if intervention_digest is None:
+        intervention_digest = _tensor_sha256(intervention)
+    frozen = _verify_frozen_target(
+        target, clean, model, clean_input_sha256=clean_digest
+    )
     owned_intervention = intervention.detach().clone()
-    owned_sha256 = _tensor_sha256(owned_intervention)
-    model_state_before = _model_state_signature(model)
-    target_identity_before = _target_identity_snapshot(frozen)
-    try:
+    with _cheap_runtime_integrity_guard(
+        model,
+        tensors=(
+            ("caller clean-input tensor", clean),
+            ("caller intervention-input tensor", intervention),
+            ("private intervention-input clone", owned_intervention),
+        ),
+        target=frozen,
+        context="frozen class scalar evaluation",
+    ):
         with _preserve_model_attribution_state(model, freeze_parameters=True):
             with torch.no_grad():
                 logits = _require_logits(
@@ -584,33 +659,16 @@ def evaluate_frozen_class_logit_target(
                     f"model raw logits must have float32 dtype, got {logits.dtype}"
                 )
             value = float(logits[0, frozen.class_index].item())
-    finally:
-        violations: list[str] = []
-        if _model_state_signature(model) != model_state_before:
-            violations.append("model parameter/buffer state")
-        if _tensor_sha256(clean) != caller_clean_sha256:
-            violations.append("caller clean-input tensor")
-        if _tensor_sha256(intervention) != caller_intervention_sha256:
-            violations.append("caller intervention-input tensor")
-        if _tensor_sha256(owned_intervention) != owned_sha256:
-            violations.append("private intervention-input clone")
-        if (
-            _ISSUED_TARGETS.get(frozen) != target_identity_before
-            or _target_identity_snapshot(frozen) != target_identity_before
-        ):
-            violations.append("frozen class target")
-        if violations:
-            raise StageCClassLogitError(
-                "frozen class scalar evaluation mutated " + ", ".join(violations)
-            )
-    _verify_frozen_target(frozen, clean, model)
+    _verify_frozen_target(
+        frozen, clean, model, clean_input_sha256=clean_digest
+    )
     if not math.isfinite(value):
         raise StageCClassLogitError("frozen class scalar is non-finite")
     return FrozenScalarEvaluation._create(
         value=value,
         class_index=frozen.class_index,
         clean_input_sha256=frozen.clean_input_sha256,
-        intervention_input_sha256=caller_intervention_sha256,
+        intervention_input_sha256=intervention_digest,
         runtime_model_binding_sha256=frozen.runtime_model_binding_sha256,
         issuer_secret=_TARGET_ISSUER_SECRET,
     )
@@ -755,6 +813,7 @@ def vit_grad_cam_block11_norm1_at_intervention(
     frozen_target: FrozenClassLogitTarget,
     *,
     provenance: Mapping[str, Any] | None = None,
+    intervention_input_sha256: str | None = None,
 ) -> MethodResult:
     """Compute frozen-class ViT Grad-CAM at arbitrary normalized ``z``."""
 
@@ -768,11 +827,25 @@ def vit_grad_cam_block11_norm1_at_intervention(
         raise StageCClassLogitError(
             "intervention input device must match the clean input context"
         )
-    target = _verify_frozen_target(frozen_target, clean, model)
+    intervention_digest = _prebound_sha256(
+        intervention_input_sha256, name="intervention_input_sha256"
+    )
+    if intervention_digest is None:
+        intervention_digest = _tensor_sha256(inputs)
+    target = _verify_frozen_target(
+        frozen_target, clean, model,
+        clean_input_sha256=(
+            frozen_target.clean_input_sha256
+            if isinstance(frozen_target, FrozenClassLogitTarget) else None
+        ),
+    )
     target_layer = _resolve_grad_cam_layer(model)
-    caller_intervention_sha256 = _tensor_sha256(inputs)
-
-    try:
+    with _cheap_runtime_integrity_guard(
+        model,
+        tensors=(("caller intervention-input tensor", inputs),),
+        target=target,
+        context="Grad-CAM",
+    ):
         with _preserve_model_attribution_state(
             model, freeze_parameters=True
         ), _ActivationCapture(target_layer) as capture, torch.enable_grad():
@@ -804,13 +877,9 @@ def vit_grad_cam_block11_norm1_at_intervention(
                     "frozen target logit does not depend on blocks[11].norm1"
                 )
             cam = vit_grad_cam_patch_map(activation, gradient)
-    finally:
-        if _tensor_sha256(inputs) != caller_intervention_sha256:
-            raise StageCClassLogitError(
-                "Grad-CAM mutated caller intervention_inputs"
-            )
-
-    _verify_frozen_target(target, clean, model)
+    _verify_frozen_target(
+        target, clean, model, clean_input_sha256=target.clean_input_sha256
+    )
     values = cam.to(device="cpu", dtype=torch.float32).numpy().copy()
     method_provenance = _base_provenance(
         exact_name=(
@@ -819,7 +888,7 @@ def vit_grad_cam_block11_norm1_at_intervention(
         frozen_target=target,
         provenance=provenance,
     )
-    method_provenance["intervention_input_sha256"] = caller_intervention_sha256
+    method_provenance["intervention_input_sha256"] = intervention_digest
     method_provenance["algorithm"] = {
         "target_layer": TARGET_LAYER,
         "activation_layout": "batch_token_channel",
@@ -862,7 +931,11 @@ def vit_grad_cam_block11_norm1(
     """Compute ViT Grad-CAM at the clean input for the frozen class."""
 
     return vit_grad_cam_block11_norm1_at_intervention(
-        model, clean_inputs, clean_inputs, frozen_target, provenance=provenance
+        model, clean_inputs, clean_inputs, frozen_target, provenance=provenance,
+        intervention_input_sha256=(
+            frozen_target.clean_input_sha256
+            if isinstance(frozen_target, FrozenClassLogitTarget) else None
+        ),
     )
 
 
@@ -1073,7 +1146,13 @@ def full_model_class_logit_ig(
             "full-model class-logit IG cannot run inside torch.inference_mode()"
         )
     inputs = _validate_clean_input(clean_inputs)
-    target = _verify_frozen_target(frozen_target, inputs, model)
+    target = _verify_frozen_target(
+        frozen_target, inputs, model,
+        clean_input_sha256=(
+            frozen_target.clean_input_sha256
+            if isinstance(frozen_target, FrozenClassLogitTarget) else None
+        ),
+    )
     baseline = torch.zeros_like(inputs)
 
     with _preserve_model_attribution_state(
@@ -1090,7 +1169,9 @@ def full_model_class_logit_ig(
             rtol=IG_RTOL,
         )
     result = _validate_ig_result(result, target=target)
-    _verify_frozen_target(target, inputs, model)
+    _verify_frozen_target(
+        target, inputs, model, clean_input_sha256=target.clean_input_sha256
+    )
 
     native_values = (
         result.attribution[0].detach().to(device="cpu", dtype=torch.float32).numpy().copy()
@@ -1153,6 +1234,7 @@ def full_model_class_logit_ig_at_intervention(
     frozen_target: FrozenClassLogitTarget,
     *,
     provenance: Mapping[str, Any] | None = None,
+    intervention_input_sha256: str | None = None,
 ) -> MethodResult:
     """Run full-model IG from normalized zero to arbitrary ``z``."""
 
@@ -1166,11 +1248,29 @@ def full_model_class_logit_ig_at_intervention(
         raise StageCClassLogitError(
             "intervention input device must match the clean input context"
         )
-    target = _verify_frozen_target(frozen_target, clean, model)
+    intervention_digest = _prebound_sha256(
+        intervention_input_sha256, name="intervention_input_sha256"
+    )
+    if intervention_digest is None:
+        intervention_digest = _tensor_sha256(inputs)
+    target = _verify_frozen_target(
+        frozen_target, clean, model,
+        clean_input_sha256=(
+            frozen_target.clean_input_sha256
+            if isinstance(frozen_target, FrozenClassLogitTarget) else None
+        ),
+    )
     baseline = torch.zeros_like(inputs)
-    intervention_sha256 = _tensor_sha256(inputs)
     owned_inputs = inputs.detach().clone()
-    try:
+    with _cheap_runtime_integrity_guard(
+        model,
+        tensors=(
+            ("caller intervention-input tensor", inputs),
+            ("private intervention-input clone", owned_inputs),
+        ),
+        target=target,
+        context="full-model intervention IG",
+    ):
         with _preserve_model_attribution_state(
             model, freeze_parameters=True
         ), torch.enable_grad():
@@ -1193,15 +1293,12 @@ def full_model_class_logit_ig_at_intervention(
                 steps=IG_STEPS, step_chunk_size=IG_STEP_CHUNK_SIZE,
                 atol=IG_ATOL, rtol=IG_RTOL,
             )
-    finally:
-        if _tensor_sha256(inputs) != intervention_sha256:
-            raise StageCClassLogitError(
-                "full-model intervention IG mutated caller intervention input"
-            )
     result = _validate_ig_result(
         result, target=target, expected_delta=expected_delta
     )
-    _verify_frozen_target(target, clean, model)
+    _verify_frozen_target(
+        target, clean, model, clean_input_sha256=target.clean_input_sha256
+    )
     native_values = result.attribution[0].detach().to(
         device="cpu", dtype=torch.float32
     ).numpy().copy()
@@ -1215,11 +1312,7 @@ def full_model_class_logit_ig_at_intervention(
         exact_name="full-model class-logit IG",
         frozen_target=target, provenance=provenance,
     )
-    if _tensor_sha256(inputs) != intervention_sha256:
-        raise StageCClassLogitError(
-            "full-model intervention IG mutated the caller intervention input"
-        )
-    method_provenance["intervention_input_sha256"] = intervention_sha256
+    method_provenance["intervention_input_sha256"] = intervention_digest
     method_provenance["algorithm"] = {
         "model_scope": "real_unmodified_full_model",
         "scalar": "frozen_clean_predicted_class_raw_logit",

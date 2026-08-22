@@ -38,6 +38,13 @@ PROVENANCE_PATH = "L0/provenance.json"
 PROVENANCE_DOCUMENT_TYPE = "stage_c_execution_unit_provenance"
 MANIFEST_DOCUMENT_TYPE = "stage_c_execution_unit_manifest"
 STATUS_DOCUMENT_TYPE = "stage_c_execution_unit_status"
+RUNNER_TELEMETRY_SCHEMA_VERSION = 1
+_REQUIRED_PHASES = {
+    "attribution_or_map_compute",
+    "fidelity_compute",
+    "integrity_checking",
+    "artifact_finalize",
+}
 
 FAULT_AFTER_RUNNING = "after_running"
 FAULT_AFTER_PAYLOAD = "after_payload"
@@ -595,6 +602,64 @@ class StageCArtifactWriter:
             # fresh attempt or its batch failure table.
             raise
 
+    def publish_runner_telemetry(
+        self, telemetry: Mapping[str, Any]
+    ) -> dict[str, Any]:
+        """Atomically bind post-finalize timing and lifecycle evidence.
+
+        The synchronized total deliberately stops after the first terminal
+        validation.  This final status replacement is excluded because a
+        status document cannot recursively include the time required to write
+        itself.  Batch controls bind the resulting status bytes by SHA-256.
+        """
+
+        if not self._terminal:
+            raise ArtifactWriterStateError(
+                "runner telemetry requires a terminal attempt"
+            )
+        value = _json_copy(telemetry)
+        errors: list[str] = []
+        _validate_runner_telemetry(value, errors)
+        if errors:
+            raise ArtifactPolicyError(
+                "invalid runner telemetry: " + "; ".join(errors)
+            )
+        status = _strict_json_loads(self.status_path.read_bytes())
+        if "runner_telemetry" in status:
+            raise ArtifactWriterStateError(
+                "runner telemetry is already immutable"
+            )
+        telemetry_payload = canonical_json_bytes(value)
+        manifest = _strict_json_loads(self.manifest_path.read_bytes())
+        if "runner_telemetry_sha256" in manifest:
+            raise ArtifactWriterStateError(
+                "runner telemetry digest is already immutable"
+            )
+        manifest["runner_telemetry_sha256"] = hashlib.sha256(
+            telemetry_payload
+        ).hexdigest()
+        manifest_payload = _json_file_bytes(manifest)
+        status["manifest_sha256"] = hashlib.sha256(manifest_payload).hexdigest()
+        status["runner_telemetry"] = value
+        status_payload = _json_file_bytes(status)
+        # The terminal telemetry is an L0 control and remains inside the same
+        # per-unit cap even though its own publication is outside timed total.
+        artifact_size = sum(int(item["bytes"]) for item in self._artifacts)
+        l2_size = sum(
+            int(item["bytes"]) for item in self._artifacts
+            if item["level"] == "L2"
+        )
+        if len(manifest_payload) + len(status_payload) + artifact_size - l2_size > (
+            self.caps.l0_l1_bytes_max
+        ):
+            raise ArtifactBudgetError(
+                "terminal runner telemetry would exceed the L0/L1 cap"
+            )
+        _atomic_replace(self.manifest_path, manifest_payload)
+        self._published_manifest = manifest
+        _atomic_replace(self.status_path, status_payload)
+        return _json_copy(status)
+
     def fail(
         self,
         reason: str,
@@ -976,8 +1041,12 @@ def validate_execution_unit(
     caps: ArtifactCaps | Mapping[str, Any] | None = None,
     l0_l1_cap_bytes: int | None = None,
     l2_cap_bytes: int | None = None,
+    require_runner_telemetry: bool = False,
 ) -> ExecutionUnitValidation:
     """Validate an attempt without changing any filesystem state."""
+
+    if type(require_runner_telemetry) is not bool:
+        raise TypeError("require_runner_telemetry must be bool")
 
     root = _absolute_path(attempt_dir)
     errors: list[str] = []
@@ -1057,7 +1126,10 @@ def validate_execution_unit(
                 )
 
     if status_value is not None:
-        _validate_status_header(status_value, errors)
+        _validate_status_header(
+            status_value, errors,
+            require_runner_telemetry=require_runner_telemetry,
+        )
         if (
             manifest_digest is not None
             and status_value.get("manifest_sha256") != manifest_digest
@@ -1071,6 +1143,22 @@ def validate_execution_unit(
                     errors.append(f"status/manifest {field} mismatch")
             if status_value.get("failure") != manifest.get("failure"):
                 errors.append("status/manifest failure mismatch")
+            telemetry = status_value.get("runner_telemetry")
+            telemetry_digest = manifest.get("runner_telemetry_sha256")
+            if (telemetry is None) != (telemetry_digest is None):
+                errors.append("status/manifest runner telemetry binding mismatch")
+            elif telemetry is not None:
+                try:
+                    observed_telemetry_digest = hashlib.sha256(
+                        canonical_json_bytes(telemetry)
+                    ).hexdigest()
+                except Exception as exc:
+                    errors.append(f"runner telemetry cannot be hashed: {exc}")
+                else:
+                    if observed_telemetry_digest != telemetry_digest:
+                        errors.append(
+                            "manifest runner_telemetry_sha256 does not match status"
+                        )
 
     expected_files = {MANIFEST_FILENAME, STATUS_FILENAME}
     records: list[Any] = []
@@ -1361,8 +1449,8 @@ def _validate_manifest_header(value: dict[str, Any], errors: list[str]) -> None:
         "provenance_path", "provenance_sha256", "audit", "retention",
         "caps", "artifacts",
     }
-    allowed = required | {"failure"}
-    if set(value) not in (required, allowed):
+    allowed = required | {"failure", "runner_telemetry_sha256"}
+    if not required <= set(value) or set(value) - allowed:
         errors.append("manifest has missing or unknown fields")
     if value.get("schema_version") != SCHEMA_VERSION:
         errors.append("manifest schema_version is invalid")
@@ -1405,15 +1493,24 @@ def _validate_manifest_header(value: dict[str, Any], errors: list[str]) -> None:
         errors.append("failed manifest must contain a failure object")
     if state != "failed" and "failure" in value:
         errors.append("non-failed manifest cannot contain failure")
+    telemetry_digest = value.get("runner_telemetry_sha256")
+    if telemetry_digest is not None and (
+        not isinstance(telemetry_digest, str)
+        or not _SHA256_RE.fullmatch(telemetry_digest)
+    ):
+        errors.append("manifest runner_telemetry_sha256 is invalid")
 
 
-def _validate_status_header(value: dict[str, Any], errors: list[str]) -> None:
+def _validate_status_header(
+    value: dict[str, Any], errors: list[str], *,
+    require_runner_telemetry: bool = False,
+) -> None:
     required = {
         "schema_version", "document_type", "status", "terminal", "complete",
         "unit_identity_sha256", "manifest_sha256",
     }
-    allowed = required | {"failure"}
-    if set(value) not in (required, allowed):
+    allowed = required | {"failure", "runner_telemetry"}
+    if not required <= set(value) or set(value) - allowed:
         errors.append("status has missing or unknown fields")
     if value.get("schema_version") != SCHEMA_VERSION:
         errors.append("status schema_version is invalid")
@@ -1444,6 +1541,214 @@ def _validate_status_header(value: dict[str, Any], errors: list[str]) -> None:
         errors.append("failed status must contain failure")
     if state != "failed" and "failure" in value:
         errors.append("non-failed status cannot contain failure")
+    telemetry = value.get("runner_telemetry")
+    if state in {"complete", "failed"}:
+        if telemetry is None and require_runner_telemetry:
+            errors.append("terminal status is missing runner_telemetry")
+        elif telemetry is not None:
+            _validate_runner_telemetry(telemetry, errors)
+    elif telemetry is not None:
+        errors.append("running status cannot contain runner_telemetry")
+
+
+def _validate_runner_telemetry(value: Any, errors: list[str]) -> None:
+    context = "status runner_telemetry"
+    if not isinstance(value, dict):
+        errors.append(f"{context} must be an object")
+        return
+    required = {
+        "schema_version", "phase_timings", "lifecycle",
+        "measurement_environment",
+    }
+    if set(value) != required:
+        errors.append(f"{context} has missing or unknown fields")
+        return
+    if value.get("schema_version") != RUNNER_TELEMETRY_SCHEMA_VERSION:
+        errors.append(f"{context} schema_version is invalid")
+
+    timings = value.get("phase_timings")
+    timing_fields = {
+        "clock", "synchronization", "phases",
+        "synchronized_total_wall_time_seconds", "total_boundary",
+        "phases_are_mutually_exclusive",
+    }
+    if not isinstance(timings, dict) or set(timings) != timing_fields:
+        errors.append(f"{context}.phase_timings has missing or unknown fields")
+    else:
+        if timings.get("clock") != "perf_counter":
+            errors.append(f"{context}.phase_timings clock is invalid")
+        if timings.get("synchronization") != (
+            "device_before_and_after_each_phase"
+        ):
+            errors.append(f"{context}.phase_timings synchronization is invalid")
+        if timings.get("total_boundary") != (
+            "unit_start_through_first_complete_validation_"
+            "excluding_telemetry_publication"
+        ):
+            errors.append(f"{context}.phase_timings total boundary is invalid")
+        if timings.get("phases_are_mutually_exclusive") is not False:
+            errors.append(f"{context}.phase_timings must declare overlapping phases")
+        total = timings.get("synchronized_total_wall_time_seconds")
+        if not _finite_nonnegative(total):
+            errors.append(f"{context}.phase_timings total is invalid")
+            total = None
+        phases = timings.get("phases")
+        if not isinstance(phases, dict) or set(phases) != _REQUIRED_PHASES:
+            errors.append(f"{context}.phase_timings phases are invalid")
+        else:
+            for name in sorted(_REQUIRED_PHASES):
+                item = phases[name]
+                if not isinstance(item, dict) or set(item) != {
+                    "wall_time_seconds", "invocations"
+                }:
+                    errors.append(f"{context}.phase_timings.{name} is invalid")
+                    continue
+                duration = item.get("wall_time_seconds")
+                invocations = item.get("invocations")
+                if not _finite_nonnegative(duration):
+                    errors.append(
+                        f"{context}.phase_timings.{name} duration is invalid"
+                    )
+                elif total is not None and duration > total:
+                    errors.append(
+                        f"{context}.phase_timings.{name} exceeds total wall"
+                    )
+                if type(invocations) is not int or invocations < 0:
+                    errors.append(
+                        f"{context}.phase_timings.{name} invocations is invalid"
+                    )
+
+    lifecycle_envelope = value.get("lifecycle")
+    if (
+        not isinstance(lifecycle_envelope, dict)
+        or set(lifecycle_envelope) != {"integrity", "restoration"}
+    ):
+        errors.append(f"{context}.lifecycle has missing or unknown fields")
+        lifecycle = None
+        restoration = None
+    else:
+        lifecycle = lifecycle_envelope.get("integrity")
+        restoration = lifecycle_envelope.get("restoration")
+    lifecycle_fields = {
+        "schema_version", "algorithm", "checked", "entry_sha256",
+        "exit_sha256", "matched", "restored", "differences",
+        "signature_calls", "verification_error_type",
+        "verification_error_message", "body_exception_type",
+    }
+    if not isinstance(lifecycle, dict) or set(lifecycle) != lifecycle_fields:
+        errors.append(
+            f"{context}.lifecycle.integrity has missing or unknown fields"
+        )
+    else:
+        if lifecycle.get("schema_version") != 1:
+            errors.append(f"{context}.lifecycle schema_version is invalid")
+        if not isinstance(lifecycle.get("algorithm"), str) or not lifecycle["algorithm"]:
+            errors.append(f"{context}.lifecycle algorithm is invalid")
+        checked = lifecycle.get("checked")
+        if not isinstance(checked, list) or not checked or not all(
+            isinstance(item, str) and item for item in checked
+        ):
+            errors.append(f"{context}.lifecycle checked is invalid")
+        for field in ("entry_sha256", "exit_sha256"):
+            digest = lifecycle.get(field)
+            if digest is not None and (
+                not isinstance(digest, str) or not _SHA256_RE.fullmatch(digest)
+            ):
+                errors.append(f"{context}.lifecycle {field} is invalid")
+        if lifecycle.get("matched") is not lifecycle.get("restored"):
+            errors.append(f"{context}.lifecycle matched/restored disagree")
+        if lifecycle.get("matched") is True and (
+            lifecycle.get("entry_sha256") != lifecycle.get("exit_sha256")
+        ):
+            errors.append(f"{context}.lifecycle matched digests disagree")
+        differences = lifecycle.get("differences")
+        if not isinstance(differences, list) or not all(
+            isinstance(item, str) and item for item in differences
+        ):
+            errors.append(f"{context}.lifecycle differences are invalid")
+        elif bool(differences) is lifecycle.get("matched"):
+            errors.append(f"{context}.lifecycle differences disagree with matched")
+        calls = lifecycle.get("signature_calls")
+        if type(calls) is not int or calls not in {1, 2}:
+            errors.append(f"{context}.lifecycle signature_calls is invalid")
+        for field in (
+            "verification_error_type", "verification_error_message",
+            "body_exception_type",
+        ):
+            if lifecycle.get(field) is not None and (
+                not isinstance(lifecycle[field], str) or not lifecycle[field]
+            ):
+                errors.append(f"{context}.lifecycle {field} is invalid")
+    restoration_fields = {
+        "schema_version", "checked", "changes_detected", "restored",
+        "differences", "errors",
+    }
+    if restoration is not None:
+        if not isinstance(restoration, dict) or set(restoration) != restoration_fields:
+            errors.append(
+                f"{context}.lifecycle.restoration has missing or unknown fields"
+            )
+        else:
+            if restoration.get("schema_version") != 1:
+                errors.append(
+                    f"{context}.lifecycle.restoration schema_version is invalid"
+                )
+            for field in ("changes_detected", "restored"):
+                if type(restoration.get(field)) is not bool:
+                    errors.append(
+                        f"{context}.lifecycle.restoration {field} is invalid"
+                    )
+            for field in ("checked", "differences", "errors"):
+                items = restoration.get(field)
+                if not isinstance(items, list) or not all(
+                    isinstance(item, str) and item for item in items
+                ):
+                    errors.append(
+                        f"{context}.lifecycle.restoration {field} is invalid"
+                    )
+
+    environment = value.get("measurement_environment")
+    environment_fields = {
+        "device_type", "device", "device_name",
+        "cuda_runtime_version", "cudnn_version",
+    }
+    if not isinstance(environment, dict) or set(environment) != environment_fields:
+        errors.append(
+            f"{context}.measurement_environment has missing or unknown fields"
+        )
+    elif environment.get("device_type") == "cpu":
+        if environment.get("device") != "cpu" or any(
+            environment.get(name) is not None
+            for name in ("device_name", "cuda_runtime_version", "cudnn_version")
+        ):
+            errors.append(f"{context}.measurement_environment CPU fields are invalid")
+    elif environment.get("device_type") == "cuda":
+        if not all(
+            isinstance(environment.get(name), str) and environment[name]
+            for name in ("device", "device_name", "cuda_runtime_version")
+        ) or type(environment.get("cudnn_version")) is not int:
+            errors.append(f"{context}.measurement_environment CUDA fields are invalid")
+    else:
+        errors.append(f"{context}.measurement_environment device_type is invalid")
+
+
+def validate_runner_telemetry(value: Mapping[str, Any]) -> None:
+    """Validate the public terminal runner-telemetry contract."""
+
+    errors: list[str] = []
+    _validate_runner_telemetry(value, errors)
+    if errors:
+        raise ArtifactPolicyError(
+            "invalid runner telemetry: " + "; ".join(errors)
+        )
+
+
+def _finite_nonnegative(value: Any) -> bool:
+    return (
+        type(value) in {int, float}
+        and math.isfinite(float(value))
+        and value >= 0
+    )
 
 
 def _validate_artifact_payload(
@@ -2275,4 +2580,5 @@ __all__ = [
     "next_attempt_directory",
     "unit_identity_sha256",
     "validate_execution_unit",
+    "validate_runner_telemetry",
 ]

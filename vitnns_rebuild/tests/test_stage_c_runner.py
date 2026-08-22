@@ -661,6 +661,23 @@ def test_normal_unit_run_is_complete_and_hash_valid(tmp_path):
     assert validation.valid is True
     assert validation.resumable is True
     assert validation.errors == ()
+    telemetry = status["runner_telemetry"]
+    timings = telemetry["phase_timings"]
+    assert set(timings["phases"]) == {
+        "attribution_or_map_compute", "fidelity_compute",
+        "integrity_checking", "artifact_finalize",
+    }
+    assert timings["synchronized_total_wall_time_seconds"] >= max(
+        item["wall_time_seconds"] for item in timings["phases"].values()
+    )
+    assert telemetry["measurement_environment"]["device_type"] == "cpu"
+    assert telemetry["lifecycle"]["integrity"]["algorithm"] == (
+        "unavailable_non_model_backend"
+    )
+    assert validate_execution_unit(
+        attempt_path, expected_unit_identity=unit.key.to_dict(),
+        require_runner_telemetry=True,
+    ).resumable
 
 
 def test_valid_complete_resume_skips_backend_and_reuses_attempt(tmp_path):
@@ -783,6 +800,108 @@ def test_failed_attempt_is_preserved_and_resume_uses_fresh_attempt(tmp_path):
     assert successful.state == "succeeded"
     assert _path(successful.attempt_path) != failed_path
     assert (failed_path / "status.json").read_bytes() == failed_status
+    failed_telemetry = _json(failed_path / "status.json")["runner_telemetry"]
+    assert failed_telemetry["phase_timings"][
+        "synchronized_total_wall_time_seconds"
+    ] >= failed_telemetry["phase_timings"]["phases"][
+        "artifact_finalize"
+    ]["wall_time_seconds"]
+    assert failed_telemetry["lifecycle"]["integrity"][
+        "body_exception_type"
+    ] == "builtins.RuntimeError"
+
+
+def test_resume_rejects_complete_attempt_without_runner_telemetry(tmp_path):
+    output_root = tmp_path / "run"
+    unit = toy_unit()
+    plan = ToyPlan((unit,))
+    first = run_toy_unit(
+        unit, output_root=output_root, backend=ToyBackend(), resume=True, plan=plan,
+    )
+    attempt = _path(first.attempt_path)
+    status = _json(attempt / "status.json")
+    status.pop("runner_telemetry")
+    manifest = _json(attempt / "manifest.json")
+    manifest.pop("runner_telemetry_sha256")
+    (attempt / "manifest.json").write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    status["manifest_sha256"] = hashlib.sha256(
+        (attempt / "manifest.json").read_bytes()
+    ).hexdigest()
+    (attempt / "status.json").write_text(
+        json.dumps(status, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+    backend = ToyBackend()
+    second = run_toy_unit(
+        unit, output_root=output_root, backend=backend, resume=True, plan=plan,
+    )
+
+    assert second.state == "succeeded"
+    assert second.attempt_path != first.attempt_path
+    assert len(backend.calls) == 1
+
+
+def test_total_timer_stops_after_first_finalize_validation(
+    monkeypatch, tmp_path
+):
+    import vitnns.stage_c_artifacts as artifacts
+    import vitnns.stage_c_runner as runner
+    from vitnns.stage_c_resources import PhaseTimer as RealPhaseTimer
+
+    timers = []
+
+    def make_timer(*, device):
+        timer = RealPhaseTimer(device=device)
+        timers.append(timer)
+        return timer
+
+    original_validate = artifacts.validate_execution_unit
+    validation_states = []
+
+    def observed_validate(*args, **kwargs):
+        validation_states.append((
+            timers[-1].stopped, kwargs.get("require_runner_telemetry", False)
+        ))
+        return original_validate(*args, **kwargs)
+
+    monkeypatch.setattr(runner, "PhaseTimer", make_timer)
+    monkeypatch.setattr(artifacts, "validate_execution_unit", observed_validate)
+
+    result = run_toy_unit(
+        toy_unit(), output_root=tmp_path / "run", backend=ToyBackend(),
+        resume=False,
+    )
+
+    assert result.state == "succeeded"
+    assert validation_states == [(False, False), (True, True)]
+
+
+def test_phase_timing_does_not_change_batched_call_accounting(tmp_path):
+    class CountingBackend(ToyBackend):
+        def run(self, unit, *, device, call_counter):
+            call_counter.record_forward(2)
+            call_counter.record_backward(1)
+            return super().run(
+                unit, device=device, call_counter=call_counter
+            )
+
+    result = run_toy_unit(
+        toy_unit(), output_root=tmp_path / "run",
+        backend=CountingBackend(), resume=False,
+    )
+    attempt = _path(result.attempt_path)
+    l0 = _json(attempt / "L0" / "result.json")
+
+    assert l0["resources"]["calls"] == {
+        "accounting_unit": "batched_model_invocation",
+        "forward_calls": 2,
+        "backward_calls": 1,
+    }
+    assert _json(attempt / "status.json")["runner_telemetry"][
+        "phase_timings"
+    ]["phases"]["attribution_or_map_compute"]["invocations"] == 1
 
 
 def test_production_pre_target_failure_is_terminal_and_retry_uses_fresh_attempt(
@@ -1027,6 +1146,52 @@ def test_production_backend_reexecutes_each_clean_repeat(monkeypatch):
     assert len(method_calls) == 3
     assert [item["repeat_index"] for item in payload.l0["repeatability"]] == [1, 2]
     assert all(item["pass"] is True for item in payload.l0["repeatability"])
+    assert [
+        item["input_variant"]
+        for item in payload.l0["map_execution_records"]
+    ] == ["clean", "repeat_clean", "repeat_clean"]
+    assert all(
+        item["actual_calls"]["accounting_unit"]
+        == "batched_model_invocation"
+        for item in payload.l0["map_execution_records"]
+    )
+
+
+def test_production_backend_strong_signatures_scale_by_unit_not_maps(
+    monkeypatch
+):
+    from vitnns import stage_c_integrity
+
+    unit = toy_unit(
+        audit=True, method_id=ROLLOUT_METHOD,
+        work_items=(
+            _map_work("clean", 0),
+            _map_work("repeat_clean", 1),
+            _map_work("repeat_clean", 2),
+        ),
+    )
+    backend, _method_calls = _production_backend_harness(
+        monkeypatch, unit,
+        [_method_result(ROLLOUT_METHOD) for _index in range(6)],
+    )
+    original = stage_c_integrity.strong_model_signature
+    calls = 0
+
+    def counted(model):
+        nonlocal calls
+        calls += 1
+        return original(model)
+
+    monkeypatch.setattr(stage_c_integrity, "strong_model_signature", counted)
+
+    first = backend.run(unit, device="cpu", call_counter=CallCounter())
+    second = backend.run(unit, device="cpu", call_counter=CallCounter())
+
+    assert calls == 1 + 2 * 2
+    for payload in (first, second):
+        assert payload.lifecycle["integrity"]["signature_calls"] == 2
+        assert payload.lifecycle["integrity"]["matched"] is True
+        assert payload.lifecycle["restoration"]["restored"] is True
 
 
 def test_production_backend_fails_on_nonrepeatable_clean_map(monkeypatch):
@@ -1074,6 +1239,18 @@ def test_production_backend_without_stability_never_builds_perturbations(
     assert payload.l0["stability_enabled"] is False
     assert payload.l0["perturbations"] == []
     assert backend._perturbations == {}
+
+
+def test_frozen_perturbation_ids_are_not_copied_into_provenance_parameters():
+    from vitnns.stage_c_config import load_stage_c_config
+    from vitnns.stage_c_runner import _provenance_perturbation_parameters
+
+    items = load_stage_c_config().perturbations["items"]
+    parameters = _provenance_perturbation_parameters(items)
+
+    assert tuple(parameters) == tuple(item["id"] for item in items)
+    assert all("id" not in value for value in parameters.values())
+    assert all("id" in item for item in items)
 
 
 def test_structural_raw_attention_executes_and_retains_all_perturbation_maps(
@@ -1140,6 +1317,30 @@ def test_structural_raw_attention_executes_and_retains_all_perturbation_maps(
         for item in payload.l0["structural_perturbations"]
     )
     assert payload.l0["fidelity_enabled"] is False
+    assert [
+        (item["input_variant"], item["repeat_index"])
+        for item in payload.l0["map_execution_records"]
+    ] == [
+        ("clean", 0),
+        ("translate_right_down_4", None),
+        ("center_crop_216_resize_224", None),
+        ("gaussian_rgb_std_0_01", None),
+    ]
+    expected_digests = {
+        name: item.normalized_tensor_sha256
+        for name, item in backend._perturbations[(SAMPLE_A, "cpu")].items()
+    }
+    assert method_calls[0].get("intervention_input_sha256") is None
+    assert {
+        name: call["intervention_input_sha256"]
+        for name, call in zip(
+            (
+                "translate_right_down_4", "center_crop_216_resize_224",
+                "gaussian_rgb_std_0_01",
+            ),
+            method_calls[1:],
+        )
+    } == expected_digests
 
 
 @pytest.mark.parametrize(

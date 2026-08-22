@@ -52,6 +52,18 @@ def _install_plan_pipeline(monkeypatch, *, within_budget: bool = True):
     monkeypatch.setattr(stage_c_cli, "load_run_spec", lambda path: record("run_spec", run_spec))
     monkeypatch.setattr(stage_c_cli, "build_execution_plan", lambda *args, **kwargs: record("plan", plan))
     monkeypatch.setattr(stage_c_cli, "estimate_stage_c_run", lambda *args, **kwargs: record("estimate", estimate))
+    monkeypatch.setattr(
+        stage_c_cli, "validate_c7_execution_plan",
+        lambda *args, **kwargs: {"valid": False},
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "validate_c7_diagnostic_plan",
+        lambda *args, **kwargs: {"valid": False},
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "require_fresh_c7_output_root",
+        lambda *args, **kwargs: None,
+    )
     return SimpleNamespace(
         config=config, registry=registry, selection=selection, run_spec=run_spec,
         plan=plan, estimate=estimate, observed=observed,
@@ -73,8 +85,14 @@ def test_estimate_requires_explicit_config(capsys, tmp_path):
         ("estimate", []),
         ("run-sample", ["--output-root", "out", "--sample-id", "sample-a"]),
         ("run-batch", ["--output-root", "out"]),
+        ("benchmark", ["--output-root", "out", "--c7-diagnostic-gate", "gate.json"]),
         ("validate", ["--output-root", "out"]),
         ("aggregate", ["--output-root", "out"]),
+        ("c7-diagnostic-gate", ["--output-root", "out"]),
+        (
+            "benchmark-report",
+            ["--output-root", "out", "--c7-diagnostic-gate", "gate.json"],
+        ),
     ],
 )
 def test_every_command_requires_an_explicit_run_spec(capsys, tmp_path, command, extra):
@@ -303,6 +321,414 @@ def test_aggregate_integrity_failure_has_exit_four(monkeypatch, capsys, tmp_path
         "message": "artifact hash mismatch",
         "type": "StageCBatchValidationError",
     }
+
+
+@pytest.mark.parametrize(
+    ("command", "writer_name", "suffix"),
+    [
+        (
+            "c7-diagnostic-gate", "write_c7_diagnostic_gate",
+            ".c7-diagnostic-gate.json",
+        ),
+        ("benchmark-report", "write_benchmark_report", ".benchmark-report.json"),
+    ],
+)
+def test_c7_reports_dispatch_without_constructing_backend(
+    monkeypatch, capsys, tmp_path, command, writer_name, suffix
+):
+    config_path, spec_path = _write_explicit_inputs(tmp_path)
+    output_root = tmp_path / "source-batch"
+    pipeline = _install_plan_pipeline(monkeypatch)
+    git_state = {"commit": "a" * 40, "dirty": False}
+    observed = {}
+    monkeypatch.setattr(stage_c_cli, "capture_git_state", lambda _root: git_state)
+    monkeypatch.setattr(stage_c_cli, "_configure_c7_execution", lambda _device: None)
+    monkeypatch.setattr(
+        stage_c_cli, "capture_benchmark_environment",
+        lambda device: {"device": device, "device_name": "NVIDIA H20"},
+    )
+    monkeypatch.setattr(stage_c_cli, "sha256_file", lambda _path: "d" * 64)
+
+    def fake_writer(destination, root, plan, **kwargs):
+        observed.update({
+            "destination": destination, "root": root, "plan": plan,
+            "kwargs": kwargs,
+        })
+        return {
+            "document_type": f"stage_c_{command.replace('-', '_')}",
+            "status": "PASS", "exit_class": "success",
+        }
+
+    monkeypatch.setattr(stage_c_cli, writer_name, fake_writer)
+    code = stage_c_cli.main([
+        command, "--config", str(config_path), "--run-spec", str(spec_path),
+        "--output-root", str(output_root), "--device", "cuda:0",
+        *(
+            ["--c7-diagnostic-gate", str(tmp_path / "gate.json")]
+            if command == "benchmark-report" else []
+        ),
+    ], backend_factory=lambda **_kwargs: pytest.fail("backend constructed"))
+
+    assert code == 0
+    assert observed == {
+        "destination": output_root.with_name(output_root.name + suffix),
+        "root": output_root, "plan": pipeline.plan,
+        "kwargs": {
+            "config": pipeline.config,
+            "environment": {"device": "cuda:0", "device_name": "NVIDIA H20"},
+            "run_spec_path": spec_path,
+            "run_spec_file_sha256": "d" * 64,
+            "observed_git_state": git_state,
+            **({"recomputed_estimate": pipeline.estimate}
+               if command == "benchmark-report" else {}),
+            **({"c7_diagnostic_gate": tmp_path / "gate.json"}
+               if command == "benchmark-report" else {}),
+        },
+    }
+    assert _stdout_json(capsys)["status"] == "PASS"
+
+
+@pytest.mark.parametrize(
+    ("command", "writer_name"),
+    [
+        ("c7-diagnostic-gate", "write_c7_diagnostic_gate"),
+        ("benchmark-report", "write_benchmark_report"),
+    ],
+)
+def test_c7_valid_blocker_has_exit_two(
+    monkeypatch, capsys, tmp_path, command, writer_name
+):
+    config_path, spec_path = _write_explicit_inputs(tmp_path)
+    _install_plan_pipeline(monkeypatch)
+    monkeypatch.setattr(
+        stage_c_cli, "capture_git_state",
+        lambda _root: {"commit": "a" * 40, "dirty": False},
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "capture_benchmark_environment", lambda _device: {}
+    )
+    monkeypatch.setattr(stage_c_cli, "_configure_c7_execution", lambda _device: None)
+    monkeypatch.setattr(stage_c_cli, "sha256_file", lambda _path: "d" * 64)
+    monkeypatch.setattr(
+        stage_c_cli, writer_name,
+        lambda *_args, **_kwargs: {
+            "status": "BLOCKED", "exit_class": "preflight",
+            "blocked_reasons": ["hard cap exceeded"],
+        },
+    )
+
+    code = stage_c_cli.main([
+        command, "--config", str(config_path), "--run-spec", str(spec_path),
+        "--output-root", str(tmp_path / "batch"),
+        *(
+            ["--c7-diagnostic-gate", str(tmp_path / "gate.json")]
+            if command == "benchmark-report" else []
+        ),
+    ])
+
+    assert code == 2
+    assert _stdout_json(capsys)["status"] == "BLOCKED"
+
+
+def test_benchmark_report_terminal_failure_has_exit_three(
+    monkeypatch, capsys, tmp_path
+):
+    config_path, spec_path = _write_explicit_inputs(tmp_path)
+    _install_plan_pipeline(monkeypatch)
+    monkeypatch.setattr(
+        stage_c_cli, "capture_git_state",
+        lambda _root: {"commit": "a" * 40, "dirty": False},
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "capture_benchmark_environment", lambda _device: {}
+    )
+    monkeypatch.setattr(stage_c_cli, "_configure_c7_execution", lambda _device: None)
+    monkeypatch.setattr(stage_c_cli, "sha256_file", lambda _path: "d" * 64)
+    monkeypatch.setattr(
+        stage_c_cli, "write_benchmark_report",
+        lambda *_args, **_kwargs: {
+            "status": "BLOCKED", "exit_class": "terminal",
+            "blocked_reasons": ["one unit failed"],
+        },
+    )
+
+    code = stage_c_cli.main([
+        "benchmark-report", "--config", str(config_path),
+        "--run-spec", str(spec_path),
+        "--output-root", str(tmp_path / "batch"),
+        "--c7-diagnostic-gate", str(tmp_path / "gate.json"),
+    ])
+
+    assert code == 3
+    assert _stdout_json(capsys)["exit_class"] == "terminal"
+
+
+def test_benchmark_integrity_error_has_exit_four(
+    monkeypatch, capsys, tmp_path
+):
+    config_path, spec_path = _write_explicit_inputs(tmp_path)
+    _install_plan_pipeline(monkeypatch)
+    monkeypatch.setattr(
+        stage_c_cli, "capture_git_state",
+        lambda _root: {"commit": "a" * 40, "dirty": False},
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "capture_benchmark_environment", lambda _device: {}
+    )
+    monkeypatch.setattr(stage_c_cli, "_configure_c7_execution", lambda _device: None)
+    monkeypatch.setattr(stage_c_cli, "sha256_file", lambda _path: "d" * 64)
+    monkeypatch.setattr(
+        stage_c_cli, "write_benchmark_report",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            stage_c_cli.StageCBenchmarkIntegrityError("source hash mismatch")
+        ),
+    )
+
+    code = stage_c_cli.main([
+        "benchmark-report", "--config", str(config_path),
+        "--run-spec", str(spec_path),
+        "--output-root", str(tmp_path / "batch"),
+        "--c7-diagnostic-gate", str(tmp_path / "gate.json"),
+    ])
+
+    assert code == 4
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert json.loads(captured.err)["error"] == {
+        "message": "source hash mismatch",
+        "type": "StageCBenchmarkIntegrityError",
+    }
+
+
+def test_exact_c7_run_requires_gate_before_backend_or_output(
+    monkeypatch, capsys, tmp_path
+):
+    config_path, spec_path = _write_explicit_inputs(tmp_path)
+    _install_plan_pipeline(monkeypatch)
+    monkeypatch.setattr(stage_c_cli, "_is_exact_c7_plan", lambda *_args: True)
+    output_root = tmp_path / "must-stay-absent"
+
+    code = stage_c_cli.main([
+        "run-sample", "--config", str(config_path), "--run-spec", str(spec_path),
+        "--output-root", str(output_root), "--sample-id", "sample-a",
+    ], backend_factory=lambda **_kwargs: pytest.fail("backend constructed"))
+
+    assert code == 2
+    assert not output_root.exists()
+    assert "--c7-diagnostic-gate" in _stdout_json(capsys)["blocked_reasons"][0]
+
+
+def test_exact_c7_gate_is_checked_before_backend_and_output(
+    monkeypatch, capsys, tmp_path
+):
+    config_path, spec_path = _write_explicit_inputs(tmp_path)
+    output_root = tmp_path / "must-stay-absent"
+    pipeline = _install_plan_pipeline(monkeypatch)
+    monkeypatch.setattr(stage_c_cli, "_is_exact_c7_plan", lambda *_args: True)
+    monkeypatch.setattr(
+        stage_c_cli, "capture_git_state",
+        lambda _root: {"commit": "a" * 40, "dirty": False},
+    )
+    observed = {}
+
+    def block(gate, plan, **kwargs):
+        observed.update({"gate": gate, "plan": plan, **kwargs})
+        raise stage_c_cli.StageCBenchmarkBlockedError(
+            "diagnostic wall time is 720 seconds",
+            reasons=("diagnostic wall time must be below 720 seconds",),
+        )
+
+    monkeypatch.setattr(stage_c_cli, "require_c7_launch_gate", block)
+    gate = tmp_path / "gate.json"
+    code = stage_c_cli.main([
+        "run-sample", "--config", str(config_path), "--run-spec", str(spec_path),
+        "--output-root", str(output_root), "--sample-id", "sample-a",
+        "--c7-diagnostic-gate", str(gate),
+    ], backend_factory=lambda **_kwargs: pytest.fail("backend constructed"))
+
+    assert code == 2
+    assert observed["gate"] == gate
+    assert observed["plan"] is pipeline.plan
+    assert observed["output_root"] == output_root
+    assert not output_root.exists()
+    assert "below 720" in _stdout_json(capsys)["blocked_reasons"][0]
+
+
+def test_benchmark_command_requires_exact_scope(monkeypatch, capsys, tmp_path):
+    config_path, spec_path = _write_explicit_inputs(tmp_path)
+    _install_plan_pipeline(monkeypatch)
+    monkeypatch.setattr(stage_c_cli, "_is_exact_c7_plan", lambda *_args: False)
+
+    code = stage_c_cli.main([
+        "benchmark", "--config", str(config_path), "--run-spec", str(spec_path),
+        "--output-root", str(tmp_path / "out"),
+        "--c7-diagnostic-gate", str(tmp_path / "gate.json"),
+    ], backend_factory=lambda **_kwargs: pytest.fail("backend constructed"))
+
+    assert code == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "exact checked-in C7" in json.loads(captured.err)["error"]["message"]
+
+
+def test_benchmark_command_checks_gate_then_dispatches_batch(
+    monkeypatch, capsys, tmp_path
+):
+    config_path, spec_path = _write_explicit_inputs(tmp_path)
+    pipeline = _install_plan_pipeline(monkeypatch)
+    monkeypatch.setattr(stage_c_cli, "_is_exact_c7_plan", lambda *_args: True)
+    monkeypatch.setattr(
+        stage_c_cli, "capture_git_state",
+        lambda _root: {"commit": "a" * 40, "dirty": False},
+    )
+    events = []
+    monkeypatch.setattr(
+        stage_c_cli, "require_c7_launch_gate",
+        lambda *_args, **_kwargs: events.append("gate") or {"status": "PASS"},
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "write_c7_launch_authorization",
+        lambda *_args, **_kwargs: events.append("authorization"),
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "_configure_c7_execution",
+        lambda device: events.append(f"configure:{device}"),
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "run_stage_c_batch",
+        lambda *_args, **_kwargs: (
+            events.append("run")
+            or SimpleNamespace(
+                successful=True, orchestration_complete=True,
+                to_dict=lambda: {
+                    "successful": True, "orchestration_complete": True,
+                },
+            )
+        ),
+    )
+    backend = object()
+
+    code = stage_c_cli.main([
+        "benchmark", "--config", str(config_path), "--run-spec", str(spec_path),
+        "--output-root", str(tmp_path / "fresh"),
+        "--c7-diagnostic-gate", str(tmp_path / "gate.json"),
+    ], backend_factory=lambda **_kwargs: events.append("backend") or backend)
+
+    assert code == 0
+    assert events == ["gate", "configure:cpu", "authorization", "backend", "run"]
+    assert pipeline.plan is not None
+    assert _stdout_json(capsys)["successful"] is True
+
+
+def test_c7_configuration_sets_frozen_determinism(monkeypatch):
+    seeded = []
+    deterministic = []
+    monkeypatch.setattr(stage_c_cli, "seed_everything", seeded.append)
+    monkeypatch.setattr(
+        torch, "use_deterministic_algorithms", deterministic.append
+    )
+    monkeypatch.setattr(torch.backends.cudnn, "benchmark", True)
+
+    stage_c_cli._configure_c7_execution("cpu")
+
+    assert seeded == [20260821]
+    assert deterministic == [True]
+    assert torch.backends.cudnn.benchmark is False
+
+
+@pytest.mark.parametrize("workspace", [None, "", "4096:8", ":1:1"])
+def test_c7_cuda_configuration_rejects_bad_workspace_before_seeding(
+    monkeypatch, workspace
+):
+    if workspace is None:
+        monkeypatch.delenv("CUBLAS_WORKSPACE_CONFIG", raising=False)
+    else:
+        monkeypatch.setenv("CUBLAS_WORKSPACE_CONFIG", workspace)
+    seeded = []
+    monkeypatch.setattr(stage_c_cli, "seed_everything", seeded.append)
+
+    with pytest.raises(RuntimeError, match="CUBLAS_WORKSPACE_CONFIG"):
+        stage_c_cli._configure_c7_execution("cuda:0")
+
+    assert seeded == []
+
+
+def test_c7_cuda_configuration_disables_tf32(monkeypatch):
+    monkeypatch.setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+    monkeypatch.setattr(stage_c_cli, "seed_everything", lambda _seed: None)
+    monkeypatch.setattr(torch, "use_deterministic_algorithms", lambda _flag: None)
+    monkeypatch.setattr(torch.backends.cuda.matmul, "allow_tf32", True)
+    monkeypatch.setattr(torch.backends.cudnn, "allow_tf32", True)
+
+    stage_c_cli._configure_c7_execution("cuda:0")
+
+    assert torch.backends.cuda.matmul.allow_tf32 is False
+    assert torch.backends.cudnn.allow_tf32 is False
+
+
+def test_exact_diagnostic_run_configures_c7_before_backend(
+    monkeypatch, capsys, tmp_path
+):
+    config_path, spec_path = _write_explicit_inputs(tmp_path)
+    _install_plan_pipeline(monkeypatch)
+    monkeypatch.setattr(
+        stage_c_cli, "_is_exact_c7_diagnostic_plan", lambda *_args: True
+    )
+    events = []
+    monkeypatch.setattr(
+        stage_c_cli, "_configure_c7_execution",
+        lambda device: events.append(f"configure:{device}"),
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "run_stage_c_sample",
+        lambda *_args, **_kwargs: (
+            events.append("run")
+            or SimpleNamespace(
+                successful=True, orchestration_complete=True,
+                to_dict=lambda: {
+                    "successful": True, "orchestration_complete": True,
+                },
+            )
+        ),
+    )
+
+    code = stage_c_cli.main([
+        "run-sample", "--config", str(config_path), "--run-spec", str(spec_path),
+        "--output-root", str(tmp_path / "diagnostic"),
+        "--sample-id", "sample-a", "--device", "cpu", "--no-resume",
+    ], backend_factory=lambda **_kwargs: events.append("backend") or object())
+
+    assert code == 0
+    assert events == ["configure:cpu", "backend", "run"]
+    assert _stdout_json(capsys)["successful"] is True
+
+
+def test_exact_diagnostic_run_requires_fresh_root_before_backend(
+    monkeypatch, capsys, tmp_path
+):
+    config_path, spec_path = _write_explicit_inputs(tmp_path)
+    _install_plan_pipeline(monkeypatch)
+    monkeypatch.setattr(
+        stage_c_cli, "_is_exact_c7_diagnostic_plan", lambda *_args: True
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "require_fresh_c7_output_root",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            stage_c_cli.StageCBenchmarkBlockedError(
+                "diagnostic output root is not fresh",
+                reasons=("diagnostic output root is not fresh and empty",),
+            )
+        ),
+    )
+
+    code = stage_c_cli.main([
+        "run-sample", "--config", str(config_path), "--run-spec", str(spec_path),
+        "--output-root", str(tmp_path / "old-diagnostic"),
+        "--sample-id", "sample-a", "--no-resume",
+    ], backend_factory=lambda **_kwargs: pytest.fail("backend constructed"))
+
+    assert code == 2
+    assert "not fresh" in _stdout_json(capsys)["blocked_reasons"][0]
 
 
 def test_default_backend_factory_binds_provenance_and_loader_receives_model(

@@ -898,7 +898,7 @@ def _validate_docs() -> None:
             assert unresolved not in text, f"Unresolved marker {unresolved!r} in {relative}"
     step_text = (REPO_ROOT / "docs/阶段C-step-by-step.md").read_text(encoding="utf-8")
     assert (
-        "当前状态：阶段 A、阶段 B、阶段 C/C0–C6 已完成；下一任务是 C7。"
+        "当前状态：阶段 A、阶段 B、阶段 C/C0–C7 已完成；下一任务是 C8。"
         in step_text
     )
     assert "| C0 | PASS |" in step_text
@@ -908,7 +908,8 @@ def _validate_docs() -> None:
     assert step_text.count("| C4 | PASS |") == 1
     assert step_text.count("| C5 | PASS |") == 1
     assert step_text.count("| C6 | PASS |") == 1
-    assert step_text.count("| C7 | NOT_STARTED（NEXT） |") == 1
+    assert step_text.count("| C7 | PASS |") == 1
+    assert step_text.count("| C8 | NOT_STARTED（NEXT） |") == 1
     assert "### 2026-08-21 16:05 +0800 — C0 completion record" in step_text
     assert "C1 completion record" in step_text
     assert "C2 completion record" in step_text
@@ -937,10 +938,16 @@ def _validate_docs() -> None:
     )[0]
     assert c5_record.count("- status: PASS") == 1
     assert c5_record.count("- next_task: C6") == 1
-    c6_record = step_text.split("— C6 completion record", 1)[1]
+    c6_record = step_text.split("— C6 completion record", 1)[1].split(
+        "— C7 completion record", 1
+    )[0]
     assert c6_record.count("- status: PASS") == 1
     assert c6_record.count("- next_task: C7") == 1
     assert step_text.count("你现在只执行 ViT-NNS 重建工程“阶段 C”的 C7") == 1
+    c7_record = step_text.split("— C7 completion record", 1)[1]
+    assert c7_record.count("- status: PASS") == 1
+    assert c7_record.count("- next_task: C8") == 1
+    assert step_text.count("你现在只执行 ViT-NNS 重建工程“阶段 C”的 C8") == 1
     for token in (
         "C0_COMMIT_SHA",
         "STAGE_C_CONFIG_SHA256", "STAGE_C_PROTOCOL_SHA256",

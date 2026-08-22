@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 import torch
 
+import vitnns.stage_c_fidelity as fidelity
 from vitnns.stage_c_fidelity import (
     CLASS_TARGET_REF,
     CURVE_FRACTIONS,
@@ -228,6 +229,31 @@ def _response_from_clean(
     )
     response = resolve_target_response(evaluator, clean_inputs, _baseline_inputs())
     return evaluator, response
+
+
+def _build_center_deletion_schedule(clean_inputs: torch.Tensor):
+    return _build_schedule_compat(
+        clean_inputs,
+        _baseline_inputs(),
+        center_distance_ranking(FidelityScale.PATCH_16),
+        scale=FidelityScale.PATCH_16,
+        direction=CurveDirection.DELETION,
+        ranking_kind=RankingKind.CENTER_DISTANCE_ROW_MAJOR,
+    )
+
+
+def _record_tensor_sha256_calls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> list[torch.Tensor]:
+    calls: list[torch.Tensor] = []
+    original = fidelity.tensor_sha256
+
+    def recording_tensor_sha256(value: torch.Tensor) -> str:
+        calls.append(value)
+        return original(value)
+
+    monkeypatch.setattr(fidelity, "tensor_sha256", recording_tensor_sha256)
+    return calls
 
 
 def _provenance_target_exact(response: TargetResponse) -> MappingProxyType[str, Any]:
@@ -757,6 +783,140 @@ def test_shared_schedule_binds_hash_identity_detects_mutation_and_serializes_jso
     schedule.verify_integrity()
     with pytest.raises(AttributeError, match="immutable"):
         schedule.sample_id = "other"
+
+
+def test_schedule_construction_strong_hashes_each_owned_tensor_once(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    clean_inputs = _unit_tensor(
+        FidelityScale.PATCH_16, list(range(20)), value=1.0
+    )
+    hash_calls = _record_tensor_sha256_calls(monkeypatch)
+
+    schedule = _build_center_deletion_schedule(clean_inputs)
+
+    assert len(hash_calls) == 2 + len(CURVE_FRACTIONS)
+    assert len({id(value) for value in hash_calls}) == len(hash_calls)
+    assert [id(value) for value in hash_calls[2:]] == [
+        id(value) for value in schedule._interventions
+    ]
+    torch.testing.assert_close(hash_calls[0], clean_inputs)
+    torch.testing.assert_close(hash_calls[1], _baseline_inputs())
+
+
+def test_curve_strong_hashes_only_the_group_at_entry_and_exit(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    clean_inputs = _unit_tensor(
+        FidelityScale.PATCH_16, list(range(20)), value=1.0
+    )
+    evaluator, response = _response_from_clean(clean_inputs, label="hash-boundaries")
+    schedule = _build_center_deletion_schedule(clean_inputs)
+    point_hash_counts: list[int] = []
+    original_evaluate = evaluator.evaluate
+    hash_calls = _record_tensor_sha256_calls(monkeypatch)
+
+    def observe_hash_count(inputs: torch.Tensor) -> float:
+        point_hash_counts.append(len(hash_calls))
+        return original_evaluate(inputs)
+
+    monkeypatch.setattr(evaluator, "evaluate", observe_hash_count)
+    calls_before_curve = evaluator._calls
+
+    curve = evaluate_fidelity_curve(
+        evaluator, response, schedule, method_id=NNS_METHOD_ID
+    )
+
+    intervention_ids = [id(value) for value in schedule._interventions]
+    assert curve.responses is not None and len(curve.responses) == len(CURVE_FRACTIONS)
+    assert evaluator._calls - calls_before_curve == len(CURVE_FRACTIONS)
+    assert point_hash_counts == [len(CURVE_FRACTIONS)] * len(CURVE_FRACTIONS)
+    assert [id(value) for value in hash_calls] == intervention_ids * 2
+
+
+def test_evaluate_at_ordinary_in_place_mutation_uses_the_cheap_point_guard(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    schedule = _build_center_deletion_schedule(
+        _unit_tensor(FidelityScale.PATCH_16, list(range(20)), value=1.0)
+    )
+
+    def forbid_strong_hash(_value: torch.Tensor) -> str:
+        raise AssertionError("evaluate_at must not strongly hash a curve point")
+
+    monkeypatch.setattr(fidelity, "tensor_sha256", forbid_strong_hash)
+
+    def mutate(inputs: torch.Tensor) -> float:
+        inputs[:, :, 0, 0].add_(1.0)
+        return float(inputs.sum().item())
+
+    with pytest.raises(
+        FidelityContractError, match=r"^intervention tensor 0 was mutated$"
+    ):
+        schedule.evaluate_at(0, mutate)
+
+
+def test_curve_exit_strong_hash_catches_data_mutation_after_point_guards(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    clean_inputs = _unit_tensor(
+        FidelityScale.PATCH_16, list(range(20)), value=1.0
+    )
+    evaluator, response = _response_from_clean(clean_inputs, label="data-mutation")
+    schedule = _build_center_deletion_schedule(clean_inputs)
+    original_evaluate = evaluator.evaluate
+    point_calls = 0
+
+    def mutate_data_once(inputs: torch.Tensor) -> float:
+        nonlocal point_calls
+        if point_calls == 0:
+            inputs.data[:, :, 0, 0].add_(1.0)
+        point_calls += 1
+        return original_evaluate(inputs)
+
+    monkeypatch.setattr(evaluator, "evaluate", mutate_data_once)
+    hash_calls = _record_tensor_sha256_calls(monkeypatch)
+
+    with pytest.raises(
+        FidelityContractError, match=r"^an intervention tensor was mutated$"
+    ):
+        evaluate_fidelity_curve(
+            evaluator, response, schedule, method_id=NNS_METHOD_ID
+        )
+
+    intervention_ids = [id(value) for value in schedule._interventions]
+    assert point_calls == len(CURVE_FRACTIONS)
+    assert [id(value) for value in hash_calls] == intervention_ids * 2
+
+
+def test_curve_consumer_exception_still_runs_exit_strong_verification(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    clean_inputs = _unit_tensor(
+        FidelityScale.PATCH_16, list(range(20)), value=1.0
+    )
+    evaluator, response = _response_from_clean(
+        clean_inputs, label="consumer-exception"
+    )
+    schedule = _build_center_deletion_schedule(clean_inputs)
+    point_calls = 0
+
+    def raise_from_consumer(_inputs: torch.Tensor) -> float:
+        nonlocal point_calls
+        point_calls += 1
+        raise RuntimeError("consumer failed")
+
+    monkeypatch.setattr(evaluator, "evaluate", raise_from_consumer)
+    hash_calls = _record_tensor_sha256_calls(monkeypatch)
+
+    with pytest.raises(RuntimeError, match=r"^consumer failed$"):
+        evaluate_fidelity_curve(
+            evaluator, response, schedule, method_id=NNS_METHOD_ID
+        )
+
+    intervention_ids = [id(value) for value in schedule._interventions]
+    assert point_calls == 1
+    assert [id(value) for value in hash_calls] == intervention_ids * 2
 
 
 def test_aggregate_uses_five_repeat_mean_population_std_and_preserves_paired_na():

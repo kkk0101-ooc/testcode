@@ -113,13 +113,14 @@ every required gate enabled and passing.
 
 Stage C now includes strict config/map/metric contracts, the registered
 attention and class-logit methods, fixed-clean-attention head-direction
-Value-path methods, C5 evaluation primitives, and the C6 auditable execution
-pipeline. See
+Value-path methods, C5 evaluation primitives, the C6 auditable execution
+pipeline, and the C7 two-stage benchmark gate and report. See
 `docs/阶段C_protocol.md`, `docs/stage_c_acceptance.md`, and the live handoff log
 `docs/阶段C-step-by-step.md`.
 
-C6 exposes non-interactive `estimate`, `run-sample`, `run-batch`, `validate`,
-and `aggregate` commands. Every invocation requires both the frozen Stage C
+C6/C7 expose non-interactive `estimate`, `run-sample`, `run-batch`,
+`validate`, `aggregate`, `c7-diagnostic-gate`, and `benchmark-report`
+commands. Every invocation requires both the frozen Stage C
 config and an explicit JSON run spec; there are no implicit method, sample,
 candidate, fidelity, stability, or repeatability defaults. For example:
 
@@ -147,6 +148,66 @@ artifact hash/byte count, and current plan/provenance bindings validate. Failed,
 incomplete, or tampered attempts are preserved and a retry receives a fresh
 directory; `--no-resume` also creates a fresh attempt. `aggregate` emits only
 validated L0 rows and never performs C8 selection, bootstrap, or a scientific
-decision. C7 remains the next task and is the first real all-method one-image
-benchmark.
+decision.
+
+C7 has an explicit two-stage launch boundary. First run the checked-in
+single-unit diagnostic spec from a clean commit into a fresh output root, then
+write its gate report outside that source tree:
+
+~~~bash
+CUBLAS_WORKSPACE_CONFIG=:4096:8 CUDA_VISIBLE_DEVICES=0 \
+vitnns-stage-c run-sample \
+  --config config/stage_c.json \
+  --run-spec config/stage_c_c7_diagnostic_run_spec.json \
+  --sample-id ILSVRC2012_val/ILSVRC2012_val_00000079.JPEG \
+  --output-root /path/to/new-c7-diagnostic-root \
+  --device cuda:0 \
+  --no-resume
+
+vitnns-stage-c c7-diagnostic-gate \
+  --config config/stage_c.json \
+  --run-spec config/stage_c_c7_diagnostic_run_spec.json \
+  --output-root /path/to/new-c7-diagnostic-root \
+  --output /path/to/c7-diagnostic-gate.json \
+  --device cuda:0
+~~~
+
+The diagnostic is exactly one complete block-0/head-0 NNS workload. Its
+validated terminal telemetry must identify an H20 run from the current clean
+commit, include lifecycle, phase, call, CUDA-memory, and IG evidence, and have
+a synchronized end-to-end wall time strictly below 720 seconds. Equality or a
+larger value is `BLOCKED`.
+
+Only after that gate passes may the exact C7 plan start. The CLI requires the
+gate before constructing a backend or creating the formal output root:
+
+~~~bash
+CUBLAS_WORKSPACE_CONFIG=:4096:8 CUDA_VISIBLE_DEVICES=0 \
+vitnns-stage-c benchmark \
+  --config config/stage_c.json \
+  --run-spec config/stage_c_c7_run_spec.json \
+  --output-root /path/to/new-c7-formal-root \
+  --device cuda:0 \
+  --c7-diagnostic-gate /path/to/c7-diagnostic-gate.json
+
+vitnns-stage-c benchmark-report \
+  --config config/stage_c.json \
+  --run-spec config/stage_c_c7_run_spec.json \
+  --output-root /path/to/new-c7-formal-root \
+  --output /path/to/stage-c-c7-benchmark-report.json \
+  --c7-diagnostic-gate /path/to/c7-diagnostic-gate.json \
+  --device cuda:0
+~~~
+
+The formal plan is exactly one audit image, 12 fixed Value candidates, seven
+methods, and 40 execution units. The report binds the run spec, execution
+plan, batch controls, every selected attempt's manifest/status/provenance, the
+runtime environment, measured calls/memory/phase timings/bytes/IG attempts,
+and the exact C8 (2,180), C9 (320), and Stage D (8,000) projections. Time uses
+the slowest validated synchronized unit total and the frozen 1.25 safety
+factor. Storage includes every ordinary source-tree file and the frozen 25%
+control/provenance overhead. Historical or unselected attempts are never
+eligible as benchmark measurements. The report remains an engineering and
+budget gate: it does not access holdout data or perform selection, bootstrap,
+or a scientific Go/No-Go decision.
 

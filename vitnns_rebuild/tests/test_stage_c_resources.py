@@ -11,12 +11,165 @@ from vitnns.stage_c_resources import (
     CUDA_MEASUREMENT_FAILED,
     CUDA_NOT_APPLICABLE,
     PAYLOAD_FILE_LIST_SCOPE,
+    PHASE_CLOCK,
+    PHASE_SYNCHRONIZATION,
+    REQUIRED_PHASES,
     ROOT_TREE_SCOPE,
+    TOTAL_BOUNDARY,
     CallCounter,
+    PhaseTimer,
     ResourceMeter,
+    measurement_environment,
     measure_artifact_bytes,
     measure_artifact_tree_bytes,
 )
+
+
+def test_cpu_phase_timer_accumulates_required_phases_and_records_failure():
+    clock = iter((10.0, 11.0, 12.0, 13.0, 15.0, 16.0, 18.0, 19.0, 21.0, 30.0))
+    timer = PhaseTimer(device="cpu", clock=lambda: next(clock))
+    counter = CallCounter()
+    counter.record_forward(2)
+    counter.record_backward(3)
+    calls_before = counter.snapshot()
+
+    timer.start()
+    with timer.measure("attribution_or_map_compute"):
+        pass
+    with timer.measure("attribution_or_map_compute"):
+        pass
+    with timer.measure("fidelity_compute"):
+        pass
+    with pytest.raises(LookupError, match="synthetic phase failure"):
+        with timer.measure("integrity_checking"):
+            raise LookupError("synthetic phase failure")
+    timer.stop()
+
+    payload = timer.to_dict()
+    assert payload == {
+        "clock": PHASE_CLOCK,
+        "synchronization": PHASE_SYNCHRONIZATION,
+        "phases": {
+            "attribution_or_map_compute": {
+                "wall_time_seconds": 3.0,
+                "invocations": 2,
+            },
+            "fidelity_compute": {
+                "wall_time_seconds": 2.0,
+                "invocations": 1,
+            },
+            "integrity_checking": {
+                "wall_time_seconds": 2.0,
+                "invocations": 1,
+            },
+            "artifact_finalize": {
+                "wall_time_seconds": 0.0,
+                "invocations": 0,
+            },
+        },
+        "synchronized_total_wall_time_seconds": 20.0,
+        "total_boundary": TOTAL_BOUNDARY,
+        "phases_are_mutually_exclusive": False,
+    }
+    assert tuple(payload["phases"]) == REQUIRED_PHASES
+    assert all(
+        payload["synchronized_total_wall_time_seconds"]
+        >= phase["wall_time_seconds"]
+        for phase in payload["phases"].values()
+    )
+    assert counter.snapshot() == calls_before
+    assert json.loads(json.dumps(payload)) == payload
+
+
+def test_cuda_phase_timer_synchronizes_total_and_both_sides_of_every_phase(
+    monkeypatch,
+):
+    events = []
+    readings = iter(float(value) for value in range(10))
+    device = torch.device("cuda:2")
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(
+        torch.cuda,
+        "synchronize",
+        lambda actual: events.append(("sync", actual)),
+    )
+
+    def clock():
+        value = next(readings)
+        events.append(("clock", value))
+        return value
+
+    timer = PhaseTimer(device=device, clock=clock)
+    timer.start()
+    for phase in REQUIRED_PHASES:
+        with timer.measure(phase):
+            events.append(("body", phase))
+    timer.stop()
+
+    expected = [("sync", device), ("clock", 0.0)]
+    for offset, phase in enumerate(REQUIRED_PHASES, start=1):
+        expected.extend(
+            [
+                ("sync", device),
+                ("clock", float(2 * offset - 1)),
+                ("body", phase),
+                ("sync", device),
+                ("clock", float(2 * offset)),
+            ]
+        )
+    expected.extend((("sync", device), ("clock", 9.0)))
+    assert events == expected
+    assert timer.to_dict()["synchronized_total_wall_time_seconds"] == 9.0
+    assert all(
+        phase == {"wall_time_seconds": 1.0, "invocations": 1}
+        for phase in timer.to_dict()["phases"].values()
+    )
+
+
+def test_phase_timer_rejects_unknown_phase_and_invalid_clocks():
+    with pytest.raises(TypeError, match="clock must be callable"):
+        PhaseTimer(device="cpu", clock=None)
+
+    invalid_reading = PhaseTimer(device="cpu", clock=lambda: float("nan"))
+    with pytest.raises(RuntimeError, match="total start clock reading is not finite"):
+        invalid_reading.start()
+
+    timer = PhaseTimer(device="cpu", clock=iter((0.0, 1.0)).__next__)
+    timer.start()
+    with pytest.raises(ValueError, match="unknown execution-unit phase"):
+        with timer.measure("not_a_phase"):
+            pass
+    timer.stop()
+
+
+def test_measurement_environment_reports_cpu_and_mocked_cuda(monkeypatch):
+    assert measurement_environment("cpu") == {
+        "device_type": "cpu",
+        "device": "cpu",
+        "device_name": None,
+        "cuda_runtime_version": None,
+        "cudnn_version": None,
+    }
+
+    requested = []
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(torch.cuda, "current_device", lambda: 2)
+    monkeypatch.setattr(
+        torch.cuda,
+        "get_device_name",
+        lambda device: requested.append(device) or "Mock Accelerator",
+    )
+    monkeypatch.setattr(torch.version, "cuda", "99.1")
+    monkeypatch.setattr(torch.backends.cudnn, "version", lambda: 90123)
+
+    assert measurement_environment("cuda") == {
+        "device_type": "cuda",
+        "device": "cuda:2",
+        "device_name": "Mock Accelerator",
+        "cuda_runtime_version": "99.1",
+        "cudnn_version": 90123,
+    }
+    assert requested == [torch.device("cuda:2")]
 
 
 def test_cpu_boundary_records_wall_calls_files_and_explicit_no_cuda(monkeypatch, tmp_path):

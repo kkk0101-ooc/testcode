@@ -23,7 +23,7 @@ import os
 import stat
 import tempfile
 from collections.abc import Callable, Iterator, Mapping, Sequence
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
@@ -37,6 +37,8 @@ from .stage_c_resources import (
     CallCounts,
     ResourceMeter,
     ResourceRecord,
+    PhaseTimer,
+    measurement_environment,
 )
 
 
@@ -106,6 +108,27 @@ def _mapping(value: Any, context: str) -> dict[str, Any]:
     if not isinstance(plain, dict):
         raise TypeError(f"{context} must be a mapping")
     return plain
+
+
+def _provenance_perturbation_parameters(
+    items: Sequence[Mapping[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Separate each perturbation identifier from its parameter payload."""
+
+    parameters: dict[str, dict[str, Any]] = {}
+    for index, raw in enumerate(items):
+        item = _mapping(raw, f"perturbations.items[{index}]")
+        perturbation_id = item.pop("id", None)
+        if not isinstance(perturbation_id, str) or not perturbation_id:
+            raise StageCBackendError(
+                f"perturbations.items[{index}].id must be a non-empty string"
+            )
+        if perturbation_id in parameters:
+            raise StageCBackendError(
+                f"duplicate perturbation id: {perturbation_id}"
+            )
+        parameters[perturbation_id] = item
+    return parameters
 
 
 def _attribute(value: Any, name: str, default: Any = None) -> Any:
@@ -305,9 +328,13 @@ class UnitPayload:
     l3: Mapping[str, bytes] = field(default_factory=dict)
     provenance: Mapping[str, Any] = field(default_factory=dict)
     resources: Mapping[str, Any] = field(default_factory=dict)
+    lifecycle: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        for name in ("l0", "l1", "l2", "l3", "provenance", "resources"):
+        for name in (
+            "l0", "l1", "l2", "l3", "provenance",
+            "resources", "lifecycle",
+        ):
             if not isinstance(getattr(self, name), Mapping):
                 raise TypeError(f"UnitPayload.{name} must be a mapping")
         _jsonable(self.l0, "UnitPayload.l0")
@@ -334,7 +361,10 @@ class UnitPayload:
             return value
         if not isinstance(value, Mapping):
             raise TypeError("backend.run must return UnitPayload or a mapping")
-        allowed = {"l0", "l1", "l2", "l3", "provenance", "resources"}
+        allowed = {
+            "l0", "l1", "l2", "l3", "provenance",
+            "resources", "lifecycle",
+        }
         unknown = set(value) - allowed
         if unknown:
             raise StageCBackendError(
@@ -347,6 +377,7 @@ class UnitPayload:
             l3=value.get("l3", {}),
             provenance=value.get("provenance", {}),
             resources=value.get("resources", {}),
+            lifecycle=value.get("lifecycle", {}),
         )
 
 
@@ -406,11 +437,16 @@ class ProductionStageCBackend:
             code_state = capture_git_state(REPO_ROOT)
         self.code_state = None if code_state is None else dict(code_state)
         self._models: dict[str, Any] = {}
+        self._model_load_snapshots: dict[str, Any] = {}
         self._samples: dict[tuple[str, str], dict[str, Any]] = {}
         self._perturbations: dict[tuple[str, str], Mapping[str, Any]] = {}
         self._extractions: dict[tuple[str, str], Any] = {}
         self._class_targets: dict[tuple[str, str], Any] = {}
         self._value_targets: dict[tuple[str, str, int, int], Any] = {}
+
+    def _phase(self, name: str):
+        timer = getattr(self, "_active_phase_timer", None)
+        return nullcontext() if timer is None else timer.measure(name)
 
     def _model(self, device: str) -> Any:
         if device not in self._models:
@@ -438,6 +474,13 @@ class ProductionStageCBackend:
                 or specification.std != (0.5, 0.5, 0.5)
             ):
                 raise StageCBackendError("canonical preprocessing contract drifted")
+        if device not in self._model_load_snapshots:
+            from .stage_c_integrity import StrongModelSnapshot
+
+            with self._phase("integrity_checking"):
+                self._model_load_snapshots[device] = StrongModelSnapshot.capture(
+                    self._models[device]
+                )
         return self._models[device]
 
     @staticmethod
@@ -572,9 +615,18 @@ class ProductionStageCBackend:
             "conditional_fixed_clean_attention_head_direction_value_path_ig",
             "full_model_class_logit_ig",
         }:
-            provenance = getattr(result, "provenance", {})
-            ig = provenance.get("ig_result", {}) if isinstance(provenance, Mapping) else {}
-            attempts = ig.get("attempts", []) if isinstance(ig, Mapping) else []
+            direct_attempts = getattr(result, "attempts", None)
+            if isinstance(direct_attempts, (list, tuple)):
+                attempts = direct_attempts
+            else:
+                provenance = getattr(result, "provenance", {})
+                ig = (
+                    provenance.get("ig_result", {})
+                    if isinstance(provenance, Mapping) else {}
+                )
+                attempts = (
+                    ig.get("attempts", []) if isinstance(ig, Mapping) else []
+                )
             chunks = sum(
                 math.ceil(int(attempt["steps"]) / 8)
                 for attempt in attempts if isinstance(attempt, Mapping)
@@ -590,6 +642,119 @@ class ProductionStageCBackend:
             call_counter.record_backward(chunks)
         elif method_id == "vit_grad_cam_block11_norm1":
             call_counter.record_backward(1)
+
+    @staticmethod
+    def _ig_execution_summary(result: Any) -> dict[str, Any] | None:
+        provenance = getattr(result, "provenance", {})
+        candidate = (
+            provenance.get("ig_result")
+            if isinstance(provenance, Mapping) else None
+        )
+        if not isinstance(candidate, Mapping):
+            candidate = getattr(result, "ig_result", None)
+            if candidate is not None and callable(getattr(candidate, "to_dict", None)):
+                candidate = candidate.to_dict()
+        if not isinstance(candidate, Mapping):
+            return None
+        attempts = candidate.get("attempts", ())
+        if not isinstance(attempts, (list, tuple)):
+            raise StageCBackendError("IG execution evidence attempts are malformed")
+        normalized = [_mapping(item, "IG attempt") for item in attempts]
+        selected_steps = candidate.get("selected_steps", candidate.get("steps"))
+        if type(selected_steps) is not int or selected_steps <= 0:
+            raise StageCBackendError("IG execution evidence selected_steps is invalid")
+        return {
+            "selected_steps": selected_steps,
+            "converged": candidate.get("converged"),
+            "attempts": normalized,
+            "metadata": _mapping(
+                candidate.get("metadata", {}), "IG metadata"
+            ),
+        }
+
+    def _run_method_observed(
+        self, unit: Any, *, input_variant: str, repeat_index: int | None,
+        model: Any, clean: Any, extraction: Any, target: Any,
+        intervention: Any | None = None,
+        target_identity: Mapping[str, Any] | None = None,
+        intervention_input_sha256: str | None = None,
+    ) -> Any:
+        """Run one map and retain truthful call/IG evidence without patches."""
+
+        counter = self._active_call_counter
+        before = counter.snapshot()
+        method_id = _unit_identity(unit)["method_id"]
+        try:
+            result = self._run_method(
+                unit, model=model, clean=clean, extraction=extraction,
+                target=target, intervention=intervention,
+                target_identity=target_identity,
+                intervention_input_sha256=intervention_input_sha256,
+            )
+            self._record_method_backward_calls(counter, method_id, result)
+            after = counter.snapshot()
+            ig_summary = self._ig_execution_summary(result)
+            attempted_steps = (
+                0 if ig_summary is None else sum(
+                    int(item.get("steps", 0))
+                    for item in ig_summary["attempts"]
+                )
+            )
+            backward_calls = after.backward_calls - before.backward_calls
+            self._active_map_execution_records.append({
+                "method_id": method_id,
+                "input_variant": input_variant,
+                "repeat_index": repeat_index,
+                "status": "completed",
+                "ig_result": ig_summary,
+                "attempted_steps_total": attempted_steps,
+                "backward_invocations": backward_calls,
+                "actual_calls": {
+                    "accounting_unit": "batched_model_invocation",
+                    "forward_calls": after.forward_calls - before.forward_calls,
+                    "backward_calls": backward_calls,
+                },
+                "exception": None,
+            })
+            return result
+        except BaseException as error:
+            attached = getattr(error, "ig_result", None)
+            if attached is not None:
+                try:
+                    self._record_method_backward_calls(counter, method_id, attached)
+                except Exception:
+                    pass
+            after = counter.snapshot()
+            ig_summary = (
+                None if attached is None
+                else self._ig_execution_summary(attached)
+            )
+            attempted_steps = (
+                0 if ig_summary is None else sum(
+                    int(item.get("steps", 0))
+                    for item in ig_summary["attempts"]
+                )
+            )
+            backward_calls = after.backward_calls - before.backward_calls
+            self._active_map_execution_records.append({
+                "method_id": method_id,
+                "input_variant": input_variant,
+                "repeat_index": repeat_index,
+                "status": "failed",
+                "ig_result": ig_summary,
+                "attempted_steps_total": attempted_steps,
+                "backward_invocations": backward_calls,
+                "actual_calls": {
+                    "accounting_unit": "batched_model_invocation",
+                    "forward_calls": after.forward_calls - before.forward_calls,
+                    "backward_calls": backward_calls,
+                },
+                "exception": {
+                    "type": f"{type(error).__module__}.{type(error).__qualname__}",
+                    "message": str(error),
+                },
+            })
+            raise
 
     @staticmethod
     def _needs(unit: Any, kind: str, variant: str | None = None) -> bool:
@@ -610,6 +775,7 @@ class ProductionStageCBackend:
         target: Any,
         intervention: Any | None = None,
         target_identity: Mapping[str, Any] | None = None,
+        intervention_input_sha256: str | None = None,
     ) -> Any:
         identity = _unit_identity(unit)
         method_id = identity["method_id"]
@@ -617,6 +783,9 @@ class ProductionStageCBackend:
         context = {}
         if target_identity is not None:
             context["fidelity_target_identity"] = dict(target_identity)
+        if intervention_input_sha256 is not None:
+            context["intervention_input_sha256"] = intervention_input_sha256
+        clean_sha256 = getattr(target, "clean_input_sha256", None)
         if method_id == "direct_raw_cls_attention_per_head":
             if intervention is not None:
                 from .extractor import NativeViTExtractor
@@ -664,7 +833,8 @@ class ProductionStageCBackend:
                 vit_grad_cam_block11_norm1(model, clean, target, provenance=context)
                 if intervention is None else
                 vit_grad_cam_block11_norm1_at_intervention(
-                    model, clean, inputs, target, provenance=context
+                    model, clean, inputs, target, provenance=context,
+                    intervention_input_sha256=intervention_input_sha256,
                 )
             )
         if method_id == "full_model_class_logit_ig":
@@ -676,7 +846,8 @@ class ProductionStageCBackend:
                 full_model_class_logit_ig(model, clean, target, provenance=context)
                 if intervention is None else
                 full_model_class_logit_ig_at_intervention(
-                    model, clean, inputs, target, provenance=context
+                    model, clean, inputs, target, provenance=context,
+                    intervention_input_sha256=intervention_input_sha256,
                 )
             )
         if method_id == "conditional_fixed_clean_attention_head_direction_value_path_ig":
@@ -689,7 +860,9 @@ class ProductionStageCBackend:
                     model, clean, target, provenance=context
                 ) if intervention is None else
                 conditional_fixed_clean_attention_head_direction_value_path_ig_at_intervention(
-                    model, clean, inputs, target, provenance=context
+                    model, clean, inputs, target, provenance=context,
+                    clean_input_sha256=clean_sha256,
+                    intervention_input_sha256=intervention_input_sha256,
                 )
             )
         if method_id == "matched_fixed_clean_attention_patch_token_contribution":
@@ -702,7 +875,9 @@ class ProductionStageCBackend:
                     target, provenance=context
                 ) if intervention is None else
                 matched_fixed_clean_attention_patch_token_contribution_at_intervention(
-                    model, clean, inputs, target, provenance=context
+                    model, clean, inputs, target, provenance=context,
+                    clean_input_sha256=clean_sha256,
+                    intervention_input_sha256=intervention_input_sha256,
                 )
             )
         raise StageCBackendError(f"unregistered Stage C method: {method_id}")
@@ -710,9 +885,101 @@ class ProductionStageCBackend:
     def run(
         self, unit: Any, *, device: str, call_counter: CallCounter
     ) -> UnitPayload:
+        from .stage_c_integrity import ModelIntegrityBoundary
+
         model = self._model(device)
-        with self._count_model_forwards(model, call_counter):
-            return self._run_composed(unit, device=device, call_counter=call_counter)
+        if hasattr(self, "_active_map_execution_records"):
+            raise StageCBackendError(
+                "ProductionStageCBackend does not support concurrent execution"
+            )
+        self._active_map_execution_records: list[dict[str, Any]] = []
+        self._active_call_counter = call_counter
+        boundary = ModelIntegrityBoundary(
+            model, reference_snapshot=self._model_load_snapshots[device]
+        )
+        try:
+            try:
+                with self._phase("integrity_checking"):
+                    boundary.__enter__()
+                try:
+                    with self._count_model_forwards(model, call_counter):
+                        payload = self._run_composed(
+                            unit, device=device, call_counter=call_counter
+                        )
+                except BaseException as body_error:
+                    with self._phase("integrity_checking"):
+                        boundary.__exit__(
+                            type(body_error), body_error, body_error.__traceback__
+                        )
+                    raise
+                else:
+                    with self._phase("integrity_checking"):
+                        boundary.__exit__(None, None, None)
+            except BaseException as error:
+                evidence = getattr(error, "evidence", boundary.evidence)
+                observability = {
+                    "map_execution_records": list(
+                        self._active_map_execution_records
+                    ),
+                    "lifecycle": {
+                        "integrity": (
+                            None if evidence is None else evidence.to_dict()
+                        ),
+                        "restoration": (
+                            None
+                            if boundary.restoration_evidence is None
+                            else boundary.restoration_evidence.to_dict()
+                        ),
+                    },
+                }
+                setattr(error, "stage_c_execution_observability", observability)
+                raise
+
+            if boundary.evidence is None or not boundary.evidence.matched:
+                raise StageCBackendError(
+                    "execution-unit integrity boundary produced no success evidence"
+                )
+            l0 = dict(payload.l0)
+            if "map_execution_records" in l0 or "lifecycle" in l0:
+                raise StageCBackendError(
+                    "backend payload attempted to overwrite runner observability"
+                )
+            l0["map_execution_records"] = list(
+                self._active_map_execution_records
+            )
+            l0["lifecycle"] = {
+                "integrity": boundary.evidence.to_dict(),
+                "restoration": (
+                    None
+                    if boundary.restoration_evidence is None
+                    else boundary.restoration_evidence.to_dict()
+                ),
+            }
+            return UnitPayload(
+                l0=l0, l1=payload.l1, l2=payload.l2, l3=payload.l3,
+                provenance=payload.provenance, resources=payload.resources,
+                lifecycle=l0["lifecycle"],
+            )
+        finally:
+            del self._active_map_execution_records
+            del self._active_call_counter
+
+    def run_with_phase_timer(
+        self, unit: Any, *, device: str, call_counter: CallCounter,
+        phase_timer: PhaseTimer,
+    ) -> UnitPayload:
+        """Runner-only adapter that exposes the unit phase timer explicitly."""
+
+        if hasattr(self, "_active_phase_timer"):
+            raise StageCBackendError(
+                "ProductionStageCBackend does not support concurrent timing"
+            )
+        self._active_phase_timer = phase_timer
+        try:
+            with phase_timer.measure("attribution_or_map_compute"):
+                return self.run(unit, device=device, call_counter=call_counter)
+        finally:
+            del self._active_phase_timer
 
     def _run_composed(
         self, unit: Any, *, device: str, call_counter: CallCounter
@@ -802,12 +1069,19 @@ class ProductionStageCBackend:
                 resolve_target_response(evaluator, clean, baseline)
                 if curve_items else None
             )
-        clean_result = self._run_method(
-            unit, model=model, clean=clean, extraction=extraction,
-            target=target, target_identity=target_identity,
+        clean_map_item = next((
+            item for item in self._work_items(unit)
+            if _attribute(item, "kind") == "map"
+            and _attribute(item, "input_variant") == "clean"
+        ), None)
+        clean_repeat_index = (
+            None if clean_map_item is None
+            else _attribute(clean_map_item, "repeat_index")
         )
-        self._record_method_backward_calls(
-            call_counter, identity["method_id"], clean_result
+        clean_result = self._run_method_observed(
+            unit, input_variant="clean", repeat_index=clean_repeat_index, model=model,
+            clean=clean, extraction=extraction, target=target,
+            target_identity=target_identity,
         )
 
         l0: dict[str, Any] = self._method_result_dict(clean_result)
@@ -878,13 +1152,14 @@ class ProductionStageCBackend:
                     continue
                 perturbation = bundle[perturbation_id]
                 intervention = perturbation.normalized_tensor.to(clean.device)
-                perturbed = self._run_method(
-                    unit, model=model, clean=clean, extraction=extraction,
+                perturbed = self._run_method_observed(
+                    unit, input_variant=perturbation_id, repeat_index=None,
+                    model=model, clean=clean, extraction=extraction,
                     target=target, intervention=intervention,
                     target_identity=None,
-                )
-                self._record_method_backward_calls(
-                    call_counter, identity["method_id"], perturbed
+                    intervention_input_sha256=(
+                        perturbation.normalized_tensor_sha256
+                    ),
                 )
                 l1[perturbation_id] = self._metric_array(perturbed)
                 aligned = pixel_to_patch_mass(
@@ -970,13 +1245,14 @@ class ProductionStageCBackend:
                     continue
                 perturbation = bundle[perturbation_id]
                 intervention = perturbation.normalized_tensor.to(clean.device)
-                perturbed = self._run_method(
-                    unit, model=model, clean=clean, extraction=extraction,
+                perturbed = self._run_method_observed(
+                    unit, input_variant=perturbation_id, repeat_index=None,
+                    model=model, clean=clean, extraction=extraction,
                     target=target, intervention=intervention,
                     target_identity=target_identity,
-                )
-                self._record_method_backward_calls(
-                    call_counter, identity["method_id"], perturbed
+                    intervention_input_sha256=(
+                        perturbation.normalized_tensor_sha256
+                    ),
                 )
                 l1[perturbation_id] = self._metric_array(perturbed)
                 if target_identity is not None:
@@ -1049,12 +1325,12 @@ class ProductionStageCBackend:
                 or _attribute(item, "input_variant") != "repeat_clean"
             ):
                 continue
-            repeated = self._run_method(
-                unit, model=model, clean=clean, extraction=extraction,
-                target=target, target_identity=target_identity,
-            )
-            self._record_method_backward_calls(
-                call_counter, identity["method_id"], repeated
+            repeat_index = _attribute(item, "repeat_index")
+            repeated = self._run_method_observed(
+                unit, input_variant="repeat_clean",
+                repeat_index=repeat_index, model=model, clean=clean,
+                extraction=extraction, target=target,
+                target_identity=target_identity,
             )
             if repeated.metric_map is None:
                 raise StageCBackendError("repeatability result has no numeric map")
@@ -1063,7 +1339,7 @@ class ProductionStageCBackend:
             absolute = np.abs(reference.astype(np.float64) - observed.astype(np.float64))
             passed = bool(np.allclose(reference, observed, atol=1e-6, rtol=1e-5))
             item_record = {
-                "repeat_index": _attribute(item, "repeat_index"),
+                "repeat_index": repeat_index,
                 "atol": 1e-6, "rtol": 1e-5,
                 "max_abs_error": float(absolute.max()), "pass": passed,
             }
@@ -1075,6 +1351,44 @@ class ProductionStageCBackend:
             if not passed:
                 raise StageCBackendError("audit clean-map repeatability failed")
         l0["repeatability"] = repeatability
+
+        if curve_items:
+            fidelity_phase = self._phase("fidelity_compute")
+        else:
+            fidelity_phase = nullcontext()
+        with fidelity_phase:
+            self._run_fidelity_work(
+                unit=unit, identity=identity, clean=clean, baseline=baseline,
+                clean_result=clean_result, response=response, evaluator=evaluator,
+                curve_items=curve_items, l0=l0,
+            )
+        l0["perturbations"] = [item.to_dict() for item in bundle.values()]
+        l0["target_identity"] = (
+            None if target_identity is None else _jsonable(target_identity)
+        )
+        l0["clean_tensor_hashes"] = {
+            "canonical_rgb_sha256": __import__(
+                "vitnns.stage_c_perturbations", fromlist=["tensor_sha256"]
+            ).tensor_sha256(canonical),
+            "normalized_tensor_sha256": __import__(
+                "vitnns.stage_c_perturbations", fromlist=["tensor_sha256"]
+            ).tensor_sha256(clean),
+        }
+        l0["fidelity_enabled"] = bool(curve_items)
+        l0["stability_enabled"] = needs_stability
+        return UnitPayload(l0=l0, l1=l1, l2=l2)
+
+    def _run_fidelity_work(
+        self, *, unit: Any, identity: Mapping[str, Any], clean: Any,
+        baseline: Any, clean_result: Any, response: Any, evaluator: Any,
+        curve_items: Sequence[Any], l0: dict[str, Any],
+    ) -> None:
+        from .stage_c_fidelity import (
+            CurveDirection, FidelityScale, RankingKind, aggregate_five_curves,
+            build_intervention_schedule, build_method_intervention_schedule,
+            center_distance_ranking, evaluate_fidelity_curve,
+            global_random_ranking, method_unit_masses,
+        )
 
         curve_records: list[dict[str, Any]] = []
         if curve_items:
@@ -1189,21 +1503,6 @@ class ProductionStageCBackend:
             l0["fidelity_aggregates"] = aggregates
             l0["top20"] = top20
         l0["fidelity_curves"] = curve_records
-        l0["perturbations"] = [item.to_dict() for item in bundle.values()]
-        l0["target_identity"] = (
-            None if target_identity is None else _jsonable(target_identity)
-        )
-        l0["clean_tensor_hashes"] = {
-            "canonical_rgb_sha256": __import__(
-                "vitnns.stage_c_perturbations", fromlist=["tensor_sha256"]
-            ).tensor_sha256(canonical),
-            "normalized_tensor_sha256": __import__(
-                "vitnns.stage_c_perturbations", fromlist=["tensor_sha256"]
-            ).tensor_sha256(clean),
-        }
-        l0["fidelity_enabled"] = bool(curve_items)
-        l0["stability_enabled"] = needs_stability
-        return UnitPayload(l0=l0, l1=l1, l2=l2)
 
     def build_provenance(self, **context: Any) -> Mapping[str, Any]:
         if self.provenance_builder is not None:
@@ -1325,7 +1624,9 @@ class ProductionStageCBackend:
             seeds = [fidelity_seed(sample_id, block, head, index) for index in range(5)]
         perturbation_records: list[dict[str, Any]] = []
         if scalars.get("stability_enabled"):
-            parameters = {item["id"]: item for item in self.config.perturbations["items"]}
+            parameters = _provenance_perturbation_parameters(
+                self.config.perturbations["items"]
+            )
             bundle = next(
                 (value for (item_id, _device), value in self._perturbations.items()
                  if item_id == sample_id), {}
@@ -1782,6 +2083,75 @@ def _failure(reason: str, phase: str, error: BaseException) -> dict[str, str]:
     }
 
 
+def _failure_observability(error: BaseException) -> dict[str, Any] | None:
+    value = getattr(error, "stage_c_execution_observability", None)
+    if value is None:
+        return None
+    try:
+        return _mapping(value, "failure execution observability")
+    except Exception as conversion_error:
+        return {
+            "capture_error": {
+                "type": (
+                    f"{type(conversion_error).__module__}."
+                    f"{type(conversion_error).__qualname__}"
+                ),
+                "message": str(conversion_error),
+            }
+        }
+
+
+def _unavailable_lifecycle(error: BaseException | None = None) -> dict[str, Any]:
+    """Explicit evidence for injected/test backends without a model boundary."""
+
+    digest = "0" * 64
+    return {
+        "integrity": {
+            "schema_version": 1,
+            "algorithm": "unavailable_non_model_backend",
+            "checked": ["backend_exposes_no_model"],
+            "entry_sha256": digest,
+            "exit_sha256": digest,
+            "matched": True,
+            "restored": True,
+            "differences": [],
+            "signature_calls": 1,
+            "verification_error_type": None,
+            "verification_error_message": None,
+            "body_exception_type": (
+                None
+                if error is None else
+                f"{type(error).__module__}.{type(error).__qualname__}"
+            ),
+        },
+        "restoration": None,
+    }
+
+
+def _lifecycle_from_payload_or_error(
+    payload: UnitPayload | None, error: BaseException | None = None
+) -> dict[str, Any]:
+    if payload is not None and payload.lifecycle:
+        return _mapping(payload.lifecycle, "payload lifecycle")
+    if error is not None:
+        evidence = _failure_observability(error)
+        lifecycle = None if evidence is None else evidence.get("lifecycle")
+        if isinstance(lifecycle, Mapping):
+            return _mapping(lifecycle, "failure lifecycle")
+    return _unavailable_lifecycle(error)
+
+
+def _runner_telemetry(
+    *, timer: PhaseTimer, device: str, lifecycle: Mapping[str, Any]
+) -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "phase_timings": timer.to_dict(),
+        "lifecycle": _mapping(lifecycle, "runner lifecycle"),
+        "measurement_environment": measurement_environment(device),
+    }
+
+
 def _empty_resource_record(
     *, device: str, status: str = "completed", error: BaseException | None = None
 ) -> ResourceRecord:
@@ -1854,9 +2224,14 @@ def _check_payload_binding(unit: Any, payload: UnitPayload) -> None:
 
 
 def _invoke_backend(
-    backend: Any, unit: Any, *, device: str, call_counter: CallCounter
+    backend: Any, unit: Any, *, device: str, call_counter: CallCounter,
+    phase_timer: PhaseTimer | None = None,
 ) -> UnitPayload:
-    function = getattr(backend, "run", backend if callable(backend) else None)
+    timed_function = getattr(backend, "run_with_phase_timer", None)
+    function = (
+        timed_function if phase_timer is not None and callable(timed_function)
+        else getattr(backend, "run", backend if callable(backend) else None)
+    )
     if not callable(function):
         raise TypeError("backend must be callable or expose run(unit, ...)")
     signature = inspect.signature(function)
@@ -1865,7 +2240,15 @@ def _invoke_backend(
         keywords["device"] = device
     if "call_counter" in signature.parameters:
         keywords["call_counter"] = call_counter
-    return UnitPayload.coerce(function(unit, **keywords))
+    if phase_timer is not None and "phase_timer" in signature.parameters:
+        keywords["phase_timer"] = phase_timer
+        return UnitPayload.coerce(function(unit, **keywords))
+    phase = (
+        nullcontext() if phase_timer is None
+        else phase_timer.measure("attribution_or_map_compute")
+    )
+    with phase:
+        return UnitPayload.coerce(function(unit, **keywords))
 
 
 def _passing_preflight(
@@ -2007,6 +2390,7 @@ def _existing_resumable_attempt(
             attempt, expected_unit_identity=_unit_identity(unit),
             expected_provenance_bindings=expected_provenance_bindings,
             observed_git_state=observed_git_state, caps=caps,
+            require_runner_telemetry=True,
         )
         if validation.resumable:
             resumable.append(attempt)
@@ -2073,52 +2457,72 @@ def run_execution_unit(
         fault_injector=fault_injector,
     )
     meter = ResourceMeter(device=device, call_counter=CallCounter())
+    timer = PhaseTimer(device=device)
+    timer.start()
     payload: UnitPayload | None = None
     try:
         with meter:
             payload = _invoke_backend(
-                backend, unit, device=device, call_counter=meter.call_counter
+                backend, unit, device=device, call_counter=meter.call_counter,
+                phase_timer=timer,
             )
         record = meter.record
         _enforce_actual_resources(record, caps)
         _check_payload_binding(unit, payload)
+        lifecycle = _lifecycle_from_payload_or_error(payload)
 
-        for name, value in payload.l1.items():
-            writer.write_l1(name, value)
-        for name, value in payload.l2.items():
-            writer.write_l2(name, value)
-        for name, value in payload.l3.items():
-            writer.write_l3(name, value, failure=False)
+        with timer.measure("artifact_finalize"):
+            for name, value in payload.l1.items():
+                writer.write_l1(name, value)
+            for name, value in payload.l2.items():
+                writer.write_l2(name, value)
+            for name, value in payload.l3.items():
+                writer.write_l3(name, value, failure=False)
 
-        resource = _resource_dict(
-            record, completed=True, failure=None, artifact_records=writer.artifacts
+            resource = _resource_dict(
+                record, completed=True, failure=None,
+                artifact_records=writer.artifacts,
+            )
+            l0_document = {
+                "schema_version": STAGE_C_RUNNER_SCHEMA_VERSION,
+                "document_type": "stage_c_execution_unit_l0",
+                "unit_identity": identity,
+                "state": "completed",
+                "failure": None,
+                "scalars": _mapping(payload.l0, "payload L0"),
+                "resources": resource,
+                "backend_resources": _mapping(
+                    payload.resources, "payload backend resources"
+                ),
+                "lifecycle": lifecycle,
+            }
+            writer.write_l0("result", l0_document, kind="result")
+            resource = _resource_dict(
+                record, completed=True, failure=None,
+                artifact_records=writer.artifacts,
+            )
+            provenance = _prepare_provenance(
+                backend, unit, payload, state="completed", failure=None,
+                resources=resource, preflight=preflight,
+                artifact_inventory=writer.artifacts,
+            )
+            final = writer.finalize(provenance=provenance)
+            validation = validate_execution_unit(
+                attempt, expected_unit_identity=identity,
+                expected_provenance_bindings=expected_bindings,
+                observed_git_state=git_state, caps=caps,
+            )
+        timer.stop()
+        writer.publish_runner_telemetry(
+            _runner_telemetry(
+                timer=timer, device=device, lifecycle=lifecycle,
+            )
         )
-        l0_document = {
-            "schema_version": STAGE_C_RUNNER_SCHEMA_VERSION,
-            "document_type": "stage_c_execution_unit_l0",
-            "unit_identity": identity,
-            "state": "completed",
-            "failure": None,
-            "scalars": _mapping(payload.l0, "payload L0"),
-            "resources": resource,
-            "backend_resources": _mapping(
-                payload.resources, "payload backend resources"
-            ),
-        }
-        writer.write_l0("result", l0_document, kind="result")
-        resource = _resource_dict(
-            record, completed=True, failure=None, artifact_records=writer.artifacts
-        )
-        provenance = _prepare_provenance(
-            backend, unit, payload, state="completed", failure=None,
-            resources=resource, preflight=preflight,
-            artifact_inventory=writer.artifacts,
-        )
-        final = writer.finalize(provenance=provenance)
         validation = validate_execution_unit(
             attempt, expected_unit_identity=identity,
             expected_provenance_bindings=expected_bindings,
             observed_git_state=git_state, caps=caps,
+            require_runner_telemetry=True,
         )
         if not validation.resumable:
             return UnitRunResult(
@@ -2130,6 +2534,8 @@ def run_execution_unit(
         return UnitRunResult(identity, UNIT_SUCCEEDED, str(attempt), False, None)
     except BaseException as error:
         failure = _failure("execution_unit_failed", "backend_or_persistence", error)
+        failure_observability = _failure_observability(error)
+        lifecycle = _lifecycle_from_payload_or_error(payload, error)
         try:
             record = meter.record
         except RuntimeError:
@@ -2138,21 +2544,50 @@ def run_execution_unit(
             record, completed=False, failure=failure, artifact_records=writer.artifacts
         )
         try:
-            if not writer.terminal and hasattr(writer, "prepare_failure"):
-                writer.prepare_failure(failure["reason"], failure)
-            resource = _resource_dict(
-                record, completed=False, failure=failure,
-                artifact_records=writer.artifacts,
-            )
-            provenance = _prepare_provenance(
-                backend, unit, payload, state="failed", failure=failure,
-                resources=resource, preflight=preflight,
-                artifact_inventory=writer.artifacts,
-            )
             if not writer.terminal:
-                writer.fail(
-                    failure["reason"], details=failure, provenance=provenance
+                with timer.measure("artifact_finalize"):
+                    if failure_observability is not None:
+                        writer.write_l0(
+                            "execution_lifecycle", failure_observability,
+                            kind="failure_evidence",
+                        )
+                    writer.prepare_failure(failure["reason"], failure)
+                    resource = _resource_dict(
+                        record, completed=False, failure=failure,
+                        artifact_records=writer.artifacts,
+                    )
+                    provenance = _prepare_provenance(
+                        backend, unit, payload, state="failed", failure=failure,
+                        resources=resource, preflight=preflight,
+                        artifact_inventory=writer.artifacts,
+                    )
+                    writer.fail(
+                        failure["reason"], details=failure, provenance=provenance
+                    )
+                    validate_execution_unit(
+                        attempt, expected_unit_identity=identity,
+                        expected_provenance_bindings=expected_bindings,
+                        observed_git_state=git_state, caps=caps,
+                    )
+            if not timer.stopped:
+                timer.stop()
+            if writer.terminal:
+                writer.publish_runner_telemetry(
+                    _runner_telemetry(
+                        timer=timer, device=device, lifecycle=lifecycle,
+                    )
                 )
+                terminal_validation = validate_execution_unit(
+                    attempt, expected_unit_identity=identity,
+                    expected_provenance_bindings=expected_bindings,
+                    observed_git_state=git_state, caps=caps,
+                    require_runner_telemetry=True,
+                )
+                if not terminal_validation.valid:
+                    raise StageCRunnerError(
+                        "terminal failure validation failed: "
+                        + "; ".join(terminal_validation.errors)
+                    )
             return UnitRunResult(identity, UNIT_FAILED, str(attempt), False, failure)
         except BaseException as persistence_error:
             combined = dict(failure)
@@ -2206,6 +2641,11 @@ def _write_batch_controls(
 ) -> None:
     rows = []
     for result in results:
+        status_sha256 = None
+        if result.attempt_path is not None:
+            status_path = Path(result.attempt_path) / "status.json"
+            if status_path.is_file() and not status_path.is_symlink():
+                status_sha256 = hashlib.sha256(status_path.read_bytes()).hexdigest()
         rows.append(
             {
                 "unit_key": _mapping(result.unit_key, "unit key"),
@@ -2213,6 +2653,7 @@ def _write_batch_controls(
                 "terminal": result.state in _TERMINAL_STATES,
                 "complete": result.state in {UNIT_SUCCEEDED, UNIT_SKIPPED},
                 "selected_attempt": result.attempt_path,
+                "selected_status_sha256": status_sha256,
                 "failure": (
                     None
                     if result.failure is None
@@ -2395,6 +2836,7 @@ def _classify_attempts(
             path, expected_unit_identity=_unit_identity(unit),
             expected_provenance_bindings=expected_provenance_bindings,
             observed_git_state=observed_git_state, caps=caps,
+            require_runner_telemetry=True,
         )
         for path in attempt_directories(unit_root)
     )
@@ -2554,6 +2996,18 @@ def validate_stage_c_batch(
                     errors.append(f"failure table state disagrees for unit {digest}")
                 if table_row.get("selected_attempt") != observed["selected_attempt"]:
                     errors.append(f"failure table selected attempt disagrees for unit {digest}")
+                selected = observed["selected_attempt"]
+                expected_status_sha256 = None
+                if isinstance(selected, str):
+                    selected_status = Path(selected) / "status.json"
+                    if selected_status.is_file() and not selected_status.is_symlink():
+                        expected_status_sha256 = hashlib.sha256(
+                            selected_status.read_bytes()
+                        ).hexdigest()
+                if table_row.get("selected_status_sha256") != expected_status_sha256:
+                    errors.append(
+                        f"failure table selected status hash disagrees for unit {digest}"
+                    )
         except Exception as error:
             errors.append(f"invalid failure_table.json: {error}")
 

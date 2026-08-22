@@ -30,6 +30,7 @@ from vitnns.stage_c_maps import (
 from vitnns.stage_c_fidelity import (
     ValuePathScalarAdapter, resolve_target_response,
 )
+from vitnns.stage_c_integrity import ModelIntegrityBoundary, ModelIntegrityError
 from vitnns.stage_c_value_path import (
     DEGENERATE_DIRECTION,
     DEGENERATE_PATCH_SUPPORT,
@@ -760,6 +761,42 @@ def test_c5_value_adapter_resolves_same_fixed_a_u_endpoints():
     assert response.normalize(response.baseline_value) == pytest.approx(0.0)
 
 
+def test_frozen_head_scalar_prehashed_path_skips_tensor_content_hashes(
+    monkeypatch,
+):
+    model, image, target = _issued_target()
+    intervention = image * 0.5
+    digest = value_path._tensor_sha256(intervention)
+
+    def unexpected_hash(_value):
+        raise AssertionError("prehashed scalar path must not hash tensors")
+
+    monkeypatch.setattr(value_path, "_tensor_sha256", unexpected_hash)
+    result = evaluate_frozen_head_direction_target(
+        model, image, intervention, target,
+        clean_input_sha256=target.clean_input_sha256,
+        intervention_input_sha256=digest,
+    )
+    assert result.intervention_input_sha256 == digest
+
+
+def test_frozen_head_target_requires_resolver_clean_tensor_live_identity():
+    model, image, target = _issued_target()
+    with pytest.raises(StageCValuePathError, match="live identity"):
+        evaluate_frozen_head_direction_target(
+            model, image.clone(), image, target,
+            clean_input_sha256=target.clean_input_sha256,
+            intervention_input_sha256=target.clean_input_sha256,
+        )
+
+
+def test_value_model_data_mutation_is_deferred_to_strong_unit_exit():
+    model, _image, _target = _issued_target()
+    with pytest.raises(ModelIntegrityError, match="integrity verification failed"):
+        with ModelIntegrityBoundary(model):
+            next(model.parameters()).data.add_(1.0)
+
+
 def test_frozen_head_scalar_fail_closed_and_restores_after_exception():
     model, image, target = _issued_target()
     with pytest.raises(TypeError, match="float32"):
@@ -1480,6 +1517,7 @@ def test_clean_ig_wrapper_delegates_without_semantic_change(monkeypatch):
         intervention_inputs,
         received_target,
         provenance=None,
+        **kwargs,
     ):
         calls.append(
             (clean_inputs, intervention_inputs, received_target, provenance)
@@ -2023,8 +2061,8 @@ def test_frozen_target_rejects_direct_construction_tamper_input_and_model_drift(
         lambda *_args, **_kwargs: _ig_result(target),
     )
     with pytest.raises(StageCValuePathError, match="input bytes"):
-        conditional_fixed_clean_attention_head_direction_value_path_ig(
-            model, changed_input, target
+        conditional_fixed_clean_attention_head_direction_value_path_ig_at_intervention(
+            model, changed_input, image, target
         )
 
     original_status = target.resolution.status

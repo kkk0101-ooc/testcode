@@ -4,13 +4,28 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any, Callable, TextIO
 
 from .constants import DEFAULT_STATE_DICT, REPO_ROOT
 from .io_utils import sha256_file
+from .runner import seed_everything
 from .stage_c_config import load_stage_c_config
+from .stage_c_provenance import capture_git_state
+from .stage_c_benchmark import (
+    StageCBenchmarkBlockedError,
+    StageCBenchmarkIntegrityError,
+    capture_benchmark_environment,
+    require_fresh_c7_output_root,
+    require_c7_launch_gate,
+    validate_c7_diagnostic_plan,
+    validate_c7_execution_plan,
+    write_benchmark_report,
+    write_c7_diagnostic_gate,
+    write_c7_launch_authorization,
+)
 from .stage_c_plan import (
     build_execution_plan,
     estimate_stage_c_run,
@@ -33,6 +48,7 @@ EXIT_INPUT_ERROR = 1
 EXIT_PREFLIGHT_BLOCKED = 2
 EXIT_TERMINAL_FAILURE = 3
 EXIT_INTEGRITY_FAILURE = 4
+STAGE_C_SEED = 20260821
 
 
 class ArgumentError(ValueError):
@@ -72,15 +88,33 @@ def build_parser() -> argparse.ArgumentParser:
             "--no-resume", action="store_true",
             help="always allocate a new attempt, preserving every old attempt",
         )
+        command.add_argument(
+            "--c7-diagnostic-gate", type=Path,
+            help=(
+                "required for the exact formal C7 plan; must name a passing "
+                "report from the separate one-unit diagnostic workload"
+            ),
+        )
         if name == "run-sample":
             command.add_argument("--sample-id", required=True)
 
-    for name in ("validate", "aggregate"):
+    benchmark = commands.add_parser("benchmark")
+    _add_plan_arguments(benchmark)
+    benchmark.add_argument("--output-root", type=Path, required=True)
+    benchmark.add_argument("--device", default="cpu")
+    benchmark.add_argument("--state-dict", type=Path, default=DEFAULT_STATE_DICT)
+    benchmark.add_argument("--c7-diagnostic-gate", type=Path, required=True)
+
+    for name in ("validate", "aggregate", "c7-diagnostic-gate", "benchmark-report"):
         command = commands.add_parser(name)
         _add_plan_arguments(command)
         command.add_argument("--output-root", type=Path, required=True)
-        if name == "aggregate":
+        if name in {"aggregate", "c7-diagnostic-gate", "benchmark-report"}:
             command.add_argument("--output", type=Path)
+        if name in {"c7-diagnostic-gate", "benchmark-report"}:
+            command.add_argument("--device", default="cuda:0")
+        if name == "benchmark-report":
+            command.add_argument("--c7-diagnostic-gate", type=Path, required=True)
     return parser
 
 
@@ -180,6 +214,50 @@ def _make_backend(
     return factory(config=config, registry=registry, plan=plan, args=args)
 
 
+def _is_exact_c7_plan(plan: Any, config: Any) -> bool:
+    """Recognize the frozen C7 plan without changing other run semantics."""
+
+    try:
+        result = validate_c7_execution_plan(plan, config)
+    except (TypeError, ValueError):
+        return False
+    return bool(result.get("valid")) if isinstance(result, dict) else False
+
+
+def _is_exact_c7_diagnostic_plan(plan: Any, config: Any) -> bool:
+    try:
+        result = validate_c7_diagnostic_plan(plan, config)
+    except (TypeError, ValueError):
+        return False
+    return bool(result.get("valid")) if isinstance(result, dict) else False
+
+
+def _default_report_path(output_root: Path, suffix: str) -> Path:
+    root = Path(output_root)
+    return root.with_name(root.name + suffix)
+
+
+def _configure_c7_execution(device: str) -> None:
+    """Establish the frozen deterministic boundary for C7 only."""
+
+    import torch
+
+    parsed = torch.device(device)
+    if parsed.type == "cuda" and os.environ.get(
+        "CUBLAS_WORKSPACE_CONFIG"
+    ) not in {":4096:8", ":16:8"}:
+        raise RuntimeError(
+            "C7 CUDA execution requires CUBLAS_WORKSPACE_CONFIG=:4096:8 "
+            "(or :16:8) before process start"
+        )
+    seed_everything(STAGE_C_SEED)
+    torch.use_deterministic_algorithms(True)
+    torch.backends.cudnn.benchmark = False
+    if parsed.type == "cuda":
+        torch.backends.cuda.matmul.allow_tf32 = False
+        torch.backends.cudnn.allow_tf32 = False
+
+
 def main(
     argv: list[str] | None = None,
     *,
@@ -213,9 +291,91 @@ def main(
                 else EXIT_TERMINAL_FAILURE
             )
 
+        if args.command == "c7-diagnostic-gate":
+            destination = args.output or _default_report_path(
+                args.output_root, ".c7-diagnostic-gate.json"
+            )
+            _configure_c7_execution(args.device)
+            git_state = capture_git_state(REPO_ROOT)
+            result = write_c7_diagnostic_gate(
+                destination, args.output_root, plan, config=config,
+                environment=capture_benchmark_environment(args.device),
+                run_spec_path=args.run_spec,
+                run_spec_file_sha256=sha256_file(args.run_spec),
+                observed_git_state=git_state,
+            )
+            _write_json(result, sys.stdout)
+            return (
+                EXIT_SUCCESS
+                if result.get("status") == "PASS"
+                else EXIT_PREFLIGHT_BLOCKED
+            )
+
+        if args.command == "benchmark-report":
+            destination = args.output or _default_report_path(
+                args.output_root, ".benchmark-report.json"
+            )
+            _configure_c7_execution(args.device)
+            git_state = capture_git_state(REPO_ROOT)
+            result = write_benchmark_report(
+                destination, args.output_root, plan, config=config,
+                environment=capture_benchmark_environment(args.device),
+                run_spec_path=args.run_spec,
+                run_spec_file_sha256=sha256_file(args.run_spec),
+                recomputed_estimate=estimate,
+                observed_git_state=git_state,
+                c7_diagnostic_gate=args.c7_diagnostic_gate,
+            )
+            _write_json(result, sys.stdout)
+            if result.get("status") == "PASS":
+                return EXIT_SUCCESS
+            exit_class = result.get("exit_class")
+            if exit_class == "integrity":
+                return EXIT_INTEGRITY_FAILURE
+            if exit_class == "preflight":
+                return EXIT_PREFLIGHT_BLOCKED
+            return EXIT_TERMINAL_FAILURE
+
+        if args.command == "benchmark" and not _is_exact_c7_plan(plan, config):
+            raise ArgumentError(
+                "benchmark requires the exact checked-in C7 execution scope"
+            )
+        is_c7 = _is_exact_c7_plan(plan, config)
+        is_c7_diagnostic = _is_exact_c7_diagnostic_plan(plan, config)
+        authorization = None
+        if is_c7:
+            if args.c7_diagnostic_gate is None:
+                _write_json(
+                    {
+                        "document_type": "stage_c_c7_launch_gate",
+                        "status": "BLOCKED",
+                        "blocked_reasons": [
+                            "the exact C7 run requires --c7-diagnostic-gate"
+                        ],
+                    },
+                    sys.stdout,
+                )
+                return EXIT_PREFLIGHT_BLOCKED
+            git_state = capture_git_state(REPO_ROOT)
+            authorization = require_c7_launch_gate(
+                args.c7_diagnostic_gate,
+                plan,
+                config=config,
+                output_root=args.output_root,
+                observed_git_state=git_state,
+                run_spec_path=args.run_spec,
+            )
+        elif is_c7_diagnostic:
+            require_fresh_c7_output_root(
+                args.output_root, kind="diagnostic"
+            )
         if not estimate.within_budget:
             _write_json(estimate, sys.stdout)
             return EXIT_PREFLIGHT_BLOCKED
+        if is_c7 or is_c7_diagnostic:
+            _configure_c7_execution(args.device)
+        if authorization is not None:
+            write_c7_launch_authorization(args.output_root, authorization)
         factory = backend_factory or _default_backend_factory
         backend = _make_backend(
             factory, config=config, registry=registry, plan=plan, args=args
@@ -226,7 +386,7 @@ def main(
             "output_root": args.output_root,
             "backend": backend,
             "device": args.device,
-            "resume": not args.no_resume,
+            "resume": False if args.command == "benchmark" else not args.no_resume,
             "estimate": estimate,
             "caps": caps,
         }
@@ -251,6 +411,32 @@ def main(
             sys.stderr,
         )
         return EXIT_INTEGRITY_FAILURE
+    except StageCBenchmarkIntegrityError as error:
+        _write_json(
+            {
+                "error": {
+                    "message": str(error),
+                    "type": type(error).__name__,
+                }
+            },
+            sys.stderr,
+        )
+        return EXIT_INTEGRITY_FAILURE
+    except StageCBenchmarkBlockedError as error:
+        report = getattr(error, "report", None)
+        if isinstance(report, dict):
+            _write_json(report, sys.stdout)
+        else:
+            reasons = list(getattr(error, "reasons", ()) or (str(error),))
+            _write_json(
+                {
+                    "document_type": "stage_c_c7_launch_gate",
+                    "status": "BLOCKED",
+                    "blocked_reasons": reasons,
+                },
+                sys.stdout,
+            )
+        return EXIT_PREFLIGHT_BLOCKED
     except ArgumentError as error:
         _write_json(
             {"error": {"message": str(error), "type": "ArgumentError"}},

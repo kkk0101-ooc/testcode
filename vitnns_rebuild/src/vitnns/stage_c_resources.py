@@ -11,7 +11,7 @@ from __future__ import annotations
 import math
 import threading
 import time
-from contextlib import AbstractContextManager
+from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -26,12 +26,200 @@ PAYLOAD_FILE_LIST_SCOPE = "explicit_payload_file_list"
 ROOT_TREE_SCOPE = "exhaustive_regular_file_tree"
 _CUDA_OWNERS_LOCK = threading.Lock()
 _CUDA_OWNERS: set[int] = set()
+REQUIRED_PHASES = (
+    "attribution_or_map_compute",
+    "fidelity_compute",
+    "integrity_checking",
+    "artifact_finalize",
+)
+PHASE_CLOCK = "perf_counter"
+PHASE_SYNCHRONIZATION = "device_before_and_after_each_phase"
+TOTAL_BOUNDARY = (
+    "unit_start_through_first_complete_validation_"
+    "excluding_telemetry_publication"
+)
 
 
 def _positive_count(value: Any, name: str) -> int:
     if type(value) is not int or value <= 0:
         raise ValueError(f"{name} must be a positive integer (not bool)")
     return value
+
+
+@dataclass(frozen=True)
+class PhaseTiming:
+    """Accumulated synchronized wall time for one named unit phase."""
+
+    wall_time_seconds: float
+    invocations: int
+
+    def __post_init__(self) -> None:
+        if (
+            isinstance(self.wall_time_seconds, bool)
+            or not isinstance(self.wall_time_seconds, (int, float))
+            or not math.isfinite(float(self.wall_time_seconds))
+            or self.wall_time_seconds < 0.0
+        ):
+            raise ValueError(
+                "phase wall_time_seconds must be finite and non-negative"
+            )
+        if type(self.invocations) is not int or self.invocations < 0:
+            raise ValueError("phase invocations must be a non-negative integer")
+        object.__setattr__(self, "wall_time_seconds", float(self.wall_time_seconds))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "wall_time_seconds": self.wall_time_seconds,
+            "invocations": self.invocations,
+        }
+
+
+class PhaseTimer:
+    """Synchronized, additive phase timing inside one execution unit.
+
+    Phase intervals may be nested, so their durations are deliberately not
+    represented as a partition of total wall time.  Model invocation counts
+    remain owned exclusively by :class:`CallCounter`.
+    """
+
+    def __init__(
+        self, *, device: torch.device | str, clock: Any = time.perf_counter
+    ) -> None:
+        self.device = torch.device(device)
+        if self.device.type not in {"cpu", "cuda"}:
+            raise ValueError("phase timing supports only CPU or CUDA devices")
+        if not callable(clock):
+            raise TypeError("clock must be callable")
+        self._clock = clock
+        self._durations = {name: 0.0 for name in REQUIRED_PHASES}
+        self._invocations = {name: 0 for name in REQUIRED_PHASES}
+        self._total_start: float | None = None
+        self._total_wall: float | None = None
+
+    def _synchronize(self) -> None:
+        if self.device.type == "cuda":
+            if not torch.cuda.is_available():
+                raise RuntimeError(
+                    "CUDA phase timing requested but CUDA is unavailable"
+                )
+            if self.device.index is None:
+                self.device = torch.device("cuda", torch.cuda.current_device())
+            torch.cuda.synchronize(self.device)
+
+    def _now(self, context: str) -> float:
+        value = self._clock()
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(float(value))
+        ):
+            raise RuntimeError(f"{context} clock reading is not finite")
+        return float(value)
+
+    def start(self) -> None:
+        if self._total_start is not None or self._total_wall is not None:
+            raise RuntimeError("PhaseTimer instances are single-use")
+        self._synchronize()
+        self._total_start = self._now("total start")
+
+    @contextmanager
+    def measure(self, phase: str):
+        if phase not in self._durations:
+            raise ValueError(f"unknown execution-unit phase: {phase!r}")
+        if self._total_start is None or self._total_wall is not None:
+            raise RuntimeError("phase timing requires an active total boundary")
+        self._synchronize()
+        started = self._now(f"{phase} start")
+        body_error: BaseException | None = None
+        try:
+            yield
+        except BaseException as error:
+            body_error = error
+            raise
+        finally:
+            try:
+                self._synchronize()
+                elapsed = self._now(f"{phase} end") - started
+                if not math.isfinite(elapsed) or elapsed < 0.0:
+                    raise RuntimeError(
+                        f"{phase} duration was non-finite or negative"
+                    )
+                self._durations[phase] += elapsed
+                self._invocations[phase] += 1
+            except BaseException as timing_error:
+                if body_error is None:
+                    raise
+                if hasattr(body_error, "add_note"):
+                    try:
+                        body_error.add_note(
+                            f"Stage C {phase} timing also failed: "
+                            f"{type(timing_error).__name__}: {timing_error}"
+                        )
+                    except BaseException:
+                        pass
+
+    def stop(self) -> None:
+        if self._total_start is None or self._total_wall is not None:
+            raise RuntimeError("total phase boundary is not active")
+        self._synchronize()
+        elapsed = self._now("total end") - self._total_start
+        if not math.isfinite(elapsed) or elapsed < 0.0:
+            raise RuntimeError("total wall duration was non-finite or negative")
+        self._total_wall = elapsed
+
+    @property
+    def stopped(self) -> bool:
+        return self._total_wall is not None
+
+    def to_dict(self) -> dict[str, Any]:
+        if self._total_wall is None:
+            raise RuntimeError("phase timings are unavailable before total stop")
+        phases = {
+            name: PhaseTiming(
+                self._durations[name], self._invocations[name]
+            ).to_dict()
+            for name in REQUIRED_PHASES
+        }
+        return {
+            "clock": PHASE_CLOCK,
+            "synchronization": PHASE_SYNCHRONIZATION,
+            "phases": phases,
+            "synchronized_total_wall_time_seconds": self._total_wall,
+            "total_boundary": TOTAL_BOUNDARY,
+            "phases_are_mutually_exclusive": False,
+        }
+
+
+def measurement_environment(device: torch.device | str) -> dict[str, Any]:
+    """Return JSON-safe runtime identity for persisted timing evidence."""
+
+    resolved = torch.device(device)
+    if resolved.type not in {"cpu", "cuda"}:
+        raise ValueError("measurement environment supports only CPU or CUDA")
+    if resolved.type == "cuda":
+        if not torch.cuda.is_available():
+            raise RuntimeError(
+                "CUDA measurement environment requested but CUDA is unavailable"
+            )
+        if resolved.index is None:
+            resolved = torch.device("cuda", torch.cuda.current_device())
+        device_name: str | None = str(torch.cuda.get_device_name(resolved))
+        cuda_runtime: str | None = torch.version.cuda
+        cudnn_value = torch.backends.cudnn.version()
+        cudnn_version: int | None = (
+            None if cudnn_value is None else int(cudnn_value)
+        )
+    else:
+        device_name = None
+        cuda_runtime = None
+        cudnn_version = None
+    return {
+        "device_type": resolved.type,
+        "device": str(resolved),
+        "device_name": device_name,
+        "cuda_runtime_version": cuda_runtime,
+        "cudnn_version": cudnn_version,
+    }
 
 
 @dataclass(frozen=True)
@@ -575,9 +763,16 @@ __all__ = [
     "CallCounts",
     "InstrumentationError",
     "PAYLOAD_FILE_LIST_SCOPE",
+    "PHASE_CLOCK",
+    "PHASE_SYNCHRONIZATION",
+    "PhaseTimer",
+    "PhaseTiming",
+    "REQUIRED_PHASES",
     "ROOT_TREE_SCOPE",
     "ResourceMeter",
     "ResourceRecord",
+    "TOTAL_BOUNDARY",
+    "measurement_environment",
     "measure_artifact_bytes",
     "measure_artifact_tree_bytes",
 ]
