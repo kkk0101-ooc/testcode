@@ -113,11 +113,40 @@ every required gate enabled and passing.
 
 Stage C now includes strict config/map/metric contracts, the registered
 attention and class-logit methods, fixed-clean-attention head-direction
-Value-path methods, and C5 primitives for fidelity, canonical perturbation
-stability, within-patch residuals, and resource measurement. See
+Value-path methods, C5 evaluation primitives, and the C6 auditable execution
+pipeline. See
 `docs/阶段C_protocol.md`, `docs/stage_c_acceptance.md`, and the live handoff log
 `docs/阶段C-step-by-step.md`.
 
-C5 is intentionally not a runner: it creates no execution-unit directories,
-manifest/status/resume state, selection, bootstrap, or Go/No-Go decision.
+C6 exposes non-interactive `estimate`, `run-sample`, `run-batch`, `validate`,
+and `aggregate` commands. Every invocation requires both the frozen Stage C
+config and an explicit JSON run spec; there are no implicit method, sample,
+candidate, fidelity, stability, or repeatability defaults. For example:
+
+```bash
+vitnns-stage-c estimate \
+  --config config/stage_c.json \
+  --run-spec /path/to/explicit-run-spec.json
+
+CUDA_VISIBLE_DEVICES=0 vitnns-stage-c run-sample \
+  --config config/stage_c.json \
+  --run-spec /path/to/explicit-single-sample-run-spec.json \
+  --sample-id ILSVRC2012_val/ILSVRC2012_val_00000079.JPEG \
+  --output-root /path/to/new-stage-c-output \
+  --device cuda
+
+vitnns-stage-c validate \
+  --config config/stage_c.json \
+  --run-spec /path/to/explicit-run-spec.json \
+  --output-root /path/to/stage-c-output
+```
+
+Preflight runs before model/GPU initialization or output creation. Resume is
+on by default and skips only a complete attempt whose status, manifest, every
+artifact hash/byte count, and current plan/provenance bindings validate. Failed,
+incomplete, or tampered attempts are preserved and a retry receives a fresh
+directory; `--no-resume` also creates a fresh attempt. `aggregate` emits only
+validated L0 rows and never performs C8 selection, bootstrap, or a scientific
+decision. C7 remains the next task and is the first real all-method one-image
+benchmark.
 

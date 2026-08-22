@@ -898,7 +898,7 @@ def _validate_docs() -> None:
             assert unresolved not in text, f"Unresolved marker {unresolved!r} in {relative}"
     step_text = (REPO_ROOT / "docs/阶段C-step-by-step.md").read_text(encoding="utf-8")
     assert (
-        "当前状态：阶段 A、阶段 B、阶段 C/C0–C5 已完成；下一任务是 C6。"
+        "当前状态：阶段 A、阶段 B、阶段 C/C0–C6 已完成；下一任务是 C7。"
         in step_text
     )
     assert "| C0 | PASS |" in step_text
@@ -907,13 +907,15 @@ def _validate_docs() -> None:
     assert step_text.count("| C3 | PASS |") == 1
     assert step_text.count("| C4 | PASS |") == 1
     assert step_text.count("| C5 | PASS |") == 1
-    assert step_text.count("| C6 | NOT_STARTED（NEXT） |") == 1
+    assert step_text.count("| C6 | PASS |") == 1
+    assert step_text.count("| C7 | NOT_STARTED（NEXT） |") == 1
     assert "### 2026-08-21 16:05 +0800 — C0 completion record" in step_text
     assert "C1 completion record" in step_text
     assert "C2 completion record" in step_text
     assert step_text.count("C3 completion record") == 2  # heading + C4 prompt
     assert step_text.count("C4 completion record") == 3  # heading + C5 prompt/rule
-    assert step_text.count("C5 completion record") == 2  # heading + C6 prompt
+    assert step_text.count("C5 completion record") == 3  # heading + C6 prompt/record
+    assert step_text.count("C6 completion record") == 3  # heading + C7 prompt/rule
     assert "你现在只执行 ViT-NNS 重建工程“阶段 C”的 C1" in step_text
     assert "你现在只执行 ViT-NNS 重建工程“阶段 C”的 C2" in step_text
     assert "你现在只执行 ViT-NNS 重建工程“阶段 C”的 C3" in step_text
@@ -930,9 +932,15 @@ def _validate_docs() -> None:
     )[0]
     assert c4_record.count("- status: PASS") == 1
     assert c4_record.count("- next_task: C5") == 1
-    c5_record = step_text.split("— C5 completion record", 1)[1]
+    c5_record = step_text.split("— C5 completion record", 1)[1].split(
+        "— C6 completion record", 1
+    )[0]
     assert c5_record.count("- status: PASS") == 1
     assert c5_record.count("- next_task: C6") == 1
+    c6_record = step_text.split("— C6 completion record", 1)[1]
+    assert c6_record.count("- status: PASS") == 1
+    assert c6_record.count("- next_task: C7") == 1
+    assert step_text.count("你现在只执行 ViT-NNS 重建工程“阶段 C”的 C7") == 1
     for token in (
         "C0_COMMIT_SHA",
         "STAGE_C_CONFIG_SHA256", "STAGE_C_PROTOCOL_SHA256",
@@ -975,6 +983,11 @@ def validate_all(*, require_tracked: bool = False, require_clean: bool = False) 
             "src/vitnns/stage_c_perturbations.py",
             "src/vitnns/stage_c_stability.py",
             "src/vitnns/stage_c_resources.py",
+            "src/vitnns/stage_c_plan.py",
+            "src/vitnns/stage_c_artifacts.py",
+            "src/vitnns/stage_c_provenance.py",
+            "src/vitnns/stage_c_runner.py",
+            "src/vitnns/stage_c_cli.py",
             "tests/test_stage_c_config.py",
             "tests/test_stage_c_maps.py",
             "tests/test_stage_c_metrics.py",
@@ -985,7 +998,13 @@ def validate_all(*, require_tracked: bool = False, require_clean: bool = False) 
             "tests/test_stage_c_perturbations.py",
             "tests/test_stage_c_stability.py",
             "tests/test_stage_c_resources.py",
+            "tests/test_stage_c_plan.py",
+            "tests/test_stage_c_artifacts.py",
+            "tests/test_stage_c_provenance.py",
+            "tests/test_stage_c_runner.py",
+            "tests/test_stage_c_cli.py",
             "tests/test_stage_c_contract.py",
+            "pyproject.toml",
         ]
         for relative in tracked:
             subprocess.run(
