@@ -450,6 +450,7 @@ C2 已完成。简单说，direct 现在只读取真实模型 forward 已经使�
 
 必须完成：
 
+- 在正式 benchmark 前先通过下述“C7 启动前完整性性能门”；不得把诊断性完整性扫描的病态开销当成方法本身的生产成本；
 - 在一个 audit 图上运行所有方法；
 - NNS 至少覆盖预注册的早/中/晚层和若干头，以观察最坏收敛 steps；
 - 记录每方法/配置的时间、峰值显存、调用数和输出字节；
@@ -459,6 +460,23 @@ C2 已完成。简单说，direct 现在只读取真实模型 forward 已经使�
 - 更新本文并生成 C8 提示词。
 
 验收：无 OOM、无残留 hook/grad、预算估算可复算；若超预算则标记 `BLOCKED` 或提交 protocol amendment，不能静默减少层/头/样本。
+
+#### C7 启动前完整性性能门（2026-08-22 冻结）
+
+一次未完成的 C7 诊断运行发现，原实现把“防止模型在一次调用中被篡改”的全模型内容签名放进了 fidelity scalar 热路径。首个完整 NNS unit 用时 `1513.779444482061` 秒，执行 `1274` 次 batched forward、`320` 次 batched backward，但只写出 `4171728` bytes payload；其中 `44 × 21 = 924` 个 fidelity curve points 会各自触发多次 `_model_state_signature()`。该函数把约 8657 万个 float32 参数和 buffers 从 GPU 搬到 CPU 后逐字节 SHA-256；仅按每点四次、只计 parameters，就重复扫描约 `1.28 TB`（约 `1.16 TiB`）。实测表现为 CPU 多核繁忙而 H20 利用率很低。因此这是完整性实现的病态放大，不是论文方法所需的科学计算，也不是写盘造成的。
+
+下一次 C7 在启动唯一正式单图 benchmark 前，必须先完成以下窄范围工程修正；这不授权修改 registry/config/schema/protocol/acceptance、方法公式、目标、阈值、IG schedule、seed、扰动、fidelity 曲线、repeat、候选、资源 cap 或 decision gate：
+
+1. canonical model artifact 在加载时仍校验冻结的 state-dict SHA-256；每个 execution unit 的入口和成功/异常出口仍对参数与 buffers 做强内容签名并比较，任何持久变化都必须使该 unit fail closed。unit 边界还必须核验 hooks、全部 module mode、parameter `grad`/`requires_grad` 和 fused-attention 状态均恢复。
+2. **不得在每个 fidelity point、每次 frozen scalar evaluation、每个 IG quadrature chunk 或同一 map 的内部循环中，把全模型参数/buffers 搬到 CPU 并重新做内容 SHA-256。** 热路径可检查 model/tensor object identity、`data_ptr`、shape、dtype、device 和 PyTorch `_version` 等廉价状态；完整字节校验集中在 model-load 与 execution-unit 边界。
+3. fidelity intervention tensor 仍须有可复核的内容 hash，但 21 张 schedule 的整组内容只在构造/曲线边界强校验，不得在每个点的前后重复扫描整组 21 张 tensor。点内可检查当前 tensor 的身份、版本和预先绑定的 digest；curve 结束时若强校验不一致则整条曲线及其 unit 失败。
+4. 该边界化方案的威胁模型是可信本地研究代码中的意外持久 mutation；不为“某个调用恶意改写全部权重、使用篡改权重计算、再逐字节恢复且不留下版本变化”的对抗行为付出逐点全模型扫描成本。若未来要求抵御这种攻击，必须单独定义安全运行环境，不能把其成本混入论文生产 benchmark。
+5. 必须新增成功与异常路径测试：参数/buffer 持久 mutation、hook/mode/grad/`requires_grad` 残留均被 unit 出口发现；正常重复 scalar evaluation 数值等价；完整模型字节扫描次数按 process-load/execution-unit 数量增长，不能按 curve point、IG chunk 或 logical scalar evaluation 数量增长。测试须直接 instrument full-content signature 调用数，不能只凭代码审阅。
+6. 资源观测至少拆分 attribution/fidelity 模型计算、integrity checking、artifact finalize 三类 phase timer，并继续报告包含必要生产校验的同步总 wall time。不得从预算中扣除 unit 边界的必要校验；也不得把 logical scalar evaluations 误记为 batched model invocations。
+7. 在新的独立诊断目录先运行一个预注册 audit NNS unit 的完整 frozen workload。由 Stage D `8000` units、`1.25` safety factor 和 `2000 H20-hours`/`4 hours per image` 两项既有 cap 推得，最慢有效 unit 必须不高于 `720` 秒；若该已知昂贵代表 unit 仍不低于 `720` 秒，不启动 40-unit 正式 attempt，而是继续做不改变数值语义的工程优化，或据实将 C7 标为 `BLOCKED`。这只是提前发现必然超 cap，不替代最终全部显式 candidates 的最慢实测上界。
+8. 禁止用减少方法、层、头、steps、curve points、scale、direction、sanity ranking、repeat 或扰动来通过该门；批量化/缓存只有在固定输入上的结果、顺序无关统计、调用计数语义和容差通过等价测试后才可采用。
+
+诊断历史必须保留但不得混入新的正式报告：诊断代码 commit `357dd9d4a8b6dd2d43ff5bfbc85cc93a68145226` 已保存在本地引用 `archive/c7-overhash-357dd9d`；`main` 已回到 C6 commit `53368aa08c68625c33bc59541a6b8a0216acfff4` 后再加入本文约束。`outputs/stage_c_c7_audit_00000079_h20_attempt_20260822`、`..._retry01`、`..._retry02` 均保留，最后一份在用户授权停止时为 15 个 status、13 个完整 result；它们只证明过度哈希热点和实现失败史，不构成 C7 completion、不冻结预算，也不得 resume、覆盖或与新实现的计时拼接。该诊断没有运行 5 图 calibration、20 图 pilot、holdout、selection、bootstrap 或统计决策。
 
 ### C8：5 图全层/全头校准并冻结 selection
 
@@ -1145,13 +1163,15 @@ C6范围：
 #### 下一对话完整提示词
 
 ~~~text
-你现在只执行 ViT-NNS 重建工程“阶段 C”的 C7：单图 smoke benchmark 与预算冻结。不要开始 C8 calibration，不要运行 5 图全层/全头选择或 20 图 pilot，不要生成/修改 selection，不要实现 C9 数据生产或 C10 bootstrap/统计决策，也不要修改 C0–C6 冻结科学与运行语义。
+你现在只执行 ViT-NNS 重建工程“阶段 C”的 C7：先修正逐点过度哈希，再执行单图 smoke benchmark 与预算冻结。不要开始 C8 calibration，不要运行 5 图全层/全头选择或 20 图 pilot，不要生成/修改 selection，不要实现 C9 数据生产或 C10 bootstrap/统计决策。除本文“C7 启动前完整性性能门”明确授权的完整性校验分层外，不得修改 C0–C6 冻结科学与运行语义。
 
 工作目录：
 /data00/home/yeziqi.831/testcode/vitnns_rebuild
 
 前置冻结基线：
-- C6 commit: SELF，即包含本 completion record 的当前 clean HEAD；启动 C7 时先运行 `git rev-parse HEAD`，其精确 SHA 应与 C6 最终回复一致。
+- C7 完整性性能门文档 commit: SELF，即包含本次回退记录和性能门的当前 clean HEAD；启动 C7 时先运行 `git rev-parse HEAD`，其精确 SHA 应与本次最终回复一致。
+- C6 code baseline commit: `53368aa08c68625c33bc59541a6b8a0216acfff4`；当前 HEAD 除本文文档约束外，生产代码与该 C6 commit 一致。
+- 已放弃的过度哈希 C7 诊断 commit: `357dd9d4a8b6dd2d43ff5bfbc85cc93a68145226`，仅由本地归档引用 `archive/c7-overhash-357dd9d` 保留，不是下一次 C7 的代码基线。
 - C5 commit: `d15021e4a09bfc485ef9277f81cb13b8a7bae12f`
 - C4 commit: `a4ada3374ad167fb0b691e29b3d3eb6709efa826`
 - C3 commit: `38a9d6493bc8694ab320850d8164699b737c075e`
@@ -1160,18 +1180,23 @@ C6范围：
 - C0 commit: `05b0290b7caacc772a7c20a724f1491b3057524a`
 - Stage C registry/config/schema/protocol/acceptance、Stage A manifest、dependency lock和model SHA-256沿用 C6 completion record。
 
-第一步必须完整阅读 `docs/阶段C-step-by-step.md`（尤其 C6 completion record、8.1、C7边界）、冻结 protocol第9节、acceptance C7、config/schema/contract、C2–C6生产模块与相关测试、README。检查 HEAD/clean，运行 C0 validator；按8.1仅在基线或影响面异常时重复历史 focused。
+第一步必须完整阅读 `docs/阶段C-step-by-step.md`（尤其 C6 completion record、8.1、C7边界和“C7 启动前完整性性能门”）、冻结 protocol第9节、acceptance C7、config/schema/contract、C2–C6生产模块与相关测试、README。检查 HEAD/clean，运行 C0 validator；按8.1仅在基线或影响面异常时重复历史 focused。
 
 C7范围：
-1. 仅在一个预注册 audit 图上运行所有 7 个方法；Value-path/NNS至少覆盖预注册早/中/晚层和足以形成保守最坏收敛上界的显式 heads。不要运行5图 calibration或20图 pilot。
-2. 使用 C6 显式 RunSpec、estimate、runner、retention、provenance与CLI；benchmark输出必须是新的独立目录，不得覆盖历史attempt。若有失败/OOM/超cap，完整保留failure table和证据。
-3. 每个方法/config记录同步 wall time、实际 batched forward/backward调用、CUDA peak allocated/reserved、L0/L1/L2/L3及全部普通文件bytes、IG实际attempts/selected steps。验证hooks、全部module mode、parameter grad/requires_grad在成功和异常后均无残留。
-4. 用最慢有效实测unit × 精确C8/C9 unit数 × 1.25 safety factor投影H20 GPU-hours；用C6精确artifact模型和实测bytes × 1.25 overhead复核 C8+C9与Stage D存储。不得把logical scalar evaluations当batched invocations。
-5. 逐项检查冻结hard caps：64 MiB L0+L1/unit、1 GiB L2/audit sample、32 GiB C8+C9、64 GiB Stage D、30,000 forward和backward calls/unit、90 GiB peak CUDA reserved/unit、1,000 H20-hours C8+C9、2,000 H20-hours Stage D且4 hours/image。C7只可基于实测收紧估计，不得放宽cap或静默减少方法、层、头、steps、扰动、repeat。
-6. 输出机器可读 benchmark report，绑定clean/dirty commit、model/image/lock/registry/protocol/config、RunSpec/execution plan、每unit manifest/status/provenance hashes和测量环境；不得依据热图美观、prediction correctness或holdout结果调参。
-7. C7 PASS条件：单图全方法编排完成、无OOM、资源可复算且所有投影在冻结cap内；超cap或无法建立可信最坏上界则C7 BLOCKED，或必须在访问holdout前另行提交带旧/新hash的protocol amendment。
-8. 测试以报告生成/预算数学/失败与恢复为主；实际benchmark只用一个audit图。不得启动C8、读取holdout、运行5图或20图，也不得实现selection/bootstrap/Go-No-Go。
-9. 更新本文：C7 PASS/BLOCKED；PASS时C8 NEXT；追加completion record与完整C8提示词。一任务一提交，提交后按8.1运行validator、受影响focused及一次全量非GPU，确认clean。
+1. 正式运行前先实现完整性校验分层。canonical checkpoint 加载仍校验冻结 state-dict SHA-256；每个 execution unit 在任何 target/map/fidelity/stability/IG 工作前建立一次强 model-state snapshot，并在成功或异常 `finally` 出口做一次强内容校验。强边界覆盖 parameter/persistent buffer 的名称、shape、dtype、device、object/storage identity和内容摘要，以及 module topology、mode/hooks、parameter grad/`requires_grad`、fused-attention 等运行状态；任一差异都显式失败并保留 lifecycle evidence。
+2. fidelity point、frozen scalar evaluation、IG point/chunk 和普通 method wrapper 的内层只允许使用廉价 live-state guard，例如 object identity、`data_ptr`、`_version`、shape、dtype、device、`requires_grad`；禁止在这些热路径中把全部 parameters/buffers 搬到 CPU 后重算内容 SHA-256。cheap guard 不能冒充内容哈希；因为 `.data` 写入可能不增加 `_version`，unit 末尾强内容校验不可省略。21 张 intervention schedule 只在构造和 curve 边界做整组强内容校验，不得在每个 point 前后重复扫描整组 tensor。
+3. 增加直接 instrument 全模型内容签名次数的回归测试：次数按 model-load/execution-unit 边界增长，不随 21 curve points、五次 tie repeats、IG steps/chunks 或 logical scalar evaluation 数线性增长；parameter/buffer 替换、storage rebinding、普通 in-place mutation由 cheap guard拒绝，`_version` 不变的 `.data` 内容篡改由 unit 末尾强哈希拒绝；成功和异常路径均执行结束强校验并恢复hooks/mode/grad/`requires_grad`。固定输入上数值、WorkItem、convergence和实际 batched forward/backward accounting必须保持不变。
+4. 至少记录 attribution/fidelity模型计算、integrity checking、artifact finalize 三类 phase timer，并保留包含必要生产校验的同步总wall time。先在新的独立诊断目录运行一个预注册 audit NNS unit的完整冻结 workload；该unit若仍不低于`720`秒，则不启动40-unit正式attempt，继续做不改变数值语义的工程优化或据实判C7 `BLOCKED`。不得把诊断计时当正式budget结果。
+5. 仅在一个预注册 audit 图上运行所有 7 个方法；Value-path/NNS至少覆盖预注册早/中/晚层和足以形成保守最坏收敛上界的显式 heads。科学 workload 必须保持同一12个显式Value candidates、clean/三扰动、repeatability、21 points、两个scale/方向、五次paired tie与random repeats、center sanity及完整IG schedule `[512,1024,2048,4096,8192]`/chunk 8；不要运行5图 calibration或20图 pilot。
+6. 使用 C6 显式 RunSpec、estimate、runner、retention、provenance与CLI；修正后必须从新的clean commit和全新空output root运行，benchmark输出不得覆盖或resume任何历史attempt。若有失败/OOM/超cap，完整保留failure table和证据。
+7. 诊断 commit `357dd9d4a8b6dd2d43ff5bfbc85cc93a68145226` 及其 `attempt_20260822`、`retry01`、`retry02` 和报告只能作为失败/性能诊断证据；正式报告不得引用、拼接或挑选其中任何unit。正式报告只能绑定修正后同一clean commit、同一新output root的全部40个units。
+8. 每个方法/config记录同步 wall time、phase timers、实际 batched forward/backward调用、CUDA peak allocated/reserved、L0/L1/L2/L3及全部普通文件bytes、IG实际attempts/selected steps。验证hooks、全部module mode、parameter grad/requires_grad在成功和异常后均无残留。
+9. 用最慢有效实测unit × 精确C8/C9 unit数 × 1.25 safety factor投影H20 GPU-hours；用C6精确artifact模型和实测bytes × 1.25 overhead复核 C8+C9与Stage D存储。不得把logical scalar evaluations当batched invocations。
+10. 逐项检查冻结hard caps：64 MiB L0+L1/unit、1 GiB L2/audit sample、32 GiB C8+C9、64 GiB Stage D、30,000 forward和backward calls/unit、90 GiB peak CUDA reserved/unit、1,000 H20-hours C8+C9、2,000 H20-hours Stage D且4 hours/image。C7只可基于实测收紧估计，不得放宽cap或静默减少方法、层、头、steps、扰动、repeat。
+11. 输出机器可读 benchmark report，绑定clean/dirty commit、model/image/lock/registry/protocol/config、RunSpec/execution plan、每unit manifest/status/provenance hashes和测量环境；不得依据热图美观、prediction correctness或holdout结果调参。
+12. C7 PASS条件：热路径无全模型内容哈希且unit边界强校验通过；单图全方法编排完成、无OOM、资源可复算且所有投影在冻结cap内；正式report不引用任何`357dd9d`旧attempt。任一条件无法证明、超cap或无法建立可信最坏上界则C7 `BLOCKED`，或必须在访问holdout前另行提交带旧/新hash的protocol amendment。
+13. 测试以完整性分层、数值等价、报告生成、预算数学、失败与恢复为主；实际benchmark只用一个audit图。不得启动C8、读取holdout、运行5图或20图，也不得实现selection/bootstrap/Go-No-Go。
+14. 更新本文：C7 PASS/BLOCKED；PASS时C8 NEXT；追加completion record与完整C8提示词。一任务一提交，提交后按8.1运行validator、受影响focused及一次全量非GPU，确认clean。
 
-禁止修改冻结registry/config/schema/protocol/acceptance、方法语义、阈值、seed、target、schedule、扰动、caps或decision gates。任何超cap或合同矛盾必须显式BLOCKED或走versioned protocol amendment；不得以跳过昂贵方法、减少配置、降低steps或不留证据来制造PASS。
+只授权为完整性校验分层而窄幅修改 C3/C4/C5/C6 运行实现及其测试：把逐point/逐scalar/逐chunk的全模型内容SHA移到model-load与execution-unit边界，并加入cheap live-state guard和phase timer。禁止修改冻结registry/config/schema/protocol/acceptance、方法数值语义、阈值、seed、target、schedule、扰动、caps或decision gates；禁止缓存/复用会改变target、intervention forward、gradient、convergence、调用计数或测量边界的数值结果。任何超cap或合同矛盾必须显式BLOCKED或另走versioned protocol amendment；不得以跳过昂贵方法、减少配置、降低steps或不留证据来制造PASS。
 ~~~
