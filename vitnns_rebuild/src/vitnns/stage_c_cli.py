@@ -330,12 +330,12 @@ def _validate_c8_shard_checkpoint_locked(
 
 def _c8_input_hashes(
     *, config: Any, config_path: Path, evidence: Mapping[str, Any],
-    git_state: Mapping[str, Any],
+    source_git_state: Mapping[str, Any],
 ) -> dict[str, Any]:
     protocol_path = REPO_ROOT / config.protocol.path
     return {
-        "code_commit": git_state["commit"],
-        "code_tree_clean": not git_state["dirty"],
+        "code_commit": source_git_state["commit"],
+        "code_tree_clean": not source_git_state["dirty"],
         "model_sha256": MODEL_SHA256,
         "dependency_lock_sha256": sha256_file(DEFAULT_DEPENDENCY_LOCK),
         "registry_sha256": config.registry.sha256,
@@ -597,27 +597,25 @@ def main(
                 raise StageCBenchmarkIntegrityError(
                     "freshly measured C8 preflight differs from initialized preflight"
                 )
-            git_state = capture_git_state(REPO_ROOT)
-            _require_clean_c8_git(git_state)
-            if git_state != authorization["code"]:
-                raise StageCBenchmarkIntegrityError(
-                    "C8 selection Git state differs from launch authorization"
-                )
+            generator_git_state = capture_git_state(REPO_ROOT)
+            _require_clean_c8_git(generator_git_state)
+            source_git_state = authorization["code"]
             c7_binding = _c8_report_binding(authorization, c7_report=report)
             evidence = build_c8_calibration_evidence(
-                args.output_root, plan, config, git_state,
+                args.output_root, plan, config, source_git_state,
                 c7_binding,
             )
             input_hashes = _c8_input_hashes(
                 config=config, config_path=args.config, evidence=evidence,
-                git_state=git_state,
+                source_git_state=source_git_state,
             )
             if args.mode == "validate":
                 report = validate_stage_c_selection_from_source(
                     args.selection_output, args.report_output,
                     output_root=args.output_root, plan=plan, config=config,
-                    observed_git_state=git_state, input_hashes=input_hashes,
+                    observed_git_state=source_git_state, input_hashes=input_hashes,
                     c7_report_binding=c7_binding,
+                    generator_git_state=generator_git_state,
                 )
                 _write_json(report, sys.stdout)
                 return (
@@ -628,10 +626,14 @@ def main(
                 raise ArgumentError(
                     "c8-select --mode build requires --selection-output"
                 )
-            report = build_stage_c_selection(evidence, input_hashes)
+            report = build_stage_c_selection(
+                evidence, input_hashes,
+                generator_git_state=generator_git_state,
+            )
             outputs = write_stage_c_selection_outputs(
                 args.selection_output, args.report_output, report,
                 evidence=evidence, input_hashes=input_hashes,
+                generator_git_state=generator_git_state,
             )
             result = {
                 **outputs,

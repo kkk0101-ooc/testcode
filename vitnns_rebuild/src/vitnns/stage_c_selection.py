@@ -8,6 +8,7 @@ bootstrap, multiple-testing, or holdout code.
 from __future__ import annotations
 
 import collections
+import dataclasses
 import hashlib
 import json
 import math
@@ -143,6 +144,22 @@ def _plain(value: Any, context: str = "value") -> Any:
     raise StageCSelectionIntegrityError(
         f"{context} is not JSON-compatible: {type(value).__name__}"
     )
+
+
+def _selection_generator_code(value: Any) -> dict[str, Any]:
+    if not isinstance(value, Mapping) or set(value) != {"commit", "dirty"}:
+        raise StageCSelectionIntegrityError(
+            "selection generator Git state must contain exactly commit and dirty"
+        )
+    commit = value.get("commit")
+    if (
+        not isinstance(commit, str) or len(commit) != 40
+        or set(commit) - _SHA256 or value.get("dirty") is not False
+    ):
+        raise StageCSelectionIntegrityError(
+            "selection generator Git state must be a clean 40-hex commit"
+        )
+    return {"commit": commit, "dirty": False}
 
 
 def _canonical_bytes(value: Mapping[str, Any]) -> bytes:
@@ -571,7 +588,47 @@ def _aggregate_from_dict(value: Any, context: str) -> CurveAggregate:
     return result
 
 
-def _validated_aggregates(record: Mapping[str, Any]) -> dict[tuple[str, str], CurveAggregate]:
+def _scientific_target_identity(identity: Any) -> dict[str, Any]:
+    """Return the cross-unit target identity, excluding process-local state.
+
+    ``runtime_model_binding`` deliberately contains live Python/tensor/storage
+    identities.  It is a within-unit mutation guard, not a reproducible part of
+    the scientific target shared by independently executed methods.
+    """
+
+    if not isinstance(identity, Mapping):
+        raise StageCSelectionIntegrityError("target identity is missing")
+    normalized = _plain(identity, "target identity")
+    frozen = normalized.get("frozen_target")
+    if not isinstance(frozen, dict):
+        raise StageCSelectionIntegrityError("frozen target identity is missing")
+    runtime = frozen.get("runtime_model_binding")
+    # Pre-C8 synthetic fixtures predate the serialized runtime guard.  Real
+    # C8 records always carry it; if present it must have its exact contract.
+    if runtime is None:
+        return normalized
+    if not isinstance(runtime, dict) or set(runtime) != {
+        "kind", "sha256", "is_canonical_model_artifact_hash",
+    }:
+        raise StageCSelectionIntegrityError(
+            "frozen target runtime model binding is invalid"
+        )
+    if (
+        runtime.get("kind")
+        != "same_live_model_instance_and_tensor_state_versions"
+        or runtime.get("is_canonical_model_artifact_hash") is not False
+    ):
+        raise StageCSelectionIntegrityError(
+            "frozen target runtime model binding is invalid"
+        )
+    _sha(runtime.get("sha256"), "frozen target runtime model binding")
+    del frozen["runtime_model_binding"]
+    return normalized
+
+
+def _validated_aggregates(
+    record: Mapping[str, Any], *, scientific_target_identity_sha256: str,
+) -> dict[tuple[str, str], CurveAggregate]:
     scalars = record["scalars"]
     raw_curves = scalars.get("fidelity_curves") if isinstance(scalars, Mapping) else None
     raw_aggregates = scalars.get("fidelity_aggregates") if isinstance(scalars, Mapping) else None
@@ -581,6 +638,22 @@ def _validated_aggregates(record: Mapping[str, Any]) -> dict[tuple[str, str], Cu
         _curve_from_dict(item, f"fidelity_curves[{index}]")
         for index, item in enumerate(raw_curves)
     ]
+    target_identity = scalars.get("target_identity")
+    if not isinstance(target_identity, Mapping):
+        raise StageCSelectionIntegrityError("fidelity target identity is missing")
+    full_target_identity_sha256 = canonical_sha256(target_identity)
+    has_runtime_binding = isinstance(
+        target_identity.get("frozen_target"), Mapping
+    ) and "runtime_model_binding" in target_identity["frozen_target"]
+    if has_runtime_binding and any(
+        curve.target_identity_sha256 != full_target_identity_sha256 for curve in curves
+    ):
+        raise StageCSelectionIntegrityError(
+            "fidelity curve does not bind its unit's complete target identity"
+        )
+    _sha(scientific_target_identity_sha256, "scientific target identity")
+    if not has_runtime_binding:
+        scientific_target_identity_sha256 = curves[0].target_identity_sha256
     expected_groups: set[tuple[str, str, str, int | None]] = set()
     for scale in (FidelityScale.PATCH_16, FidelityScale.FINE_4):
         for direction in (CurveDirection.DELETION, CurveDirection.INSERTION):
@@ -626,7 +699,16 @@ def _validated_aggregates(record: Mapping[str, Any]) -> dict[tuple[str, str], Cu
                 raise StageCSelectionIntegrityError(
                     "aggregate curve is absent or duplicated in fidelity_curves"
                 )
-        result[pair] = aggregate
+        result[pair] = dataclasses.replace(
+            aggregate,
+            curves=tuple(
+                dataclasses.replace(
+                    curve,
+                    target_identity_sha256=scientific_target_identity_sha256,
+                )
+                for curve in aggregate.curves
+            ),
+        )
     expected_pairs = {
         (scale.value, direction.value)
         for scale in (FidelityScale.PATCH_16, FidelityScale.FINE_4)
@@ -806,7 +888,7 @@ def _validate_required_l1(record: Mapping[str, Any]) -> None:
 
 def _target_checks(
     nns: Mapping[str, Any], matched: Mapping[str, Any], block: int, head: int,
-) -> None:
+) -> str:
     identities = []
     for label, record in (("NNS", nns), ("matched", matched)):
         scalars = record["scalars"]
@@ -830,7 +912,12 @@ def _target_checks(
         if direction <= threshold or not isinstance(unit, Mapping) or unit.get("finite") is not True:
             raise StageCSelectionIntegrityError(f"{label} direction is degenerate")
         identities.append(identity)
-    if _canonical_bytes(identities[0]) != _canonical_bytes(identities[1]):
+    scientific_identities = tuple(
+        _scientific_target_identity(identity) for identity in identities
+    )
+    if _canonical_bytes(scientific_identities[0]) != _canonical_bytes(
+        scientific_identities[1]
+    ):
         raise StageCSelectionIntegrityError("NNS and matched target identities differ")
     fragment = nns["scalars"].get("provenance_fragment")
     parity = fragment.get("endpoint_parity") if isinstance(fragment, Mapping) else None
@@ -846,6 +933,7 @@ def _target_checks(
     for field in fields - {"threshold", "comparison"}:
         if _finite(parity[field], f"endpoint parity.{field}") >= _ENDPOINT_LIMIT:
             raise StageCSelectionIntegrityError("endpoint parity is not strictly below 1e-6")
+    return canonical_sha256(scientific_identities[0])
 
 
 def _validate_token_parity(record: Mapping[str, Any]) -> None:
@@ -1412,8 +1500,11 @@ def _sample_candidate_metrics(
             _validate_targeted_fidelity_shape(record)
         except StageCSelectionIntegrityError as error:
             failures.append((sample_id, f"{label}:{error}"))
+    scientific_target_identity_sha256: str | None = None
     try:
-        _target_checks(nns, matched, block, head)
+        scientific_target_identity_sha256 = _target_checks(
+            nns, matched, block, head
+        )
     except StageCSelectionIntegrityError as error:
         failures.append((sample_id, f"target:{error}"))
     try:
@@ -1422,8 +1513,18 @@ def _sample_candidate_metrics(
         failures.append((sample_id, f"token_parity:{error}"))
     delta: float | None = None
     try:
-        nns_aggregates = _validated_aggregates(nns)
-        matched_aggregates = _validated_aggregates(matched)
+        if scientific_target_identity_sha256 is None:
+            raise StageCSelectionIntegrityError(
+                "scientific target identity is unavailable"
+            )
+        nns_aggregates = _validated_aggregates(
+            nns,
+            scientific_target_identity_sha256=scientific_target_identity_sha256,
+        )
+        matched_aggregates = _validated_aggregates(
+            matched,
+            scientific_target_identity_sha256=scientific_target_identity_sha256,
+        )
         outcome = value_path_delta_fidelity(
             nns_insertion=nns_aggregates[(FidelityScale.FINE_4.value, CurveDirection.INSERTION.value)],
             nns_deletion=nns_aggregates[(FidelityScale.FINE_4.value, CurveDirection.DELETION.value)],
@@ -1540,11 +1641,12 @@ def _build_candidate(
 def _selection_document(
     candidates: list[dict[str, Any]], failures: list[dict[str, Any]],
     input_hashes: Mapping[str, Any], winners: Sequence[Mapping[str, Any]],
-    primary: Mapping[str, Any],
+    primary: Mapping[str, Any], generator_commit: str,
 ) -> dict[str, Any]:
     document = {
         "schema_version": 1, "document_type": SELECTION_DOCUMENT_TYPE,
-        "generated_by": GENERATED_BY, "holdout_accessed": False,
+        "generated_by": f"{GENERATED_BY}@{generator_commit}",
+        "holdout_accessed": False,
         "input_hashes": dict(input_hashes),
         "calibration_sample_ids": list(CALIBRATION_SAMPLE_IDS),
         "candidate_records": candidates,
@@ -1563,6 +1665,7 @@ def _selection_document(
 
 def build_stage_c_selection(
     evidence: Mapping[str, Any], input_hashes: Mapping[str, Any],
+    *, generator_git_state: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a PASS selection or an explicit BLOCKED report.
 
@@ -1572,6 +1675,10 @@ def build_stage_c_selection(
 
     validate_c8_calibration_evidence(evidence)
     document = _plain(evidence, "evidence")
+    generator = _selection_generator_code(
+        document["bindings"]["code"]
+        if generator_git_state is None else generator_git_state
+    )
     budget = _post_c8_budget(document)
     hashes = _validate_input_hashes(
         input_hashes, document["calibration_artifact_manifest_sha256"],
@@ -1634,7 +1741,9 @@ def build_stage_c_selection(
     selection = None
     if status == STATUS_PASS:
         assert primary is not None
-        selection = _selection_document(candidates, failures, hashes, winners, primary)
+        selection = _selection_document(
+            candidates, failures, hashes, winners, primary, generator["commit"]
+        )
     else:
         for item in candidates:
             item["selected_depth_band_winner"] = False
@@ -1662,6 +1771,7 @@ def build_stage_c_selection(
             "calibration_evidence_sha256": document["canonical_digest"],
             "calibration_artifact_manifest_sha256": document["calibration_artifact_manifest_sha256"],
             "input_hashes": hashes,
+            "selection_generator_code": generator,
         },
         "evidence_summary": summary,
         "post_c8_budget": budget,
@@ -1672,7 +1782,9 @@ def build_stage_c_selection(
         "selection_document_sha256": None if selection is None else _digest(selection),
     }
     report["canonical_digest"] = _self_digest(report)
-    validate_stage_c_selection_report(report)
+    validate_stage_c_selection_report(
+        report, generator_git_state=generator
+    )
     return report
 
 
@@ -1700,6 +1812,7 @@ def validate_stage_c_selection_document(
 def validate_stage_c_selection_report(
     report: Mapping[str, Any], *, evidence: Mapping[str, Any] | None = None,
     input_hashes: Mapping[str, Any] | None = None,
+    generator_git_state: Mapping[str, Any] | None = None,
 ) -> None:
     """Validate report integrity and optionally recompute it from evidence."""
 
@@ -1720,6 +1833,23 @@ def validate_stage_c_selection_report(
         raise StageCSelectionIntegrityError("selection report canonical digest mismatch")
     if document["integrity_valid"] is not True or document["holdout_accessed"] is not False:
         raise StageCSelectionIntegrityError("selection report integrity/access flags are invalid")
+    bindings = document["bindings"]
+    if not isinstance(bindings, Mapping):
+        raise StageCSelectionIntegrityError("selection report bindings are invalid")
+    generator = _selection_generator_code(
+        bindings.get("selection_generator_code")
+    )
+    if generator_git_state is not None:
+        expected_generator_value = generator_git_state
+    elif evidence is not None:
+        expected_generator_value = evidence["bindings"]["code"]
+    else:
+        expected_generator_value = generator
+    expected_generator = _selection_generator_code(expected_generator_value)
+    if generator != expected_generator:
+        raise StageCSelectionIntegrityError(
+            "selection generator code binding differs from expected Git state"
+        )
     for flag in ("bootstrap_performed", "holm_performed", "decision_performed"):
         if document[flag] is not False:
             raise StageCSelectionIntegrityError(f"selection report {flag} must be false")
@@ -1739,6 +1869,10 @@ def validate_stage_c_selection_report(
         selection = document["selection_document"]
         if selection is None or selection["candidate_records"] != document["candidate_records"]:
             raise StageCSelectionIntegrityError("PASS report selection payload disagrees")
+        if selection.get("generated_by") != f"{GENERATED_BY}@{generator['commit']}":
+            raise StageCSelectionIntegrityError(
+                "selection generated_by differs from generator code binding"
+            )
         validate_stage_c_selection_document(
             selection, expected_input_hashes=document["bindings"]["input_hashes"]
         )
@@ -1758,7 +1892,9 @@ def validate_stage_c_selection_report(
     if evidence is not None:
         if input_hashes is None:
             raise TypeError("input_hashes are required for source recomputation")
-        rebuilt = build_stage_c_selection(evidence, input_hashes)
+        rebuilt = build_stage_c_selection(
+            evidence, input_hashes, generator_git_state=expected_generator
+        )
         if _plain(rebuilt) != _plain(report):
             raise StageCSelectionIntegrityError(
                 "selection report differs from source-evidence recomputation"
@@ -1768,6 +1904,7 @@ def validate_stage_c_selection_report(
 def validate_stage_c_selection(
     value: Mapping[str, Any], *, evidence: Mapping[str, Any] | None = None,
     input_hashes: Mapping[str, Any] | None = None,
+    generator_git_state: Mapping[str, Any] | None = None,
 ) -> None:
     """Validate either a frozen selection document or its C8 report."""
 
@@ -1776,7 +1913,10 @@ def validate_stage_c_selection(
     if value.get("document_type") == SELECTION_DOCUMENT_TYPE:
         validate_stage_c_selection_document(value, expected_input_hashes=input_hashes)
     elif value.get("document_type") == REPORT_DOCUMENT_TYPE:
-        validate_stage_c_selection_report(value, evidence=evidence, input_hashes=input_hashes)
+        validate_stage_c_selection_report(
+            value, evidence=evidence, input_hashes=input_hashes,
+            generator_git_state=generator_git_state,
+        )
     else:
         raise StageCSelectionIntegrityError("unknown selection document type")
 
@@ -1868,6 +2008,7 @@ def write_stage_c_selection(
     path: Path | str, value: Mapping[str, Any], *,
     evidence: Mapping[str, Any] | None = None,
     input_hashes: Mapping[str, Any] | None = None,
+    generator_git_state: Mapping[str, Any] | None = None,
 ) -> str:
     """Exclusively create the PASS selection file and return its byte hash."""
     if evidence is None or input_hashes is None:
@@ -1875,12 +2016,17 @@ def write_stage_c_selection(
 
     report = value if value.get("document_type") == REPORT_DOCUMENT_TYPE else None
     if report is not None:
-        validate_stage_c_selection_report(report, evidence=evidence, input_hashes=input_hashes)
+        validate_stage_c_selection_report(
+            report, evidence=evidence, input_hashes=input_hashes,
+            generator_git_state=generator_git_state,
+        )
         if report["status"] != STATUS_PASS:
             raise StageCSelectionBlockedError("BLOCKED C8 has no selection file", report=report)
         document = report["selection_document"]
     else:
-        rebuilt = build_stage_c_selection(evidence, input_hashes)
+        rebuilt = build_stage_c_selection(
+            evidence, input_hashes, generator_git_state=generator_git_state
+        )
         if rebuilt["status"] != STATUS_PASS or rebuilt["selection_document"] != value:
             raise StageCSelectionIntegrityError(
                 "selection document differs from source-evidence recomputation"
@@ -1893,12 +2039,16 @@ def write_stage_c_selection_report(
     path: Path | str, report: Mapping[str, Any], *,
     evidence: Mapping[str, Any] | None = None,
     input_hashes: Mapping[str, Any] | None = None,
+    generator_git_state: Mapping[str, Any] | None = None,
 ) -> str:
     """Exclusively create a validated PASS or BLOCKED selection report."""
     if evidence is None or input_hashes is None:
         raise TypeError("formal report publication requires evidence and input_hashes")
 
-    validate_stage_c_selection_report(report, evidence=evidence, input_hashes=input_hashes)
+    validate_stage_c_selection_report(
+        report, evidence=evidence, input_hashes=input_hashes,
+        generator_git_state=generator_git_state,
+    )
     return _exclusive_json(Path(path).absolute(), report)
 
 
@@ -1906,10 +2056,14 @@ def write_stage_c_selection_outputs(
     selection_path: Path | str, report_path: Path | str,
     report: Mapping[str, Any], *, evidence: Mapping[str, Any],
     input_hashes: Mapping[str, Any],
+    generator_git_state: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Publish the report and, only for PASS, the frozen selection."""
 
-    validate_stage_c_selection_report(report, evidence=evidence, input_hashes=input_hashes)
+    validate_stage_c_selection_report(
+        report, evidence=evidence, input_hashes=input_hashes,
+        generator_git_state=generator_git_state,
+    )
     selection_destination = Path(selection_path).absolute()
     report_destination = Path(report_path).absolute()
     if selection_destination.resolve(strict=False) == report_destination.resolve(strict=False):
@@ -1961,6 +2115,7 @@ def validate_stage_c_selection_from_source(
     output_root: Path | str, plan: ExecutionPlan, config: Any,
     observed_git_state: Mapping[str, Any], input_hashes: Mapping[str, Any],
     c7_report_binding: Mapping[str, Any] | None = None,
+    generator_git_state: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Re-read source evidence and reject manual report/selection edits."""
 
@@ -1968,7 +2123,10 @@ def validate_stage_c_selection_from_source(
         output_root, plan, config, observed_git_state, c7_report_binding
     )
     report = _strict_json(Path(report_path).absolute())
-    validate_stage_c_selection_report(report, evidence=evidence, input_hashes=input_hashes)
+    validate_stage_c_selection_report(
+        report, evidence=evidence, input_hashes=input_hashes,
+        generator_git_state=generator_git_state,
+    )
     if report["status"] == STATUS_BLOCKED:
         if selection_path is not None and Path(selection_path).exists():
             raise StageCSelectionIntegrityError("BLOCKED report must not have a selection file")

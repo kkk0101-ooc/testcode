@@ -1388,9 +1388,13 @@ def test_c8_select_build_publishes_without_backend(
     monkeypatch.setattr(
         stage_c_cli, "_c8_input_hashes", lambda **_kwargs: {"x": "y"}
     )
+    def build_selection(*_args, generator_git_state):
+        assert generator_git_state == git_state
+        events.append("selection")
+        return {"status": "PASS"}
+
     monkeypatch.setattr(
-        stage_c_cli, "build_stage_c_selection",
-        lambda *_args: events.append("selection") or {"status": "PASS"},
+        stage_c_cli, "build_stage_c_selection", build_selection,
     )
     monkeypatch.setattr(
         stage_c_cli, "write_stage_c_selection_outputs",
@@ -1454,14 +1458,23 @@ def test_c8_select_rejects_fresh_preflight_drift_before_evidence_or_backend(
     assert "freshly measured" in json.loads(captured.err)["error"]["message"]
 
 
-def test_c8_select_rejects_git_drift_before_evidence_or_backend(
+def test_c8_select_accepts_clean_generator_commit_after_source_execution(
     monkeypatch, capsys, tmp_path
 ):
     config_path, spec_path = _write_explicit_inputs(tmp_path)
     pipeline = _install_c8_pipeline(monkeypatch)
+    source_git = {"commit": "c" * 40, "dirty": False}
+    generator_git = {"commit": "d" * 40, "dirty": False}
     authorization = {
-        "code": {"commit": "c" * 40, "dirty": False},
-        "c7_report_path": "/c7.json",
+        "code": source_git, "c7_report_path": "/c7.json",
+        "c7_report_file_sha256": "1" * 64,
+        "c7_report_canonical_digest": "2" * 64,
+        "c7_code_commit": "3" * 40, "c7_archive_ref": "archive",
+        "c7_archive_tree": "4" * 40, "c7_slowest_unit_seconds": 1.0,
+        "c7_peak_reserved_bytes": 1,
+        "c7_projected_c8_h20_gpu_hours": 1.0,
+        "c7_projected_c8_artifact_bytes": 1,
+        "c7_projected_c8_l2_bytes_per_audit": 1,
     }
     monkeypatch.setattr(
         stage_c_cli, "_load_c8_initialized_estimate",
@@ -1475,12 +1488,34 @@ def test_c8_select_rejects_git_drift_before_evidence_or_backend(
         lambda *_args: pipeline.estimate,
     )
     monkeypatch.setattr(
-        stage_c_cli, "capture_git_state",
-        lambda _root: {"commit": "d" * 40, "dirty": False},
+        stage_c_cli, "_c8_report_binding",
+        lambda *_args, **_kwargs: {"fresh_c7": True},
     )
     monkeypatch.setattr(
+        stage_c_cli, "capture_git_state",
+        lambda _root: generator_git,
+    )
+    observed = {}
+
+    def build_evidence(_root, _plan, _config, git_state, _c7_binding):
+        observed["source"] = git_state
+        return {"calibration_artifact_manifest_sha256": "5" * 64}
+
+    monkeypatch.setattr(
         stage_c_cli, "build_c8_calibration_evidence",
-        lambda *_args, **_kwargs: pytest.fail("evidence read before Git gate"),
+        build_evidence,
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "_c8_input_hashes", lambda **_kwargs: {"x": "y"},
+    )
+
+    def validate_source(*_args, **kwargs):
+        observed["validate_source"] = kwargs["observed_git_state"]
+        observed["generator"] = kwargs["generator_git_state"]
+        return {"status": "PASS", "holdout_accessed": False}
+
+    monkeypatch.setattr(
+        stage_c_cli, "validate_stage_c_selection_from_source", validate_source,
     )
 
     code = stage_c_cli.main([
@@ -1490,6 +1525,10 @@ def test_c8_select_rejects_git_drift_before_evidence_or_backend(
         "--report-output", str(tmp_path / "report.json"),
     ], backend_factory=lambda **_kwargs: pytest.fail("backend constructed"))
 
-    assert code == stage_c_cli.EXIT_INTEGRITY_FAILURE
-    captured = capsys.readouterr()
-    assert "Git state differs" in json.loads(captured.err)["error"]["message"]
+    assert code == stage_c_cli.EXIT_SUCCESS
+    assert observed == {
+        "source": source_git,
+        "validate_source": source_git,
+        "generator": generator_git,
+    }
+    assert _stdout_json(capsys)["status"] == "PASS"

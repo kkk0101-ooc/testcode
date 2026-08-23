@@ -1301,40 +1301,100 @@ def _modeled_storage_profiles(
     )
     if control_files == 0:
         raise StageCBenchmarkIntegrityError("C6 control file count cannot be zero")
-    map_runs = sum(
-        int(record.get("work_item_counts", {}).get("map_runs", 0))
-        for record in records
-    )
-    exact_l1_payload = map_runs * operands["l1_float32_patch_map_bytes"]
+
+    # A storage model is an aggregate over the plan that produced it.  In
+    # particular, a C7 aggregate must never be decomposed with C8 record
+    # counts: doing so compares the 40-unit C7 L1 total with thousands of C8
+    # maps.  Manifest/status counts and the L1 file count are the C6-bound
+    # unit/map operands.  Older injectable test models did not retain the L1
+    # file count, so keep their former same-scale interpretation as a narrow
+    # compatibility path.
+    c6_map_count = l1.get("file_count")
+    has_c6_scale = type(c6_map_count) is int
+    if has_c6_scale:
+        c6_map_count = _nonnegative_int(c6_map_count, "storage.L1.file_count")
+        if manifest_files == 0 or manifest_files != status_files:
+            raise StageCBenchmarkIntegrityError(
+                "C6 unit manifest/status counts must be equal and non-zero"
+            )
+        c6_unit_count = manifest_files
+        if (
+            c6_unit_count != C7_EXPECTED_COUNTS["execution_units"]
+            or c6_map_count != C7_EXPECTED_COUNTS["map_runs"]
+        ):
+            raise StageCBenchmarkIntegrityError(
+                "C6 storage model unit/map counts differ from the frozen C7 plan"
+            )
+    else:
+        c6_unit_count = source_unit_count
+        c6_map_count = sum(
+            int(record.get("work_item_counts", {}).get("map_runs", 0))
+            for record in records
+        )
+    exact_l1_payload = c6_map_count * operands["l1_float32_patch_map_bytes"]
     if l1_total < exact_l1_payload:
         raise StageCBenchmarkIntegrityError(
             "C6 L1 estimate is below its exact map payload"
         )
-    l1_container_per_unit = math.ceil(
-        (l1_total - exact_l1_payload) / source_unit_count
-    )
-    l3_per_unit = math.ceil(l3_total / source_unit_count)
+    l1_container_total = l1_total - exact_l1_payload
+    if has_c6_scale and l1_container_total % c6_unit_count:
+        raise StageCBenchmarkIntegrityError(
+            "C6 L1 container bytes do not divide across source units"
+        )
+    l1_container_per_unit = math.ceil(l1_container_total / c6_unit_count)
+    l3_per_unit = math.ceil(l3_total / c6_unit_count)
     unit_control = math.ceil(
         control_total * (manifest_files + status_files)
-        / control_files / source_unit_count
+        / control_files / c6_unit_count
     )
     batch_control = math.ceil(control_total / control_files) * batch_files
 
     # The C6 model consists of one metadata envelope per audit unit, each
     # method's native clean/perturb/repeat maps, and one shared-attention term.
-    modeled_native_l2 = 0
-    for record in records:
-        method = _method_from_record(record)
-        count = int(record.get("work_item_counts", {}).get("map_runs", 0))
-        native = (3 * 224 * 224 * 4) if method in _IG_METHODS else (14 * 14 * 4)
-        modeled_native_l2 += count * native
+    # Formal C7 has a frozen 12/12/12/1/1/1/1 method mix and five maps per
+    # unit.  Use that source-plan profile when the C6 scale is present.  This
+    # also means a failed C8 unit (or even a method with no usable C8 unit)
+    # cannot erase that method's conservative downstream model.
+    c6_method_counts = {
+        **{method: 12 for method in VALUE_METHOD_IDS},
+        **{method: 1 for method in CLASS_METHOD_IDS},
+    }
+    c6_method_work = {
+        method: {
+            "work_items": (
+                5 if method == "direct_raw_cls_attention_per_head" else 929
+            ),
+            "map_runs": 5,
+        }
+        for method in _ALL_METHODS
+    }
+    if has_c6_scale:
+        source_profiles = [
+            (method, c6_method_work[method]["map_runs"], count)
+            for method, count in c6_method_counts.items()
+        ]
+    else:
+        source_profiles = [
+            (
+                _method_from_record(record),
+                int(record.get("work_item_counts", {}).get("map_runs", 0)),
+                1,
+            )
+            for record in records
+        ]
+    modeled_native_l2 = sum(
+        count * maps * (
+            (3 * 224 * 224 * 4) if method in _IG_METHODS else (14 * 14 * 4)
+        )
+        for method, maps, count in source_profiles
+    )
     shared_l2 = operands["l2_shared_attention_bytes_per_audit_sample"]
     if l2_total < modeled_native_l2 + shared_l2:
         raise StageCBenchmarkIntegrityError(
             "C6 L2 estimate is below native maps plus shared attention"
         )
     l2_metadata_per_unit = math.ceil(
-        (l2_total - modeled_native_l2 - shared_l2) / source_unit_count
+        (l2_total - modeled_native_l2 - shared_l2) / c6_unit_count
     )
     non_l2: dict[str, int] = {}
     l2_by_method: dict[str, int] = {}
@@ -1342,9 +1402,14 @@ def _modeled_storage_profiles(
         method_records = [
             record for record in records if _method_from_record(record) == method
         ]
+        if has_c6_scale:
+            work_profiles = [c6_method_work[method]]
+        else:
+            work_profiles = [
+                record.get("work_item_counts") for record in method_records
+            ]
         modeled: list[int] = []
-        for record in method_records:
-            counts = record.get("work_item_counts")
+        for counts in work_profiles:
             if not isinstance(counts, Mapping):
                 continue
             work = counts.get("work_items")
@@ -1363,13 +1428,13 @@ def _modeled_storage_profiles(
                 f"C6 model has no source work counts for {method}"
             )
         non_l2[method] = max(modeled)
-        maps = max(int(item["work_item_counts"]["map_runs"]) for item in method_records)
+        maps = max(int(item["map_runs"]) for item in work_profiles)
         native = (3 * 224 * 224 * 4) if method in _IG_METHODS else (14 * 14 * 4)
         l2_by_method[method] = l2_metadata_per_unit + maps * native
     # Shared attention is charged once per audit sample.  Assigning it to the
     # stable rollout profile makes downstream multiplication explicit.
     l2_by_method["attention_rollout_mean_head_residual_all_blocks"] += shared_l2
-    return non_l2, l2_by_method, batch_control, {
+    model_details = {
         "mode": "exact_c6_operands",
         "source_storage_model": _json_value(storage_model, "C6 storage model"),
         "estimate_model": operands,
@@ -1379,6 +1444,15 @@ def _modeled_storage_profiles(
         "unit_control_bytes_per_unit_ceiling": unit_control,
         "modeled_batch_control_bytes": batch_control,
     }
+    # Keep the historical C7 same-scale projection byte-for-byte reproducible.
+    # Cross-scale consumers additionally expose the source scale that was used
+    # to decompose the aggregate model.
+    if source_unit_count != c6_unit_count:
+        model_details.update({
+            "source_execution_units": c6_unit_count,
+            "source_map_file_count": c6_map_count,
+        })
+    return non_l2, l2_by_method, batch_control, model_details
 
 
 def _cap_check(
