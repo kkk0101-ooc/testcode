@@ -1579,7 +1579,8 @@ def run_c8_shard(
                 with _artifact_activity_lock(root, exclusive=False):
                     result = run_execution_unit(
                         unit, output_root=root, backend=backend, device=device,
-                        resume=False, caps=effective_caps, preflight=estimate,
+                        resume=False, caps=effective_caps,
+                        preflight=estimate.to_dict(),
                         plan=plan, observed_git_state=live_code,
                     )
             except (KeyboardInterrupt, SystemExit) as error:

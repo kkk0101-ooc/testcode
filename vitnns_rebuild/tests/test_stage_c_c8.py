@@ -317,6 +317,10 @@ def test_shard_revalidates_evidence_and_checkpoints_one_attempt(
 
     def run(unit, **kwargs):
         attempt = _make_attempt(initialized.root, digest)
+        # Match stage_c_runner.run_execution_unit's Mapping contract.  A
+        # StageCEstimate has no .get(), so exercising this lookup protects the
+        # formal shard boundary from passing the authenticated object itself.
+        assert kwargs["preflight"].get("within_budget") is True
         calls.append((unit, kwargs))
         return SimpleNamespace(
             state="succeeded", attempt_path=str(attempt), failure=None
@@ -334,7 +338,8 @@ def test_shard_revalidates_evidence_and_checkpoints_one_attempt(
 
     assert result[0].state == "succeeded"
     assert calls[0][1]["resume"] is False
-    assert calls[0][1]["preflight"] is initialized.estimate
+    assert calls[0][1]["preflight"] == initialized.estimate.to_dict()
+    assert calls[0][1]["preflight"] is not initialized.estimate
     assert calls[0][1]["observed_git_state"] == LIVE_CODE
     assert initialized.evidence["preflight"] == [True]
     assert len(initialized.evidence["live_git"]) == 1
