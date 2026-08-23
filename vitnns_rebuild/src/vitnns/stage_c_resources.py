@@ -417,6 +417,8 @@ class InstrumentationError:
                 "<exception message unavailable: "
                 f"{type(formatting_error).__module__}.{type(formatting_error).__qualname__}>"
             )
+        if not message.strip():
+            message = f"{type(error).__name__} raised without a message"
         return cls(
             phase, f"{type(error).__module__}.{type(error).__qualname__}", message
         )
@@ -702,6 +704,8 @@ class ResourceMeter(AbstractContextManager["ResourceMeter"]):
                     f"{type(formatting_error).__module__}."
                     f"{type(formatting_error).__qualname__}>"
                 )
+            if not exception_message.strip():
+                exception_message = f"{exc_type.__name__} raised without a message"
         assert self._start_calls is not None
         end_calls = self.call_counter.snapshot()
         boundary_calls = CallCounts(

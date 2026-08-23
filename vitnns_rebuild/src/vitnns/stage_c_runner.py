@@ -2082,11 +2082,14 @@ class BatchValidation(Mapping[str, Any]):
 
 
 def _failure(reason: str, phase: str, error: BaseException) -> dict[str, str]:
+    message = str(error)
+    if not message.strip():
+        message = f"{type(error).__name__} raised without a message"
     return {
         "reason": reason,
         "phase": phase,
         "type": f"{type(error).__module__}.{type(error).__qualname__}",
-        "message": str(error),
+        "message": message,
     }
 
 
@@ -2168,6 +2171,10 @@ def _empty_resource_record(
     if error is not None:
         exception_type = f"{type(error).__module__}.{type(error).__qualname__}"
         exception_message = str(error)
+        if not exception_message.strip():
+            exception_message = (
+                f"{type(error).__name__} raised without a message"
+            )
     return ResourceRecord(
         status=status,
         wall_time_seconds=None,

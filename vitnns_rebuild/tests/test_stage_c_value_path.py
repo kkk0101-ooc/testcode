@@ -682,7 +682,9 @@ def test_matched_rejects_noncanonical_token_count_and_inconsistent_resolution():
     # Relative endpoint tolerance must not let a public caller manufacture a
     # nonzero direction by perturbing two large, mathematically equal A @ V
     # endpoints in opposite directions.
-    with pytest.raises(StageCValuePathError, match="direction_delta"):
+    with pytest.raises(
+        StageCValuePathError, match="clean_head_output|direction_delta"
+    ):
         HeadDirectionResolution(
             candidate=HeadCandidate(0, 0),
             status=STATUS_OK,
@@ -1078,6 +1080,12 @@ def test_full_batched_attention_value_product_matches_captured_pre_projection(
     strict_threshold = value_path.ENDPOINT_PARITY_MAX_ABS
     assert strict_threshold == 1e-6
     assert float(old_error.max().item()) > strict_threshold
+    # This is the exact stale invariant that stopped the previous formal run:
+    # relative allclose can accept the reduction mismatch even though its
+    # absolute error violates the frozen endpoint threshold.
+    assert torch.allclose(
+        old_elementwise, captured_outputs[:, :, 0], atol=1e-7, rtol=1e-6
+    )
 
     worst_head = int(torch.nonzero(old_error == old_error.max())[0, 1].item())
     target = resolve_fixed_clean_attention_head_direction(
@@ -1091,6 +1099,18 @@ def test_full_batched_attention_value_product_matches_captured_pre_projection(
     assert target.clean_replay_max_abs_error < strict_threshold
     assert target.clean_model_output_max_abs_error < strict_threshold
     assert target.baseline_replay_max_abs_error < strict_threshold
+
+
+def test_private_batched_endpoint_override_requires_clean_and_baseline_pair():
+    attention = torch.tensor([1.0], dtype=torch.float32)
+    clean = torch.tensor([[2.0]], dtype=torch.float32)
+    baseline = torch.tensor([[0.0]], dtype=torch.float32)
+
+    with pytest.raises(TypeError, match="must be provided together"):
+        value_path._resolve_head_direction_from_endpoints(
+            attention, clean, baseline,
+            _clean_head_output=torch.tensor([2.0], dtype=torch.float32),
+        )
 
 
 def test_production_resolver_baseline_uses_fixed_clean_a_not_natural_baseline_a():

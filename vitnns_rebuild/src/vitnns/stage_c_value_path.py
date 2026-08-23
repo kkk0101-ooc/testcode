@@ -500,18 +500,22 @@ class HeadDirectionResolution:
                 )
             expected_clean = torch.sum(attention[:, None] * clean, dim=0)
             expected_baseline = torch.sum(attention[:, None] * baseline, dim=0)
-            for actual, expected, name in (
-                (self.clean_head_output, expected_clean, "clean_head_output"),
-                (
-                    self.baseline_head_output,
-                    expected_baseline,
-                    "baseline_head_output",
-                ),
-            ):
-                if not torch.allclose(actual, expected, atol=1e-7, rtol=1e-6):
-                    raise StageCValuePathError(
-                        f"{name} is inconsistent with the frozen endpoint formula"
-                    )
+            if not batched_endpoints_issued:
+                # Public/pure construction has no alternate accumulation path:
+                # its retained endpoints must be the direct formula results.
+                for actual, expected, name in (
+                    (self.clean_head_output, expected_clean, "clean_head_output"),
+                    (
+                        self.baseline_head_output,
+                        expected_baseline,
+                        "baseline_head_output",
+                    ),
+                ):
+                    if not torch.equal(actual, expected):
+                        raise StageCValuePathError(
+                            f"{name} is inconsistent with the frozen endpoint "
+                            "formula"
+                        )
             # Public resolutions derive direction from the public endpoint
             # formula.  Only the issuer-authenticated production path may use
             # retained full-batched matmul endpoints; subtracting those two
@@ -756,6 +760,11 @@ def _resolve_head_direction_from_endpoints(
                 f"{name} must be a float32 Tensor on the endpoint device "
                 f"with shape ({clean.shape[1]},)"
             )
+    if (_clean_head_output is None) != (_baseline_head_output is None):
+        raise TypeError(
+            "production batched clean/baseline head outputs must be provided "
+            "together"
+        )
 
     # Pure callers use the direct mathematical reduction.  The production
     # resolver supplies outputs recomputed with the model's full batched
@@ -840,7 +849,7 @@ def _resolve_head_direction_from_endpoints(
         na=na,
         _endpoint_issuer=(
             _ENDPOINT_ISSUER_SECRET
-            if _clean_head_output is not None or _baseline_head_output is not None
+            if _clean_head_output is not None and _baseline_head_output is not None
             else None
         ),
     )

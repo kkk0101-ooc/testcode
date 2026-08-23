@@ -1021,6 +1021,34 @@ def test_interrupt_persistence_failure_reraises_with_incomplete_result(
     )
 
 
+@pytest.mark.parametrize("message", ["", "   "], ids=["empty", "whitespace"])
+def test_message_less_interrupt_gets_auditable_nonempty_failure_message(
+    tmp_path, message,
+):
+    class InterruptingBackend(ToyBackend):
+        def run(self, unit, *, device, call_counter):
+            raise KeyboardInterrupt(message)
+
+    unit = toy_unit()
+    with pytest.raises(KeyboardInterrupt) as caught:
+        run_toy_unit(
+            unit, output_root=tmp_path / "empty-interrupt-message",
+            backend=InterruptingBackend(), device="cpu",
+        )
+
+    result = caught.value.stage_c_unit_result
+    assert result.state == "failed", result.failure
+    assert result.failure["message"] == (
+        "KeyboardInterrupt raised without a message"
+    )
+    validation = validate_execution_unit(
+        _path(result.attempt_path), expected_unit_identity=unit.key.to_dict(),
+        require_runner_telemetry=True,
+    )
+    assert validation.valid is True
+    assert validation.status == "failed"
+
+
 @pytest.mark.parametrize(
     ("interrupt_validation_call", "persistence_error_type"),
     [
