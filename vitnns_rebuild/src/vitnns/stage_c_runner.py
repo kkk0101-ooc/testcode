@@ -58,6 +58,15 @@ UNIT_TAMPERED = "tampered"
 
 _TERMINAL_STATES = frozenset({UNIT_SUCCEEDED, UNIT_FAILED, UNIT_SKIPPED})
 _SHA256 = frozenset("0123456789abcdef")
+_SIGNED_METHOD_IDS = frozenset({
+    "conditional_fixed_clean_attention_head_direction_value_path_ig",
+    "matched_fixed_clean_attention_patch_token_contribution",
+    "full_model_class_logit_ig",
+})
+
+
+def _method_sign_semantics(method_id: str) -> str:
+    return "signed" if method_id in _SIGNED_METHOD_IDS else "nonnegative"
 
 
 class StageCRunnerError(RuntimeError):
@@ -1745,7 +1754,9 @@ class ProductionStageCBackend:
             },
             map_record={
                 "projection": method_config.projection_ref,
-                "sign_semantics": method_result.get("sign_semantics", "nonnegative"),
+                "sign_semantics": method_result.get(
+                    "sign_semantics", _method_sign_semantics(method_config.id)
+                ),
                 "normalization": normalization_by_method[method_config.id],
                 "metric_ready_dtype": "float32",
                 "metric_ready_shape": [14, 14],
@@ -1845,11 +1856,7 @@ class ProductionStageCBackend:
             "conditional_fixed_clean_attention_head_direction_value_path_ig": "none_signed_mass_preserving",
             "matched_fixed_clean_attention_patch_token_contribution": "none_signed_mass_preserving",
         }[method.id]
-        sign = "signed" if method.id in {
-            "full_model_class_logit_ig",
-            "conditional_fixed_clean_attention_head_direction_value_path_ig",
-            "matched_fixed_clean_attention_patch_token_contribution",
-        } else "nonnegative"
+        sign = _method_sign_semantics(method.id)
         registry_data = self.config.registry.to_dict()
         selection = self.plan.selection.to_dict()
         selection["status"] = (
@@ -2611,9 +2618,13 @@ def run_execution_unit(
                 "type": f"{type(persistence_error).__module__}.{type(persistence_error).__qualname__}",
                 "message": str(persistence_error),
             }
-            return UnitRunResult(
+            incomplete_result = UnitRunResult(
                 identity, UNIT_INCOMPLETE, str(attempt), False, combined
             )
+            if isinstance(error, (KeyboardInterrupt, SystemExit)):
+                error.stage_c_unit_result = incomplete_result
+                raise error
+            return incomplete_result
         if isinstance(error, (KeyboardInterrupt, SystemExit)):
             error.stage_c_unit_result = failed_result
             raise

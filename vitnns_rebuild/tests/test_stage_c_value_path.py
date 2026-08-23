@@ -679,6 +679,24 @@ def test_matched_rejects_noncanonical_token_count_and_inconsistent_resolution():
             direction_threshold=1e-6,
         )
 
+    # Relative endpoint tolerance must not let a public caller manufacture a
+    # nonzero direction by perturbing two large, mathematically equal A @ V
+    # endpoints in opposite directions.
+    with pytest.raises(StageCValuePathError, match="direction_delta"):
+        HeadDirectionResolution(
+            candidate=HeadCandidate(0, 0),
+            status=STATUS_OK,
+            clean_attention=torch.tensor([1.0], dtype=torch.float32),
+            clean_values=torch.tensor([[1e8]], dtype=torch.float32),
+            baseline_values=torch.tensor([[1e8]], dtype=torch.float32),
+            clean_head_output=torch.tensor([100000064.0], dtype=torch.float32),
+            baseline_head_output=torch.tensor([99999936.0], dtype=torch.float32),
+            direction_delta=torch.tensor([128.0], dtype=torch.float32),
+            direction_norm=128.0,
+            direction_unit=torch.tensor([1.0], dtype=torch.float32),
+            direction_threshold=100.000064,
+        )
+
 
 def _issued_target(
     *, block_index: int = 2, head_index: int = 3
@@ -1013,6 +1031,66 @@ def test_single_resolver_fixed_clean_a_endpoint_parity_and_target_binding():
     assert target_json["detached_and_frozen_before_ig"] is True
     assert target_json["clean_model_output_max_abs_error"] < 1e-6
     assert next(model.parameters()).device.type == "cpu"
+
+
+def test_full_batched_attention_value_product_matches_captured_pre_projection(
+    monkeypatch,
+):
+    """Exercise capture -> production resolver with strict FP32 parity."""
+
+    model = _ToyValueModel().eval()
+    attention_module = model.blocks[0].attn
+    with torch.no_grad():
+        attention_module.qkv.scale.fill_(100.0)
+
+    def full_matmul_forward(tokens):
+        batch, token_count, width = tokens.shape
+        qkv = attention_module.qkv(tokens)
+        values = qkv[..., 2 * width :].reshape(
+            batch, token_count, 12, HEAD_DIM
+        ).permute(0, 2, 1, 3)
+        weights = torch.softmax(tokens[:, :, 0], dim=1)
+        attention = torch.zeros(
+            (batch, 12, token_count, token_count),
+            dtype=tokens.dtype, device=tokens.device,
+        )
+        attention[:, :, :, 0] = 1.0
+        attention[:, :, 0, :] = weights[:, None, :]
+        attention = attention_module.attn_drop(attention)
+        head_outputs = attention @ values
+        combined = head_outputs.transpose(1, 2).reshape(
+            batch, token_count, width
+        )
+        return attention_module.proj(combined)
+
+    monkeypatch.setattr(attention_module, "forward", full_matmul_forward)
+    image = _clean_image()
+    captures, _model_output = value_path._capture_real_endpoints(
+        model, image, {0: attention_module}
+    )
+    values, attention, captured_outputs = (
+        value_path._validate_endpoint_block_data(captures[0], block_index=0)
+    )
+    old_elementwise = torch.sum(
+        attention[:, :, 0, :, None] * values, dim=2
+    )
+    old_error = (old_elementwise - captured_outputs[:, :, 0]).abs()
+    strict_threshold = value_path.ENDPOINT_PARITY_MAX_ABS
+    assert strict_threshold == 1e-6
+    assert float(old_error.max().item()) > strict_threshold
+
+    worst_head = int(torch.nonzero(old_error == old_error.max())[0, 1].item())
+    target = resolve_fixed_clean_attention_head_direction(
+        model, image, 0, worst_head
+    )
+
+    assert torch.equal(
+        target.g_clean, captured_outputs[0, worst_head, 0]
+    )
+    assert target.clean_value_max_abs_error < strict_threshold
+    assert target.clean_replay_max_abs_error < strict_threshold
+    assert target.clean_model_output_max_abs_error < strict_threshold
+    assert target.baseline_replay_max_abs_error < strict_threshold
 
 
 def test_production_resolver_baseline_uses_fixed_clean_a_not_natural_baseline_a():

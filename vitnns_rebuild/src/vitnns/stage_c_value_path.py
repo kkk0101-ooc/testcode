@@ -20,7 +20,7 @@ import re
 import weakref
 from collections.abc import Mapping, Sequence
 from contextlib import AbstractContextManager
-from dataclasses import dataclass, field, replace
+from dataclasses import InitVar, dataclass, field, replace
 from secrets import token_bytes
 from typing import Any
 
@@ -98,6 +98,7 @@ DEGENERATE_POSITIVE_PATCH_EVIDENCE = (
 )
 
 _TARGET_ISSUER_SECRET = token_bytes(32)
+_ENDPOINT_ISSUER_SECRET = token_bytes(32)
 _ISSUED_TARGETS: "weakref.WeakKeyDictionary[FrozenHeadDirectionTarget, tuple[Any, ...]]" = (
     weakref.WeakKeyDictionary()
 )
@@ -399,8 +400,15 @@ class HeadDirectionResolution:
     direction_unit: torch.Tensor | None
     direction_threshold: float
     na: StructuredNA | None = None
+    _endpoint_issuer: InitVar[bytes | None] = None
 
-    def __post_init__(self) -> None:
+    def __post_init__(self, _endpoint_issuer: bytes | None) -> None:
+        if _endpoint_issuer is not None and (
+            _endpoint_issuer is not _ENDPOINT_ISSUER_SECRET
+        ):
+            raise TypeError(
+                "batched endpoint outputs require the production resolver issuer"
+            )
         if not isinstance(self.candidate, HeadCandidate):
             raise TypeError("candidate must be a HeadCandidate")
         if self.status not in {STATUS_OK, DEGENERATE_DIRECTION}:
@@ -442,9 +450,13 @@ class HeadDirectionResolution:
         object.__setattr__(
             self, "direction_threshold", float(self.direction_threshold)
         )
-        self._validate_math()
+        self._validate_math(
+            batched_endpoints_issued=(
+                _endpoint_issuer is _ENDPOINT_ISSUER_SECRET
+            )
+        )
 
-    def _validate_math(self) -> None:
+    def _validate_math(self, *, batched_endpoints_issued: bool) -> None:
         attention = self.clean_attention
         clean = self.clean_values
         baseline = self.baseline_values
@@ -488,7 +500,6 @@ class HeadDirectionResolution:
                 )
             expected_clean = torch.sum(attention[:, None] * clean, dim=0)
             expected_baseline = torch.sum(attention[:, None] * baseline, dim=0)
-            expected_delta = expected_clean - expected_baseline
             for actual, expected, name in (
                 (self.clean_head_output, expected_clean, "clean_head_output"),
                 (
@@ -496,17 +507,33 @@ class HeadDirectionResolution:
                     expected_baseline,
                     "baseline_head_output",
                 ),
-                (self.direction_delta, expected_delta, "direction_delta"),
             ):
                 if not torch.allclose(actual, expected, atol=1e-7, rtol=1e-6):
                     raise StageCValuePathError(
                         f"{name} is inconsistent with the frozen endpoint formula"
                     )
+            # Public resolutions derive direction from the public endpoint
+            # formula.  Only the issuer-authenticated production path may use
+            # retained full-batched matmul endpoints; subtracting those two
+            # independently rounded values avoids amplifying a harmless
+            # reduction-order difference while preventing callers from
+            # injecting a false direction through the relative endpoint check.
+            expected_delta = (
+                self.clean_head_output - self.baseline_head_output
+                if batched_endpoints_issued
+                else expected_clean - expected_baseline
+            )
+            if not torch.allclose(
+                self.direction_delta, expected_delta, atol=1e-7, rtol=1e-6
+            ):
+                raise StageCValuePathError(
+                    "direction_delta is inconsistent with the retained endpoints"
+                )
             expected_norm = float(torch.linalg.vector_norm(expected_delta).item())
             expected_threshold = DIRECTION_RELATIVE_THRESHOLD * max(
                 DIRECTION_SCALE_FLOOR,
-                float(torch.linalg.vector_norm(expected_clean).item()),
-                float(torch.linalg.vector_norm(expected_baseline).item()),
+                float(torch.linalg.vector_norm(self.clean_head_output).item()),
+                float(torch.linalg.vector_norm(self.baseline_head_output).item()),
             )
             if not math.isclose(
                 self.direction_norm, expected_norm, abs_tol=1e-12, rel_tol=1e-6
@@ -630,6 +657,24 @@ def resolve_head_direction_from_endpoints(
     head_index: int = 0,
     clean_attention: torch.Tensor | None = None,
 ) -> HeadDirectionResolution:
+    return _resolve_head_direction_from_endpoints(
+        attention_row, clean_values, baseline_values,
+        block_index=block_index, head_index=head_index,
+        clean_attention=clean_attention,
+    )
+
+
+def _resolve_head_direction_from_endpoints(
+    attention_row: torch.Tensor | None = None,
+    clean_values: torch.Tensor | None = None,
+    baseline_values: torch.Tensor | None = None,
+    *,
+    block_index: int = 0,
+    head_index: int = 0,
+    clean_attention: torch.Tensor | None = None,
+    _clean_head_output: torch.Tensor | None = None,
+    _baseline_head_output: torch.Tensor | None = None,
+) -> HeadDirectionResolution:
     """Resolve ``A``, ``g(x)``, ``g(x0)``, ``d``, ``r``, and ``u``.
 
     Non-finite endpoint data is represented as structured direction
@@ -697,9 +742,34 @@ def resolve_head_direction_from_endpoints(
                 "to one"
             )
 
-    g_clean = torch.sum(attention[:, None] * clean, dim=0)
+    for value, name in (
+        (_clean_head_output, "_clean_head_output"),
+        (_baseline_head_output, "_baseline_head_output"),
+    ):
+        if value is not None and (
+            not isinstance(value, torch.Tensor)
+            or value.dtype is not torch.float32
+            or value.shape != (clean.shape[1],)
+            or value.device != clean.device
+        ):
+            raise TypeError(
+                f"{name} must be a float32 Tensor on the endpoint device "
+                f"with shape ({clean.shape[1]},)"
+            )
+
+    # Pure callers use the direct mathematical reduction.  The production
+    # resolver supplies outputs recomputed with the model's full batched
+    # attention matmul geometry so strict FP32 parity is not made dependent on
+    # a different reduction order.
+    g_clean = (
+        torch.sum(attention[:, None] * clean, dim=0)
+        if _clean_head_output is None else _owned_tensor(_clean_head_output)
+    )
     # This is deliberately the *clean* A applied to natural baseline V.
-    g_baseline = torch.sum(attention[:, None] * baseline, dim=0)
+    g_baseline = (
+        torch.sum(attention[:, None] * baseline, dim=0)
+        if _baseline_head_output is None else _owned_tensor(_baseline_head_output)
+    )
     direction_delta = g_clean - g_baseline
     clean_norm = float(torch.linalg.vector_norm(g_clean).item())
     baseline_norm = float(torch.linalg.vector_norm(g_baseline).item())
@@ -768,6 +838,11 @@ def resolve_head_direction_from_endpoints(
         direction_unit=unit,
         direction_threshold=direction_threshold,
         na=na,
+        _endpoint_issuer=(
+            _ENDPOINT_ISSUER_SECRET
+            if _clean_head_output is not None or _baseline_head_output is not None
+            else None
+        ),
     )
 
 
@@ -1851,6 +1926,24 @@ def _validate_endpoint_block_data(
     )
 
 
+def _recompute_full_batched_head_outputs(
+    value: _EndpointBlockData, *, block_index: int
+) -> torch.Tensor:
+    """Recompute the canonical unfused attention ``A @ V`` geometry.
+
+    Use the captured fused-QKV tensor directly so ``V`` retains the same
+    strided view geometry used by the model forward.  A per-head GEMV or an
+    elementwise-product reduction is mathematically equivalent but can have a
+    different float32 accumulation order.
+    """
+
+    _validate_endpoint_block_data(value, block_index=block_index)
+    _query, _key, values = split_fused_qkv(
+        value.qkv, num_heads=HEADS_PER_BLOCK, head_dim=HEAD_DIM
+    )
+    return _owned_tensor(torch.matmul(value.attention_used, values))
+
+
 class _SelectedHeadIntervention(AbstractContextManager["_SelectedHeadIntervention"]):
     def __init__(
         self, attention_module: nn.Module, fixed_by_head: Mapping[int, torch.Tensor]
@@ -2027,6 +2120,29 @@ def resolve_fixed_clean_attention_head_directions(
                 baseline_capture[block_index], block_index=block_index
             )
 
+        # Match the canonical attention forward's FP32 accumulation path:
+        # one full [B,H,T,T] @ [B,H,T,D] matmul, then select CLS/head.
+        # Computing each head as elementwise-product-plus-sum or GEMV can
+        # differ by more than the frozen exclusive 1e-6 parity threshold.
+        clean_formula_by_block = {
+            block_index: _recompute_full_batched_head_outputs(
+                clean_capture[block_index], block_index=block_index
+            )
+            for block_index in selected_blocks
+        }
+        baseline_formula_by_block = {
+            block_index: _owned_tensor(
+                torch.matmul(
+                    clean_capture[block_index].attention_used,
+                    split_fused_qkv(
+                        baseline_capture[block_index].qkv,
+                        num_heads=HEADS_PER_BLOCK, head_dim=HEAD_DIM,
+                    )[2],
+                )
+            )
+            for block_index in selected_blocks
+        }
+
         for candidate in selected:
             block_index = candidate.block_index
             head_index = candidate.head_index
@@ -2040,7 +2156,7 @@ def resolve_fixed_clean_attention_head_directions(
                 attention_used[0, head_index, :, :]
             ).unsqueeze(0)
             fixed_attention[candidate] = selected_attention
-            resolutions[candidate] = resolve_head_direction_from_endpoints(
+            resolutions[candidate] = _resolve_head_direction_from_endpoints(
                 attention_used[
                     0, head_index, CLS_TOKEN_INDEX, :
                 ],
@@ -2048,6 +2164,12 @@ def resolve_fixed_clean_attention_head_directions(
                 baseline_values[0, head_index],
                 block_index=block_index,
                 head_index=head_index,
+                _clean_head_output=clean_formula_by_block[
+                    block_index
+                ][0, head_index, CLS_TOKEN_INDEX],
+                _baseline_head_output=baseline_formula_by_block[
+                    block_index
+                ][0, head_index, CLS_TOKEN_INDEX],
             )
 
         for chunk in chunks:
@@ -2141,7 +2263,9 @@ def resolve_fixed_clean_attention_head_directions(
                     if not clean_formula_error < ENDPOINT_PARITY_MAX_ABS:
                         raise StageCValuePathError(
                             "natural clean pre-projection head output does not "
-                            "match clean attention @ clean V"
+                            "match clean attention @ clean V: "
+                            f"block={block_index}, head={head_index}, "
+                            f"max_abs_error={clean_formula_error!r}"
                         )
                     clean_replay_error = _max_abs_error(
                         natural_g,
@@ -2167,7 +2291,9 @@ def resolve_fixed_clean_attention_head_directions(
                         raise StageCValuePathError(
                             "baseline fixed-clean-A internal output vs independent "
                             "clean-A @ natural baseline V parity must have "
-                            "max_abs_error < 1e-6"
+                            "max_abs_error < 1e-6: "
+                            f"block={block_index}, head={head_index}, "
+                            f"max_abs_error={baseline_replay_error!r}"
                         )
                     if not clean_model_output_error < ENDPOINT_PARITY_MAX_ABS:
                         raise StageCValuePathError(

@@ -975,7 +975,7 @@ def test_production_backend_interrupt_is_persisted_and_reraised(
     )
 
 
-def test_interrupt_persistence_failure_returns_incomplete_result(
+def test_interrupt_persistence_failure_reraises_with_incomplete_result(
     monkeypatch, tmp_path,
 ):
     import vitnns.stage_c_artifacts as artifacts
@@ -994,11 +994,13 @@ def test_interrupt_persistence_failure_returns_incomplete_result(
     unit = toy_unit()
     output_root = tmp_path / "interrupt-persistence-failure"
 
-    result = run_toy_unit(
-        unit, output_root=output_root, backend=InterruptingBackend(),
-        device="cpu",
-    )
+    with pytest.raises(KeyboardInterrupt, match="requested stop") as caught:
+        run_toy_unit(
+            unit, output_root=output_root, backend=InterruptingBackend(),
+            device="cpu",
+        )
 
+    result = caught.value.stage_c_unit_result
     assert result.state == "incomplete"
     assert result.failure["type"] == "builtins.KeyboardInterrupt"
     assert result.failure["persistence_error"] == {
@@ -1053,17 +1055,19 @@ def test_interrupt_after_success_commit_does_not_fabricate_failed_result(
     )
     unit = toy_unit()
 
-    result = run_toy_unit(
-        unit, output_root=tmp_path / "post-commit-interrupt",
-        backend=ToyBackend(), device="cpu", resume=False,
-    )
+    with pytest.raises(KeyboardInterrupt, match="requested stop") as caught:
+        run_toy_unit(
+            unit, output_root=tmp_path / "post-commit-interrupt",
+            backend=ToyBackend(), device="cpu", resume=False,
+        )
 
+    assert caught.value is original
+    result = original.stage_c_unit_result
     assert result.state == "incomplete"
     assert result.failure["type"] == "builtins.KeyboardInterrupt"
     assert result.failure["persistence_error"]["type"] == (
         persistence_error_type
     )
-    assert not hasattr(original, "stage_c_unit_result")
     attempt = _path(result.attempt_path)
     validation = validate_execution_unit(
         attempt, expected_unit_identity=unit.key.to_dict(),
@@ -1957,6 +1961,135 @@ def test_batch_total_cap_counts_every_retained_attempt_and_extra_file(tmp_path):
         "regular-file bytes" in message or "artifact tree" in message
         for message in validation.errors
     )
+
+
+@pytest.mark.parametrize(
+    "target_cached", [False, True], ids=["target-resolution", "method-execution"]
+)
+def test_cached_sample_signed_target_or_method_failure_is_terminal_and_valid(
+    monkeypatch, tmp_path, target_cached,
+):
+    from vitnns.stage_c_config import load_stage_c_config
+    from vitnns.stage_c_perturbations import tensor_sha256
+    from vitnns.stage_c_plan import (
+        ValueCandidate, build_execution_plan, estimate_stage_c_run,
+        load_stage_c_registry, make_run_spec,
+    )
+    from vitnns.stage_c_value_path import StageCValuePathError
+
+    method_id = (
+        "conditional_fixed_clean_attention_head_direction_value_path_ig"
+    )
+    block, head = 10, 6
+    config = load_stage_c_config()
+    registry = load_stage_c_registry(config, verify_live_assets=False)
+    run_spec = make_run_spec(
+        sample_ids=[SAMPLE_A], method_ids=[method_id],
+        value_config_source="explicit",
+        value_candidates=[ValueCandidate(block, head)],
+        fidelity_pairing_context=None, audit_repeatability_runs=1,
+        audit_repeatability_scope="clean_map_only",
+        run_registered_fidelity=False, run_sanity=False,
+        run_stability=False,
+    )
+    plan = build_execution_plan(config, registry, run_spec)
+    estimate = estimate_stage_c_run(config, plan).to_dict()
+    unit = plan.units[0]
+    assert (unit.key.block_index, unit.key.head_index) == (block, head)
+
+    model = torch.nn.Identity()
+    canonical = torch.zeros((1, 3, 224, 224), dtype=torch.float32)
+    normalized = torch.zeros_like(canonical)
+    sample_key = (SAMPLE_A, "cpu")
+    target_key = (SAMPLE_A, "cpu", block, head)
+    backend = ProductionStageCBackend(
+        sample_loader=lambda *_args: pytest.fail(
+            "cached sample must not be loaded again"
+        ),
+        model_loader=lambda **_kwargs: model, config=config, registry=registry,
+        plan=plan, code_state={"commit": "d" * 40, "dirty": False},
+    )
+    backend._models["cpu"] = model
+    backend._samples[sample_key] = {
+        "canonical_rgb": canonical,
+        "normalized_input": normalized,
+        "registry_row": registry.by_sample_id()[SAMPLE_A],
+    }
+    clean_sha256 = tensor_sha256(normalized)
+    if target_cached:
+        backend._value_targets[target_key] = SimpleNamespace(
+            clean_input_sha256=clean_sha256,
+            to_dict=lambda: {
+                "target_kind": "fixed_clean_attention_cls_head_direction",
+                "candidate": {"block_index": block, "head_index": head},
+                "clean_input_sha256": clean_sha256,
+            },
+        )
+
+    scientific_error = StageCValuePathError(
+        "natural clean pre-projection head output does not match clean "
+        "attention @ clean V"
+    )
+
+    def fail_after_cached_sample(received_unit, *, device, call_counter):
+        assert received_unit is unit
+        assert device == "cpu"
+        assert sample_key in backend._samples
+        assert (target_key in backend._value_targets) is target_cached
+        raise scientific_error
+
+    monkeypatch.setattr(backend, "_run_composed", fail_after_cached_sample)
+    result = run_execution_unit(
+        unit, output_root=tmp_path / "signed-failure", backend=backend,
+        plan=plan, preflight=estimate, device="cpu", resume=False,
+    )
+
+    assert result.state == "failed"
+    assert result.failure == {
+        "reason": "execution_unit_failed",
+        "phase": "backend_or_persistence",
+        "type": "vitnns.stage_c_value_path.StageCValuePathError",
+        "message": str(scientific_error),
+    }
+    assert "persistence_error" not in result.failure
+    attempt = _path(result.attempt_path)
+    status = _json(attempt / "status.json")
+    provenance = _json(attempt / "L0" / "provenance.json")
+    assert status["status"] == "failed"
+    assert status["terminal"] is True
+    assert status["complete"] is False
+    assert provenance["bindings"]["map"] == {
+        "projection": "pixel_mass_to_patch_sum",
+        "sign_semantics": "signed",
+        "normalization": "none_signed_mass_preserving",
+        "metric_ready_dtype": "float32",
+        "metric_ready_shape": [14, 14],
+    }
+    assert provenance["bindings"]["target"]["status"] == (
+        "resolved" if target_cached else "unavailable"
+    )
+    validation = validate_execution_unit(
+        attempt, expected_unit_identity=unit.key.to_dict(),
+        expected_provenance_bindings={
+            "configuration": {
+                "execution_plan_sha256": plan.canonical_digest,
+                "run_spec_sha256": canonical_sha256(plan.run_spec.to_dict()),
+            },
+            "resources": {
+                "preflight": {
+                    "plan_digest": plan.canonical_digest,
+                    "canonical_digest": estimate["canonical_digest"],
+                }
+            },
+        },
+        observed_git_state=backend.code_state,
+        caps=config.budget.to_dict(), require_runner_telemetry=True,
+    )
+    assert validation.valid is True
+    assert validation.status == "failed"
+    assert validation.terminal is True
+    assert validation.complete is False
+    assert validation.resumable is False
 
 
 @pytest.mark.integration
