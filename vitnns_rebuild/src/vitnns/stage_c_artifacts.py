@@ -74,6 +74,34 @@ _STRICT_PROVENANCE_BINDING_FIELDS = {
     "baseline", "ig_schedule", "seeds", "perturbations", "status", "failure",
     "resources", "retention", "artifact_inventory",
 }
+_VALUE_PATH_IG_METHOD_ID = (
+    "conditional_fixed_clean_attention_head_direction_value_path_ig"
+)
+_VALUE_PATH_CONVERGENCE_ERROR = (
+    "vitnns.stage_c_value_path.StageCValuePathConvergenceError"
+)
+_FULL_MODEL_IG_METHOD_ID = "full_model_class_logit_ig"
+_FULL_MODEL_IG_CONVERGENCE_ERROR = (
+    "vitnns.stage_c_class_logit.StageCClassLogitIGConvergenceError"
+)
+_FAILURE_OBSERVABILITY_PATH = "L0/execution_lifecycle.json"
+_VALUE_PATH_IG_STEPS = (512, 1024, 2048, 4096, 8192)
+_VALUE_PATH_IG_CHUNK_SIZE = 8
+_VALUE_PATH_IG_ATOL = 1e-4
+_VALUE_PATH_IG_RTOL = 1e-2
+_VALUE_PATH_IG_METADATA_FIELDS = {
+    "method", "quadrature", "integration_dtype", "input_shape",
+    "step_schedule", "step_chunk_size", "atol", "rtol", "scope",
+    "target", "includes_residual_paths",
+    "is_complete_attention_attribution", "fixed_clean_attention",
+    "frozen_direction",
+}
+_MAP_WORK_ITEM_FIELDS = {
+    "kind", "input_variant", "repeat_index", "fidelity_scale",
+    "curve_direction", "ranking_kind", "replicate_index",
+    "fraction_index", "fraction", "pairing_block_index",
+    "pairing_head_index",
+}
 
 
 class StageCArtifactError(RuntimeError):
@@ -102,6 +130,423 @@ class InjectedArtifactCrash(StageCArtifactError):
     def __init__(self, point: str):
         self.point = point
         super().__init__(f"injected Stage C artifact crash at {point}")
+
+
+def _value_path_ig_attempt_values(
+    attempt: Any, *, context: str, errors: list[str],
+) -> tuple[int | None, bool | None]:
+    required = {"steps", "delta", "sum", "abs", "rel", "pass"}
+    if not isinstance(attempt, dict) or set(attempt) != required:
+        errors.append(f"{context} has missing or unknown fields")
+        return None, None
+    steps = attempt.get("steps")
+    if type(steps) is not int or steps <= 0:
+        errors.append(f"{context} steps are invalid")
+        steps = None
+    values: dict[str, float] = {}
+    for field in ("delta", "sum", "abs", "rel"):
+        raw = attempt.get(field)
+        if (
+            not isinstance(raw, list) or len(raw) != 1
+            or isinstance(raw[0], bool)
+            or not isinstance(raw[0], (int, float))
+            or not math.isfinite(float(raw[0]))
+        ):
+            errors.append(f"{context} {field} is invalid")
+        else:
+            values[field] = float(raw[0])
+    raw_pass = attempt.get("pass")
+    passed = None
+    if (
+        not isinstance(raw_pass, list) or len(raw_pass) != 1
+        or type(raw_pass[0]) is not bool
+    ):
+        errors.append(f"{context} pass is invalid")
+    else:
+        passed = raw_pass[0]
+    if len(values) == 4:
+        expected_abs = abs(values["delta"] - values["sum"])
+        expected_rel = expected_abs / max(
+            abs(values["delta"]), np.finfo(np.float32).eps
+        )
+        if not math.isclose(
+            values["abs"], expected_abs, rel_tol=1e-6, abs_tol=1e-12
+        ):
+            errors.append(f"{context} conservation abs is inconsistent")
+        if not math.isclose(
+            values["rel"], expected_rel, rel_tol=1e-6, abs_tol=1e-12
+        ):
+            errors.append(f"{context} conservation rel is inconsistent")
+        expected_pass = expected_abs <= (
+            _VALUE_PATH_IG_ATOL
+            + _VALUE_PATH_IG_RTOL * abs(values["delta"])
+        )
+        if passed is not None and passed is not expected_pass:
+            errors.append(f"{context} conservation pass is inconsistent")
+    return steps, passed
+
+
+def _bound_class_index(provenance: Any, *, context: str, errors: list[str]) -> int | None:
+    """Return the frozen class index from the signed provenance document."""
+
+    bindings = provenance.get("bindings") if isinstance(provenance, Mapping) else None
+    target = bindings.get("target") if isinstance(bindings, Mapping) else None
+    identity = target.get("identity") if isinstance(target, Mapping) else None
+    frozen = identity.get("frozen_target") if isinstance(identity, Mapping) else None
+    class_index = frozen.get("class_index") if isinstance(frozen, Mapping) else None
+    if type(class_index) is not int or class_index < 0:
+        errors.append(f"{context} has no valid provenance-bound class_index")
+        return None
+    return class_index
+
+
+def _validate_ig_map_record(
+    value: Any, *, identity: Mapping[str, Any], expected_variant: tuple[str, Any],
+    failed: bool, failure_details: Mapping[str, Any], method_id: str,
+    class_index: int | None, context: str, errors: list[str],
+) -> None:
+    required = {
+        "method_id", "input_variant", "repeat_index", "status",
+        "ig_result", "attempted_steps_total", "backward_invocations",
+        "actual_calls", "exception",
+    }
+    if not isinstance(value, dict) or set(value) != required:
+        errors.append(f"{context} has missing or unknown fields")
+        return
+    if value.get("method_id") != method_id:
+        errors.append(f"{context} method_id differs from unit identity")
+    if (value.get("input_variant"), value.get("repeat_index")) != expected_variant:
+        errors.append(f"{context} map coverage/order differs from frozen prefix")
+    expected_status = "failed" if failed else "completed"
+    if value.get("status") != expected_status:
+        errors.append(f"{context} status is invalid")
+
+    exception = value.get("exception")
+    if failed:
+        expected_exception = {
+            "type": failure_details.get("type"),
+            "message": failure_details.get("message"),
+        }
+        if exception != expected_exception:
+            errors.append(f"{context} exception differs from terminal failure")
+    elif exception is not None:
+        errors.append(f"{context} completed map contains an exception")
+
+    summary = value.get("ig_result")
+    summary_fields = {"selected_steps", "converged", "attempts", "metadata"}
+    if not isinstance(summary, dict) or set(summary) != summary_fields:
+        errors.append(f"{context} IG result has missing or unknown fields")
+        return
+    if type(summary.get("converged")) is not bool:
+        errors.append(f"{context} IG converged flag is invalid")
+    elif summary["converged"] is failed:
+        errors.append(f"{context} IG converged state contradicts map status")
+
+    attempts = summary.get("attempts")
+    if not isinstance(attempts, list) or not attempts:
+        errors.append(f"{context} IG attempts are missing")
+        steps: list[int] = []
+        passes: list[bool] = []
+    else:
+        steps = []
+        passes = []
+        for index, attempt in enumerate(attempts):
+            step, passed = _value_path_ig_attempt_values(
+                attempt, context=f"{context} IG attempt {index}", errors=errors
+            )
+            if step is not None:
+                steps.append(step)
+            if passed is not None:
+                passes.append(passed)
+    expected_steps = list(_VALUE_PATH_IG_STEPS if failed else _VALUE_PATH_IG_STEPS[:len(steps)])
+    if steps != expected_steps:
+        errors.append(f"{context} IG schedule is not the frozen {'complete schedule' if failed else 'prefix'}")
+    if not steps or summary.get("selected_steps") != steps[-1]:
+        errors.append(f"{context} IG selected_steps is invalid")
+    expected_passes = (
+        [False] * len(passes)
+        if failed else [False] * (len(passes) - 1) + [True]
+    )
+    if passes != expected_passes:
+        errors.append(f"{context} IG stop/pass rule is invalid")
+
+    expected_attempted = sum(steps)
+    expected_backward = sum(
+        math.ceil(step / _VALUE_PATH_IG_CHUNK_SIZE) for step in steps
+    )
+    metadata = summary.get("metadata")
+    expected_metadata: dict[str, Any] = {
+        "method": "integrated_gradients",
+        "quadrature": "gauss_legendre",
+        "integration_dtype": "float32",
+        "input_shape": [1, 3, 224, 224],
+        "step_schedule": list(_VALUE_PATH_IG_STEPS),
+        "step_chunk_size": _VALUE_PATH_IG_CHUNK_SIZE,
+        "atol": _VALUE_PATH_IG_ATOL,
+        "rtol": _VALUE_PATH_IG_RTOL,
+    }
+    if method_id == _VALUE_PATH_IG_METHOD_ID:
+        expected_metadata.update({
+            "scope": "fixed_clean_attention_head_direction_value_path",
+            "target": {
+                "kind": "fixed_clean_attention_cls_head_direction",
+                "block_index": identity.get("block_index"),
+                "head_index": identity.get("head_index"),
+                "query_token": 0,
+            },
+            "includes_residual_paths": False,
+            "is_complete_attention_attribution": False,
+            "fixed_clean_attention": True,
+            "frozen_direction": True,
+        })
+        expected_metadata_fields = set(_VALUE_PATH_IG_METADATA_FIELDS)
+    else:
+        expected_metadata.update({
+            "scope": "full_model",
+            "target": {"kind": "class_logit", "class_index": class_index},
+            "includes_residual_paths": True,
+        })
+        expected_metadata_fields = {
+            "method", "quadrature", "integration_dtype", "input_shape",
+            "step_schedule", "step_chunk_size", "atol", "rtol",
+            "scope", "target", "includes_residual_paths",
+        }
+    if method_id == _VALUE_PATH_IG_METHOD_ID and not failed:
+        expected_metadata.update({
+            "intervention_calls": expected_backward + 2,
+            "pre_projection_calls": expected_backward + 2,
+        })
+        expected_metadata_fields.update({
+            "intervention_calls", "pre_projection_calls",
+        })
+    if (
+        not isinstance(metadata, dict)
+        or set(metadata) != expected_metadata_fields
+        or any(metadata.get(key) != expected for key, expected in expected_metadata.items())
+    ):
+        errors.append(f"{context} IG metadata differs from frozen contract")
+    if value.get("attempted_steps_total") != expected_attempted:
+        errors.append(f"{context} attempted_steps_total is inconsistent")
+    if value.get("backward_invocations") != expected_backward:
+        errors.append(f"{context} backward_invocations is inconsistent")
+    calls = value.get("actual_calls")
+    if not isinstance(calls, dict) or set(calls) != {
+        "accounting_unit", "forward_calls", "backward_calls"
+    }:
+        errors.append(f"{context} actual_calls is invalid")
+    else:
+        if calls.get("accounting_unit") != "batched_model_invocation":
+            errors.append(f"{context} call accounting unit is invalid")
+        if calls.get("backward_calls") != expected_backward:
+            errors.append(f"{context} actual backward_calls is inconsistent")
+        forward_overhead = (
+            4 if method_id == _VALUE_PATH_IG_METHOD_ID
+            or expected_variant[0] not in {"clean", "repeat_clean"}
+            else 2
+        )
+        if calls.get("forward_calls") != expected_backward + forward_overhead:
+            errors.append(f"{context} actual forward_calls is inconsistent")
+
+
+def _load_bound_plan_map_sequence(
+    attempt_root: Path, manifest: Mapping[str, Any], provenance: Any,
+    errors: list[str],
+) -> list[tuple[str, Any]] | None:
+    """Load the frozen map order from the plan bound by provenance."""
+
+    context = "value-path convergence failure observability"
+    if not isinstance(provenance, Mapping):
+        errors.append(f"{context} cannot bind map order without provenance")
+        return None
+    bindings = provenance.get("bindings")
+    configuration = (
+        bindings.get("configuration")
+        if isinstance(bindings, Mapping) else None
+    )
+    expected_digest = (
+        configuration.get("execution_plan_sha256")
+        if isinstance(configuration, Mapping) else None
+    )
+    if not isinstance(expected_digest, str) or not _SHA256_RE.fullmatch(
+        expected_digest
+    ):
+        errors.append(f"{context} has no valid execution-plan binding")
+        return None
+
+    # attempts live at <root>/units/<unit>/attempts/attempt-NNNNNN.
+    try:
+        output_root = attempt_root.parents[3]
+    except IndexError:
+        errors.append(f"{context} cannot locate execution_plan.json")
+        return None
+    plan_path = output_root / "execution_plan.json"
+    try:
+        _assert_no_symlink_components(plan_path)
+        raw = plan_path.read_bytes()
+        plan = _strict_json_loads(raw)
+    except (OSError, ValueError, TypeError, ArtifactPolicyError) as exc:
+        errors.append(f"{context} cannot load bound execution plan: {exc}")
+        return None
+    if not isinstance(plan, dict) or _json_file_bytes(plan) != raw:
+        errors.append(f"{context} execution plan is not canonical")
+        return None
+    payload = dict(plan)
+    claimed_digest = payload.pop("canonical_digest", None)
+    observed_digest = hashlib.sha256(canonical_json_bytes(payload)).hexdigest()
+    if claimed_digest != expected_digest or observed_digest != expected_digest:
+        errors.append(f"{context} execution plan does not match provenance")
+        return None
+    units = plan.get("units")
+    identity = manifest.get("unit_identity")
+    matching = [
+        unit for unit in units if isinstance(unit, Mapping)
+        and unit.get("key") == identity
+    ] if isinstance(units, list) else []
+    if len(matching) != 1:
+        errors.append(f"{context} unit is absent or duplicated in execution plan")
+        return None
+    work_items = matching[0].get("work_items")
+    if not isinstance(work_items, list):
+        errors.append(f"{context} execution-plan work_items are missing")
+        return None
+    result: list[tuple[str, Any]] = []
+    for index, item in enumerate(work_items):
+        if not isinstance(item, Mapping) or set(item) != _MAP_WORK_ITEM_FIELDS:
+            errors.append(
+                f"{context} execution-plan work item {index} is malformed"
+            )
+            return None
+        if item.get("kind") != "map":
+            continue
+        if any(
+            item.get(field) is not None
+            for field in _MAP_WORK_ITEM_FIELDS
+            - {"kind", "input_variant", "repeat_index"}
+        ):
+            errors.append(
+                f"{context} execution-plan map item {index} has curve fields"
+            )
+            return None
+        result.append((item.get("input_variant"), item.get("repeat_index")))
+    if not result or result[0] != ("clean", 0):
+        errors.append(f"{context} execution-plan map order is invalid")
+        return None
+    return result
+
+
+def _failed_ig_maps(observability: Any) -> list[Mapping[str, Any]]:
+    if not isinstance(observability, Mapping):
+        return []
+    maps = observability.get("map_execution_records")
+    if not isinstance(maps, list):
+        return []
+    return [
+        item for item in maps
+        if isinstance(item, Mapping)
+        and item.get("status") == "failed"
+        and isinstance(item.get("ig_result"), Mapping)
+    ]
+
+
+def _validate_ig_convergence_failure_observability(
+    attempt_root: Path, manifest: Mapping[str, Any], status: Any,
+    provenance: Any, observability: Any,
+    errors: list[str],
+) -> None:
+    identity = manifest.get("unit_identity")
+    failure = manifest.get("failure")
+    details = failure.get("details") if isinstance(failure, Mapping) else None
+    method_id = identity.get("method_id") if isinstance(identity, Mapping) else None
+    profiles = {
+        _VALUE_PATH_IG_METHOD_ID: _VALUE_PATH_CONVERGENCE_ERROR,
+        _FULL_MODEL_IG_METHOD_ID: _FULL_MODEL_IG_CONVERGENCE_ERROR,
+    }
+    is_production_ig_failure = (
+        manifest.get("status") == "failed"
+        and isinstance(identity, Mapping)
+        and "canonical_digest" in identity
+        and method_id in profiles
+    )
+    if not is_production_ig_failure:
+        return
+    context = f"{method_id} convergence failure observability"
+    expected_failure_type = profiles[method_id]
+    claimed_convergence_failure = (
+        isinstance(details, Mapping)
+        and details.get("type") == expected_failure_type
+    )
+    # Do not trust a record's self-declared method_id when deciding whether IG
+    # evidence exists.  Otherwise jointly re-signing that field and the
+    # terminal exception type could disable semantic validation.
+    failed_ig_maps = _failed_ig_maps(observability)
+    has_convergence_evidence = bool(failed_ig_maps)
+    if claimed_convergence_failure != has_convergence_evidence:
+        errors.append(
+            f"{context} terminal failure type and failed IG evidence mismatch"
+        )
+    if not claimed_convergence_failure and not has_convergence_evidence:
+        return
+    records = manifest.get("artifacts")
+    evidence_records = [
+        item for item in records if isinstance(item, Mapping)
+        and item.get("path") == _FAILURE_OBSERVABILITY_PATH
+    ] if isinstance(records, list) else []
+    if len(evidence_records) != 1 or evidence_records[0].get("kind") != "failure_evidence":
+        errors.append(f"{context} requires exactly one failure_evidence artifact")
+    if not isinstance(observability, dict) or set(observability) != {
+        "lifecycle", "map_execution_records"
+    }:
+        errors.append(f"{context} has missing or unknown fields")
+        return
+    telemetry = status.get("runner_telemetry") if isinstance(status, Mapping) else None
+    # The runner performs one terminal validation before publishing telemetry,
+    # then a second validation with ``require_runner_telemetry=True``.  Let the
+    # first pass validate the immutable failure payload; when telemetry is
+    # present, bind the duplicated lifecycle evidence exactly.
+    if telemetry is not None and (
+        not isinstance(telemetry, Mapping)
+        or observability.get("lifecycle") != telemetry.get("lifecycle")
+    ):
+        errors.append(f"{context} lifecycle differs from status telemetry")
+    lifecycle = observability.get("lifecycle")
+    integrity = (
+        lifecycle.get("integrity")
+        if isinstance(lifecycle, Mapping) else None
+    )
+    if (
+        not isinstance(integrity, Mapping)
+        or integrity.get("body_exception_type")
+        != details.get("type")
+    ):
+        errors.append(f"{context} lifecycle exception differs from terminal failure")
+    maps = observability.get("map_execution_records")
+    if not isinstance(maps, list) or not maps:
+        errors.append(f"{context} map_execution_records are missing")
+        return
+    expected_maps = _load_bound_plan_map_sequence(
+        attempt_root, manifest, provenance, errors
+    )
+    if expected_maps is None:
+        return
+    if len(maps) > len(expected_maps):
+        errors.append(f"{context} map coverage exceeds frozen work items")
+    if len(failed_ig_maps) != 1 or maps[-1] is not failed_ig_maps[0]:
+        errors.append(f"{context} requires exactly one final failed IG map")
+    class_index = (
+        _bound_class_index(provenance, context=context, errors=errors)
+        if method_id == _FULL_MODEL_IG_METHOD_ID else None
+    )
+    for index, item in enumerate(maps):
+        expected_variant = (
+            expected_maps[index]
+            if index < len(expected_maps) else ("<unplanned_map>", None)
+        )
+        _validate_ig_map_record(
+            item, identity=identity, expected_variant=expected_variant,
+            failed=index == len(maps) - 1, failure_details=details,
+            method_id=method_id, class_index=class_index,
+            context=f"{context} map {index}", errors=errors,
+        )
 
 
 @dataclass(frozen=True)
@@ -1171,6 +1616,7 @@ def validate_execution_unit(
             errors.append("manifest artifacts must be a list")
     seen_paths: set[str] = set()
     provenance: dict[str, Any] | None = None
+    failure_observability: dict[str, Any] | None = None
     for index, candidate in enumerate(records):
         context = f"artifact[{index}]"
         if not isinstance(candidate, dict):
@@ -1225,6 +1671,10 @@ def validate_execution_unit(
         )
         if relative == PROVENANCE_PATH:
             provenance = _load_canonical_json(raw, "provenance", errors)
+        elif relative == _FAILURE_OBSERVABILITY_PATH:
+            failure_observability = _load_canonical_json(
+                raw, "failure observability", errors
+            )
 
     actual_files = set(files)
     missing_files = sorted(expected_files - actual_files)
@@ -1323,6 +1773,26 @@ def validate_execution_unit(
             for item in mapping_records
         ):
             errors.append("failure kind is used outside its reserved path")
+        observability_records = [
+            item
+            for item in l0_records
+            if item.get("path") == _FAILURE_OBSERVABILITY_PATH
+        ]
+        if observability_records and any(
+            item.get("kind") != "failure_evidence"
+            for item in observability_records
+        ):
+            errors.append(
+                "L0 execution lifecycle path has the wrong kind"
+            )
+        if any(
+            item.get("kind") == "failure_evidence"
+            and item.get("path") != _FAILURE_OBSERVABILITY_PATH
+            for item in mapping_records
+        ):
+            errors.append(
+                "failure_evidence kind is used outside its reserved path"
+            )
         if state == "complete":
             if not any(
                 item.get("kind") not in {"provenance", "failure"}
@@ -1354,6 +1824,11 @@ def validate_execution_unit(
                         )
         elif state == "running" and mapping_records:
             errors.append("running manifest cannot inventory payload artifacts")
+
+        _validate_ig_convergence_failure_observability(
+            root, manifest, status_value, provenance,
+            failure_observability, errors,
+        )
 
     manifest_caps: ArtifactCaps | None = None
     if manifest is not None:

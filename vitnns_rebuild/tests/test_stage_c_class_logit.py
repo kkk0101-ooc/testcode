@@ -25,6 +25,7 @@ from vitnns.stage_c_class_logit import (
     FrozenClassLogitTarget,
     FrozenScalarEvaluation,
     StageCClassLogitError,
+    StageCClassLogitIGConvergenceError,
     evaluate_frozen_class_logit_target,
     full_model_class_logit_ig,
     full_model_class_logit_ig_at_intervention,
@@ -1021,6 +1022,47 @@ def _ig_result(
     )
 
 
+def _nonconverged_ig_result(
+    target: FrozenClassLogitTarget,
+    *,
+    attribution: torch.Tensor | None = None,
+    report_delta: float = 0.0,
+) -> IGResult:
+    native = _signed_native() if attribution is None else attribution
+    report_sum = native.to(torch.float32).flatten(1).sum(dim=1)
+    delta = torch.tensor([report_delta], dtype=torch.float32)
+    absolute = (delta - report_sum).abs()
+    relative = absolute / delta.abs().clamp_min(torch.finfo(torch.float32).eps)
+    passes = absolute <= (IG_ATOL + IG_RTOL * delta.abs())
+    assert not bool(passes.item())
+    conservation = {
+        "delta": delta,
+        "sum": report_sum,
+        "abs": absolute,
+        "rel": relative,
+        "pass": passes,
+    }
+    attempts = tuple(
+        {
+            "steps": step,
+            "delta": delta.tolist(),
+            "sum": report_sum.tolist(),
+            "abs": absolute.tolist(),
+            "rel": relative.tolist(),
+            "pass": passes.tolist(),
+        }
+        for step in IG_STEPS
+    )
+    return IGResult(
+        attribution=native,
+        conservation=conservation,
+        steps=IG_STEPS[-1],
+        converged=False,
+        attempts=attempts,
+        metadata=dict(_ig_result(target).metadata),
+    )
+
+
 def test_full_model_ig_dispatches_exact_frozen_contract_and_projects_signed_rgb(
     monkeypatch,
 ):
@@ -1184,14 +1226,117 @@ def test_full_model_ig_at_intervention_rejects_invalid_z(bad):
         full_model_class_logit_ig_at_intervention(model, image, bad, target)
 
 
+def test_full_model_ig_nonconvergence_retains_validated_complete_evidence(
+    monkeypatch,
+):
+    model = _ToyClassModel().eval()
+    image = _clean_image()
+    target = resolve_clean_class_logit_target(model, image)
+    nonconverged = _nonconverged_ig_result(target)
+    monkeypatch.setattr(
+        class_logit.attribution,
+        "full_model_ig",
+        lambda *_args, **_kwargs: nonconverged,
+    )
+    calls_before = model.forward_calls
+
+    with pytest.raises(StageCClassLogitIGConvergenceError) as captured:
+        full_model_class_logit_ig(model, image, target)
+
+    assert captured.value.ig_result is nonconverged
+    assert captured.value.result is nonconverged
+    assert captured.value.attempts is nonconverged.attempts
+    assert tuple(attempt["steps"] for attempt in captured.value.attempts) == (
+        IG_STEPS
+    )
+    assert all(attempt["pass"] == [False] for attempt in captured.value.attempts)
+    assert model.forward_calls == calls_before
+
+
+def test_full_model_ig_at_intervention_nonconvergence_retains_evidence(
+    monkeypatch,
+):
+    model = _ToyClassModel().eval()
+    image = _clean_image()
+    target = resolve_clean_class_logit_target(model, image)
+    intervention = image * 0.5
+    with torch.no_grad():
+        expected_delta = float(
+            (
+                model(intervention)[0, target.class_index]
+                - model(torch.zeros_like(intervention))[0, target.class_index]
+            ).item()
+        )
+    nonconverged = _nonconverged_ig_result(
+        target, report_delta=expected_delta
+    )
+    monkeypatch.setattr(
+        class_logit.attribution,
+        "full_model_ig",
+        lambda *_args, **_kwargs: nonconverged,
+    )
+    calls_before = model.forward_calls
+
+    with pytest.raises(StageCClassLogitIGConvergenceError) as captured:
+        full_model_class_logit_ig_at_intervention(
+            model, image, intervention, target
+        )
+
+    assert captured.value.ig_result is nonconverged
+    assert tuple(attempt["steps"] for attempt in captured.value.attempts) == (
+        IG_STEPS
+    )
+    assert model.forward_calls == calls_before + 2
+
+
+@pytest.mark.parametrize(
+    ("defect", "message"),
+    [
+        ("contradictory_converged", "all five failed attempts"),
+        ("truncated_schedule", "all five failed attempts"),
+        ("attempt_arithmetic", "attempt absolute error"),
+        ("attempt_pass", "attempt pass flag"),
+        ("conservation_arithmetic", "conservation sum"),
+        ("metadata", "metadata 'step_chunk_size'"),
+    ],
+)
+def test_full_model_ig_malformed_nonconvergence_fails_closed_without_evidence(
+    monkeypatch, defect, message,
+):
+    model = _ToyClassModel().eval()
+    image = _clean_image()
+    target = resolve_clean_class_logit_target(model, image)
+    malformed = _nonconverged_ig_result(target)
+    if defect == "contradictory_converged":
+        malformed = _ig_result(target, converged=False)
+    elif defect == "truncated_schedule":
+        malformed = dataclasses.replace(
+            malformed, steps=IG_STEPS[-2], attempts=malformed.attempts[:-1]
+        )
+    elif defect == "attempt_arithmetic":
+        malformed.attempts[0]["sum"][0] += 1.0
+    elif defect == "attempt_pass":
+        malformed.attempts[0]["pass"][0] = True
+    elif defect == "conservation_arithmetic":
+        malformed.conservation["sum"][0] += 1.0
+    elif defect == "metadata":
+        malformed.metadata["step_chunk_size"] = 16
+    monkeypatch.setattr(
+        class_logit.attribution,
+        "full_model_ig",
+        lambda *_args, **_kwargs: malformed,
+    )
+
+    with pytest.raises(StageCClassLogitError, match=message) as captured:
+        full_model_class_logit_ig(model, image, target)
+
+    assert type(captured.value) is StageCClassLogitError
+    assert not hasattr(captured.value, "ig_result")
+
+
 @pytest.mark.parametrize(
     ("factory", "exception", "message"),
     [
-        (
-            lambda target: _ig_result(target, converged=False),
-            StageCClassLogitError,
-            "did not converge",
-        ),
         (
             lambda target: _ig_result(target, pass_value=False),
             StageCClassLogitError,

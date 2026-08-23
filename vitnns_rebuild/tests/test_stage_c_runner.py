@@ -18,6 +18,7 @@ from vitnns.stage_c_runner import (
     ProductionStageCBackend,
     StageCBackendError,
     StageCPreflightError,
+    StageCRunnerError,
     UnitPayload,
     aggregate_stage_c_batch,
     run_execution_unit,
@@ -712,19 +713,21 @@ def test_same_unit_key_with_changed_plan_and_preflight_never_resumes(tmp_path):
         first_plan, output_root=output_root, backend=ToyBackend(),
         estimate=passing_estimate(first_plan), _allow_unissued_estimate=True,
     )
+    plan_bytes = (output_root / "execution_plan.json").read_bytes()
+    preflight_bytes = (output_root / "preflight.json").read_bytes()
     second_backend = ToyBackend()
-    second = run_stage_c_batch(
-        second_plan, output_root=output_root, backend=second_backend,
-        estimate=passing_estimate(second_plan), _allow_unissued_estimate=True,
-    )
+    with pytest.raises(StageCRunnerError, match="content drift"):
+        run_stage_c_batch(
+            second_plan, output_root=output_root, backend=second_backend,
+            estimate=passing_estimate(second_plan), _allow_unissued_estimate=True,
+        )
 
     assert first.successful is True
-    assert len(second_backend.calls) == 1
-    assert second.unit_results[0].state == "succeeded"
-    assert second.unit_results[0].resumed is False
-    assert second.unit_results[0].attempt_path != first.unit_results[0].attempt_path
-    assert len(_attempts(output_root)) == 2
-    validation = validate_stage_c_batch(output_root, second_plan)
+    assert second_backend.calls == []
+    assert (output_root / "execution_plan.json").read_bytes() == plan_bytes
+    assert (output_root / "preflight.json").read_bytes() == preflight_bytes
+    assert _attempts(output_root) == [_path(first.unit_results[0].attempt_path)]
+    validation = validate_stage_c_batch(output_root, first_plan)
     assert validation.valid is True
     assert validation.successful is True
 
@@ -1227,6 +1230,11 @@ def test_production_pre_target_failure_is_terminal_and_retry_uses_fresh_attempt(
     )
     plan = build_execution_plan(config, registry, run_spec)
     unit = plan.units[0]
+    output_root = tmp_path / "ig-convergence-failure"
+    output_root.mkdir()
+    (output_root / "execution_plan.json").write_bytes(
+        _canonical_file_bytes(plan.to_dict())
+    )
     estimate = estimate_stage_c_run(config, plan).to_dict()
     attempts = 0
 
@@ -1796,20 +1804,22 @@ def test_changed_plan_and_preflight_never_resume_skip_same_unit(tmp_path):
     )
     old_attempt = _path(first.unit_results[0].attempt_path)
     old_provenance = (old_attempt / "L0" / "provenance.json").read_bytes()
+    plan_bytes = (output_root / "execution_plan.json").read_bytes()
+    preflight_bytes = (output_root / "preflight.json").read_bytes()
     backend_b = ToyBackend(plan=plan_b)
 
-    second = run_stage_c_batch(
-        plan_b, output_root=output_root, backend=backend_b,
-        estimate=passing_estimate(plan_b), _allow_unissued_estimate=True,
-    )
+    with pytest.raises(StageCRunnerError, match="content drift"):
+        run_stage_c_batch(
+            plan_b, output_root=output_root, backend=backend_b,
+            estimate=passing_estimate(plan_b), _allow_unissued_estimate=True,
+        )
 
     assert plan_a.digest != plan_b.digest
-    assert second.unit_results[0].state == "succeeded"
-    assert second.unit_results[0].resumed is False
-    assert len(backend_b.calls) == 1
-    assert _path(second.unit_results[0].attempt_path) != old_attempt
+    assert backend_b.calls == []
     assert (old_attempt / "L0" / "provenance.json").read_bytes() == old_provenance
-    assert len(_attempts(output_root)) == 2
+    assert (output_root / "execution_plan.json").read_bytes() == plan_bytes
+    assert (output_root / "preflight.json").read_bytes() == preflight_bytes
+    assert _attempts(output_root) == [old_attempt]
 
 
 def test_rewritten_batch_controls_cannot_authorize_old_plan_provenance(tmp_path):
@@ -2118,6 +2128,419 @@ def test_cached_sample_signed_target_or_method_failure_is_terminal_and_valid(
     assert validation.terminal is True
     assert validation.complete is False
     assert validation.resumable is False
+
+
+def _run_value_path_convergence_failure(
+    monkeypatch, tmp_path,
+):
+    from vitnns.attribution import IGResult
+    from vitnns.stage_c_config import load_stage_c_config
+    from vitnns.stage_c_perturbations import tensor_sha256
+    from vitnns.stage_c_plan import (
+        ValueCandidate, build_execution_plan, estimate_stage_c_run,
+        load_stage_c_registry, make_run_spec,
+    )
+    from vitnns.stage_c_value_path import StageCValuePathConvergenceError
+
+    method_id = (
+        "conditional_fixed_clean_attention_head_direction_value_path_ig"
+    )
+    block, head = 10, 6
+    steps = (512, 1024, 2048, 4096, 8192)
+    config = load_stage_c_config()
+    registry = load_stage_c_registry(config, verify_live_assets=False)
+    plan = build_execution_plan(
+        config, registry, make_run_spec(
+            sample_ids=[SAMPLE_A], method_ids=[method_id],
+            value_config_source="explicit",
+            value_candidates=[ValueCandidate(block, head)],
+            fidelity_pairing_context=None, audit_repeatability_runs=1,
+            audit_repeatability_scope="clean_map_only",
+            run_registered_fidelity=False, run_sanity=False,
+            run_stability=False,
+        ),
+    )
+    estimate = estimate_stage_c_run(config, plan).to_dict()
+    unit = plan.units[0]
+    model = torch.nn.Identity()
+    canonical = torch.zeros((1, 3, 224, 224), dtype=torch.float32)
+    normalized = torch.zeros_like(canonical)
+    clean_sha256 = tensor_sha256(normalized)
+    target = SimpleNamespace(
+        clean_input_sha256=clean_sha256,
+        to_dict=lambda: {
+            "target_kind": "fixed_clean_attention_cls_head_direction",
+            "candidate": {"block_index": block, "head_index": head},
+            "clean_input_sha256": clean_sha256,
+        },
+    )
+    backend = ProductionStageCBackend(
+        sample_loader=lambda *_args: pytest.fail(
+            "cached sample must not be loaded again"
+        ),
+        model_loader=lambda **_kwargs: model, config=config, registry=registry,
+        plan=plan, code_state={"commit": "d" * 40, "dirty": False},
+    )
+    backend._models["cpu"] = model
+    backend._samples[(SAMPLE_A, "cpu")] = {
+        "canonical_rgb": canonical,
+        "normalized_input": normalized,
+        "registry_row": registry.by_sample_id()[SAMPLE_A],
+    }
+    backend._value_targets[(SAMPLE_A, "cpu", block, head)] = target
+
+    attempts = tuple(
+        {
+            "steps": step, "delta": [1.0], "sum": [0.0],
+            "abs": [1.0], "rel": [1.0], "pass": [False],
+        }
+        for step in steps
+    )
+    ig_result = IGResult(
+        attribution=torch.zeros((1, 3, 1, 1), dtype=torch.float32),
+        conservation={
+            "delta": torch.tensor([1.0]), "sum": torch.tensor([0.0]),
+            "abs": torch.tensor([1.0]), "rel": torch.tensor([1.0]),
+            "pass": torch.tensor([False]),
+        },
+        steps=steps[-1], converged=False, attempts=attempts,
+        metadata={
+            "method": "integrated_gradients",
+            "step_schedule": list(steps), "step_chunk_size": 8,
+            "atol": 1e-4, "rtol": 0.01,
+            "integration_dtype": "float32",
+            "quadrature": "gauss_legendre",
+            "input_shape": [1, 3, 224, 224],
+            "scope": "fixed_clean_attention_head_direction_value_path",
+            "target": {
+                "kind": "fixed_clean_attention_cls_head_direction",
+                "block_index": block, "head_index": head,
+                "query_token": 0,
+            },
+            "includes_residual_paths": False,
+            "is_complete_attention_attribution": False,
+            "fixed_clean_attention": True,
+            "frozen_direction": True,
+        },
+    )
+    convergence_error = StageCValuePathConvergenceError(
+        "head-direction Value-path IG did not converge on the complete "
+        "frozen schedule",
+        ig_result,
+    )
+
+    def fail_with_complete_ig_evidence(*_args, **_kwargs):
+        # The frozen IG schedule requires one forward per chunk plus four
+        # endpoint/setup forwards. Backwards are derived from ``attempts`` by
+        # the production observer after this exception is raised.
+        backend._active_call_counter.record_forward(1_988)
+        raise convergence_error
+
+    monkeypatch.setattr(
+        backend, "_run_method", fail_with_complete_ig_evidence,
+    )
+
+    def run_one_observed_map(received_unit, *, device, call_counter):
+        assert received_unit is unit
+        return backend._run_method_observed(
+            unit, input_variant="clean", repeat_index=0, model=model,
+            clean=normalized, extraction=object(), target=target,
+            target_identity={
+                "comparison_line": "value_path",
+                "target_ref": "fixed_clean_attention_cls_head_direction",
+            },
+        )
+
+    monkeypatch.setattr(backend, "_run_composed", run_one_observed_map)
+    output_root = tmp_path / "ig-convergence-failure"
+    output_root.mkdir()
+    (output_root / "execution_plan.json").write_bytes(
+        _canonical_file_bytes(plan.to_dict())
+    )
+    result = run_execution_unit(
+        unit, output_root=output_root,
+        backend=backend, plan=plan, preflight=estimate, device="cpu",
+        resume=False,
+    )
+
+    assert result.state == "failed"
+    assert result.failure["type"] == (
+        "vitnns.stage_c_value_path.StageCValuePathConvergenceError"
+    )
+    assert "persistence_error" not in result.failure
+    attempt = _path(result.attempt_path)
+    lifecycle = _json(attempt / "L0" / "execution_lifecycle.json")
+    records = lifecycle["map_execution_records"]
+    assert len(records) == 1
+    record = records[0]
+    assert record["status"] == "failed"
+    assert record["ig_result"]["converged"] is False
+    assert [item["steps"] for item in record["ig_result"]["attempts"]] == (
+        list(steps)
+    )
+    assert record["attempted_steps_total"] == sum(steps) == 15_872
+    assert record["ig_result"]["selected_steps"] == steps[-1]
+    assert record["backward_invocations"] == 1_984
+    assert record["actual_calls"]["forward_calls"] == 1_988
+    assert record["actual_calls"]["backward_calls"] == 1_984
+    assert record["exception"] == {
+        "type": (
+            "vitnns.stage_c_value_path.StageCValuePathConvergenceError"
+        ),
+        "message": str(convergence_error),
+    }
+
+    status = _json(attempt / "status.json")
+    provenance = _json(attempt / "L0" / "provenance.json")
+    assert status["status"] == "failed"
+    assert status["terminal"] is True
+    assert status["complete"] is False
+    assert status["runner_telemetry"]["lifecycle"] == lifecycle["lifecycle"]
+    assert provenance["bindings"]["map"]["sign_semantics"] == "signed"
+    expected_bindings = {
+        "configuration": {
+            "execution_plan_sha256": plan.canonical_digest,
+            "run_spec_sha256": canonical_sha256(plan.run_spec.to_dict()),
+        },
+        "resources": {
+            "preflight": {
+                "plan_digest": plan.canonical_digest,
+                "canonical_digest": estimate["canonical_digest"],
+            }
+        },
+    }
+    validation = validate_execution_unit(
+        attempt, expected_unit_identity=unit.key.to_dict(),
+        expected_provenance_bindings=expected_bindings,
+        observed_git_state=backend.code_state, caps=config.budget.to_dict(),
+        require_runner_telemetry=True,
+    )
+    assert validation.valid is True
+    assert validation.status == "failed"
+    assert validation.terminal is True
+    assert validation.complete is False
+    assert validation.resumable is False
+    return SimpleNamespace(
+        attempt=attempt, unit=unit, expected_bindings=expected_bindings,
+        observed_git_state=backend.code_state, caps=config.budget.to_dict(),
+    )
+
+
+def test_value_path_convergence_failure_retains_complete_ig_attempt_telemetry(
+    monkeypatch, tmp_path,
+):
+    _run_value_path_convergence_failure(monkeypatch, tmp_path)
+
+
+def _canonical_file_bytes(value):
+    return (
+        json.dumps(
+            value, indent=2, sort_keys=True, ensure_ascii=False, allow_nan=False,
+        )
+        + "\n"
+    ).encode("utf-8")
+
+
+def _rewrite_convergence_failure_evidence(attempt, mutate, *, remove=False):
+    """Rewrite the complete canonical hash chain after semantic tampering."""
+
+    lifecycle_path = attempt / "L0" / "execution_lifecycle.json"
+    manifest_path = attempt / "manifest.json"
+    provenance_path = attempt / "L0" / "provenance.json"
+    status_path = attempt / "status.json"
+    status = _json(status_path)
+    lifecycle = _json(lifecycle_path)
+    mutate(lifecycle)
+    if remove:
+        lifecycle_path.unlink()
+        lifecycle_payload = None
+    else:
+        lifecycle_payload = _canonical_file_bytes(lifecycle)
+        lifecycle_path.write_bytes(lifecycle_payload)
+
+    manifest = _json(manifest_path)
+    provenance = _json(provenance_path)
+    inventory = manifest["artifacts"]
+    lifecycle_record = next(
+        item for item in inventory
+        if item["path"] == "L0/execution_lifecycle.json"
+    )
+    if remove:
+        inventory.remove(lifecycle_record)
+    else:
+        lifecycle_record["bytes"] = len(lifecycle_payload)
+        lifecycle_record["sha256"] = hashlib.sha256(
+            lifecycle_payload
+        ).hexdigest()
+
+    # Provenance deliberately excludes its own inventory row, avoiding a
+    # circular digest. Rebuild its inventory/resources from the manifest.
+    declared = [
+        dict(item) for item in inventory
+        if item["path"] != "L0/provenance.json"
+    ]
+    actual = provenance["bindings"]["resources"]["actual"]
+    provenance["bindings"]["artifact_inventory"] = declared
+    actual["files"] = [
+        {"path": item["path"], "bytes": item["bytes"]}
+        for item in declared
+    ]
+    actual["artifact_bytes"] = sum(item["bytes"] for item in declared)
+    provenance_payload = _canonical_file_bytes(provenance)
+    provenance_path.write_bytes(provenance_payload)
+    provenance_record = next(
+        item for item in inventory if item["path"] == "L0/provenance.json"
+    )
+    provenance_record["bytes"] = len(provenance_payload)
+    provenance_record["sha256"] = hashlib.sha256(
+        provenance_payload
+    ).hexdigest()
+    manifest["provenance_sha256"] = provenance_record["sha256"]
+    manifest["runner_telemetry_sha256"] = canonical_sha256(
+        status["runner_telemetry"]
+    )
+
+    manifest_payload = _canonical_file_bytes(manifest)
+    manifest_path.write_bytes(manifest_payload)
+    status["manifest_sha256"] = hashlib.sha256(manifest_payload).hexdigest()
+    status_path.write_bytes(_canonical_file_bytes(status))
+
+
+def _remove_4096_attempt(lifecycle):
+    attempts = lifecycle["map_execution_records"][0]["ig_result"]["attempts"]
+    attempts[:] = [item for item in attempts if item["steps"] != 4096]
+
+
+def _claim_convergence(lifecycle):
+    lifecycle["map_execution_records"][0]["ig_result"]["converged"] = True
+
+
+def _swap_ig_attempts(lifecycle):
+    attempts = lifecycle["map_execution_records"][0]["ig_result"]["attempts"]
+    attempts[2], attempts[3] = attempts[3], attempts[2]
+
+
+def _claim_conservation_pass(lifecycle):
+    lifecycle["map_execution_records"][0]["ig_result"]["attempts"][-1][
+        "pass"
+    ] = [True]
+
+
+def _break_conservation_arithmetic(lifecycle):
+    lifecycle["map_execution_records"][0]["ig_result"]["attempts"][0][
+        "abs"
+    ] = [0.25]
+
+
+def _zero_attempted_steps(lifecycle):
+    lifecycle["map_execution_records"][0]["attempted_steps_total"] = 0
+
+
+def _wrong_backward_count(lifecycle):
+    record = lifecycle["map_execution_records"][0]
+    record["backward_invocations"] = 1_983
+    record["actual_calls"]["backward_calls"] = 1_983
+
+
+def _wrong_forward_count(lifecycle):
+    lifecycle["map_execution_records"][0]["actual_calls"][
+        "forward_calls"
+    ] = 1_987
+
+
+def _mismatch_map_exception(lifecycle):
+    lifecycle["map_execution_records"][0]["exception"]["message"] = (
+        "different scientific failure"
+    )
+
+
+def _drift_metadata_schedule(lifecycle):
+    lifecycle["map_execution_records"][0]["ig_result"]["metadata"][
+        "step_schedule"
+    ] = [512, 1024, 2048, 8192]
+
+
+def _drift_metadata_target(lifecycle):
+    lifecycle["map_execution_records"][0]["ig_result"]["metadata"][
+        "target"
+    ]["head_index"] = 7
+
+
+@pytest.mark.parametrize(
+    ("mutate", "semantic_error"),
+    [
+        (_remove_4096_attempt, "schedule"),
+        (_swap_ig_attempts, "schedule"),
+        (_claim_convergence, "converged"),
+        (_claim_conservation_pass, "pass"),
+        (_break_conservation_arithmetic, "conservation abs"),
+        (_zero_attempted_steps, "attempted_steps_total"),
+        (_wrong_backward_count, "backward_invocations"),
+        (_wrong_forward_count, "forward_calls"),
+        (_mismatch_map_exception, "exception"),
+        (_drift_metadata_schedule, "metadata"),
+        (_drift_metadata_target, "metadata"),
+    ],
+    ids=[
+        "missing-schedule-step", "schedule-order", "false-convergence",
+        "false-pass", "conservation-arithmetic", "step-count",
+        "backward-count", "forward-count", "exception",
+        "metadata-schedule", "metadata-target",
+    ],
+)
+def test_convergence_failure_semantic_tamper_survives_hash_resign_but_is_invalid(
+    monkeypatch, tmp_path, mutate, semantic_error,
+):
+    fixture = _run_value_path_convergence_failure(monkeypatch, tmp_path)
+    _rewrite_convergence_failure_evidence(fixture.attempt, mutate)
+
+    validation = validate_execution_unit(
+        fixture.attempt, expected_unit_identity=fixture.unit.key.to_dict(),
+        expected_provenance_bindings=fixture.expected_bindings,
+        observed_git_state=fixture.observed_git_state, caps=fixture.caps,
+        require_runner_telemetry=True,
+    )
+
+    assert validation.valid is False
+    assert any(semantic_error in error for error in validation.errors)
+    assert not any(
+        token in error.lower()
+        for error in validation.errors
+        for token in (
+            "hash mismatch", "byte mismatch", "inventory does not",
+            "manifest_sha256", "provenance_sha256", "not canonical",
+        )
+    )
+
+
+def test_convergence_failure_rejects_resigned_missing_failure_evidence(
+    monkeypatch, tmp_path,
+):
+    fixture = _run_value_path_convergence_failure(monkeypatch, tmp_path)
+    _rewrite_convergence_failure_evidence(
+        fixture.attempt, lambda _lifecycle: None, remove=True
+    )
+
+    validation = validate_execution_unit(
+        fixture.attempt, expected_unit_identity=fixture.unit.key.to_dict(),
+        expected_provenance_bindings=fixture.expected_bindings,
+        observed_git_state=fixture.observed_git_state, caps=fixture.caps,
+        require_runner_telemetry=True,
+    )
+
+    assert validation.valid is False
+    assert any(
+        "failure_evidence" in error or "execution_lifecycle" in error
+        for error in validation.errors
+    )
+    assert not any(
+        token in error.lower()
+        for error in validation.errors
+        for token in (
+            "hash mismatch", "byte mismatch", "inventory does not",
+            "manifest_sha256", "provenance_sha256", "not canonical",
+        )
+    )
 
 
 @pytest.mark.integration

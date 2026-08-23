@@ -59,6 +59,21 @@ class StageCClassLogitError(ValueError):
     """Raised when a C3 class-logit attribution violates its contract."""
 
 
+class StageCClassLogitIGConvergenceError(StageCClassLogitError):
+    """Raised after full-model IG exhausts the frozen schedule.
+
+    The validated ``ig_result`` is retained verbatim so callers can persist
+    the complete failed-attempt evidence even though no :class:`MethodResult`
+    is emitted.
+    """
+
+    def __init__(self, message: str, ig_result: IGResult) -> None:
+        super().__init__(message)
+        self.ig_result = ig_result
+        self.result = ig_result
+        self.attempts = ig_result.attempts
+
+
 @dataclass(frozen=True, init=False)
 class FrozenScalarEvaluation:
     """One frozen-target scalar evaluated at an arbitrary normalized input."""
@@ -947,23 +962,30 @@ def _validate_ig_result(
 ) -> IGResult:
     if not isinstance(result, IGResult):
         raise TypeError("full_model_ig must return IGResult")
-    if not result.converged:
+    if type(result.converged) is not bool:
+        raise TypeError("IGResult.converged must be a boolean")
+    if type(result.steps) is not int or result.steps not in IG_STEPS:
         raise StageCClassLogitError(
-            "full-model class-logit IG did not converge on the frozen schedule"
+            f"full-model IG returned unregistered steps={result.steps!r}"
         )
-    if result.steps not in IG_STEPS:
+    if not isinstance(result.attempts, tuple) or not result.attempts:
         raise StageCClassLogitError(
-            f"full-model IG returned unregistered steps={result.steps}"
+            "full-model IG must retain a non-empty tuple of attempts"
         )
     attempt_steps: list[int] = []
+    attempt_passes: list[bool] = []
     for attempt_index, attempt in enumerate(result.attempts):
-        if not isinstance(attempt, Mapping) or type(attempt.get("steps")) is not int:
-            raise StageCClassLogitError("full-model IG attempts are malformed")
-        attempt_steps.append(attempt["steps"])
-        if set(attempt) != {"steps", "delta", "sum", "abs", "rel", "pass"}:
+        if not isinstance(attempt, Mapping) or set(attempt) != {
+            "steps", "delta", "sum", "abs", "rel", "pass"
+        }:
             raise StageCClassLogitError(
                 "full-model IG attempt has the wrong fields"
             )
+        if type(attempt.get("steps")) is not int:
+            raise StageCClassLogitError(
+                "full-model IG attempt steps must be an integer"
+            )
+        attempt_steps.append(attempt["steps"])
         for key in ("delta", "sum", "abs", "rel"):
             values = attempt[key]
             if (
@@ -1010,16 +1032,24 @@ def _validate_ig_result(
             raise StageCClassLogitError(
                 "full-model IG attempt pass flag is inconsistent"
             )
-        is_final_attempt = attempt_index == len(result.attempts) - 1
-        if passes[0] is is_final_attempt:
-            continue
+        attempt_passes.append(passes[0])
+    expected_attempts = list(IG_STEPS[: len(attempt_steps)])
+    if attempt_steps != expected_attempts or result.steps != attempt_steps[-1]:
         raise StageCClassLogitError(
-            "full-model IG attempts must stop at the first conservation pass"
+            "full-model IG attempts must be an exact frozen prefix of the "
+            "schedule ending at result.steps"
         )
-    expected_attempts = list(IG_STEPS[: IG_STEPS.index(result.steps) + 1])
-    if attempt_steps != expected_attempts:
+    passing_indices = [
+        index for index, passed in enumerate(attempt_passes) if passed
+    ]
+    if result.converged:
+        if passing_indices != [len(attempt_passes) - 1]:
+            raise StageCClassLogitError(
+                "full-model IG attempts must stop at the first conservation pass"
+            )
+    elif passing_indices or tuple(attempt_steps) != IG_STEPS:
         raise StageCClassLogitError(
-            f"full-model IG attempts {attempt_steps} != frozen prefix {expected_attempts}"
+            "nonconverged full-model IG must retain all five failed attempts"
         )
     native = result.attribution
     if not isinstance(native, torch.Tensor):
@@ -1041,7 +1071,9 @@ def _validate_ig_result(
         raise StageCClassLogitError("full-model IG native attribution is all zero")
 
     required_report = {"delta", "sum", "abs", "rel", "pass"}
-    if set(result.conservation) != required_report:
+    if not isinstance(result.conservation, Mapping) or (
+        set(result.conservation) != required_report
+    ):
         raise StageCClassLogitError(
             "full-model IG conservation report has the wrong fields"
         )
@@ -1051,14 +1083,19 @@ def _validate_ig_result(
                 f"full-model IG conservation {name} must have shape [1]"
             )
         if name == "pass":
-            if value.dtype is not torch.bool or not bool(value.all().item()):
-                raise StageCClassLogitError(
-                    "full-model IG final conservation gate did not pass"
+            if value.dtype is not torch.bool:
+                raise TypeError(
+                    "full-model IG conservation pass must have bool dtype"
                 )
-        elif not bool(torch.isfinite(value).all().item()):
-            raise StageCClassLogitError(
-                f"full-model IG conservation {name} is non-finite"
-            )
+        else:
+            if value.dtype is not torch.float32:
+                raise TypeError(
+                    f"full-model IG conservation {name} must be float32"
+                )
+            if not bool(torch.isfinite(value).all().item()):
+                raise StageCClassLogitError(
+                    f"full-model IG conservation {name} is non-finite"
+                )
     attribution_sum = native.flatten(1).sum(dim=1)
     report_delta = result.conservation["delta"].to(torch.float32)
     if expected_delta is not None and report_delta[0].item() != expected_delta:
@@ -1088,6 +1125,10 @@ def _validate_ig_result(
     if not torch.equal(expected_pass, result.conservation["pass"]):
         raise StageCClassLogitError(
             "full-model IG conservation pass flag is inconsistent"
+        )
+    if bool(result.conservation["pass"].all().item()) is not result.converged:
+        raise StageCClassLogitError(
+            "full-model IG converged flag contradicts conservation"
         )
     final_attempt = result.attempts[-1]
     for key in ("delta", "sum", "abs", "rel", "pass"):
@@ -1172,6 +1213,12 @@ def full_model_class_logit_ig(
     _verify_frozen_target(
         target, inputs, model, clean_input_sha256=target.clean_input_sha256
     )
+    if not result.converged:
+        raise StageCClassLogitIGConvergenceError(
+            "full-model class-logit IG did not converge on the complete "
+            "frozen schedule",
+            result,
+        )
 
     native_values = (
         result.attribution[0].detach().to(device="cpu", dtype=torch.float32).numpy().copy()
@@ -1299,6 +1346,12 @@ def full_model_class_logit_ig_at_intervention(
     _verify_frozen_target(
         target, clean, model, clean_input_sha256=target.clean_input_sha256
     )
+    if not result.converged:
+        raise StageCClassLogitIGConvergenceError(
+            "full-model class-logit IG did not converge on the complete "
+            "frozen schedule",
+            result,
+        )
     native_values = result.attribution[0].detach().to(
         device="cpu", dtype=torch.float32
     ).numpy().copy()
@@ -1355,6 +1408,7 @@ __all__ = [
     "METHOD_VERSION",
     "PATCH_TOKENS",
     "StageCClassLogitError",
+    "StageCClassLogitIGConvergenceError",
     "TARGET_LAYER",
     "TOKENS",
     "full_model_class_logit_ig",

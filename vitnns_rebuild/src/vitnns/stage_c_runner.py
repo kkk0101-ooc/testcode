@@ -654,14 +654,19 @@ class ProductionStageCBackend:
 
     @staticmethod
     def _ig_execution_summary(result: Any) -> dict[str, Any] | None:
-        provenance = getattr(result, "provenance", {})
-        candidate = (
-            provenance.get("ig_result")
-            if isinstance(provenance, Mapping) else None
-        )
+        from .attribution import IGResult
+
+        if isinstance(result, IGResult):
+            candidate = result.to_dict()
+        else:
+            provenance = getattr(result, "provenance", {})
+            candidate = (
+                provenance.get("ig_result")
+                if isinstance(provenance, Mapping) else None
+            )
         if not isinstance(candidate, Mapping):
             candidate = getattr(result, "ig_result", None)
-            if candidate is not None and callable(getattr(candidate, "to_dict", None)):
+            if isinstance(candidate, IGResult):
                 candidate = candidate.to_dict()
         if not isinstance(candidate, Mapping):
             return None
@@ -2671,6 +2676,120 @@ def _atomic_json_replace(path: Path, value: Mapping[str, Any]) -> None:
             pass
 
 
+def _canonical_control_bytes(value: Mapping[str, Any], *, context: str) -> bytes:
+    """Return the one accepted on-disk representation of an immutable control."""
+
+    return (
+        json.dumps(
+            _mapping(value, context), indent=2, sort_keys=True,
+            ensure_ascii=False, allow_nan=False,
+        )
+        + "\n"
+    ).encode("utf-8")
+
+
+def _publish_or_validate_immutable_control(
+    path: Path, value: Mapping[str, Any],
+) -> None:
+    """Create one immutable control, or require an exact existing match.
+
+    A temporary regular file plus ``link`` provides no-replace publication:
+    another process winning the destination race cannot be overwritten.
+    Existing controls are accepted only when they are regular, non-symlink
+    files using the exact canonical encoding and expected content.
+    """
+
+    expected = _canonical_control_bytes(value, context=str(path))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        dir=path.parent, prefix=f".{path.name}.", suffix=".tmp"
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(expected)
+            handle.flush()
+            os.fsync(handle.fileno())
+        try:
+            os.link(temporary, path, follow_symlinks=False)
+            directory = os.open(path.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
+        except FileExistsError:
+            pass
+    finally:
+        try:
+            temporary.unlink()
+        except FileNotFoundError:
+            pass
+    _validate_immutable_control(path, value)
+
+
+def _validate_immutable_control(
+    path: Path, value: Mapping[str, Any],
+) -> None:
+    """Require an already-published immutable control to match exactly."""
+
+    expected = _canonical_control_bytes(value, context=str(path))
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    flags |= getattr(os, "O_NONBLOCK", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as error:
+        raise StageCRunnerError(
+            f"immutable batch control must be a non-symlink regular file: {path}"
+        ) from error
+    try:
+        with os.fdopen(descriptor, "rb") as handle:
+            if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+                raise StageCRunnerError(
+                    "immutable batch control must be a non-symlink regular "
+                    f"file: {path}"
+                )
+            observed = handle.read()
+    except BaseException:
+        # ``fdopen`` owns and closes the descriptor once it succeeds.
+        raise
+    if observed != expected:
+        # Parse only to distinguish non-canonical encoding from content drift;
+        # neither condition authorizes replacement.
+        try:
+            parsed = _strict_json_bytes(observed, context=str(path))
+        except Exception as error:
+            raise StageCRunnerError(
+                f"immutable batch control is invalid JSON: {path}: {error}"
+            ) from error
+        if parsed == _mapping(value, str(path)):
+            raise StageCRunnerError(
+                f"immutable batch control is not canonically encoded: {path}"
+            )
+        raise StageCRunnerError(
+            f"immutable batch control content drift: {path}"
+        )
+
+
+def _publish_or_validate_batch_identity_controls(
+    output_root: Path, plan: Any, preflight: Mapping[str, Any],
+) -> None:
+    _publish_or_validate_immutable_control(
+        output_root / EXECUTION_PLAN_FILENAME, _plan_dict(plan)
+    )
+    _publish_or_validate_immutable_control(
+        output_root / PREFLIGHT_FILENAME, preflight
+    )
+
+
+def _validate_batch_identity_controls(
+    output_root: Path, plan: Any, preflight: Mapping[str, Any],
+) -> None:
+    _validate_immutable_control(
+        output_root / EXECUTION_PLAN_FILENAME, _plan_dict(plan)
+    )
+    _validate_immutable_control(output_root / PREFLIGHT_FILENAME, preflight)
+
+
 def _write_batch_controls(
     output_root: Path,
     plan: Any,
@@ -2701,9 +2820,7 @@ def _write_batch_controls(
         )
     orchestration_complete = all(row["terminal"] for row in rows)
     successful = bool(rows) and all(row["complete"] for row in rows)
-    plan_document = _plan_dict(plan)
-    _atomic_json_replace(output_root / EXECUTION_PLAN_FILENAME, plan_document)
-    _atomic_json_replace(output_root / PREFLIGHT_FILENAME, preflight)
+    _validate_batch_identity_controls(output_root, plan, preflight)
     _atomic_json_replace(
         output_root / FAILURE_TABLE_FILENAME,
         {
@@ -2751,6 +2868,9 @@ def _run_units(
     # may occur above this point.
     root = _safe_output_path(output_root, allow_missing=True)
     root.mkdir(parents=True, exist_ok=True)
+    # Attempts and backend calls are permitted only after the immutable batch
+    # identity controls are durably published (or exactly revalidated).
+    _publish_or_validate_batch_identity_controls(root, plan, preflight)
     observed_git_state = _runtime_git_state(plan=plan, backend=backend)
     results: list[UnitRunResult] = []
     for unit in units:
@@ -2845,18 +2965,22 @@ def run_stage_c_batch(
 
 
 def _strict_json(path: Path) -> Any:
+    return _strict_json_bytes(path.read_bytes(), context=str(path))
+
+
+def _strict_json_bytes(payload: bytes, *, context: str) -> Any:
     def pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
         value: dict[str, Any] = {}
         for key, item in items:
             if key in value:
-                raise ValueError(f"duplicate JSON key in {path}: {key}")
+                raise ValueError(f"duplicate JSON key in {context}: {key}")
             value[key] = item
         return value
 
     return json.loads(
-        path.read_text(encoding="utf-8"), object_pairs_hook=pairs,
+        payload.decode("utf-8"), object_pairs_hook=pairs,
         parse_constant=lambda token: (_ for _ in ()).throw(
-            ValueError(f"non-finite JSON number in {path}: {token}")
+            ValueError(f"non-finite JSON number in {context}: {token}")
         ),
     )
 
