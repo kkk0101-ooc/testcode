@@ -2571,24 +2571,40 @@ def run_execution_unit(
                     )
             if not timer.stopped:
                 timer.stop()
-            if writer.terminal:
-                writer.publish_runner_telemetry(
-                    _runner_telemetry(
-                        timer=timer, device=device, lifecycle=lifecycle,
+            if not writer.terminal:
+                raise StageCRunnerError(
+                    "terminal failure persistence did not publish a terminal state"
+                )
+            writer.publish_runner_telemetry(
+                _runner_telemetry(
+                    timer=timer, device=device, lifecycle=lifecycle,
+                )
+            )
+            terminal_validation = validate_execution_unit(
+                attempt, expected_unit_identity=identity,
+                expected_provenance_bindings=expected_bindings,
+                observed_git_state=git_state, caps=caps,
+                require_runner_telemetry=True,
+            )
+            if (
+                not terminal_validation.valid
+                or terminal_validation.status != "failed"
+                or not terminal_validation.terminal
+                or terminal_validation.complete
+                or writer.manifest.get("failure") != {
+                    "reason": failure["reason"], "details": failure
+                }
+            ):
+                raise StageCRunnerError(
+                    "terminal failure validation failed: "
+                    + (
+                        "; ".join(terminal_validation.errors)
+                        or "attempt is not a terminal failed state"
                     )
                 )
-                terminal_validation = validate_execution_unit(
-                    attempt, expected_unit_identity=identity,
-                    expected_provenance_bindings=expected_bindings,
-                    observed_git_state=git_state, caps=caps,
-                    require_runner_telemetry=True,
-                )
-                if not terminal_validation.valid:
-                    raise StageCRunnerError(
-                        "terminal failure validation failed: "
-                        + "; ".join(terminal_validation.errors)
-                    )
-            return UnitRunResult(identity, UNIT_FAILED, str(attempt), False, failure)
+            failed_result = UnitRunResult(
+                identity, UNIT_FAILED, str(attempt), False, failure
+            )
         except BaseException as persistence_error:
             combined = dict(failure)
             combined["persistence_error"] = {
@@ -2598,6 +2614,10 @@ def run_execution_unit(
             return UnitRunResult(
                 identity, UNIT_INCOMPLETE, str(attempt), False, combined
             )
+        if isinstance(error, (KeyboardInterrupt, SystemExit)):
+            error.stage_c_unit_result = failed_result
+            raise
+        return failed_result
 
 
 def _atomic_json_replace(path: Path, value: Mapping[str, Any]) -> None:

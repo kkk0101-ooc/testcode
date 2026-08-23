@@ -811,6 +811,276 @@ def test_failed_attempt_is_preserved_and_resume_uses_fresh_attempt(tmp_path):
     ] == "builtins.RuntimeError"
 
 
+def _assert_persisted_interrupt(
+    error: BaseException, *, output_root: Path, unit: ToyUnit,
+) -> tuple[Path, dict[str, Any], dict[str, Any]]:
+    result = error.stage_c_unit_result
+    assert result.state == "failed"
+    assert result.resumed is False
+    assert result.failure == {
+        "reason": "execution_unit_failed",
+        "phase": "backend_or_persistence",
+        "type": f"builtins.{type(error).__name__}",
+        "message": "requested stop",
+    }
+
+    attempts = _attempts(output_root)
+    assert attempts == [_path(result.attempt_path)]
+    attempt = attempts[0]
+    status = _json(attempt / "status.json")
+    manifest = _json(attempt / "manifest.json")
+    failure_path = attempt / "L0" / "failure.json"
+    failure_evidence = _json(failure_path)
+    assert status["status"] == "failed"
+    assert status["terminal"] is True
+    assert status["complete"] is False
+    assert status["failure"] == failure_evidence
+    assert failure_evidence["details"] == result.failure
+    assert status["manifest_sha256"] == hashlib.sha256(
+        (attempt / "manifest.json").read_bytes()
+    ).hexdigest()
+    assert "runner_telemetry" in status
+    assert "runner_telemetry_sha256" in manifest
+    failure_record = next(
+        item for item in manifest["artifacts"]
+        if item["path"] == "L0/failure.json"
+    )
+    assert failure_record["kind"] == "failure"
+    assert failure_record["sha256"] == hashlib.sha256(
+        failure_path.read_bytes()
+    ).hexdigest()
+
+    validation = validate_execution_unit(
+        attempt, expected_unit_identity=unit.key.to_dict(),
+        require_runner_telemetry=True,
+    )
+    assert validation.valid is True
+    assert validation.terminal is True
+    assert validation.complete is False
+    assert validation.resumable is False
+    assert validation.errors == ()
+    return attempt, status, manifest
+
+
+@pytest.mark.parametrize("interrupt_type", [KeyboardInterrupt, SystemExit])
+def test_general_backend_interrupt_is_persisted_and_reraised(
+    tmp_path, interrupt_type,
+):
+    class InterruptingBackend(ToyBackend):
+        def __init__(self, error):
+            super().__init__()
+            self.error = error
+
+        def run(self, unit, *, device, call_counter):
+            self.calls.append((unit, device, call_counter))
+            raise self.error
+
+    unit = toy_unit()
+    plan = ToyPlan((unit,))
+    output_root = tmp_path / "general-interrupt"
+    original = interrupt_type("requested stop")
+    backend = InterruptingBackend(original)
+
+    with pytest.raises(interrupt_type) as caught:
+        run_toy_unit(
+            unit, output_root=output_root, backend=backend, plan=plan,
+            device="cpu",
+        )
+
+    assert caught.value is original
+    assert len(backend.calls) == 1
+    attempt, status, _manifest = _assert_persisted_interrupt(
+        caught.value, output_root=output_root, unit=unit,
+    )
+    assert not (attempt / "L0" / "execution_lifecycle.json").exists()
+    assert status["runner_telemetry"]["lifecycle"]["integrity"][
+        "body_exception_type"
+    ] == f"builtins.{interrupt_type.__name__}"
+    retained_bytes = {
+        path.relative_to(attempt): path.read_bytes()
+        for path in attempt.rglob("*") if path.is_file()
+    }
+
+    retry = run_toy_unit(
+        unit, output_root=output_root, backend=ToyBackend(), plan=plan,
+        device="cpu", resume=True,
+    )
+
+    assert retry.state == "succeeded"
+    assert _path(retry.attempt_path) != attempt
+    assert _attempts(output_root) == [attempt, _path(retry.attempt_path)]
+    assert all(
+        (attempt / relative).read_bytes() == contents
+        for relative, contents in retained_bytes.items()
+    )
+
+
+@pytest.mark.parametrize("interrupt_type", [KeyboardInterrupt, SystemExit])
+def test_production_backend_interrupt_is_persisted_and_reraised(
+    monkeypatch, tmp_path, interrupt_type,
+):
+    unit = toy_unit(work_items=(_map_work("clean", 0),))
+    provenance = ToyBackend()
+    backend, _method_calls = _production_backend_harness(
+        monkeypatch, unit, [],
+        provenance_builder=provenance.build_provenance,
+    )
+    original = interrupt_type("requested stop")
+
+    def interrupt(*_args, **_kwargs):
+        raise original
+
+    monkeypatch.setattr(backend, "_run_method", interrupt)
+    output_root = tmp_path / "production-interrupt"
+
+    with pytest.raises(interrupt_type) as caught:
+        run_toy_unit(
+            unit, output_root=output_root, backend=backend, device="cpu",
+        )
+
+    assert caught.value is original
+    attempt, status, manifest = _assert_persisted_interrupt(
+        caught.value, output_root=output_root, unit=unit,
+    )
+    evidence_path = attempt / "L0" / "execution_lifecycle.json"
+    evidence = _json(evidence_path)
+    assert evidence["lifecycle"]["integrity"]["body_exception_type"] == (
+        f"builtins.{interrupt_type.__name__}"
+    )
+    evidence_record = next(
+        item for item in manifest["artifacts"]
+        if item["path"] == "L0/execution_lifecycle.json"
+    )
+    assert evidence_record["kind"] == "failure_evidence"
+    assert evidence_record["sha256"] == hashlib.sha256(
+        evidence_path.read_bytes()
+    ).hexdigest()
+    assert status["runner_telemetry"]["lifecycle"] == evidence["lifecycle"]
+    retained_bytes = {
+        path.relative_to(attempt): path.read_bytes()
+        for path in attempt.rglob("*") if path.is_file()
+    }
+
+    retry = run_toy_unit(
+        unit, output_root=output_root, backend=ToyBackend(), device="cpu",
+        resume=True,
+    )
+
+    assert retry.state == "succeeded"
+    assert _path(retry.attempt_path) != attempt
+    assert _attempts(output_root) == [attempt, _path(retry.attempt_path)]
+    assert all(
+        (attempt / relative).read_bytes() == contents
+        for relative, contents in retained_bytes.items()
+    )
+
+
+def test_interrupt_persistence_failure_returns_incomplete_result(
+    monkeypatch, tmp_path,
+):
+    import vitnns.stage_c_artifacts as artifacts
+
+    class InterruptingBackend(ToyBackend):
+        def run(self, unit, *, device, call_counter):
+            raise KeyboardInterrupt("requested stop")
+
+    def fail_telemetry(_writer, _telemetry):
+        raise RuntimeError("telemetry persistence failed")
+
+    monkeypatch.setattr(
+        artifacts.StageCArtifactWriter, "publish_runner_telemetry",
+        fail_telemetry,
+    )
+    unit = toy_unit()
+    output_root = tmp_path / "interrupt-persistence-failure"
+
+    result = run_toy_unit(
+        unit, output_root=output_root, backend=InterruptingBackend(),
+        device="cpu",
+    )
+
+    assert result.state == "incomplete"
+    assert result.failure["type"] == "builtins.KeyboardInterrupt"
+    assert result.failure["persistence_error"] == {
+        "type": "builtins.RuntimeError",
+        "message": "telemetry persistence failed",
+    }
+    attempt = _path(result.attempt_path)
+    assert _attempts(output_root) == [attempt]
+    validation = validate_execution_unit(
+        attempt, expected_unit_identity=unit.key.to_dict(),
+        require_runner_telemetry=True,
+    )
+    assert validation.valid is False
+    assert validation.terminal is True
+    assert validation.resumable is False
+    assert any(
+        "runner_telemetry" in message for message in validation.errors
+    )
+
+
+@pytest.mark.parametrize(
+    ("interrupt_validation_call", "persistence_error_type"),
+    [
+        (1, "vitnns.stage_c_runner.StageCRunnerError"),
+        (2, "vitnns.stage_c_artifacts.ArtifactWriterStateError"),
+    ],
+)
+def test_interrupt_after_success_commit_does_not_fabricate_failed_result(
+    monkeypatch, tmp_path, interrupt_validation_call, persistence_error_type,
+):
+    import vitnns.stage_c_artifacts as artifacts
+
+    original_validate = artifacts.validate_execution_unit
+    original = KeyboardInterrupt("requested stop")
+    validation_calls = 0
+    bytes_at_interrupt = None
+
+    def interrupt_validation(attempt, **kwargs):
+        nonlocal validation_calls, bytes_at_interrupt
+        validation_calls += 1
+        if validation_calls == interrupt_validation_call:
+            attempt = Path(attempt)
+            bytes_at_interrupt = {
+                path.relative_to(attempt): path.read_bytes()
+                for path in attempt.rglob("*") if path.is_file()
+            }
+            raise original
+        return original_validate(attempt, **kwargs)
+
+    monkeypatch.setattr(
+        artifacts, "validate_execution_unit", interrupt_validation,
+    )
+    unit = toy_unit()
+
+    result = run_toy_unit(
+        unit, output_root=tmp_path / "post-commit-interrupt",
+        backend=ToyBackend(), device="cpu", resume=False,
+    )
+
+    assert result.state == "incomplete"
+    assert result.failure["type"] == "builtins.KeyboardInterrupt"
+    assert result.failure["persistence_error"]["type"] == (
+        persistence_error_type
+    )
+    assert not hasattr(original, "stage_c_unit_result")
+    attempt = _path(result.attempt_path)
+    validation = validate_execution_unit(
+        attempt, expected_unit_identity=unit.key.to_dict(),
+        require_runner_telemetry=True,
+    )
+    assert validation.valid is True
+    assert validation.terminal is True
+    assert validation.complete is True
+    assert validation.resumable is True
+    if interrupt_validation_call == 2:
+        assert bytes_at_interrupt is not None
+        assert all(
+            (attempt / relative).read_bytes() == contents
+            for relative, contents in bytes_at_interrupt.items()
+        )
+
+
 def test_resume_rejects_complete_attempt_without_runner_telemetry(tmp_path):
     output_root = tmp_path / "run"
     unit = toy_unit()

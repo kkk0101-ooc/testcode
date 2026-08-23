@@ -6,14 +6,16 @@ import argparse
 import json
 import os
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, Callable, TextIO
 
-from .constants import DEFAULT_STATE_DICT, REPO_ROOT
+from .constants import DEFAULT_STATE_DICT, MODEL_SHA256, REPO_ROOT
 from .io_utils import sha256_file
 from .runner import seed_everything
-from .stage_c_config import load_stage_c_config
+from .stage_c_config import DEFAULT_STAGE_C_SCHEMA, load_stage_c_config, strict_json_load
 from .stage_c_provenance import capture_git_state
+from . import stage_c_c8 as _stage_c_c8_runtime
 from .stage_c_benchmark import (
     StageCBenchmarkBlockedError,
     StageCBenchmarkIntegrityError,
@@ -27,11 +29,33 @@ from .stage_c_benchmark import (
     write_c7_launch_authorization,
 )
 from .stage_c_plan import (
+    DEFAULT_ACCEPTANCE,
+    DEFAULT_DEPENDENCY_LOCK,
+    StageCEstimate,
     build_execution_plan,
     estimate_stage_c_run,
     load_run_spec,
     load_stage_c_registry,
     load_stage_c_selection,
+)
+from .stage_c_c8 import (
+    AUTHORIZATION_FILENAME as C8_AUTHORIZATION_FILENAME,
+    build_c8_launch_authorization,
+    build_c8_measured_preflight,
+    finalize_c8_output_root,
+    initialize_c8_output_root,
+    run_c8_shard,
+    validate_c8_execution_plan,
+    validate_c8_launch_authorization,
+    validate_fixed_c7_report,
+)
+from .stage_c_selection import (
+    StageCSelectionBlockedError,
+    StageCSelectionIntegrityError,
+    build_c8_calibration_evidence,
+    build_stage_c_selection,
+    validate_stage_c_selection_from_source,
+    write_stage_c_selection_outputs,
 )
 from .stage_c_runner import (
     ProductionStageCBackend,
@@ -49,6 +73,9 @@ EXIT_PREFLIGHT_BLOCKED = 2
 EXIT_TERMINAL_FAILURE = 3
 EXIT_INTEGRITY_FAILURE = 4
 STAGE_C_SEED = 20260821
+_C8_COMMANDS = frozenset({
+    "c8-init", "c8-run-shard", "c8-finalize", "c8-select",
+})
 
 
 class ArgumentError(ValueError):
@@ -65,6 +92,15 @@ def _add_plan_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--run-spec", type=Path, required=True)
     parser.add_argument("--registry", type=Path)
     parser.add_argument("--selection", type=Path)
+    parser.add_argument("--data-root", type=Path)
+
+
+def _add_c8_plan_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add calibration-only planning inputs; a prior selection is forbidden."""
+
+    parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument("--run-spec", type=Path, required=True)
+    parser.add_argument("--registry", type=Path)
     parser.add_argument("--data-root", type=Path)
 
 
@@ -115,6 +151,36 @@ def build_parser() -> argparse.ArgumentParser:
             command.add_argument("--device", default="cuda:0")
         if name == "benchmark-report":
             command.add_argument("--c7-diagnostic-gate", type=Path, required=True)
+
+    c8_init = commands.add_parser("c8-init")
+    _add_c8_plan_arguments(c8_init)
+    c8_init.add_argument("--output-root", type=Path, required=True)
+    c8_init.add_argument("--c7-report", type=Path, required=True)
+
+    c8_shard = commands.add_parser("c8-run-shard")
+    _add_c8_plan_arguments(c8_shard)
+    c8_shard.add_argument("--output-root", type=Path, required=True)
+    c8_shard.add_argument("--device", default="cpu")
+    c8_shard.add_argument("--state-dict", type=Path, default=DEFAULT_STATE_DICT)
+    c8_shard.add_argument(
+        "--shard-index", type=int, required=True,
+        help="zero-based index of this deterministic plan-order shard",
+    )
+    c8_shard.add_argument(
+        "--shard-count", type=int, required=True,
+        help="total number of deterministic plan-order shards",
+    )
+
+    c8_finalize = commands.add_parser("c8-finalize")
+    _add_c8_plan_arguments(c8_finalize)
+    c8_finalize.add_argument("--output-root", type=Path, required=True)
+
+    c8_select = commands.add_parser("c8-select")
+    _add_c8_plan_arguments(c8_select)
+    c8_select.add_argument("--output-root", type=Path, required=True)
+    c8_select.add_argument("--mode", choices=("build", "validate"), default="build")
+    c8_select.add_argument("--report-output", type=Path, required=True)
+    c8_select.add_argument("--selection-output", type=Path)
     return parser
 
 
@@ -130,16 +196,25 @@ def _write_json(value: Any, stream: TextIO) -> None:
     )
 
 
-def _load_pipeline(args: argparse.Namespace) -> tuple[Any, Any, Any, Any, Any, Any]:
+def _load_pipeline(
+    args: argparse.Namespace, *, c8: bool = False
+) -> tuple[Any, Any, Any, Any, Any, Any]:
     config = load_stage_c_config(args.config)
     registry_kwargs: dict[str, Any] = {}
     if args.registry is not None:
         registry_kwargs["registry_path"] = args.registry
     if args.data_root is not None:
         registry_kwargs["data_root"] = args.data_root
+    if c8:
+        # Planning must never decode or hash the 15 holdout images.  The
+        # production backend later reads only a UnitSample already present in
+        # the exact calibration plan.
+        registry_kwargs["verify_live_assets"] = False
     registry = load_stage_c_registry(config, **registry_kwargs)
-    selection = load_stage_c_selection(
-        config, selection_path=args.selection, required=False
+    selection = (
+        None if c8 else load_stage_c_selection(
+            config, selection_path=args.selection, required=False
+        )
     )
     run_spec = load_run_spec(args.run_spec)
     plan = build_execution_plan(
@@ -149,10 +224,177 @@ def _load_pipeline(args: argparse.Namespace) -> tuple[Any, Any, Any, Any, Any, A
     return config, registry, selection, run_spec, plan, estimate
 
 
+def _require_exact_c8_plan(plan: Any, config: Any) -> dict[str, Any]:
+    try:
+        result = validate_c8_execution_plan(plan, config)
+    except (TypeError, ValueError) as error:
+        raise ArgumentError(f"C8 requires the exact checked-in execution scope: {error}") from error
+    if not isinstance(result, Mapping) or result.get("valid") is not True:
+        violations = result.get("violations", ()) if isinstance(result, Mapping) else ()
+        detail = "; ".join(str(item) for item in violations)
+        raise ArgumentError(
+            "C8 requires the exact checked-in execution scope"
+            + (f": {detail}" if detail else "")
+        )
+    return dict(result)
+
+
+def _require_clean_c8_git(git_state: Mapping[str, Any]) -> None:
+    if (
+        set(git_state) != {"commit", "dirty"}
+        or not isinstance(git_state.get("commit"), str)
+        or len(git_state["commit"]) != 40
+        or git_state.get("dirty") is not False
+    ):
+        raise StageCBenchmarkBlockedError(
+            "formal C8 requires a clean Git worktree",
+            reasons=("formal C8 requires a clean Git worktree",),
+        )
+
+
+def _load_c8_initialized_estimate(
+    output_root: Path | str, plan: Any
+) -> tuple[StageCEstimate, dict[str, Any]]:
+    root = Path(output_root).absolute()
+    try:
+        preflight = StageCEstimate.from_dict(
+            strict_json_load(root / "preflight.json")
+        )
+        authorization = strict_json_load(root / C8_AUTHORIZATION_FILENAME)
+        validate_c8_launch_authorization(
+            authorization, plan=plan, estimate=preflight, output_root=root
+        )
+        if strict_json_load(root / "execution_plan.json") != plan.to_dict():
+            raise StageCBenchmarkIntegrityError(
+                "C8 initialized execution plan differs from the requested plan"
+            )
+    except StageCBenchmarkIntegrityError:
+        raise
+    except Exception as error:
+        raise StageCBenchmarkIntegrityError(
+            f"C8 initialized controls are missing or invalid: {error}"
+        ) from error
+    return preflight, authorization
+
+
+def _c8_shard_unit_digests(
+    plan: Any, *, shard_index: int, shard_count: int
+) -> tuple[str, ...]:
+    """Partition the full plan into stable interleaved balanced shards.
+
+    Plan-order modulo assignment preserves a deterministic order inside each
+    shard while spreading the three very different Value-method costs across
+    devices.  It changes only orchestration, never the scientific workload.
+    """
+
+    if type(shard_count) is not int or shard_count < 1:
+        raise ArgumentError("--shard-count must be a positive integer")
+    if type(shard_index) is not int or not 0 <= shard_index < shard_count:
+        raise ArgumentError(
+            "--shard-index must be zero-based and less than --shard-count"
+        )
+    units = tuple(plan.units)
+    if shard_count > len(units):
+        raise ArgumentError(
+            "--shard-count cannot exceed the exact C8 execution-unit count"
+        )
+    return tuple(
+        unit.key.canonical_digest
+        for index, unit in enumerate(units)
+        if index % shard_count == shard_index
+    )
+
+
+def _validate_c8_shard_checkpoint_locked(
+    output_root: Path | str, plan: Any, unit_digests: tuple[str, ...]
+) -> None:
+    """Use the runtime's current locked checkpoint/status contract."""
+
+    root = Path(output_root).absolute()
+    with _stage_c_c8_runtime._checkpoint_lock(root):
+        rows, _status = _stage_c_c8_runtime._validate_checkpoint_controls(
+            root, plan, allowed_lifecycle=("running",)
+        )
+        by_digest = {
+            row["unit_key"]["canonical_digest"]: row for row in rows
+        }
+        unavailable = [
+            digest for digest in unit_digests
+            if by_digest[digest].get("state") != "pending"
+        ]
+        if unavailable:
+            raise ArgumentError(
+                f"C8 shard overlaps units that are not pending: {unavailable}"
+            )
+
+
+def _c8_input_hashes(
+    *, config: Any, config_path: Path, evidence: Mapping[str, Any],
+    git_state: Mapping[str, Any],
+) -> dict[str, Any]:
+    protocol_path = REPO_ROOT / config.protocol.path
+    return {
+        "code_commit": git_state["commit"],
+        "code_tree_clean": not git_state["dirty"],
+        "model_sha256": MODEL_SHA256,
+        "dependency_lock_sha256": sha256_file(DEFAULT_DEPENDENCY_LOCK),
+        "registry_sha256": config.registry.sha256,
+        "registry_metadata_sha256": config.registry.metadata_sha256,
+        "protocol_sha256": sha256_file(protocol_path),
+        "acceptance_sha256": sha256_file(DEFAULT_ACCEPTANCE),
+        "config_sha256": sha256_file(config_path),
+        "config_schema_sha256": sha256_file(DEFAULT_STAGE_C_SCHEMA),
+        "calibration_artifact_manifest_sha256": evidence[
+            "calibration_artifact_manifest_sha256"
+        ],
+    }
+
+
+def _c8_report_binding(
+    authorization: Mapping[str, Any], *, c7_report: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Build selection-budget evidence only from the freshly validated C7 report."""
+
+    binding = {
+        key: authorization[key]
+        for key in (
+            "c7_report_path", "c7_report_file_sha256",
+            "c7_report_canonical_digest", "c7_code_commit",
+            "c7_archive_ref", "c7_archive_tree",
+            "c7_slowest_unit_seconds", "c7_peak_reserved_bytes",
+            "c7_projected_c8_h20_gpu_hours",
+            "c7_projected_c8_artifact_bytes",
+            "c7_projected_c8_l2_bytes_per_audit",
+        )
+    }
+    report_bindings = c7_report.get("bindings")
+    measurement = c7_report.get("measurement_boundary")
+    if not isinstance(report_bindings, Mapping) or not isinstance(
+        measurement, Mapping
+    ):
+        raise StageCBenchmarkIntegrityError(
+            "fresh C7 report lacks selection budget bindings"
+        )
+    recomputed = report_bindings.get("recomputed_estimate")
+    control_bytes = measurement.get("source_batch_control_bytes")
+    if not isinstance(recomputed, Mapping) or type(control_bytes) is not int:
+        raise StageCBenchmarkIntegrityError(
+            "fresh C7 report lacks its measured storage operands"
+        )
+    binding["recomputed_estimate"] = json.loads(
+        json.dumps(recomputed, allow_nan=False)
+    )
+    binding["source_batch_control_bytes"] = control_bytes
+    return binding
+
+
 def _default_backend_factory(
     *, config: Any, registry: Any, plan: Any, args: argparse.Namespace
 ) -> ProductionStageCBackend:
     rows = registry.by_sample_id()
+    planned_sample_ids = {
+        unit.sample.sample_id for unit in getattr(plan, "units", ())
+    }
     data_root = Path(registry.data_root).resolve()
 
     def load_sample(sample: Any, model: Any) -> dict[str, Any]:
@@ -163,6 +405,10 @@ def _default_backend_factory(
         from .modeling import canonical_preprocess_spec
 
         sample_id = getattr(sample, "sample_id", None)
+        if planned_sample_ids and sample_id not in planned_sample_ids:
+            raise ValueError(
+                f"sample is outside the current execution plan: {sample_id}"
+            )
         if sample_id not in rows:
             raise ValueError(f"sample is absent from the registry: {sample_id}")
         row = rows[sample_id]
@@ -204,6 +450,7 @@ def _default_backend_factory(
     return ProductionStageCBackend(
         sample_loader=load_sample, state_dict_path=args.state_dict,
         config=config, registry=registry, plan=plan, config_path=args.config,
+        code_state=capture_git_state(REPO_ROOT),
     )
 
 
@@ -258,6 +505,27 @@ def _configure_c7_execution(device: str) -> None:
         torch.backends.cudnn.allow_tf32 = False
 
 
+def _configure_c8_execution(device: str) -> None:
+    """Establish the frozen deterministic boundary for formal C8."""
+
+    import torch
+
+    parsed = torch.device(device)
+    if parsed.type == "cuda" and os.environ.get(
+        "CUBLAS_WORKSPACE_CONFIG"
+    ) not in {":4096:8", ":16:8"}:
+        raise RuntimeError(
+            "C8 CUDA execution requires CUBLAS_WORKSPACE_CONFIG=:4096:8 "
+            "(or :16:8) before process start"
+        )
+    seed_everything(STAGE_C_SEED)
+    torch.use_deterministic_algorithms(True)
+    torch.backends.cudnn.benchmark = False
+    if parsed.type == "cuda":
+        torch.backends.cuda.matmul.allow_tf32 = False
+        torch.backends.cudnn.allow_tf32 = False
+
+
 def main(
     argv: list[str] | None = None,
     *,
@@ -269,7 +537,179 @@ def main(
         except SystemExit as error:
             return EXIT_SUCCESS if error.code == 0 else EXIT_INPUT_ERROR
 
-        config, registry, _selection, _spec, plan, estimate = _load_pipeline(args)
+        is_c8_command = args.command in _C8_COMMANDS
+        config, registry, _selection, _spec, plan, estimate = _load_pipeline(
+            args, c8=is_c8_command
+        )
+        if is_c8_command:
+            _require_exact_c8_plan(plan, config)
+
+        if args.command == "c8-init":
+            git_state = capture_git_state(REPO_ROOT)
+            _require_clean_c8_git(git_state)
+            authorization, measured = build_c8_launch_authorization(
+                plan, config, c7_report_path=args.c7_report,
+                output_root=args.output_root, observed_git_state=git_state,
+                repo_root=REPO_ROOT,
+            )
+            root = initialize_c8_output_root(
+                args.output_root, plan, measured, authorization, config=config,
+                observed_git_state=git_state, repo_root=REPO_ROOT,
+            )
+            _write_json(
+                {
+                    "document_type": "stage_c_c8_initialization",
+                    "status": "PASS",
+                    "output_root": str(root),
+                    "execution_plan_sha256": plan.canonical_digest,
+                    "preflight_sha256": measured.canonical_digest,
+                    "authorization_sha256": authorization["canonical_digest"],
+                    "expected_unit_count": len(plan.units),
+                    "holdout_accessed": False,
+                },
+                sys.stdout,
+            )
+            return EXIT_SUCCESS
+
+        if args.command == "c8-finalize":
+            git_state = capture_git_state(REPO_ROOT)
+            result = finalize_c8_output_root(
+                args.output_root, plan, observed_git_state=git_state
+            )
+            _write_json(result, sys.stdout)
+            if result.get("status") == "PASS":
+                return EXIT_SUCCESS
+            return (
+                EXIT_TERMINAL_FAILURE
+                if result.get("orchestration_complete")
+                else EXIT_INTEGRITY_FAILURE
+            )
+
+        if args.command == "c8-select":
+            initialized_preflight, authorization = _load_c8_initialized_estimate(
+                args.output_root, plan
+            )
+            report = validate_fixed_c7_report(
+                authorization["c7_report_path"], repo_root=REPO_ROOT
+            )
+            measured = build_c8_measured_preflight(plan, config, report)
+            if measured.to_dict() != initialized_preflight.to_dict():
+                raise StageCBenchmarkIntegrityError(
+                    "freshly measured C8 preflight differs from initialized preflight"
+                )
+            git_state = capture_git_state(REPO_ROOT)
+            _require_clean_c8_git(git_state)
+            if git_state != authorization["code"]:
+                raise StageCBenchmarkIntegrityError(
+                    "C8 selection Git state differs from launch authorization"
+                )
+            c7_binding = _c8_report_binding(authorization, c7_report=report)
+            evidence = build_c8_calibration_evidence(
+                args.output_root, plan, config, git_state,
+                c7_binding,
+            )
+            input_hashes = _c8_input_hashes(
+                config=config, config_path=args.config, evidence=evidence,
+                git_state=git_state,
+            )
+            if args.mode == "validate":
+                report = validate_stage_c_selection_from_source(
+                    args.selection_output, args.report_output,
+                    output_root=args.output_root, plan=plan, config=config,
+                    observed_git_state=git_state, input_hashes=input_hashes,
+                    c7_report_binding=c7_binding,
+                )
+                _write_json(report, sys.stdout)
+                return (
+                    EXIT_SUCCESS if report.get("status") == "PASS"
+                    else EXIT_TERMINAL_FAILURE
+                )
+            if args.selection_output is None:
+                raise ArgumentError(
+                    "c8-select --mode build requires --selection-output"
+                )
+            report = build_stage_c_selection(evidence, input_hashes)
+            outputs = write_stage_c_selection_outputs(
+                args.selection_output, args.report_output, report,
+                evidence=evidence, input_hashes=input_hashes,
+            )
+            result = {
+                **outputs,
+                "document_type": "stage_c_c8_selection_publish",
+                "report_output": str(args.report_output.absolute()),
+                "selection_output": (
+                    str(args.selection_output.absolute())
+                    if outputs.get("selection_sha256") is not None else None
+                ),
+                "holdout_accessed": False,
+            }
+            _write_json(result, sys.stdout)
+            return (
+                EXIT_SUCCESS if result.get("status") == "PASS"
+                else EXIT_TERMINAL_FAILURE
+            )
+
+        if args.command == "c8-run-shard":
+            digests = _c8_shard_unit_digests(
+                plan, shard_index=args.shard_index, shard_count=args.shard_count
+            )
+            initialized_preflight, authorization = _load_c8_initialized_estimate(
+                args.output_root, plan
+            )
+            report = validate_fixed_c7_report(
+                authorization["c7_report_path"], repo_root=REPO_ROOT
+            )
+            measured = build_c8_measured_preflight(plan, config, report)
+            if measured.to_dict() != initialized_preflight.to_dict():
+                raise StageCBenchmarkIntegrityError(
+                    "freshly measured C8 preflight differs from initialized preflight"
+                )
+            git_state = capture_git_state(REPO_ROOT)
+            if git_state != authorization["code"]:
+                raise StageCBenchmarkIntegrityError(
+                    "C8 shard requires the clean Git state bound at initialization"
+                )
+            _validate_c8_shard_checkpoint_locked(
+                args.output_root, plan, digests
+            )
+            _configure_c8_execution(args.device)
+            factory = backend_factory or _default_backend_factory
+            backend = _make_backend(
+                factory, config=config, registry=registry, plan=plan, args=args
+            )
+            results = run_c8_shard(
+                plan, output_root=args.output_root, backend=backend,
+                estimate=measured, unit_digests=digests, device=args.device,
+                observed_git_state=git_state,
+            )
+            result_documents = [
+                item.to_dict() if callable(getattr(item, "to_dict", None)) else item
+                for item in results
+            ]
+            states = [
+                item.get("state") if isinstance(item, Mapping) else None
+                for item in result_documents
+            ]
+            successful = bool(states) and all(state == "succeeded" for state in states)
+            terminal = bool(states) and all(
+                state in {"succeeded", "failed"} for state in states
+            )
+            payload = {
+                "document_type": "stage_c_c8_shard_result",
+                "status": "PASS" if successful else "BLOCKED",
+                "successful": successful,
+                "orchestration_complete": terminal,
+                "shard_index": args.shard_index,
+                "shard_count": args.shard_count,
+                "unit_count": len(results),
+                "unit_results": result_documents,
+                "holdout_accessed": False,
+            }
+            _write_json(payload, sys.stdout)
+            if successful:
+                return EXIT_SUCCESS
+            return EXIT_TERMINAL_FAILURE if terminal else EXIT_INTEGRITY_FAILURE
+
         if args.command == "estimate":
             _write_json(estimate, sys.stdout)
             return EXIT_SUCCESS if estimate.within_budget else EXIT_PREFLIGHT_BLOCKED
@@ -428,15 +868,37 @@ def main(
             _write_json(report, sys.stdout)
         else:
             reasons = list(getattr(error, "reasons", ()) or (str(error),))
+            command = getattr(locals().get("args"), "command", "")
             _write_json(
                 {
-                    "document_type": "stage_c_c7_launch_gate",
+                    "document_type": (
+                        "stage_c_c8_launch_authorization"
+                        if command in _C8_COMMANDS else "stage_c_c7_launch_gate"
+                    ),
                     "status": "BLOCKED",
                     "blocked_reasons": reasons,
                 },
                 sys.stdout,
             )
         return EXIT_PREFLIGHT_BLOCKED
+    except StageCSelectionBlockedError as error:
+        report = getattr(error, "report", None)
+        _write_json(
+            report if isinstance(report, Mapping) else {
+                "document_type": "stage_c_c8_selection_report",
+                "status": "BLOCKED",
+                "blocked_reasons": [str(error)],
+                "holdout_accessed": False,
+            },
+            sys.stdout,
+        )
+        return EXIT_TERMINAL_FAILURE
+    except StageCSelectionIntegrityError as error:
+        _write_json(
+            {"error": {"message": str(error), "type": type(error).__name__}},
+            sys.stderr,
+        )
+        return EXIT_INTEGRITY_FAILURE
     except ArgumentError as error:
         _write_json(
             {"error": {"message": str(error), "type": "ArgumentError"}},

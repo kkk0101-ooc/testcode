@@ -211,3 +211,56 @@ eligible as benchmark measurements. The report remains an engineering and
 budget gate: it does not access holdout data or perform selection, bootstrap,
 or a scientific Go/No-Go decision.
 
+### Stage C8 calibration and selection
+
+C8 uses the checked-in `config/stage_c_c8_run_spec.json`. Its exact plan has
+five calibration images, all three Value-path methods at every 12x12
+block/head candidate, and four global methods: 436 units per image and 2,180
+units total. C8 planning does not validate the 15 holdout JPEGs, and its image
+loader rejects any sample outside this plan.
+
+Initialize a new empty root from a clean commit and the frozen C7 report:
+
+~~~bash
+vitnns-stage-c c8-init \
+  --config config/stage_c.json \
+  --run-spec config/stage_c_c8_run_spec.json \
+  --c7-report /path/to/frozen-c7-report.json \
+  --output-root /path/to/new-c8-formal-root
+~~~
+
+Run deterministic, disjoint plan-order shards. Every invocation revalidates
+the C7 report, measured preflight, clean Git state, plan, and checkpoint before
+loading the model. For example, launch shard indices 0 through 5 on six GPUs:
+
+~~~bash
+CUBLAS_WORKSPACE_CONFIG=:4096:8 CUDA_VISIBLE_DEVICES=0 \
+vitnns-stage-c c8-run-shard \
+  --config config/stage_c.json \
+  --run-spec config/stage_c_c8_run_spec.json \
+  --output-root /path/to/new-c8-formal-root \
+  --shard-index 0 --shard-count 6 --device cuda:0
+~~~
+
+After all shards exit, finalize the root and generate both immutable outputs
+from source-validated evidence:
+
+~~~bash
+vitnns-stage-c c8-finalize \
+  --config config/stage_c.json \
+  --run-spec config/stage_c_c8_run_spec.json \
+  --output-root /path/to/new-c8-formal-root
+
+vitnns-stage-c c8-select \
+  --config config/stage_c.json \
+  --run-spec config/stage_c_c8_run_spec.json \
+  --output-root /path/to/new-c8-formal-root \
+  --selection-output selection/stage_c_selection.json \
+  --report-output /path/to/stage-c-c8-selection-report.json
+~~~
+
+C8 has no resume or caller-selected unit filter. A claimed, failed, incomplete,
+tampered, over-cap, or interrupted root remains evidence; a repair uses another
+fresh root. C8 performs no holdout inference, bootstrap, Holm correction, or
+Go/No-Go decision.
+

@@ -1152,6 +1152,13 @@ def test_matched_wrapper_exact_method_result_cls_provenance_and_repeatability():
     assert retained["token_contribution_count"] == TOKENS
     assert retained["cls_contribution"] == pytest.approx(analytic.cls_contribution)
     assert retained["token_sum"] == pytest.approx(analytic.conservation_sum)
+    assert retained["scalar_delta_f_z_minus_f_x0"] == pytest.approx(
+        target.direction_norm
+    )
+    assert retained["token_sum"] == pytest.approx(
+        retained["scalar_delta_f_z_minus_f_x0"],
+        abs=retained["conservation_tolerance"],
+    )
     assert retained["conservation_abs_error"] <= retained["conservation_tolerance"]
     assert retained["degeneracy_reasons"] == analytic.flags
     assert first.provenance["algorithm"]["cls_given_spatial_location"] is False

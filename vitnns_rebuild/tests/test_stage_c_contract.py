@@ -13,6 +13,7 @@ import csv
 import hashlib
 import json
 import subprocess
+import sys
 from collections import Counter
 from dataclasses import asdict
 from pathlib import Path, PurePosixPath
@@ -21,6 +22,7 @@ from typing import Any
 from PIL import Image
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import ValidationError
+import pytest
 
 from vitnns.constants import (
     IMAGENET_SYNSET_ORDER_SHA256,
@@ -50,6 +52,9 @@ SOURCE_METADATA_PATH = REPO_ROOT / "manifests/stage_c_flat_val_500/manifest_meta
 DEVKIT_PATH = REPO_ROOT / "artifacts/sources/ILSVRC2012_devkit_t12.tar.gz"
 DATA_ROOT = WORKSPACE_ROOT / "49_vit /datas/ILSVRC2012_val"
 STAGE_B_ROOT = REPO_ROOT / "outputs/stage_b_formal_30732c9"
+FULL_LIVE_ASSET_SCOPE = "full"
+CALIBRATION_ONLY_NO_HOLDOUT_SCOPE = "calibration-only-no-holdout"
+LIVE_ASSET_SCOPES = {FULL_LIVE_ASSET_SCOPE, CALIBRATION_ONLY_NO_HOLDOUT_SCOPE}
 
 FROZEN_IMAGE_IDS = [
     "ILSVRC2012_val_00000079",
@@ -534,7 +539,10 @@ def _read_csv(path: Path, columns: list[str]) -> list[dict[str, str]]:
     return rows
 
 
-def _validate_source_manifest(config: dict[str, Any]) -> list[dict[str, str]]:
+def _validate_source_manifest(
+    config: dict[str, Any], *, live_asset_scope: str = FULL_LIVE_ASSET_SCOPE,
+) -> list[dict[str, str]]:
+    assert live_asset_scope in LIVE_ASSET_SCOPES, "unknown live asset scope"
     registry_cfg = config["registry"]
     paths = _contract_paths(config)
     assert paths["source_manifest"] == SOURCE_MANIFEST_PATH.resolve()
@@ -554,16 +562,39 @@ def _validate_source_manifest(config: dict[str, Any]) -> list[dict[str, str]]:
     assert len({row["relative_path"] for row in rows}) == 500
     assert all(row["label_source"] == "official_devkit_val_gt" for row in rows)
 
-    rebuilt = build_manifest(paths["data_root"], devkit_path=paths["devkit"], require_labels=True)
-    assert len(rebuilt) == 500
-    rebuilt_strings = [
-        {key: str(value) for key, value in asdict(row).items()} for row in rebuilt
-    ]
-    assert rows == rebuilt_strings, "Tracked 500-row manifest differs from Stage A rebuild"
+    if live_asset_scope == FULL_LIVE_ASSET_SCOPE:
+        rebuilt = build_manifest(
+            paths["data_root"], devkit_path=paths["devkit"], require_labels=True
+        )
+        assert len(rebuilt) == 500
+        rebuilt_strings = [
+            {key: str(value) for key, value in asdict(row).items()} for row in rebuilt
+        ]
+        assert rows == rebuilt_strings, (
+            "Tracked 500-row manifest differs from Stage A rebuild"
+        )
     return rows
 
 
-def _validate_registry(config: dict[str, Any], source_rows: list[dict[str, str]]) -> None:
+def _validate_live_registry_image(
+    row: dict[str, str], *, data_root: Path,
+) -> None:
+    image_path = data_root / row["relative_path"]
+    assert image_path.is_file() and image_path.resolve().is_relative_to(
+        data_root.resolve()
+    )
+    assert sha256_file(image_path) == row["image_sha256"]
+    assert image_path.stat().st_size == int(row["size_bytes"])
+    with Image.open(image_path) as image:
+        assert image.size == (int(row["width"]), int(row["height"]))
+        image.verify()
+
+
+def _validate_registry(
+    config: dict[str, Any], source_rows: list[dict[str, str]], *,
+    live_asset_scope: str = FULL_LIVE_ASSET_SCOPE,
+) -> None:
+    assert live_asset_scope in LIVE_ASSET_SCOPES, "unknown live asset scope"
     registry_cfg = config["registry"]
     paths = _contract_paths(config)
     assert paths["registry"] == REGISTRY_PATH.resolve()
@@ -667,13 +698,11 @@ def _validate_registry(config: dict[str, Any], source_rows: list[dict[str, str]]
             ("label_source", "label_source"),
         ):
             assert row[registry_key] == source[source_key], (registry_key, row["image_id"])
-        image_path = paths["data_root"] / row["relative_path"]
-        assert image_path.is_file() and image_path.resolve().is_relative_to(paths["data_root"].resolve())
-        assert sha256_file(image_path) == row["image_sha256"]
-        assert image_path.stat().st_size == int(row["size_bytes"])
-        with Image.open(image_path) as image:
-            assert image.size == (int(row["width"]), int(row["height"]))
-            image.verify()
+        if (
+            live_asset_scope == FULL_LIVE_ASSET_SCOPE
+            or row["role"] == "calibration"
+        ):
+            _validate_live_registry_image(row, data_root=paths["data_root"])
 
 
 def _validate_schemas(config: dict[str, Any]) -> None:
@@ -957,12 +986,20 @@ def _validate_docs() -> None:
         assert token not in step_text
 
 
-def validate_all(*, require_tracked: bool = False, require_clean: bool = False) -> None:
+def validate_all(
+    *, require_tracked: bool = False, require_clean: bool = False,
+    live_asset_scope: str = FULL_LIVE_ASSET_SCOPE,
+) -> None:
+    assert live_asset_scope in LIVE_ASSET_SCOPES, "unknown live asset scope"
     config = strict_json_load(CONFIG_PATH)
     _validate_config(config)
     _validate_schemas(config)
-    source_rows = _validate_source_manifest(config)
-    _validate_registry(config, source_rows)
+    source_rows = _validate_source_manifest(
+        config, live_asset_scope=live_asset_scope
+    )
+    _validate_registry(
+        config, source_rows, live_asset_scope=live_asset_scope
+    )
     _validate_stage_b_chain()
     _validate_docs()
     if require_tracked:
@@ -972,6 +1009,7 @@ def validate_all(*, require_tracked: bool = False, require_clean: bool = False) 
             "config/stage_c.schema.json",
             "config/stage_c_registry.schema.json",
             "config/stage_c_selection.schema.json",
+            "config/stage_c_c8_run_spec.json",
             "docs/阶段C-step-by-step.md",
             "docs/阶段C_protocol.md",
             "docs/stage_c_acceptance.md",
@@ -995,6 +1033,8 @@ def validate_all(*, require_tracked: bool = False, require_clean: bool = False) 
             "src/vitnns/stage_c_provenance.py",
             "src/vitnns/stage_c_runner.py",
             "src/vitnns/stage_c_cli.py",
+            "src/vitnns/stage_c_c8.py",
+            "src/vitnns/stage_c_selection.py",
             "tests/test_stage_c_config.py",
             "tests/test_stage_c_maps.py",
             "tests/test_stage_c_metrics.py",
@@ -1010,6 +1050,8 @@ def validate_all(*, require_tracked: bool = False, require_clean: bool = False) 
             "tests/test_stage_c_provenance.py",
             "tests/test_stage_c_runner.py",
             "tests/test_stage_c_cli.py",
+            "tests/test_stage_c_c8.py",
+            "tests/test_stage_c_selection.py",
             "tests/test_stage_c_contract.py",
             "pyproject.toml",
         ]
@@ -1026,8 +1068,133 @@ def validate_all(*, require_tracked: bool = False, require_clean: bool = False) 
         assert not status.strip(), f"Git tree is not clean:\n{status}"
 
 
-def test_frozen_stage_c_contract() -> None:
+def _pytest_live_asset_scope(pytestconfig: pytest.Config) -> str:
+    if pytestconfig.getoption("--stage-c-calibration-only-no-holdout"):
+        return CALIBRATION_ONLY_NO_HOLDOUT_SCOPE
+    return FULL_LIVE_ASSET_SCOPE
+
+
+def test_frozen_stage_c_contract(pytestconfig: pytest.Config) -> None:
+    validate_all(live_asset_scope=_pytest_live_asset_scope(pytestconfig))
+
+
+def test_calibration_only_validator_never_rebuilds_or_touches_holdout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def forbidden_rebuild(*_args: Any, **_kwargs: Any) -> None:
+        raise AssertionError("calibration-only mode called build_manifest")
+
+    live_ids: list[str] = []
+
+    def record_live_validation(
+        row: dict[str, str], *, data_root: Path,
+    ) -> None:
+        assert data_root == DATA_ROOT
+        assert row["role"] == "calibration"
+        assert row["image_id"] in CALIBRATION_IDS
+        live_ids.append(row["image_id"])
+
+    module = sys.modules[__name__]
+    monkeypatch.setattr(module, "build_manifest", forbidden_rebuild)
+    monkeypatch.setattr(
+        module, "_validate_live_registry_image",
+        record_live_validation,
+    )
+    validate_all(live_asset_scope=CALIBRATION_ONLY_NO_HOLDOUT_SCOPE)
+    assert live_ids == [
+        "ILSVRC2012_val_00000079",
+        "ILSVRC2012_val_00009888",
+        "ILSVRC2012_val_00023229",
+        "ILSVRC2012_val_00035680",
+        "ILSVRC2012_val_00049970",
+    ]
+
+
+def test_default_validator_scope_remains_full(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed: list[tuple[str, str]] = []
+
+    def source(
+        _config: dict[str, Any], *, live_asset_scope: str,
+    ) -> list[dict[str, str]]:
+        observed.append(("source", live_asset_scope))
+        return []
+
+    def registry(
+        _config: dict[str, Any], _rows: list[dict[str, str]], *,
+        live_asset_scope: str,
+    ) -> None:
+        observed.append(("registry", live_asset_scope))
+
+    module = sys.modules[__name__]
+    monkeypatch.setattr(module, "_validate_config", lambda _config: None)
+    monkeypatch.setattr(module, "_validate_schemas", lambda _config: None)
+    monkeypatch.setattr(module, "_validate_source_manifest", source)
+    monkeypatch.setattr(module, "_validate_registry", registry)
+    monkeypatch.setattr(module, "_validate_stage_b_chain", lambda: None)
+    monkeypatch.setattr(module, "_validate_docs", lambda: None)
     validate_all()
+    assert observed == [
+        ("source", FULL_LIVE_ASSET_SCOPE),
+        ("registry", FULL_LIVE_ASSET_SCOPE),
+    ]
+
+
+def test_default_source_manifest_still_requests_live_rebuild(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def observed_rebuild(*_args: Any, **_kwargs: Any) -> None:
+        raise RuntimeError("full live rebuild requested")
+
+    monkeypatch.setattr(
+        sys.modules[__name__], "build_manifest", observed_rebuild
+    )
+    with pytest.raises(RuntimeError, match="full live rebuild requested"):
+        _validate_source_manifest(strict_json_load(CONFIG_PATH))
+
+
+def test_validator_rejects_unknown_live_asset_scope() -> None:
+    with pytest.raises(AssertionError, match="unknown live asset scope"):
+        validate_all(live_asset_scope="calibration-only")
+
+
+def test_pytest_live_asset_scope_is_explicit() -> None:
+    class Config:
+        def __init__(self, enabled: bool) -> None:
+            self.enabled = enabled
+
+        def getoption(self, name: str) -> bool:
+            assert name == "--stage-c-calibration-only-no-holdout"
+            return self.enabled
+
+    assert _pytest_live_asset_scope(Config(False)) == FULL_LIVE_ASSET_SCOPE
+    assert (
+        _pytest_live_asset_scope(Config(True))
+        == CALIBRATION_ONLY_NO_HOLDOUT_SCOPE
+    )
+
+
+def test_validator_cli_scope_is_explicit(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+) -> None:
+    calls: list[dict[str, Any]] = []
+    monkeypatch.setattr(
+        sys.modules[__name__], "validate_all", lambda **kwargs: calls.append(kwargs)
+    )
+    assert main([]) == 0
+    assert calls.pop() == {
+        "require_tracked": False, "require_clean": False,
+        "live_asset_scope": FULL_LIVE_ASSET_SCOPE,
+    }
+    assert main(["--calibration-only-no-holdout"]) == 0
+    assert calls.pop() == {
+        "require_tracked": False, "require_clean": False,
+        "live_asset_scope": CALIBRATION_ONLY_NO_HOLDOUT_SCOPE,
+    }
+    output = capsys.readouterr().out
+    assert "holdout accessed: false" in output
+    assert "500-image live rebuild: intentionally skipped" in output
 
 
 def test_strict_json_rejects_duplicate_and_nonfinite(tmp_path: Path) -> None:
@@ -1134,13 +1301,30 @@ def test_selection_schema_and_semantics_fail_closed() -> None:
             raise AssertionError("semantically invalid C8 selection passed validation")
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--require-tracked", action="store_true")
     parser.add_argument("--require-clean", action="store_true")
-    args = parser.parse_args()
-    validate_all(require_tracked=args.require_tracked, require_clean=args.require_clean)
+    parser.add_argument(
+        "--calibration-only-no-holdout", action="store_true",
+        help=(
+            "skip the live 500-image rebuild and validate live JPEGs only for "
+            "the five calibration registry rows"
+        ),
+    )
+    args = parser.parse_args(argv)
+    live_asset_scope = (
+        CALIBRATION_ONLY_NO_HOLDOUT_SCOPE
+        if args.calibration_only_no_holdout else FULL_LIVE_ASSET_SCOPE
+    )
+    validate_all(
+        require_tracked=args.require_tracked, require_clean=args.require_clean,
+        live_asset_scope=live_asset_scope,
+    )
     print("Stage C C0 static contract validation: PASS")
+    if live_asset_scope == CALIBRATION_ONLY_NO_HOLDOUT_SCOPE:
+        print("Live JPEG scope: calibration-only (5/5); holdout accessed: false")
+        print("500-image live rebuild: intentionally skipped")
     return 0
 
 

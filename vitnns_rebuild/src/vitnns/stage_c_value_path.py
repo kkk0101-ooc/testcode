@@ -3053,6 +3053,11 @@ def matched_fixed_clean_attention_patch_token_contribution(
             contribution.patch_contributions
         ),
         "token_sum": contribution.conservation_sum,
+        # At the clean endpoint dot(u, g_clean - g_baseline) equals
+        # ||g_clean - g_baseline|| by construction.  Retain the scalar under
+        # the same explicit name used by intervention records so C8 can audit
+        # token conservation without substituting the vector norm by name.
+        "scalar_delta_f_z_minus_f_x0": contribution.direction_norm,
         "direction_norm": contribution.direction_norm,
         "conservation_abs_error": contribution.conservation_error,
         "conservation_tolerance": contribution.conservation_tolerance,

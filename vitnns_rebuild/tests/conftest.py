@@ -5,6 +5,18 @@ import pytest
 from vitnns.constants import DEFAULT_SCANNER_ROOT, DEFAULT_STATE_DICT, REPO_ROOT
 
 
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption(
+        "--stage-c-calibration-only-no-holdout",
+        action="store_true",
+        default=False,
+        help=(
+            "run the C0 contract validator without rebuilding the live 500-image "
+            "manifest and validate live JPEGs only for the five calibration rows"
+        ),
+    )
+
+
 @pytest.fixture(scope="session")
 def state_dict_path() -> Path:
     assert DEFAULT_STATE_DICT.is_file()
