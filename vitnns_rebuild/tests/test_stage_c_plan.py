@@ -180,8 +180,9 @@ def test_registry_live_asset_tamper_is_optional_and_detected(tmp_path: Path):
         load_stage_c_registry(CONFIG, data_root=tmp_path, verify_live_assets=True)
 
 
-def test_selection_missing_is_explicit_and_required_fails():
-    state = load_stage_c_selection(CONFIG)
+def test_selection_missing_is_explicit_and_required_fails(tmp_path: Path):
+    missing_path = tmp_path / "nonexistent-selection.json"
+    state = load_stage_c_selection(CONFIG, selection_path=missing_path)
     assert state.to_dict() == {
         "schema_version": 1, "status": "not_applicable_pre_c8",
         "path": "selection/stage_c_selection.json",
@@ -193,7 +194,26 @@ def test_selection_missing_is_explicit_and_required_fails():
     }
     assert SelectionState.from_dict(state.to_dict()) == state
     with pytest.raises(SelectionContractError, match="required.*missing"):
-        load_stage_c_selection(CONFIG, required=True)
+        load_stage_c_selection(
+            CONFIG, selection_path=missing_path, required=True
+        )
+
+
+def test_default_selection_loads_frozen_c8_machine_file():
+    state = load_stage_c_selection(CONFIG, required=True)
+    winners = tuple(
+        ValueCandidate(block, head)
+        for block, head in ((0, 9), (4, 2), (6, 10), (11, 2))
+    )
+    assert state.status == "present" and state.reason is None
+    assert state.path == "selection/stage_c_selection.json"
+    assert state.sha256 == (
+        "5dff9b5aec77cab22b157b9bf2b5d63b2252b7e50ebe728250206d655a142254"
+    )
+    assert state.primary == ValueCandidate(0, 9)
+    assert state.depth_band_winners == winners
+    assert state.primary in state.depth_band_winners
+    assert SelectionState.from_dict(state.to_dict()) == state
 
 
 def test_selection_strict_schema_semantics_hashes_and_round_trip(tmp_path: Path):

@@ -2,7 +2,7 @@
 
 > 文档性质：阶段 C 的路线图、任务状态表和跨对话交接日志。  
 > 创建日期：2026-08-21。  
-> 当前状态：阶段 A、阶段 B、阶段 C/C0–C7 已完成；下一任务是 C8。
+> 当前状态：阶段 A、阶段 B、阶段 C/C0–C8 已完成；下一任务是 C9。
 > 使用规则：每个新对话必须先完整阅读本文，只执行一个指定的 `C_i`；该任务未更新本文并写出下一任务提示词时，不算完成。
 
 ## 1. 为什么使用这份文档
@@ -303,8 +303,8 @@ delta_fid = 0.5 * [
 | C5 | PASS | fidelity、扰动稳定性、资源仪表 | fidelity/perturbation/stability/resource 模块 | C2–C4 |
 | C6 | PASS | 单图/批量 runner、留存、provenance、CLI | 可恢复批量流水线及测试 | C1–C5 |
 | C7 | PASS | 单图 smoke benchmark 与预算冻结 | benchmark、总预算和可运行性结论 | C6 |
-| C8 | NOT_STARTED（NEXT） | 5 图全层/全头校准和 selection 冻结 | calibration 产物、`selection.json` | C7 |
-| C9 | NOT_STARTED | 全 20 图冻结配置 pilot | 完整逐样本产物和 failure table | C8 commit clean |
+| C8 | PASS | 5 图全层/全头校准和 selection 冻结 | calibration 产物、`selection.json` | C7 |
+| C9 | NOT_STARTED（NEXT） | 全 20 图冻结配置 pilot | 完整逐样本产物和 failure table | C8 commit clean |
 | C10 | NOT_STARTED | 汇总统计和 Go/No-Go | per-sample 表、summary、decision、报告 | C9 |
 
 ### 8.1 增量回归策略（自 C5 起）
@@ -1257,4 +1257,77 @@ C8 范围：
 13. 完成后更新本文：C8 标 `PASS` 或 `BLOCKED`；PASS 时 C9 标 `NEXT`；追加 C8 completion record 和完整 C9 提示词。一任务一提交；提交后按 8.1 运行 C0 validator、受影响 focused 和一次全量 non-GPU，确认 clean。
 
 禁止修改冻结 registry/config/schema/protocol/acceptance、科学方法、阈值、seed、target、schedule、扰动、caps 或 decision gates；若发现合同矛盾或预算超限，必须明确 `BLOCKED`，不得通过删样本、删层/头、降 steps、跳过昂贵方法、读取 holdout 或人工修改 selection 制造 PASS。
+~~~
+
+### 2026-08-24 06:10 +0800 — C8 completion record
+
+- status: PASS
+- objective_completed: 只完成 C8。在精确 5 张 calibration 图上执行全部 `12×12=144` Value candidates 和全部 7 种方法，计划严格为每图 `144×3+4=436` units、合计 `2180` units；随后只从 calibration 证据机器生成四个深度带 winner 和唯一 primary。没有读取或运行 15 张 holdout，没有开始 C9/C10，没有执行 bootstrap、Holm 或科学决策。
+- git_sha_before: `6fd4b9c3cd9fd20ea41d0c61a6484eebe1b8b01c`（C7 completion 后的 clean baseline）。
+- git_sha_execution_and_finalize: `1fd25392968c9ccfde6c066f6544e9c4557ac4f0`。该 clean commit 是唯一正式 C8 GPU execution root、全部 unit artifact 和 finalize control files 的 producer；selection 不是在该 commit 上 build。
+- git_sha_selection_generator_and_recovery_fix: `d7f2ef3bca8c22e1fc1ae38d9333fd2cd3e11579`。该 clean commit 只从 `1fd2539...` 已完成且不可变的 source evidence 重新 build 并 validate selection/report；没有重跑任何 GPU unit。
+- git_sha_after: SELF（即包含 C8 实现、机器生成 selection、本 completion record 与状态推进的 C8 completion commit；精确 SHA 在提交后由 `git rev-parse HEAD` 产生，并在最终回复报告）。
+- tree_clean: 正式 GPU execution/finalize 启动和结束时绑定 `1fd2539...` clean tree；selection postprocessor build/validate 绑定 `d7f2ef3...` clean tree。最终 SELF 提交后的 clean 状态由最终回复确认。
+- files_added_or_changed: C8 增加/收紧 calibration RunSpec、plan/runner/artifact/failure evidence、resource projection、selection aggregation/validation 与 CLI 及其测试；机器生成 `selection/stage_c_selection.json`；本记录只推进本文状态和交接。冻结 registry、config、schemas、protocol、acceptance、科学方法、target、baseline、schedule、seed、扰动、retention、caps 与 decision gates 均未修改。
+- inputs_and_sha256: model `2e718037429f18ec77aa629471beb2e99993d7383375188bab777aba04d5e4d0`；registry `9a6667bec6a27c715d272382a494f06924db881dca991dc4fac4751dbe7f37f0`；registry metadata `bedb9df9a77807c86da0b898f8d44767c8276f21ab69821965f2b30d7184a4af`；Stage A 500 manifest `042cfd7845b49f8949de13c78bc40c68192179d6fc004bcdbecf55e502c2eb89`；dependency lock `81beabd6aba9ede777e973e2ee5f0c60ce2aa88ce55b29d025e95d67ab175984`。
+- configs_and_sha256: frozen Stage C config `0ee57c32b0fcb3116f91fddce5d918c8eb1ae05606c3616b6a2ec9afa9f0e669`；config schema `94209b7c8a63a62ef27f3396810c8d5be8f6fbbf0a4df22e663b3661b9ed3f4b`；registry schema `4ce0ac8cd5bff93ae2b323c3e0447a87fc825c3243ad46c54c9b48e05e9b2d6d`；selection schema `867a3cf22519b2a045d81751a20c5cd52570ddeadede26a2da2bb79973f0b59d`；protocol `ff958a9455ae15307827a9e40fc6d7d03c9baa10bf1fb8b83650a10bd85ff7b8`；acceptance `f4629105d411b32d4f7700caa22d7d6b6c1bf4b8e01f37e4e2ac6ac4851dfafd`；C8 RunSpec file SHA-256 `9fae31df8ed2da462f48d1a95a0df2c44cc70a6cfd7db403ef40d69706d3f8c2`、semantic/canonical digest `42f22bb4992dd560382acd48a5e5ec2fe47b0345835e9201636943fb22e7e30b`。
+- artifacts_and_absolute_paths: 唯一正式 execution/finalize root 是 `/data00/home/yeziqi.831/testcode/vitnns_c8_formal_1fd2539_20260823`。第一次 postprocessing 生成的 BLOCKED report `/data00/home/yeziqi.831/testcode/vitnns_c8_selection_report_1fd2539_20260823.json` 保留，file SHA-256 `a892f772398402ffa0aa0641bcc27141905f4aeb147a0c63d8c083446231fa41`，不得当作最终 selection。修复后的 canonical PASS report 是 `/data00/home/yeziqi.831/testcode/vitnns_c8_selection_report_final_d7f2ef3_20260824.json`，file SHA-256 `d921d95ebe756e8cec859faea96578f8b3da766e9049e0440f570487d2e40b44`、canonical digest `9eb0df50be93320d7d6279852441c5bc103eaef146b394ff8d128cc64d2c9a6c`。外部 validated recovery selection `/data00/home/yeziqi.831/testcode/vitnns_c8_selection_recovery_d7f2ef3_20260824.json` 与 tracked `selection/stage_c_selection.json` 的精确文件 SHA-256 均为 `5dff9b5aec77cab22b157b9bf2b5d63b2252b7e50ebe728250206d655a142254`。
+- artifact_manifest_or_status_hashes: 正式 root control file SHA-256：`execution_plan.json=da24efd1a700c59ae378a87b7b5b575f5d09edcbf40111c515f1321b2db899f9`、`preflight.json=c7d3a9baa1b95c2c6b1fdd9af70b9714c18db9230e34e437a401e94a329899f2`、`c8_launch_authorization.json=86a60e0a3c915b1295a803ace0c9ac6c414ef99a0dac7a879b30abd8663999fe`、`failure_table.json=deacdadd2c7ebe42b253bd1da86a264664e1d4a885c95cb8ed92e2ecfce327d0`、`batch_status.json=7c37bb76ae42d445912b953e582a02b30a16107ba9d5ce43e3fa1f4199f6a708`；calibration artifact manifest digest `705b92c6101b5b4354eb3d2b922aced8d781dcf5ee6d3b7198a6132d9a495788`；execution plan canonical digest `ece22206df300d4099c888d9ce83be83bbf926eaf4d5003059694912881f0892`；preflight canonical digest `175d5c9c8461dd5b082792a57ffb7f627c62f2c540114b8789039ebc334b7a2b`；calibration evidence canonical digest `08daa501d3e18ba927180156537de86a3c62fac6176dde3f3a6a37f0916e1620`。不存在也不引用 shard log 路径。
+- tests_and_results: GPU 启动前 focused baseline `413 passed, 1 skipped`；C8 实现后的全量 non-GPU suite `805 passed, 2 skipped`；`d7f2ef3...` recovery 修复的受影响 focused tests `163 passed`；C0 clean/tracked static validator PASS；正式 source evidence build/validate 与 recovery selection/report build/validate 均 PASS。上述为已知已执行结果；SELF completion 提交后的最终 validator/focused/full-suite 计数如需补充，由最终回复据实报告，不在本文预先虚构。
+- acceptance_results: 正式 plan 的 `2180/2180` expected units 均有显式 terminal state，`2179` succeeded、`1` evidence-complete failed，且 `2180/2180` trusted。144 candidates 中 `143` eligible、`1` ineligible；唯一 ineligible 是 `(block 11, head 05)`。四个固定深度带 winner 依次为 `(0,9)`、`(4,2)`、`(6,10)`、`(11,2)`，primary 为 `(0,9)`，其余三项为 exploratory。最终 report 为 PASS 且 `integrity_valid=true`、`holdout_accessed=false`、`bootstrap_performed=false`、`holm_performed=false`、`decision_performed=false`。
+- budget_results: 全部 10 项 frozen hard caps PASS。实测最大 L0+L1 cap-accounting `466601` bytes/unit；L2 actual maximum `349093216` bytes/audit sample，C8 conservative projected audit L2 `488599600` bytes；最大实际 forward `5558`、backward `4608` batched invocations/unit；最大 CUDA reserved `4412407808` bytes/unit。最慢有效同步 unit `197.04103458393365s`；按精确 unit 数与 1.25 factor，C8=`149.14911645589422` H20-GPU-hours、C9=`21.893448287103737`、C8+C9=`171.04256474299797`、Stage D=`547.3362071775935`，Stage D=`1.094672414355187` H20-GPU-hours/image。存储投影 C8=`3527349125`、C9=`440416200`、C8+C9=`3967765325`、Stage D=`8700496200` bytes。
+- deviations_or_protocol_amendments: 无 protocol amendment、无 workload/cap/阈值变更。`d7f2ef3...` 修复两个纯 postprocessing bug：第一，`runtime_model_binding` 是独立 execution unit 的进程内 live-model/tensor guard，跨 unit 比较科学 target 时只归一化掉这一字段，但每条 curve 和每个 unit 仍先校验完整、未删减的 per-unit target identity hash；第二，C7 aggregate storage model 必须先按其冻结的 40-unit/200-map source scale 分解，再投影到 C8/C9，不能拿 C8 的 2180-unit records 错误重分解 C7 aggregate。修复没有修改 frozen protocol/config/schema 或任何 runtime artifact，也没有重跑 GPU。最终证据显式双绑定：artifact producer=`1fd2539...`，selection generator/validator=`d7f2ef3...`。
+- failures_retained: 所有旧失败/中断 root 均原样保留且未 resume、拼接或进入最终 selection：`/data00/home/yeziqi.831/testcode/vitnns_c8_formal_057960f_20260823`、`/data00/home/yeziqi.831/testcode/vitnns_c8_formal_b81da13_20260823`、`/data00/home/yeziqi.831/testcode/vitnns_c8_formal_17814e3_20260823`、`/data00/home/yeziqi.831/testcode/vitnns_c8_formal_daa970d_20260823`。正式 `1fd2539...` root 中唯一真实失败也保留：audit calibration `ILSVRC2012_val/ILSVRC2012_val_00049970.JPEG` 的 `conditional_fixed_clean_attention_head_direction_value_path_ig`、`block_11_head_05` 在完整冻结 IG schedule 后未收敛；其 terminal failure/status/hash/resource evidence 完整，该 candidate 因此 fail closed 为 ineligible，未被删除、补零或重跑。原始 BLOCKED selection report 同样保留作为 postprocessing 失败史。
+- known_limitations: C8 只用 5 张 calibration 做选择，不是 holdout 或泛化结论；四个 winners 在 C9 之前不可再改。一个非 winner candidate 有真实未收敛失败。runtime artifacts 位于上述绝对路径，不由 Git 保存；C9 必须同时核验 producer `1fd2539...`、generator `d7f2ef3...`、最终 report 和 tracked selection 的完整绑定。
+- next_task: C9
+
+#### 下一对话完整提示词
+
+~~~text
+你现在只执行 ViT-NNS 重建工程“阶段 C”的 C9：从 C8 已机器冻结的 selection 出发，在 registry 的精确 20 张图上运行 frozen pilot，生成完整、不可变、可 hash 验证的逐 execution-unit 证据。不要开始 C10，不要做 bootstrap/CI、Holm、多重比较、汇总统计或任何 GO/NO-GO/INCONCLUSIVE 决策；不要修改 selection、四个 winners、primary、阈值或科学协议。
+
+工作目录：
+/data00/home/yeziqi.831/testcode/vitnns_rebuild
+
+前置 C8 completion 与双代码绑定：
+- C8 completion commit: SELF，即包含 C8 实现、tracked selection 与本 completion record 的 clean commit；启动 C9 时先运行 `git rev-parse HEAD` 并与 C8 最终回复给出的精确 SHA 一致。若 HEAD 不一致、工作树 dirty 或 dirty 归属不明，先查明且不得覆盖用户改动；不能建立精确 clean C8 baseline 时，C9 必须 BLOCKED，禁止读取 holdout 或启动 GPU。
+- C8 GPU execution/finalize artifact producer: `1fd25392968c9ccfde6c066f6544e9c4557ac4f0`（clean）。不得声称 selection 在这个 commit 上 build。
+- C8 selection postprocessor build/validate generator: `d7f2ef3bca8c22e1fc1ae38d9333fd2cd3e11579`（clean）。该修复只重建/验证 selection/report，没有 GPU rerun。
+- 正式 C8 source root: `/data00/home/yeziqi.831/testcode/vitnns_c8_formal_1fd2539_20260823`。
+- canonical PASS report: `/data00/home/yeziqi.831/testcode/vitnns_c8_selection_report_final_d7f2ef3_20260824.json`，file SHA-256 `d921d95ebe756e8cec859faea96578f8b3da766e9049e0440f570487d2e40b44`，canonical digest `9eb0df50be93320d7d6279852441c5bc103eaef146b394ff8d128cc64d2c9a6c`。
+- tracked selection `selection/stage_c_selection.json` 的精确文件 SHA-256 为 `5dff9b5aec77cab22b157b9bf2b5d63b2252b7e50ebe728250206d655a142254`；外部 validated recovery copy `/data00/home/yeziqi.831/testcode/vitnns_c8_selection_recovery_d7f2ef3_20260824.json` 必须同 hash。
+- 原始 BLOCKED report `/data00/home/yeziqi.831/testcode/vitnns_c8_selection_report_1fd2539_20260823.json`（SHA-256 `a892f772398402ffa0aa0641bcc27141905f4aeb147a0c63d8c083446231fa41`）只作失败史，不能替代 canonical PASS report。
+- C8 calibration artifact manifest digest `705b92c6101b5b4354eb3d2b922aced8d781dcf5ee6d3b7198a6132d9a495788`；execution plan canonical digest `ece22206df300d4099c888d9ce83be83bbf926eaf4d5003059694912881f0892`；RunSpec digest `42f22bb4992dd560382acd48a5e5ec2fe47b0345835e9201636943fb22e7e30b`；preflight canonical digest `175d5c9c8461dd5b082792a57ffb7f627c62f2c540114b8789039ebc334b7a2b`。
+
+启动时复算并要求一致的冻结 SHA-256：
+- model `2e718037429f18ec77aa629471beb2e99993d7383375188bab777aba04d5e4d0`
+- registry `9a6667bec6a27c715d272382a494f06924db881dca991dc4fac4751dbe7f37f0`
+- registry metadata `bedb9df9a77807c86da0b898f8d44767c8276f21ab69821965f2b30d7184a4af`
+- Stage C config `0ee57c32b0fcb3116f91fddce5d918c8eb1ae05606c3616b6a2ec9afa9f0e669`
+- config schema `94209b7c8a63a62ef27f3396810c8d5be8f6fbbf0a4df22e663b3661b9ed3f4b`
+- registry schema `4ce0ac8cd5bff93ae2b323c3e0447a87fc825c3243ad46c54c9b48e05e9b2d6d`
+- selection schema `867a3cf22519b2a045d81751a20c5cd52570ddeadede26a2da2bb79973f0b59d`
+- protocol `ff958a9455ae15307827a9e40fc6d7d03c9baa10bf1fb8b83650a10bd85ff7b8`
+- acceptance `f4629105d411b32d4f7700caa22d7d6b6c1bf4b8e01f37e4e2ac6ac4851dfafd`
+- dependency lock `81beabd6aba9ede777e973e2ee5f0c60ce2aa88ce55b29d025e95d67ab175984`
+- Stage A 500 manifest `042cfd7845b49f8949de13c78bc40c68192179d6fc004bcdbecf55e502c2eb89`
+
+第一步必须完整阅读 `docs/阶段C-step-by-step.md`（尤其 C8 completion record、§8.1、C9 边界和交接规则）、`docs/阶段C_protocol.md`（尤其样本/方法/扰动/fidelity/留存；统计章节只作为 C9 禁止提前执行的边界）、`docs/stage_c_acceptance.md` C6/C8/C9/C10、`docs/stage_c_config_contract.md`、config 与三个 schemas、tracked selection、C6–C8 plan/runner/artifacts/provenance/integrity/C8/selection/CLI 实现及测试、README。先检查 HEAD/clean，运行 C0 tracked/clean validator，验证上述所有 hash、C8 report 内部 canonical digest、source evidence、双 commit binding、四 winners/primary 和 selection schema/semantic integrity。
+
+C9 精确范围：
+1. 按 registry `selection_order` 运行且只运行以下精确 20 图，不得漏掉、增加、替换或按 prediction correctness 删除：`ILSVRC2012_val_00000079`、`ILSVRC2012_val_00002607`、`ILSVRC2012_val_00005279`、`ILSVRC2012_val_00007489`、`ILSVRC2012_val_00009888`、`ILSVRC2012_val_00012573`、`ILSVRC2012_val_00014787`、`ILSVRC2012_val_00018380`、`ILSVRC2012_val_00020970`、`ILSVRC2012_val_00023229`、`ILSVRC2012_val_00025927`、`ILSVRC2012_val_00028908`、`ILSVRC2012_val_00031099`、`ILSVRC2012_val_00033512`、`ILSVRC2012_val_00035680`、`ILSVRC2012_val_00038565`、`ILSVRC2012_val_00041511`、`ILSVRC2012_val_00044187`、`ILSVRC2012_val_00047079`、`ILSVRC2012_val_00049970`。其中 5 calibration、15 holdout；两个 audit 仍仅为 calibration `00000079` 和 `00049970`。`00012573` 即使原始尺寸为 90×90 也必须保留。
+2. C8 selection 的四个 winner 已冻结为 `(block 0, head 9)` primary、`(4,2)`、`(6,10)`、`(11,2)` exploratory。C9 RunSpec 必须使用 `value_config_source=selection_band_winners` 且无 explicit candidates；不得只跑 primary、重排或替换 winner。
+3. 每张图在四个 winner 上各运行三种 Value 方法：`direct_raw_cls_attention_per_head`、`conditional_fixed_clean_attention_head_direction_value_path_ig`、`matched_fixed_clean_attention_patch_token_contribution`；每张图各只运行一次四种 global 方法：`direct_raw_cls_attention_last_block_head_mean`、`attention_rollout_mean_head_residual_all_blocks`、`vit_grad_cam_block11_norm1`、`full_model_class_logit_ig`。精确总数是 `20 × (4 winners × 3 Value methods + 4 global methods) = 320 execution units`，绝不能把四种 global 方法乘四个 winners。
+4. 精确展开合同为 `240` fidelity-eligible units、`80` structural-reference units、`10560` fidelity curves、`221760` curve points、`1312` map runs、`223072` WorkItems、`80` global class-line units。RunSpec 保持 registered fidelity、sanity、stability、audit repeatability `2` 和 `clean_map_only`；global class fidelity 的显式 pairing context 使用 frozen primary `(0,9)`。
+5. 保留完整冻结 workload：同一样本的全部方法/config 共享一个 canonical clean tensor、同一模型/target context 和预生成且 hash 配对的三种 perturbation tensors；两个 fidelity scales/directions、21 fractions、五次 paired target-tie、五次 random sanity、center sanity，以及 IG schedule `[512,1024,2048,4096,8192]`/chunk 8 均不得缩减。class line 始终解释 clean predicted-class raw logit；Value line 固定 clean A/u/block/head/baseline。记录真值、预测正确性、扰动预测与 flip，但不据此删样本。
+6. C9 只实现/补全该 frozen pilot 所需的最小 RunSpec、plan、orchestration、CLI 和 validation。正式执行必须绑定一个新的 clean code commit，并在该 commit 存在后创建一个全新空 output root；本提示词不预先虚构 C9 root 名。不得覆盖、resume、拼接或挑选 C7/C8/recovery/diagnostic/失败 root 的 unit。
+7. 在读取任何 holdout 图、启动 GPU 或创建正式 output root 前，先完成所有 frozen hash、C8 PASS report/selection/双代码绑定、精确 20-ID/320-unit plan、preflight 与预算验证；任何不一致 fail closed。真实 GPU 只运行精确 C9 正式计划，不额外做探索性 candidate、selection 重跑或 C10。
+8. L0/L1 覆盖全部 320 expected units；L2 只允许两个 audit calibration；L3 只允许 audit/显式失败 display 且永不作定量输入。禁止逐 quadrature step、逐像素或逐 dimension 文件。每个 unit 是新的不可变独立 attempt；只有 `complete=true`、status→manifest hash 正确、全部 artifact hash/bytes 正确且 plan/provenance binding 一致时才可 resume-skip。failed/incomplete/tampered 不得续写或伪装成功；修复后使用新的空 attempt/root，并完整保留旧证据。
+9. failure table 必须左连接覆盖全部 320 expected units，每个 unit 有显式 terminal state；batch complete 与 successful 分开报告。任何 failed、missing、tampered、OOM、退化、misclassified、structured NA 都保留，不能丢行、补零、换 target/head/baseline 或挑选最好 attempt。C8 的四个旧失败/中断 roots、原始 BLOCKED report 及正式 root 的 `(11,5)` 真实失败继续保留，不得删除；该失败不是 C9 winner，也不得借机修改 selection。
+10. 每 unit provenance 必须绑定 clean Git、model/image/lock/registry/metadata/source manifest/protocol/acceptance/config/schemas/selection/RunSpec/plan、role/audit、method/version/target、projection/sign/normalization、baseline/schedule/seed/扰动、status/failure、同步 wall、phase timers、CUDA allocated/reserved、forward/backward calls、全部普通文件 bytes 和完整 inventory。结束后做完整 batch/status/manifest/artifact/provenance/lifecycle/hash/inventory validation；PNG/display 不得进入数值链。
+11. frozen hard caps 不变：64 MiB L0+L1/unit、1 GiB L2/audit sample、32 GiB C8+C9 artifacts、30,000 forward 和 backward calls/unit、90 GiB peak CUDA reserved/unit、1,000 H20-GPU-hours C8+C9；同时复核 Stage D 64 GiB、2,000 H20-GPU-hours、4 hours/image 投影。C8 后基线为 C9 `21.893448287103737` H20-GPU-hours/`440416200` bytes，C8+C9 `171.04256474299797` H20-GPU-hours/`3967765325` bytes，全部 10 caps PASS。必须重验，不能放宽或用删 workload 制造 PASS。
+12. primary `(0,9)` 的 15/15 holdout validity evidence 必须 complete、finite、hash/provenance-valid、nondegenerate 且 endpoint/IG/token parity 与 required numeric contracts 有效。若不满足，原样保留并将 C9 明确报告为 BLOCKED；不得剔除样本、改变分母或在 C9 提前输出 `NO_GO_VALIDITY`。all-20 只作 descriptive，5 calibration 不进入确认性统计；C9 只生产/验证证据。
+13. 明确禁止修改 frozen registry/config/schemas/protocol/acceptance、selection 文件、winners/primary、方法语义、阈值、seed、target、baseline、schedule、扰动、retention、caps 或 decision gates；禁止依据 holdout、正确性、图片内容、旧数值、display PNG、热图美观或人工偏好调参；禁止 C10 的 aggregate table、mean/median/SD、10,000 image bootstrap、CI、Holm correction及任何 `GO`/`NO_GO_VALIDITY`/`NO_GO_NOVELTY`/`NO_GO_COST`/`INCONCLUSIVE` 决策；禁止启动 Stage D。
+14. 测试必须覆盖精确 20 IDs/order/5+15+2 roles、四 winners/primary、selection hash/tamper/manual-edit、holdout 必须有 validated selection、未选 candidate 拒绝、精确 320 及全部展开计数（尤其 global 每图一次）、canonical/perturbation tensor hash 共享、target 冻结、audit-only L2、L3 不回流、全部 320 failure rows、显式终态、partial failure/missing/tamper/crash、immutable retry/new root/non-overwrite、完整 final validation，以及 bootstrap/Holm/decision 不发生。按 §8.1：启动 HEAD/clean+C0 validator；开发中跑 C9 与直接受影响 tests；最终 tracked 状态跑一次受影响 focused、一次 C0 `--require-tracked --require-clean` validator、一次全量 non-GPU suite，区分复用的 C8 证据与本次实际运行。
+15. 完成后更新本文：C9 标 `PASS` 或 `BLOCKED`；只有满足 C9 合同时才把 C10 标 `NEXT`。追加完整 C9 completion record，包含 before/after commit、clean 状态、文件、全部 input/config/artifact hashes、实际正式 root（届时据实填写）、control/status/manifest hashes、测试、320 终态分布、primary 15/15 validity evidence、偏差、保留失败、限制和 next_task；再写完整可复制 C10 提示词但不要执行。一任务一提交，最终工作树 clean。
 ~~~
