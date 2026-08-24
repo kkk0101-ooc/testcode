@@ -315,3 +315,32 @@ recompute all ten frozen caps from C8+C9 measurements, and report primary
 15/15 validity as evidence only. They do not aggregate statistics, bootstrap,
 apply Holm correction, or emit a scientific decision.
 
+### Stage C10 sealed aggregation and decision
+
+C10 is CPU-only post-processing of the frozen C9 root. It does not accept a
+device, model, data-root, alternate selection, resume, or unit filter. Build
+only from a new clean code commit and a previously nonexistent output path:
+
+~~~bash
+CUDA_VISIBLE_DEVICES='' vitnns-stage-c c10-build \
+  --config config/stage_c.json \
+  --run-spec config/stage_c_c9_run_spec.json \
+  --c9-root /data00/home/yeziqi.831/testcode/vitnns_c9_formal_d8190b1_20260824 \
+  --output-root /path/to/new-c10-root
+
+CUDA_VISIBLE_DEVICES='' vitnns-stage-c c10-validate \
+  --config config/stage_c.json \
+  --run-spec config/stage_c_c9_run_spec.json \
+  --c9-root /data00/home/yeziqi.831/testcode/vitnns_c9_formal_d8190b1_20260824 \
+  --output-root /path/to/c10-root
+~~~
+
+The output is immutable and contains the long CSV plus schema/hash manifest,
+separate calibration/holdout/all-20 summaries, bootstrap metadata, Holm
+contract audit, 320-unit reconciliation, decision, provenance, and a complete
+inventory. A complete package may intentionally return exit code 2 and report
+`BLOCKED` when a preregistered statistical contract is underspecified; the
+scientific primary decision is still retained, but Stage D remains
+unauthorized. L3/display artifacts and source JPEGs never enter the C10
+numeric chain.
+

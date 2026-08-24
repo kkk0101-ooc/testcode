@@ -58,6 +58,10 @@ from .stage_c_c9 import (
     validate_c9_execution_plan,
     validate_c9_output_root,
 )
+from .stage_c_c10 import (
+    StageC10BlockedError, StageC10IntegrityError,
+    build_c10_output_root, validate_c10_output_root,
+)
 from .stage_c_selection import (
     StageCSelectionBlockedError,
     StageCSelectionIntegrityError,
@@ -89,6 +93,7 @@ _C8_COMMANDS = frozenset({
 _C9_COMMANDS = frozenset({
     "c9-init", "c9-run-shard", "c9-finalize", "c9-validate",
 })
+_C10_COMMANDS = frozenset({"c10-build", "c10-validate"})
 
 
 class ArgumentError(ValueError):
@@ -226,6 +231,12 @@ def build_parser() -> argparse.ArgumentParser:
         command = commands.add_parser(name)
         _add_c9_plan_arguments(command)
         command.add_argument("--output-root", type=Path, required=True)
+
+    for name in ("c10-build", "c10-validate"):
+        command = commands.add_parser(name)
+        _add_c9_plan_arguments(command)
+        command.add_argument("--c9-root", type=Path, required=True)
+        command.add_argument("--output-root", type=Path, required=True)
     return parser
 
 
@@ -311,6 +322,17 @@ def _require_exact_c9_plan(plan: Any, config: Any) -> dict[str, Any]:
             + (f": {detail}" if detail else "")
         )
     return dict(result)
+
+
+def _require_exact_c10_input_bytes(args: argparse.Namespace) -> None:
+    from .stage_c_c10_source import (
+        C9_CONFIG_FILE_SHA256, C9_RUN_SPEC_FILE_SHA256,
+    )
+
+    if sha256_file(args.config) != C9_CONFIG_FILE_SHA256:
+        raise ArgumentError("C10 requires the exact frozen Stage C config bytes")
+    if sha256_file(args.run_spec) != C9_RUN_SPEC_FILE_SHA256:
+        raise ArgumentError("C10 requires the exact frozen C9 RunSpec bytes")
 
 
 def _require_clean_c8_git(git_state: Mapping[str, Any]) -> None:
@@ -678,7 +700,8 @@ def main(
 
         is_c8_command = args.command in _C8_COMMANDS
         is_c9_command = args.command in _C9_COMMANDS
-        if is_c9_command:
+        is_c10_command = args.command in _C10_COMMANDS
+        if is_c9_command or is_c10_command:
             pipeline = _load_pipeline(args, c9=True)
         elif is_c8_command:
             pipeline = _load_pipeline(args, c8=True)
@@ -687,8 +710,29 @@ def main(
         config, registry, _selection, _spec, plan, estimate = pipeline
         if is_c8_command:
             _require_exact_c8_plan(plan, config)
-        elif is_c9_command:
+        elif is_c9_command or is_c10_command:
             _require_exact_c9_plan(plan, config)
+        if is_c10_command:
+            _require_exact_c10_input_bytes(args)
+
+        if args.command in _C10_COMMANDS:
+            operation = (
+                build_c10_output_root
+                if args.command == "c10-build"
+                else validate_c10_output_root
+            )
+            kwargs = {}
+            if args.command == "c10-build":
+                git_state = capture_git_state(REPO_ROOT)
+                kwargs["observed_git_state"] = git_state
+            result = operation(
+                args.c9_root, args.output_root, plan, config, **kwargs
+            )
+            _write_json(result, sys.stdout)
+            return (
+                EXIT_SUCCESS if result.get("status") == "PASS"
+                else EXIT_PREFLIGHT_BLOCKED
+            )
 
         if args.command == "c9-init":
             git_state = capture_git_state(REPO_ROOT)
@@ -1102,6 +1146,22 @@ def main(
             sys.stderr,
         )
         return EXIT_INTEGRITY_FAILURE
+    except StageC10IntegrityError as error:
+        _write_json(
+            {"error": {"message": str(error), "type": type(error).__name__}},
+            sys.stderr,
+        )
+        return EXIT_INTEGRITY_FAILURE
+    except StageC10BlockedError as error:
+        _write_json(
+            {
+                "document_type": "stage_c_c10_status",
+                "status": "BLOCKED", "blocking_reasons": [str(error)],
+                "downstream_authorized": False, "stage_d_started": False,
+            },
+            sys.stdout,
+        )
+        return EXIT_PREFLIGHT_BLOCKED
     except StageCBenchmarkIntegrityError as error:
         _write_json(
             {
