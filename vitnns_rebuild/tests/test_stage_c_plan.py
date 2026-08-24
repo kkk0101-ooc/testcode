@@ -398,6 +398,43 @@ def test_selected_four_config_cross_line_exact_counts(registry, tmp_path: Path):
     assert sum(unit.comparison_line == "class_logit" for unit in plan.units) == 80
 
 
+def test_checked_in_c9_run_spec_expands_exact_frozen_plan(registry):
+    selection = load_stage_c_selection(CONFIG, required=True)
+    spec = load_run_spec(REPO_ROOT / "config/stage_c_c9_run_spec.json")
+    plan = build_execution_plan(CONFIG, registry, spec, selection=selection)
+    counts = estimate_stage_c_run(CONFIG, plan).to_dict()["counts"]
+
+    assert tuple(spec.sample_ids) == tuple(row.sample_id for row in registry.rows)
+    assert spec.method_ids == ALL_METHODS
+    assert spec.value_config_source == "selection_band_winners"
+    assert spec.value_candidates == ()
+    assert spec.fidelity_pairing_context == ValueCandidate(0, 9)
+    assert selection.primary == ValueCandidate(0, 9)
+    assert selection.depth_band_winners == (
+        ValueCandidate(0, 9), ValueCandidate(4, 2),
+        ValueCandidate(6, 10), ValueCandidate(11, 2),
+    )
+    assert {key: counts[key] for key in (
+        "execution_units", "fidelity_eligible_units",
+        "structural_reference_units", "fidelity_curves",
+        "fidelity_curve_points", "map_runs", "work_items",
+    )} == {
+        "execution_units": 320,
+        "fidelity_eligible_units": 240,
+        "structural_reference_units": 80,
+        "fidelity_curves": 10_560,
+        "fidelity_curve_points": 221_760,
+        "map_runs": 1_312,
+        "work_items": 223_072,
+    }
+    assert sum(unit.comparison_line == "class_logit" for unit in plan.units) == 80
+    assert all(
+        (item.pairing_block_index, item.pairing_head_index) == (0, 9)
+        for unit in plan.units if unit.comparison_line == "class_logit"
+        for item in unit.work_items if item.kind == "fidelity_curve_point"
+    )
+
+
 def test_estimate_breaks_out_logic_calls_files_and_round_trips(registry):
     plan = build_execution_plan(CONFIG, registry, _spec(registry))
     estimate = estimate_stage_c_run(CONFIG, plan)

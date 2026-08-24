@@ -49,6 +49,15 @@ from .stage_c_c8 import (
     validate_c8_launch_authorization,
     validate_fixed_c7_report,
 )
+from .stage_c_c9 import (
+    build_c9_launch_authorization,
+    finalize_c9_output_root,
+    initialize_c9_output_root,
+    load_c9_initialized_state,
+    run_c9_shard,
+    validate_c9_execution_plan,
+    validate_c9_output_root,
+)
 from .stage_c_selection import (
     StageCSelectionBlockedError,
     StageCSelectionIntegrityError,
@@ -73,8 +82,12 @@ EXIT_PREFLIGHT_BLOCKED = 2
 EXIT_TERMINAL_FAILURE = 3
 EXIT_INTEGRITY_FAILURE = 4
 STAGE_C_SEED = 20260821
+_TRACKED_STAGE_C_SELECTION = REPO_ROOT / "selection/stage_c_selection.json"
 _C8_COMMANDS = frozenset({
     "c8-init", "c8-run-shard", "c8-finalize", "c8-select",
+})
+_C9_COMMANDS = frozenset({
+    "c9-init", "c9-run-shard", "c9-finalize", "c9-validate",
 })
 
 
@@ -102,6 +115,13 @@ def _add_c8_plan_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--run-spec", type=Path, required=True)
     parser.add_argument("--registry", type=Path)
     parser.add_argument("--data-root", type=Path)
+
+
+def _add_c9_plan_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add formal C9 inputs without a caller-overridable selection."""
+
+    parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument("--run-spec", type=Path, required=True)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -181,6 +201,31 @@ def build_parser() -> argparse.ArgumentParser:
     c8_select.add_argument("--mode", choices=("build", "validate"), default="build")
     c8_select.add_argument("--report-output", type=Path, required=True)
     c8_select.add_argument("--selection-output", type=Path)
+
+    c9_init = commands.add_parser("c9-init")
+    _add_c9_plan_arguments(c9_init)
+    c9_init.add_argument("--output-root", type=Path, required=True)
+    c9_init.add_argument("--c8-root", type=Path, required=True)
+    c9_init.add_argument("--c8-report", type=Path, required=True)
+    c9_init.add_argument("--c8-recovery-selection", type=Path, required=True)
+
+    c9_shard = commands.add_parser("c9-run-shard")
+    _add_c9_plan_arguments(c9_shard)
+    c9_shard.add_argument("--output-root", type=Path, required=True)
+    c9_shard.add_argument("--device", default="cpu")
+    c9_shard.add_argument(
+        "--shard-index", type=int, required=True,
+        help="zero-based index of the core-owned round-robin shard",
+    )
+    c9_shard.add_argument(
+        "--shard-count", type=int, required=True,
+        help="total number of core-owned round-robin shards",
+    )
+
+    for name in ("c9-finalize", "c9-validate"):
+        command = commands.add_parser(name)
+        _add_c9_plan_arguments(command)
+        command.add_argument("--output-root", type=Path, required=True)
     return parser
 
 
@@ -197,25 +242,35 @@ def _write_json(value: Any, stream: TextIO) -> None:
 
 
 def _load_pipeline(
-    args: argparse.Namespace, *, c8: bool = False
+    args: argparse.Namespace, *, c8: bool = False, c9: bool = False
 ) -> tuple[Any, Any, Any, Any, Any, Any]:
+    if c8 and c9:
+        raise ValueError("a pipeline cannot be both C8 and C9")
     config = load_stage_c_config(args.config)
     registry_kwargs: dict[str, Any] = {}
-    if args.registry is not None:
+    if getattr(args, "registry", None) is not None:
         registry_kwargs["registry_path"] = args.registry
-    if args.data_root is not None:
+    if getattr(args, "data_root", None) is not None:
         registry_kwargs["data_root"] = args.data_root
-    if c8:
+    if c8 or c9:
         # Planning must never decode or hash the 15 holdout images.  The
         # production backend later reads only a UnitSample already present in
         # the exact calibration plan.
         registry_kwargs["verify_live_assets"] = False
     registry = load_stage_c_registry(config, **registry_kwargs)
-    selection = (
-        None if c8 else load_stage_c_selection(
+    if c8:
+        selection = None
+    elif c9:
+        # Formal C9 always consumes the repository-tracked canonical
+        # selection.  Its parser deliberately has no --selection escape hatch.
+        selection = load_stage_c_selection(
+            config, selection_path=_TRACKED_STAGE_C_SELECTION, required=True,
+            config_path=args.config,
+        )
+    else:
+        selection = load_stage_c_selection(
             config, selection_path=args.selection, required=False
         )
-    )
     run_spec = load_run_spec(args.run_spec)
     plan = build_execution_plan(
         config, registry, run_spec, selection=selection
@@ -239,6 +294,25 @@ def _require_exact_c8_plan(plan: Any, config: Any) -> dict[str, Any]:
     return dict(result)
 
 
+def _require_exact_c9_plan(plan: Any, config: Any) -> dict[str, Any]:
+    try:
+        result = validate_c9_execution_plan(plan, config)
+    except (TypeError, ValueError) as error:
+        raise ArgumentError(
+            f"C9 requires the exact checked-in execution scope: {error}"
+        ) from error
+    if not isinstance(result, Mapping) or result.get("valid") is not True:
+        violations = result.get("violations", ()) if isinstance(
+            result, Mapping
+        ) else ()
+        detail = "; ".join(str(item) for item in violations)
+        raise ArgumentError(
+            "C9 requires the exact checked-in execution scope"
+            + (f": {detail}" if detail else "")
+        )
+    return dict(result)
+
+
 def _require_clean_c8_git(git_state: Mapping[str, Any]) -> None:
     if (
         set(git_state) != {"commit", "dirty"}
@@ -249,6 +323,36 @@ def _require_clean_c8_git(git_state: Mapping[str, Any]) -> None:
         raise StageCBenchmarkBlockedError(
             "formal C8 requires a clean Git worktree",
             reasons=("formal C8 requires a clean Git worktree",),
+        )
+
+
+def _require_clean_c9_git(git_state: Mapping[str, Any]) -> None:
+    if (
+        set(git_state) != {"commit", "dirty"}
+        or not isinstance(git_state.get("commit"), str)
+        or len(git_state["commit"]) != 40
+        or git_state.get("dirty") is not False
+    ):
+        raise StageCBenchmarkBlockedError(
+            "formal C9 requires a clean Git worktree",
+            reasons=("formal C9 requires a clean Git worktree",),
+        )
+
+
+def _validate_c9_shard_arguments(
+    plan: Any, *, shard_index: int, shard_count: int
+) -> None:
+    """Validate only shard coordinates; core owns exact partitioning."""
+
+    unit_count = len(tuple(plan.units))
+    if type(shard_count) is not int or not 1 <= shard_count <= unit_count:
+        raise ArgumentError(
+            "--shard-count must be positive and cannot exceed the exact "
+            "C9 execution-unit count"
+        )
+    if type(shard_index) is not int or not 0 <= shard_index < shard_count:
+        raise ArgumentError(
+            "--shard-index must be zero-based and less than --shard-count"
         )
 
 
@@ -448,7 +552,9 @@ def _default_backend_factory(
         }
 
     return ProductionStageCBackend(
-        sample_loader=load_sample, state_dict_path=args.state_dict,
+        sample_loader=load_sample, state_dict_path=getattr(
+            args, "state_dict", DEFAULT_STATE_DICT
+        ),
         config=config, registry=registry, plan=plan, config_path=args.config,
         code_state=capture_git_state(REPO_ROOT),
     )
@@ -526,6 +632,39 @@ def _configure_c8_execution(device: str) -> None:
         torch.backends.cudnn.allow_tf32 = False
 
 
+def _configure_c9_execution(device: str) -> None:
+    """Establish the frozen deterministic boundary for formal C9."""
+
+    import torch
+
+    parsed = torch.device(device)
+    if parsed.type == "cuda" and os.environ.get(
+        "CUBLAS_WORKSPACE_CONFIG"
+    ) not in {":4096:8", ":16:8"}:
+        raise RuntimeError(
+            "C9 CUDA execution requires CUBLAS_WORKSPACE_CONFIG=:4096:8 "
+            "(or :16:8) before process start"
+        )
+    seed_everything(STAGE_C_SEED)
+    torch.use_deterministic_algorithms(True)
+    torch.backends.cudnn.benchmark = False
+    if parsed.type == "cuda":
+        torch.backends.cuda.matmul.allow_tf32 = False
+        torch.backends.cudnn.allow_tf32 = False
+
+
+def _c9_report_exit_code(report: Mapping[str, Any]) -> int:
+    if report.get("status") == "PASS":
+        return EXIT_SUCCESS
+    if report.get("integrity_valid") is False:
+        return EXIT_INTEGRITY_FAILURE
+    return (
+        EXIT_TERMINAL_FAILURE
+        if report.get("orchestration_complete")
+        else EXIT_INTEGRITY_FAILURE
+    )
+
+
 def main(
     argv: list[str] | None = None,
     *,
@@ -538,11 +677,121 @@ def main(
             return EXIT_SUCCESS if error.code == 0 else EXIT_INPUT_ERROR
 
         is_c8_command = args.command in _C8_COMMANDS
-        config, registry, _selection, _spec, plan, estimate = _load_pipeline(
-            args, c8=is_c8_command
-        )
+        is_c9_command = args.command in _C9_COMMANDS
+        if is_c9_command:
+            pipeline = _load_pipeline(args, c9=True)
+        elif is_c8_command:
+            pipeline = _load_pipeline(args, c8=True)
+        else:
+            pipeline = _load_pipeline(args)
+        config, registry, _selection, _spec, plan, estimate = pipeline
         if is_c8_command:
             _require_exact_c8_plan(plan, config)
+        elif is_c9_command:
+            _require_exact_c9_plan(plan, config)
+
+        if args.command == "c9-init":
+            git_state = capture_git_state(REPO_ROOT)
+            _require_clean_c9_git(git_state)
+            authorization, measured = build_c9_launch_authorization(
+                plan, config, c8_root=args.c8_root,
+                c8_report_path=args.c8_report,
+                recovery_selection_path=args.c8_recovery_selection,
+                output_root=args.output_root,
+                observed_git_state=git_state, repo_root=REPO_ROOT,
+            )
+            root = initialize_c9_output_root(
+                args.output_root, plan, measured, authorization, config=config,
+                observed_git_state=git_state, repo_root=REPO_ROOT,
+            )
+            _write_json(
+                {
+                    "document_type": "stage_c_c9_initialization",
+                    "status": "PASS",
+                    "output_root": str(root),
+                    "execution_plan_sha256": plan.canonical_digest,
+                    "preflight_sha256": measured.canonical_digest,
+                    "authorization_sha256": authorization["canonical_digest"],
+                    "expected_unit_count": len(plan.units),
+                    "holdout_accessed": False,
+                    "selection_performed": False,
+                    "bootstrap_performed": False,
+                    "holm_performed": False,
+                    "decision_performed": False,
+                },
+                sys.stdout,
+            )
+            return EXIT_SUCCESS
+
+        if args.command in {"c9-finalize", "c9-validate"}:
+            git_state = capture_git_state(REPO_ROOT)
+            _require_clean_c9_git(git_state)
+            operation = (
+                finalize_c9_output_root
+                if args.command == "c9-finalize"
+                else validate_c9_output_root
+            )
+            result = operation(
+                args.output_root, plan, observed_git_state=git_state
+            )
+            _write_json(result, sys.stdout)
+            return _c9_report_exit_code(result)
+
+        if args.command == "c9-run-shard":
+            _validate_c9_shard_arguments(
+                plan, shard_index=args.shard_index,
+                shard_count=args.shard_count,
+            )
+            git_state = capture_git_state(REPO_ROOT)
+            _require_clean_c9_git(git_state)
+            measured, _authorization = load_c9_initialized_state(
+                args.output_root, plan, observed_git_state=git_state,
+                repo_root=REPO_ROOT, require_checkpoint=True,
+            )
+            _configure_c9_execution(args.device)
+            factory = backend_factory or _default_backend_factory
+            backend = _make_backend(
+                factory, config=config, registry=registry, plan=plan, args=args
+            )
+            results = run_c9_shard(
+                plan, output_root=args.output_root, backend=backend,
+                estimate=measured, shard_index=args.shard_index,
+                shard_count=args.shard_count, device=args.device,
+                observed_git_state=git_state,
+            )
+            result_documents = [
+                item.to_dict() if callable(getattr(item, "to_dict", None)) else item
+                for item in results
+            ]
+            states = [
+                item.get("state") if isinstance(item, Mapping) else None
+                for item in result_documents
+            ]
+            successful = bool(states) and all(
+                state == "succeeded" for state in states
+            )
+            terminal = bool(states) and all(
+                state in {"succeeded", "failed"} for state in states
+            )
+            payload = {
+                "document_type": "stage_c_c9_shard_result",
+                "status": "PASS" if successful else "BLOCKED",
+                "successful": successful,
+                "orchestration_complete": terminal,
+                "shard_index": args.shard_index,
+                "shard_count": args.shard_count,
+                "unit_count": len(results),
+                "unit_results": result_documents,
+                "holdout_accessed": True,
+                "selection_performed": False,
+                "bootstrap_performed": False,
+                "holm_performed": False,
+                "decision_performed": False,
+            }
+            _write_json(payload, sys.stdout)
+            if successful:
+                return EXIT_SUCCESS
+            return EXIT_TERMINAL_FAILURE if terminal else EXIT_INTEGRITY_FAILURE
 
         if args.command == "c8-init":
             git_state = capture_git_state(REPO_ROOT)
@@ -865,17 +1114,38 @@ def main(
         )
         return EXIT_INTEGRITY_FAILURE
     except StageCBenchmarkBlockedError as error:
+        command = getattr(locals().get("args"), "command", "")
+        if command in {"c9-run-shard", "c9-finalize", "c9-validate"}:
+            # These commands operate on an already initialized formal root.
+            # An incomplete/tampered attempt, online cap breach, or active
+            # claim is post-launch integrity evidence, never a launch gate.
+            _write_json(
+                {
+                    "error": {
+                        "message": str(error),
+                        "type": type(error).__name__,
+                        "reasons": list(
+                            getattr(error, "reasons", ()) or (str(error),)
+                        ),
+                    }
+                },
+                sys.stderr,
+            )
+            return EXIT_INTEGRITY_FAILURE
         report = getattr(error, "report", None)
         if isinstance(report, dict):
             _write_json(report, sys.stdout)
         else:
             reasons = list(getattr(error, "reasons", ()) or (str(error),))
-            command = getattr(locals().get("args"), "command", "")
             _write_json(
                 {
                     "document_type": (
-                        "stage_c_c8_launch_authorization"
-                        if command in _C8_COMMANDS else "stage_c_c7_launch_gate"
+                        "stage_c_c9_launch_authorization"
+                        if command == "c9-init" else (
+                            "stage_c_c8_launch_authorization"
+                            if command in _C8_COMMANDS
+                            else "stage_c_c7_launch_gate"
+                        )
                     ),
                     "status": "BLOCKED",
                     "blocked_reasons": reasons,

@@ -264,3 +264,54 @@ tampered, over-cap, or interrupted root remains evidence; a repair uses another
 fresh root. C8 performs no holdout inference, bootstrap, Holm correction, or
 Go/No-Go decision.
 
+### Stage C9 frozen pilot
+
+C9 uses the checked-in `config/stage_c_c9_run_spec.json` and the tracked C8
+selection. Its exact plan is the registry's 20 images in `selection_order`,
+three Value-line methods at the four frozen band winners, and each of the four
+global class-line methods once per image: 16 units/image and 320 units total.
+The global fidelity pairing context is the frozen primary `(block 0, head 9)`.
+
+Initialize a nonexistent formal-root path only after committing the C9 code.
+Initialization revalidates the complete C8 source evidence, both selection
+copies, commit lineage, exact plan, and the ten frozen budget caps before it
+creates the root or any backend can read a holdout image:
+
+~~~bash
+vitnns-stage-c c9-init \
+  --config config/stage_c.json \
+  --run-spec config/stage_c_c9_run_spec.json \
+  --c8-root /data00/home/yeziqi.831/testcode/vitnns_c8_formal_1fd2539_20260823 \
+  --c8-report /data00/home/yeziqi.831/testcode/vitnns_c8_selection_report_final_d7f2ef3_20260824.json \
+  --c8-recovery-selection /data00/home/yeziqi.831/testcode/vitnns_c8_selection_recovery_d7f2ef3_20260824.json \
+  --output-root /path/to/new-c9-formal-root
+
+CUBLAS_WORKSPACE_CONFIG=:4096:8 CUDA_VISIBLE_DEVICES=0 \
+vitnns-stage-c c9-run-shard \
+  --config config/stage_c.json \
+  --run-spec config/stage_c_c9_run_spec.json \
+  --output-root /path/to/new-c9-formal-root \
+  --shard-index 0 --shard-count 8 --device cuda:0
+
+vitnns-stage-c c9-finalize \
+  --config config/stage_c.json \
+  --run-spec config/stage_c_c9_run_spec.json \
+  --output-root /path/to/new-c9-formal-root
+
+vitnns-stage-c c9-validate \
+  --config config/stage_c.json \
+  --run-spec config/stage_c_c9_run_spec.json \
+  --output-root /path/to/new-c9-formal-root
+~~~
+
+Shard membership is computed internally from plan order. Formal C9 never
+resumes or accepts a caller-selected unit. A terminal failed unit remains in
+the same batch as failure evidence; any incomplete or tampered root is blocked,
+retained, and a repair uses a different, previously nonexistent root path.
+Finalization and read-only validation revalidate all 320
+status/manifest/artifact/provenance chains and
+the complete C8 source evidence, check shared input and perturbation hashes,
+recompute all ten frozen caps from C8+C9 measurements, and report primary
+15/15 validity as evidence only. They do not aggregate statistics, bootstrap,
+apply Holm correction, or emit a scientific decision.
+
