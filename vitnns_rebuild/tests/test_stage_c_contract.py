@@ -927,7 +927,7 @@ def _validate_docs() -> None:
             assert unresolved not in text, f"Unresolved marker {unresolved!r} in {relative}"
     step_text = (REPO_ROOT / "docs/阶段C-step-by-step.md").read_text(encoding="utf-8")
     assert (
-        "当前状态：阶段 A、阶段 B、阶段 C/C0–C9 已完成；下一任务是 C10。"
+        "当前状态：阶段 A、阶段 B、阶段 C/C0–C9 已完成；C10 已完整执行但因冻结 Holm 合同不足而验收 `BLOCKED`，且唯一 primary decision 为 `NO_GO_NOVELTY`；Stage D 未启动。"
         in step_text
     )
     assert "| C0 | PASS |" in step_text
@@ -940,7 +940,7 @@ def _validate_docs() -> None:
     assert step_text.count("| C7 | PASS |") == 1
     assert step_text.count("| C8 | PASS |") == 1
     assert step_text.count("| C9 | PASS |") == 1
-    assert step_text.count("| C10 | NOT_STARTED（NEXT） |") == 1
+    assert step_text.count("| C10 | BLOCKED |") == 1
     assert "### 2026-08-21 16:05 +0800 — C0 completion record" in step_text
     assert "C1 completion record" in step_text
     assert "C2 completion record" in step_text
@@ -989,10 +989,20 @@ def _validate_docs() -> None:
     assert c8_record.count("- next_task: C9") == 1
     assert step_text.count("你现在只执行 ViT-NNS 重建工程“阶段 C”的 C9") == 1
     assert step_text.count("— C9 completion record") == 1
-    c9_record = step_text.split("— C9 completion record", 1)[1]
+    c9_record = step_text.split("— C9 completion record", 1)[1].split(
+        "— C10 completion record", 1
+    )[0]
     assert c9_record.count("- status: PASS") == 1
     assert c9_record.count("- next_task: C10") == 1
     assert step_text.count("你现在只执行 ViT-NNS 重建工程“阶段 C”的 C10") == 1
+    assert step_text.count("— C10 completion record") == 1
+    c10_record = step_text.split("— C10 completion record", 1)[1]
+    assert c10_record.count("- status: BLOCKED") == 1
+    assert c10_record.count("- next_task: STOP_STAGE_D_AND_DRAFT_VERSIONED_FOLLOWUP_PROTOCOL") == 1
+    assert "HOLM_BLOCKED_UNDERSPECIFIED" in c10_record
+    assert "NO_GO_NOVELTY" in c10_record
+    assert "92ad81342ff22e2710df495a9961a3ab8c015a3a" in c10_record
+    assert "vitnns_c10_formal_92ad813_20260824" in c10_record
     for token in (
         "C0_COMMIT_SHA",
         "STAGE_C_CONFIG_SHA256", "STAGE_C_PROTOCOL_SHA256",
