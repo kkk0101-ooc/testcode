@@ -344,3 +344,23 @@ scientific primary decision is still retained, but Stage D remains
 unauthorized. L3/display artifacts and source JPEGs never enter the C10
 numeric chain.
 
+### Stage D fidelity-only roadmap
+
+Stage D execution is not implemented or authorized yet. The initial D0 attempt
+remains `BLOCKED` because it loaded/ran a CPU model and decoded non-reserve
+JPEGs. A separate strict model-free/no-JPEG D0 rerun passed and froze the
+preparation-only scope in `docs/stage_d_scope_decision.md` and
+`config/stage_d_scope_decision.json`; its cross-conversation roadmap is defined
+in `docs/阶段D-step-by-step.md`. The roadmap preserves the sealed
+C10 `NO_GO_NOVELTY`, `BLOCKED`, `HOLM_BLOCKED_UNDERSPECIFIED`,
+`FAIL_SPATIAL`, `downstream_authorized=false`, and `stage_d_started=false`
+history. It uses `PASS_EFFECT` only as evidence bounded to the fixed 15-image,
+non-class-balanced holdout, frozen ViT-B/16, Value-path target, primary `(0,9)`,
+matched patch baseline, and fine-4x4-cell endpoint for a new, narrowly scoped
+fidelity replication; it is not a universal ImageNet claim. The roadmap
+separates protocol freezing, reserve sealing, implementation, smoke/budget
+gates, sharded formal execution, evidence sealing, and final paper-data
+generation into `D0`–`D10`. Do not start the formal Stage D GPU workload before
+D7 issues `AUTHORIZED_STAGE_D_FIDELITY_SCOPE`. D0's
+`APPROVED_TO_PREPARE_STAGE_D` is not execution authorization.
+

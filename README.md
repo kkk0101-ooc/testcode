@@ -20,6 +20,8 @@
 | 文件 | 说明 |
 |---|---|
 | `论文1实现审计与后续计划.md` | 对旧代码、结果缺口和后续阶段的完整审计，是当前工作的总体路线图 |
+| `vitnns_rebuild/docs/阶段D-step-by-step.md` | fidelity-only 阶段 D 的 D0–D10 串行计划、数据访问边界、论文产物映射与跨对话交接模板 |
+| `vitnns_rebuild/docs/stage_d_scope_decision.md` | D0 冻结的 post-C10 fidelity-only 研究范围、历史状态、claim 边界与准备授权；不等于 Stage D 执行授权 |
 | `vitnns_rebuild/docs/阶段A.md` | 阶段 A 的通俗说明。阶段 A 还没有实现 NNS，只建立可信的普通 ViT 基线 |
 | `vitnns_rebuild/docs/阶段B.md` | 阶段 B 的方法边界、运行方式与真实单图验收结果 |
 | `vitnns_rebuild/docs/stage_b_acceptance.md` | 阶段 B 的验收契约与 formal 判定规则 |
@@ -32,12 +34,19 @@
 
 阶段 B 已实现首个可审计的最小方法：固定目标 block 的真实 attention，
 对该 block 的内部 `O=A@V` 标量生成输入归因，并以 conservation、重复性、
-sanity、retention 和预算门禁验证。它不是完整 Q/K/V 归因，也不等于论文主实验；
-下一步是在阶段 C 做严格对齐的多图 pilot。
+sanity、retention 和预算门禁验证。它不是完整 Q/K/V 归因。
 
-当前已有 12 层开发 audit 证据和独立的真实 repeatability/sanity 证据；
-开发产物为 `formal=false`，不作为论文结果。提交后可在 clean commit 上按
-正式配置生成绑定最终代码版本的持久产物。
+Stage C/C0–C10 的执行和证据封存已完成。C10 v1 综合决策为
+`NO_GO_NOVELTY`、acceptance 为 `BLOCKED`、blocker 为
+`HOLM_BLOCKED_UNDERSPECIFIED`，spatial 为 `FAIL_SPATIAL`，且历史
+`downstream_authorized=false`、`stage_d_started=false`。与此同时，固定 15 张、
+非类别均衡 holdout 上，冻结 ViT-B/16、Value-path target、primary `(0,9)`、
+matched patch baseline 和 fine-4×4-cell endpoint 的 fidelity component 为
+`PASS_EFFECT`；这不是普遍 ImageNet 主张。D0 首次尝试因运行了模型/推理并解码
+非-reserve JPEG 而保持 `BLOCKED`；随后独立、严格的 model-free/no-JPEG D0 重试
+通过并冻结 fidelity-only scope，仅签发 `APPROVED_TO_PREPARE_STAGE_D`。后续按
+`vitnns_rebuild/docs/阶段D-step-by-step.md`
+执行 D1–D7 准备，在 D7 签发独立执行授权前不得启动正式 GPU workload。
 
 ## 开始使用
 

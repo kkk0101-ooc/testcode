@@ -1,0 +1,698 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vitnns.local/schemas/stage_d_scope_decision.schema.json",
+  "title": "ViT-NNS Stage D D0 scope decision",
+  "description": "Closed D0 scope contract. Cross-field frozen semantics are enforced by src/vitnns/stage_d_scope.py.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "access_attestation",
+    "attempt_history",
+    "authority",
+    "blocking_reasons",
+    "canonical_digest",
+    "claim_boundaries",
+    "contract",
+    "decision_date",
+    "document_type",
+    "mandatory_disclosures",
+    "milestone",
+    "schema_version",
+    "scientific_basis",
+    "source_c10",
+    "stage",
+    "stage_d_scope",
+    "task_status",
+    "verification_policy"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "stage_d_scope_decision.schema.json"
+    },
+    "access_attestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "attestation_scope",
+        "c10_evidence_modified",
+        "c10_scientific_results_recomputed",
+        "c10_sealed_package_read_for_integrity",
+        "c9_evidence_modified",
+        "c9_evidence_read",
+        "gpu_used",
+        "jpeg_decode_performed",
+        "model_inference_performed",
+        "model_loaded",
+        "model_or_gpu_used",
+        "non_reserve_jpeg_bytes_accessed",
+        "paper_data_or_figures_generated",
+        "reserve_access_state",
+        "reserve_image_bytes_accessed",
+        "reserve_metadata_contents_accessed",
+        "reserve_result_accessed",
+        "stage_d_outcome_available"
+      ],
+      "properties": {
+        "attestation_scope": {"const": "CURRENT_D0_MODEL_FREE_RERUN_ONLY"},
+        "c10_evidence_modified": {"const": false},
+        "c10_scientific_results_recomputed": {"const": false},
+        "c10_sealed_package_read_for_integrity": {"const": true},
+        "c9_evidence_modified": {"const": false},
+        "c9_evidence_read": {"const": false},
+        "gpu_used": {"const": false},
+        "jpeg_decode_performed": {"const": false},
+        "model_inference_performed": {"const": false},
+        "model_loaded": {"const": false},
+        "model_or_gpu_used": {"const": false},
+        "non_reserve_jpeg_bytes_accessed": {"const": false},
+        "paper_data_or_figures_generated": {"const": false},
+        "reserve_access_state": {"const": "METADATA_EXISTENCE_ONLY"},
+        "reserve_image_bytes_accessed": {"const": false},
+        "reserve_metadata_contents_accessed": {"const": false},
+        "reserve_result_accessed": {"const": false},
+        "stage_d_outcome_available": {"const": false}
+      }
+    },
+    "attempt_history": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["current_attempt_id", "records"],
+      "properties": {
+        "current_attempt_id": {"const": "D0_MODEL_FREE_RERUN_20260825"},
+        "records": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "access_facts",
+              "attempt_id",
+              "authoritative_for_current_authorization",
+              "blocking_reasons",
+              "status"
+            ],
+            "properties": {
+              "access_facts": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "gpu_used",
+                  "jpeg_decode_performed",
+                  "model_inference_performed",
+                  "model_loaded",
+                  "model_or_gpu_used",
+                  "non_reserve_jpeg_bytes_accessed",
+                  "reserve_image_bytes_accessed",
+                  "reserve_metadata_contents_accessed",
+                  "reserve_result_accessed"
+                ],
+                "properties": {
+                  "gpu_used": {"type": "boolean"},
+                  "jpeg_decode_performed": {"type": "boolean"},
+                  "model_inference_performed": {"type": "boolean"},
+                  "model_loaded": {"type": "boolean"},
+                  "model_or_gpu_used": {"type": "boolean"},
+                  "non_reserve_jpeg_bytes_accessed": {"type": "boolean"},
+                  "reserve_image_bytes_accessed": {"type": "boolean"},
+                  "reserve_metadata_contents_accessed": {"type": "boolean"},
+                  "reserve_result_accessed": {"type": "boolean"}
+                }
+              },
+              "attempt_id": {
+                "enum": [
+                  "D0_INITIAL_ATTEMPT_20260825",
+                  "D0_MODEL_FREE_RERUN_20260825"
+                ]
+              },
+              "authoritative_for_current_authorization": {"type": "boolean"},
+              "blocking_reasons": {
+                "type": "array",
+                "minItems": 0,
+                "maxItems": 2,
+                "uniqueItems": true,
+                "items": {
+                  "enum": [
+                    "D0_NO_MODEL_OR_INFERENCE_GATE_VIOLATED",
+                    "D0_NO_JPEG_DECODE_GATE_VIOLATED"
+                  ]
+                }
+              },
+              "status": {"enum": ["BLOCKED", "PASS"]}
+            }
+          }
+        }
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "analysis_authorization",
+        "authorized_next_task",
+        "does_not_override_c10",
+        "execution_authorization",
+        "preparation_authorization",
+        "preparation_scope"
+      ],
+      "properties": {
+        "analysis_authorization": {"const": "NOT_EVALUATED"},
+        "authorized_next_task": {"const": "D1"},
+        "does_not_override_c10": {"const": true},
+        "execution_authorization": {"const": "NOT_ISSUED"},
+        "preparation_authorization": {"const": "APPROVED_TO_PREPARE_STAGE_D"},
+        "preparation_scope": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "D1_METADATA_ONLY_REGISTRY_PREPARATION",
+              "D2_PROTOCOL_AND_STATISTICS_FREEZE",
+              "D3_TO_D6_IMPLEMENTATION_WITH_SYNTHETIC_OR_METADATA_INPUTS",
+              "D7_NON_RESERVE_SMOKE_BUDGET_AND_EXECUTION_AUTHORIZATION_GATE"
+            ]
+          }
+        }
+      }
+    },
+    "blocking_reasons": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 0,
+      "uniqueItems": true,
+      "items": {"type": "string"}
+    },
+    "canonical_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "claim_boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allowed_claim_ids",
+        "denied_claim_ids",
+        "emitted_claim_ids",
+        "future_conditional_claim_ids"
+      ],
+      "properties": {
+        "allowed_claim_ids": {
+          "type": "array",
+          "minItems": 15,
+          "maxItems": 15,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "C10_PRIMARY_DECISION_NO_GO_NOVELTY",
+              "C10_ACCEPTANCE_BLOCKED",
+              "C10_HOLM_BLOCKER_UNDERSPECIFIED",
+              "C10_SPATIAL_OVERALL_FAIL",
+              "C10_SPATIAL_COMPONENTS_MIXED",
+              "C10_DOWNSTREAM_NOT_AUTHORIZED",
+              "C10_PRIMARY_FIDELITY_COMPONENT_VALID",
+              "C10_PRIMARY_FIDELITY_COMPONENT_EFFECT_PASS",
+              "STAGE_D_IS_PROSPECTIVE_REPLICATION_EXTENSION",
+              "NO_INTERMEDIATE_C_PLUS_REQUIRED",
+              "STAGE_D_PRIMARY_SCOPE_DEFINED",
+              "FINE_ENDPOINT_IS_4X4_CELL",
+              "STAGE_D_SPATIAL_NOT_IN_SCOPE",
+              "STAGE_D_HOLM_NOT_APPLICABLE_CONDITIONALLY",
+              "APPROVED_TO_PREPARE_STAGE_D"
+            ]
+          }
+        },
+        "denied_claim_ids": {
+          "type": "array",
+          "minItems": 32,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "C10_GO",
+              "C10_ACCEPTANCE_PASS",
+              "C10_DOWNSTREAM_AUTHORIZED",
+              "C10_STAGE_D_STARTED",
+              "C10_HOLM_BLOCKER_RESOLVED_OR_CANCELLED",
+              "C10_REANALYZED_AS_FIDELITY_ONLY",
+              "STAGE_D_EXECUTION_AUTHORIZED_AT_D0",
+              "STAGE_D_ANALYSIS_AUTHORIZED_AT_D0",
+              "STAGE_D_EFFECT_RESULT_AVAILABLE_AT_D0",
+              "STAGE_D_VALIDITY_RESULT_AVAILABLE_AT_D0",
+              "STAGE_D_COST_RESULT_AVAILABLE_AT_D0",
+              "RESERVE_ABSOLUTELY_NEVER_VIEWED",
+              "SPATIAL_ROBUSTNESS_PROVEN",
+              "TRANSLATION_ROBUSTNESS_PROVEN",
+              "CROP_SCALE_ROBUSTNESS_PROVEN",
+              "ALL_SPATIAL_ROBUSTNESS_FAILED",
+              "NATIVE_SINGLE_PIXEL_ATTRIBUTION",
+              "COMPLETE_QKV_ATTRIBUTION",
+              "COMPLETE_ATTENTION_EXPLANATION",
+              "CLASS_LOGIT_EXPLANATION",
+              "STATISTICAL_EQUIVALENCE",
+              "UNIVERSAL_IMAGENET_SUPERIORITY",
+              "C10_STAGE_D_POOLED_N515",
+              "MISCLASSIFIED_SAMPLES_EXCLUDED",
+              "COMPLETE_CASE_EFFECT_ANALYSIS",
+              "FAILED_SAMPLES_IMPUTED_OR_REPLACED",
+              "POSTHOC_PRIMARY_HEAD_SELECTION",
+              "SECONDARY_INFERENCE_WITHOUT_MULTIPLICITY_CONTRACT",
+              "DISPLAY_ARTIFACT_USED_AS_QUANTITATIVE_INPUT",
+              "C10_PASS_COST_AUTHORIZES_STAGE_D_COST",
+              "STAGE_D_SPATIAL_RESULT",
+              "PATCH_SCALE_OR_OTHER_METHOD_AS_STAGE_D_PRIMARY"
+            ]
+          }
+        },
+        "emitted_claim_ids": {
+          "type": "array",
+          "minItems": 15,
+          "maxItems": 15,
+          "uniqueItems": true,
+          "items": {"type": "string"}
+        },
+        "future_conditional_claim_ids": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "STAGE_D_FIDELITY_REPLICATION_PASS",
+              "STAGE_D_FIDELITY_REPLICATION_FAIL",
+              "STAGE_D_FIDELITY_INCONCLUSIVE",
+              "STAGE_D_VALIDITY_FAIL",
+              "STAGE_D_COST_FAIL"
+            ]
+          }
+        }
+      }
+    },
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "human_document_path",
+        "machine_record_is_authoritative",
+        "machine_record_path",
+        "schema_path"
+      ],
+      "properties": {
+        "human_document_path": {"const": "docs/stage_d_scope_decision.md"},
+        "machine_record_is_authoritative": {"const": true},
+        "machine_record_path": {"const": "config/stage_d_scope_decision.json"},
+        "schema_path": {"const": "config/stage_d_scope_decision.schema.json"}
+      }
+    },
+    "decision_date": {"const": "2026-08-25"},
+    "document_type": {"const": "stage_d_scope_decision"},
+    "mandatory_disclosures": {
+      "type": "array",
+      "minItems": 14,
+      "maxItems": 14,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fact", "id", "required_locations"],
+        "properties": {
+          "fact": {"type": "string"},
+          "id": {
+            "enum": [
+              "DISCLOSE_POST_C10_SCOPE_CHANGE",
+              "DISCLOSE_C10_COMPOSITE_STATUS",
+              "DISCLOSE_C10_FIDELITY_BOUNDARY",
+              "DISCLOSE_C10_SPATIAL_MIXED_RESULT",
+              "DISCLOSE_NO_GENERAL_SPATIAL_CLAIM",
+              "DISCLOSE_4X4_NOT_NATIVE_PIXEL",
+              "DISCLOSE_VALUE_PATH_TARGET_LIMIT",
+              "DISCLOSE_COHORT_SEPARATION",
+              "DISCLOSE_RESERVE_LEDGER_SCOPE",
+              "DISCLOSE_STAGE_D_NO_SPATIAL_ENDPOINT",
+              "DISCLOSE_HOLM_SEPARATION",
+              "DISCLOSE_MISCLASSIFICATION_POLICY",
+              "DISCLOSE_FAILURE_POLICY",
+              "DISCLOSE_COST_EVIDENCE_BOUNDARY"
+            ]
+          },
+          "required_locations": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"type": "string"}
+          }
+        }
+      }
+    },
+    "milestone": {"const": "D0"},
+    "schema_version": {"const": 1},
+    "scientific_basis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "basis_use",
+        "c10_component_status",
+        "c10_effect",
+        "c10_primary",
+        "holdout_boundary",
+        "intermediate_c_plus_required",
+        "old_cost_evidence_role"
+      ],
+      "properties": {
+        "basis_use": {"const": "PROSPECTIVE_FIDELITY_REPLICATION_EXTENSION_ONLY"},
+        "c10_component_status": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["effect", "validity"],
+          "properties": {
+            "effect": {"const": "PASS_EFFECT"},
+            "validity": {"const": "PASS_VALIDITY"}
+          }
+        },
+        "c10_effect": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "bootstrap_ci_95",
+            "delta_fid_definition",
+            "median_delta_fid",
+            "positive_count",
+            "sample_count"
+          ],
+          "properties": {
+            "bootstrap_ci_95": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {"type": "number"}
+            },
+            "delta_fid_definition": {"type": "string"},
+            "median_delta_fid": {"type": "number"},
+            "positive_count": {"const": 15},
+            "sample_count": {"const": 15}
+          }
+        },
+        "c10_primary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "block_index",
+            "endpoint",
+            "head_index",
+            "matched_baseline_id",
+            "nns_method_id",
+            "target_id"
+          ],
+          "properties": {
+            "block_index": {"const": 0},
+            "endpoint": {"const": "fine_4x4_cell_delta_fid"},
+            "head_index": {"const": 9},
+            "matched_baseline_id": {"const": "matched_fixed_clean_attention_patch_token_contribution"},
+            "nns_method_id": {"const": "conditional_fixed_clean_attention_head_direction_value_path_ig"},
+            "target_id": {"const": "fixed_clean_attention_cls_head_direction"}
+          }
+        },
+        "holdout_boundary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "confirmatory_role",
+            "fixed",
+            "image_count",
+            "sampling_description",
+            "supports_universal_imagenet_claim"
+          ],
+          "properties": {
+            "confirmatory_role": {"const": "holdout"},
+            "fixed": {"const": true},
+            "image_count": {"const": 15},
+            "sampling_description": {"const": "historical_filename_spaced_non_class_balanced"},
+            "supports_universal_imagenet_claim": {"const": false}
+          }
+        },
+        "intermediate_c_plus_required": {"const": false},
+        "old_cost_evidence_role": {"const": "HISTORICAL_FEASIBILITY_ONLY_REQUIRES_NEW_D7_BUDGET"}
+      }
+    },
+    "source_c10": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "aggregation_producer",
+        "completion_commit",
+        "files",
+        "formal_root",
+        "historical_status",
+        "whole_root_inventory"
+      ],
+      "properties": {
+        "aggregation_producer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["archive_ref", "commit", "source_tree", "tree"],
+          "properties": {
+            "archive_ref": {"const": "refs/archive/c10-aggregation-producer"},
+            "commit": {"const": "92ad81342ff22e2710df495a9961a3ab8c015a3a"},
+            "source_tree": {"const": "6874e71aec0e592e110a540a1638ea2cfc697c8d"},
+            "tree": {"const": "3551096e358391fe04952e8ced19ea60884fb32f"}
+          }
+        },
+        "completion_commit": {"const": "69e1fa887862e00da4441842c6de149fe2424225"},
+        "files": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "decision.json",
+            "holm.json",
+            "manifest.json",
+            "provenance.json",
+            "stage_c_report.json",
+            "status.json"
+          ],
+          "properties": {
+            "decision.json": {"type": "object", "additionalProperties": false, "required": ["canonical_digest", "sha256"], "properties": {"canonical_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"}, "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"}}},
+            "holm.json": {"type": "object", "additionalProperties": false, "required": ["canonical_digest", "sha256"], "properties": {"canonical_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"}, "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"}}},
+            "manifest.json": {"type": "object", "additionalProperties": false, "required": ["canonical_digest", "sha256"], "properties": {"canonical_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"}, "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"}}},
+            "provenance.json": {"type": "object", "additionalProperties": false, "required": ["canonical_digest", "sha256"], "properties": {"canonical_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"}, "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"}}},
+            "stage_c_report.json": {"type": "object", "additionalProperties": false, "required": ["canonical_digest", "sha256"], "properties": {"canonical_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"}, "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"}}},
+            "status.json": {"type": "object", "additionalProperties": false, "required": ["canonical_digest", "sha256"], "properties": {"canonical_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"}, "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"}}}
+          }
+        },
+        "formal_root": {"const": "/data00/home/yeziqi.831/testcode/vitnns_c10_formal_92ad813_20260824"},
+        "historical_status": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cost_status",
+            "downstream_authorized",
+            "effect_status",
+            "equivalence_test_performed",
+            "holm_performed",
+            "primary_decision",
+            "spatial_status",
+            "stage_c_acceptance",
+            "stage_d_started",
+            "validity_status",
+            "workflow_blocker"
+          ],
+          "properties": {
+            "cost_status": {"const": "PASS_COST"},
+            "downstream_authorized": {"const": false},
+            "effect_status": {"const": "PASS_EFFECT"},
+            "equivalence_test_performed": {"const": false},
+            "holm_performed": {"const": false},
+            "primary_decision": {"const": "NO_GO_NOVELTY"},
+            "spatial_status": {"const": "FAIL_SPATIAL"},
+            "stage_c_acceptance": {"const": "BLOCKED"},
+            "stage_d_started": {"const": false},
+            "validity_status": {"const": "PASS_VALIDITY"},
+            "workflow_blocker": {"const": "HOLM_BLOCKED_UNDERSPECIFIED"}
+          }
+        },
+        "whole_root_inventory": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["canonical_digest", "file_count", "total_bytes"],
+          "properties": {
+            "canonical_digest": {"const": "382992d94f071ce46164b92ab9eed6a60743a30fdab0bf73253bab95156986a4"},
+            "file_count": {"const": 12},
+            "total_bytes": {"const": 524796892}
+          }
+        }
+      }
+    },
+    "stage": {"const": "D"},
+    "stage_d_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "c10_redecision",
+        "cohort_pooling_allowed",
+        "endpoint",
+        "fidelity_role",
+        "holm_status",
+        "methods",
+        "model",
+        "primary",
+        "preprocessing",
+        "prospective_cohort",
+        "result_status",
+        "run_stability",
+        "scientific_question",
+        "secondary_inference_enabled",
+        "spatial_in_primary_decision",
+        "spatial_role",
+        "statistical_unit",
+        "study_kind",
+        "target_id"
+      ],
+      "properties": {
+        "c10_redecision": {"const": false},
+        "cohort_pooling_allowed": {"const": false},
+        "endpoint": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["cell_definition", "id", "native_single_pixel_claim_allowed"],
+          "properties": {
+            "cell_definition": {"const": "nonoverlapping_4x4_cells_within_each_16x16_patch"},
+            "id": {"const": "fine_4x4_cell_delta_fid"},
+            "native_single_pixel_claim_allowed": {"const": false}
+          }
+        },
+        "fidelity_role": {"const": "PRIMARY_HARD_SCIENTIFIC_GATE"},
+        "holm_status": {"const": "NOT_APPLICABLE_NO_SECONDARY_INFERENCE"},
+        "methods": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "conditional_fixed_clean_attention_head_direction_value_path_ig",
+              "matched_fixed_clean_attention_patch_token_contribution"
+            ]
+          }
+        },
+        "model": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["model_config_path", "model_config_sha256", "model_name", "state_dict_sha256"],
+          "properties": {
+            "model_config_path": {"const": "config/model.json"},
+            "model_config_sha256": {"const": "cc8d386736b3f0ae299e75184e86772b21b8139cab0a7c0eab17a961d1ad55a3"},
+            "model_name": {"const": "vit_base_patch16_224.augreg2_in21k_ft_in1k"},
+            "state_dict_sha256": {"const": "2e718037429f18ec77aa629471beb2e99993d7383375188bab777aba04d5e4d0"}
+          }
+        },
+        "primary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["block_index", "head_index"],
+          "properties": {
+            "block_index": {"const": 0},
+            "head_index": {"const": 9}
+          }
+        },
+        "preprocessing": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "color_mode",
+            "crop",
+            "interpolation",
+            "normalization_mean",
+            "normalization_std",
+            "resize"
+          ],
+          "properties": {
+            "color_mode": {"const": "RGB"},
+            "crop": {"const": "center_crop_224x224"},
+            "interpolation": {"const": "bicubic"},
+            "normalization_mean": {"const": [0.5, 0.5, 0.5]},
+            "normalization_std": {"const": [0.5, 0.5, 0.5]},
+            "resize": {"const": "shorter_side_248"}
+          }
+        },
+        "prospective_cohort": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "c10_cohort_must_be_disjoint",
+            "planned_image_count",
+            "registry_freeze_task",
+            "registry_status",
+            "result_access_before_freeze_allowed"
+          ],
+          "properties": {
+            "c10_cohort_must_be_disjoint": {"const": true},
+            "planned_image_count": {"const": 500},
+            "registry_freeze_task": {"const": "D1"},
+            "registry_status": {"const": "NOT_FORMALIZED_D0"},
+            "result_access_before_freeze_allowed": {"const": false}
+          }
+        },
+        "result_status": {"const": "NOT_EVALUATED"},
+        "run_stability": {"const": false},
+        "scientific_question": {"type": "string"},
+        "secondary_inference_enabled": {"const": false},
+        "spatial_in_primary_decision": {"const": false},
+        "spatial_role": {"const": "MANDATORY_DISCLOSURE_ONLY_NO_NEW_ENDPOINT"},
+        "statistical_unit": {"const": "image"},
+        "study_kind": {"const": "PROSPECTIVE_REPLICATION_EXTENSION"},
+        "target_id": {"const": "fixed_clean_attention_cls_head_direction"}
+      }
+    },
+    "task_status": {"const": "PASS"},
+    "verification_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allowlist_closed",
+        "allowed_pytest_node_ids",
+        "cuda_visible_devices",
+        "full_regression_suite_allowed",
+        "model_and_image_stack_imports_forbidden",
+        "profile_id",
+        "pytest_plugin_autoload",
+        "runner_command_template",
+        "safety_guard_path",
+        "sealed_c10_validation_mode",
+        "source_scientific_recomputation_allowed"
+      ],
+      "properties": {
+        "allowlist_closed": {"const": true},
+        "allowed_pytest_node_ids": {
+          "const": [
+            "tests/test_stage_d_scope_contract.py::test_scope_schema_is_closed_draft_2020_12",
+            "tests/test_stage_d_scope_contract.py::test_checked_in_scope_decision_matches_schema_and_semantics",
+            "tests/test_stage_d_scope_contract.py::test_scope_import_does_not_load_model_or_torch_stack",
+            "tests/test_stage_d_scope_contract.py::test_scope_document_and_machine_record_agree",
+            "tests/test_stage_d_scope_contract.py::test_scope_markdown_projection_tamper_is_rejected",
+            "tests/test_stage_d_scope_contract.py::test_scope_rejects_schema_and_authorization_drift",
+            "tests/test_stage_d_scope_contract.py::test_scope_rejects_attempt_history_or_allowlist_tamper",
+            "tests/test_stage_d_scope_contract.py::test_scope_rejects_unsigned_tamper",
+            "tests/test_stage_d_scope_contract.py::test_scope_rejects_resigned_semantic_tamper",
+            "tests/test_stage_d_scope_contract.py::test_strict_loader_rejects_duplicate_and_nonfinite_json",
+            "tests/test_stage_d_scope_contract.py::test_claim_sets_and_access_attestation_are_exact",
+            "tests/test_stage_d_scope_contract.py::test_d0_static_files_keep_execution_and_reserve_closed"
+          ]
+        },
+        "cuda_visible_devices": {"const": ""},
+        "full_regression_suite_allowed": {"const": false},
+        "model_and_image_stack_imports_forbidden": {
+          "const": ["PIL", "cv2", "timm", "torch", "torchvision", "vitnns.modeling"]
+        },
+        "profile_id": {"const": "D0_MODEL_FREE_NO_JPEG_V1"},
+        "pytest_plugin_autoload": {"const": false},
+        "runner_command_template": {"const": "VITNNS_D0_STRICT=1 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 CUDA_VISIBLE_DEVICES='' PYTHONPATH=tests/d0_guard:src /data00/home/yeziqi.831/miniforge3/envs/vitnns/bin/python -m pytest -ra <allowed_pytest_node_ids>"},
+        "safety_guard_path": {"const": "tests/d0_guard/sitecustomize.py"},
+        "sealed_c10_validation_mode": {"const": "BYTE_HASH_CANONICAL_MANIFEST_STATUS_INVENTORY_AND_GIT_REF_ONLY"},
+        "source_scientific_recomputation_allowed": {"const": false}
+      }
+    }
+  }
+}
