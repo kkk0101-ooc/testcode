@@ -2,8 +2,8 @@
 
 > 创建日期：2026-08-25。
 > 文档性质：阶段 D 的路线图、任务状态表、数据访问边界和跨对话追加式交接日志。
-> 当前状态：阶段 A、B 已完成；Stage C/C0–C10 的执行和证据封存已完成，但 Stage C acceptance 为 `BLOCKED`，C10 v1 primary decision 为 `NO_GO_NOVELTY`。D0 首次尝试因模型/推理与非-reserve JPEG decode 保持 `BLOCKED`；独立 model-free/no-JPEG 重试已 `PASS`，只签发 `APPROVED_TO_PREPARE_STAGE_D`。Stage D 正式执行仍未授权、未启动。
-> 当前 next task：`D1`。
+> 当前状态：阶段 A、B 已完成；Stage C/C0–C10 的执行和证据封存已完成，但 Stage C acceptance 为 `BLOCKED`，C10 v1 primary decision 为 `NO_GO_NOVELTY`。D0 首次尝试因模型/推理与非-reserve JPEG decode 保持 `BLOCKED`；独立 model-free/no-JPEG 重试已 `PASS`，只签发 `APPROVED_TO_PREPARE_STAGE_D`。D1 metadata-only registry formalization 已 `PASS`。Stage D 正式执行仍未授权、未启动。
+> 当前 next task：`D2`。
 > 使用规则：每个新对话必须先完整阅读本文、`docs/阶段C-step-by-step.md` 的 C10 completion record 和上一条 Stage D completion record；一次只执行一个 `D_i` 或一个明确编号的 `D8-Sxx` shard。未更新本文、未追加 completion record、未给出下一任务完整提示词的任务，不算完成。
 
 ## 1. 为什么需要这份文档
@@ -201,7 +201,7 @@ D10 建议固定生成以下 machine-readable paper data 和数值图；只有 v
 | 任务 | 状态 | 唯一目标 | 允许的数据访问 | 允许产生的结论 | 前置 |
 |---|---|---|---|---|---|
 | D0 | PASS（首次尝试 BLOCKED；严格重试 PASS） | 冻结 post-C10 fidelity-only scope | sealed C10；reserve metadata existence only | `APPROVED_TO_PREPARE_STAGE_D` | C10 evidence sealed |
-| D1 | NOT_STARTED | 正式化 500 图 registry 与 audit overlay | reserve/ledger/官方标签 metadata；禁止图像字节 | 无效果结论 | D0 PASS |
+| D1 | PASS | 正式化 500 图 registry 与 audit overlay | reserve/ledger/官方标签 metadata；禁止图像字节 | 无效果结论 | D0 PASS |
 | D2 | NOT_STARTED | 冻结 protocol/config/schema/statistics/exact workload | D0/D1 与 Stage C 合同；禁止图像和 outcome | 无效果结论 | D1 PASS |
 | D3 | NOT_STARTED | 实现 strict loaders、typed plan、preflight/authorization | synthetic/metadata only | 无效果结论 | D2 PASS |
 | D4 | NOT_STARTED | 实现 image-group runner、shards、artifact/provenance | synthetic/mock only | 无效果结论 | D3 PASS |
@@ -790,6 +790,65 @@ D1 验收：
 D1 只允许读取 candidate reserve、access log、prior-access ledger、source inventory/spec/archive identity、selection metadata 和 Stage C 20-row registry 的 metadata 内容。先绑定 metadata bytes 再严格解析；不得打开 metadata 引用的 live JPEG。生成 closed、tracked、内容寻址的 500-row registry package与不可变 pre-authorization attestation；验证连续顺序、ID/path/candidate-recorded hash 唯一性、官方 label metadata、与 Stage C 20 图互斥性，并用冻结 namespace 确定性选恰好 5 个 audit IDs。类别标签允许重复。
 
 不得声称 reserve 绝对从未被查看，只能报告封闭 prior-access ledger 可证明的范围。不得修改 candidate access log，不得读取 outcome，不得运行模型/GPU，不得开始 D2 或实现运行链。完成后更新本文 D1 状态，追加 D1 completion record 和完整 D2 提示词；原则上一任务一提交，最终 clean。
+```
+
+### 2026-08-25 13:49 +0800 — D1 completion record
+
+- status: PASS
+- objective_completed: 在严格 metadata-only 边界内，将既有 500-row candidate reserve 正式化为 tracked、closed-schema、内容寻址、可确定性重建的 `STAGE_D_FIDELITY_V1` registry package，并从冻结 registry 顺序使用 Stage D 专属 namespace 预注册恰好 5 个 audit overlay IDs。
+- authority_and_scope: 启动锚点为 `refs/archive/stage-d-d0-completion`，唯一解析到 `4c76d468e1368858c52ff8ef73e640463e15ac49`；D0 machine canonical digest 为 `7508dcb7c063eaeecfc41f2f63f18e70dd5d660bec06c50e7b4b893d9a48ac5f`。D1 只冻结 cohort metadata 和 audit overlay；没有开始 D2、没有冻结统计/运行合同、没有实现 runner、没有签发 execution authorization。
+- git_sha_before: `4c76d468e1368858c52ff8ef73e640463e15ac49`
+- git_sha_producer: none（D1 不生产 runtime/scientific evidence；registry package 由本 completion commit 跟踪）
+- git_sha_postprocessor: none
+- git_sha_completion: 由 `refs/archive/stage-d-d1-completion` 唯一解析；本记录与 D1 package/code/tests 同一提交，避免在提交内容中写自引用 SHA。
+- tree_clean_at_boundaries: 新分支 `stage-d-d1-pass` 从 D0 completion ref 的 clean tree 创建；先将先前 fail-closed 诊断提交 `b45ce8858e831cca656d25cd1ce392ef66e6a64f` 保存在 `stage-d-d1-blocked-b45ce`。D1 提交后及最终复验后的 clean 状态在最终回复据实报告。
+- upstream_commits_and_refs: D0 completion/ref `4c76d468e1368858c52ff8ef73e640463e15ac49` / `refs/archive/stage-d-d0-completion`；C10 completion `69e1fa887862e00da4441842c6de149fe2424225`；C10 producer/ref `92ad81342ff22e2710df495a9961a3ab8c015a3a` / `refs/archive/c10-aggregation-producer`。
+- files_added_or_changed: `.gitignore`（仅精确 allowlist 新 package 的 6 个 JSON）；`src/vitnns/stage_d_registry.py`；`tests/d1_guard/sitecustomize.py`；`tests/test_stage_d_registry_contract.py`；`manifests/stage_d_fidelity_v1/{stage_d_registry_package.schema.json,source_binding.json,registry.json,pre_authorization_access_attestation.json,registry_metadata.json,manifest.json}`；本文。未跟踪 candidate source、JPEG、模型、runtime artifact 或 outcome。
+- frozen_inputs_and_sha256: D0 machine/schema/Markdown file SHA-256 为 `217ef1fc00c3dbe971b35ff8d0793fb1eb928a7316db4ac0a5bcd34edfb6c06d` / `425f7fd16a1d004817dd2888f95d9b5b1818f7be6063bef522f05d438e6b5dfb` / `913aaf81f9c56c1bb71d0202384fa29e392af966ef49bd8e27e0ff4df1c8186a`；candidate reserve file/canonical/order digest 为 `1432183a0ce9c701e60cc28acc3596fe16bb253dfc013126bf3168b5af05099a` / `2e66fa2426fb7c42caefe7907a6ef1ec9a42adb1788528d59af9b5354eb0a99f` / `b187ff5cbacc1b595f06d12e309602b09965e01e7ee1461fd8a694354d4b8f50`；candidate access log file/canonical 为 `75a319820db12102dde22308ab2e12196e0e1ca6fcdd870e2943d22a0643a621` / `41478eee77f708a1158142d700fdfd65503b120aa672400af01fe14f9eb317fa`。其余 9 个 metadata source 的 file/canonical hashes 和逐项 proof scope 固定在 `source_binding.json`。
+- config_plan_and_canonical_digests: `registry.json` file/canonical `9aace3abf02a2c07d992d88b765c53cfeffa7f83a6ed72ecefb8cecf9eb79b6b` / `514ce4dd2e1fedc1744893e5543651ea42c053458b233ff11a45f700bb4bc028`；schema `2cbeb0536f680103ea5fb3d43e71532832c10fa5b432bed58cda2feaadf9f4fd` / `b5316e2571dac3d2ef82ccc39fbfc9044819d56d0d5bc9c5982972bcb79fba29`；manifest `f38bf9773ad172100c22f50ec3b4fe5251664e5c9f5c7ee78ae46532aec372fe` / `cf3e21b88488dcb928f9a98557c2ee9896a7c5210ddb8dda64427c1792fa299d`；attestation `610794455a1d75ef0243c5252c1e2bc14f6a4ea36f6c2ff2acf380dfd2c27644` / `9d89a6596de5027f72aeb76aca4aa600f03b6bb4cf45c8259840fd01e85638fe`；source binding `f1109304a23674bdadc62306bc927e7ac10b397f68754fae13967971b4f94cac` / `2eafef71035b95035a92c5ccfba7d536c3b924df4081def86fb0a1fa06dba2b8`；registry metadata `0633f0e78501686be0242332db1bc08d4cf069b360a3b2e51d5d85f03ab98c7f` / `e4c35f5935c119c46935cabd69ffbc6f9f168665d6643d4c253fc5ff0e3c6f52`。D2 protocol/config/statistics/run spec 未冻结。
+- data_access_statement: 每个允许的 candidate/Stage C metadata 文件先经单一 no-follow、single-link regular-file descriptor 取得 size、mtime_ns、bytes 和 SHA-256，再从同一已绑定 bytes 严格解析；共解析 10 个 JSON 和 1 个 CSV metadata source。没有读取、stat/hash、decode 或 preprocess 任一 reserve JPEG；没有访问 Stage D prediction/logit/map/AUC/`delta_fid`/summary/outcome；没有加载模型、运行 CPU inference 或 GPU/CUDA；没有修改 candidate access log 或 C9/C10 evidence。`reserve_metadata_contents_accessed=true`、`reserve_image_bytes_accessed=false`、`reserve_result_accessed=false`、`model_or_gpu_used=false`、`execution_authorization=NOT_ISSUED`。
+- artifacts_and_absolute_paths: `/data00/home/yeziqi.831/testcode/vitnns_rebuild/manifests/stage_d_fidelity_v1/`；无 runtime/formal execution/paper artifact。
+- status_manifest_inventory_hashes: package 精确 6 个 tracked JSON；外层 manifest 绑定 schema、source binding、registry、attestation 和 registry metadata 的 bytes/SHA-256/canonical digest，manifest 自摘要另行验证，避免循环 hash。sealed C10 仍为 12 files、`524796892` bytes、whole-root digest `382992d94f071ce46164b92ab9eed6a60743a30fdab0bf73253bab95156986a4`，`scientific_results_recomputed=false`。
+- expected_vs_observed_counts: registry `500/500`；selection order `0..499` 连续且唯一；unique sample IDs/paths/candidate-recorded image hashes `500/500/500`；official label mapping frame `1000/1000` classes、50 rows/class，registry unique WNIDs `399`（类别重复允许）；prior-access ledger coverage `50000/50000`，reserve marked `UNSEEN=500/500`、reserve access records `0`；Stage C disjoint overlap by ID/path/hash `0/0/0`；audit overlay `5/5`、statistical n increment `0`。
+- tests_reused_from_prior_commit: D0 completion record 的最终 `D0_MODEL_FREE_NO_JPEG_V1` 结果仅作既有基线；C10 completion 的既有 regression 和 scientific evidence 不伪称为本任务重跑。
+- tests_executed_this_task: 启动时重新运行 D0 exact allowlist：`24 passed in 0.22s`；D0 ref-tree machine/schema/Markdown file hash、canonical digest、Draft 2020-12 validation和 structured projection 现场通过；sealed C10 byte-hash/canonical/manifest/status/inventory/Git-ref verifier 通过。D1 首轮（排除尚未更新的路线静态断言）为 `8 passed, 1 failed, 1 deselected in 18.83s`，唯一失败是 symlink 测试夹具未创建父目录；修复夹具后为 `9 passed, 1 deselected in 19.08s`。首次完整 D1 suite 为 `9 passed, 1 failed in 18.81s`，唯一失败是路线测试期待的中文短语比 completion record 的等价措辞更窄；将断言改为同时检查 record 的 `5/5` 和 D2 提示词的“恰好 5 个”。移除非内容寻址的绝对 mtime 值并重新生成 package 后，完整 D1 suite 为 `10 passed in 18.87s`，最终提交前重跑为 `10 passed in 18.63s`；D0 保留 allowlist 为 `24 passed in 0.22s`。`py_compile`、Draft 2020-12 schema validation、exact deterministic rebuild 和 `git diff --check` 均通过；post-commit 验证在最终回复据实报告。
+- acceptance_results: candidate 70+500 顺序从 49,273 个 ledger-eligible canonical representatives 按声明 hash 算法完整重建；500 行逐行与 50,000-row eligible metadata 的 identity/label/image-hash 记录一致；candidate access log `forbidden_access_detected=false` 且保持只读；closed schema、self-digests、outer manifest、source bindings、三维互斥和 audit derivation 均通过。
+- package_complete: true
+- scientific_validity: not_evaluated（D1 无 Stage D outcome）
+- analysis_authorized: false
+- budget_results: not_evaluated（属于 D7）；D1 未冻结统计或运行合同。
+- paper_data_or_figures_generated: none
+- deviations_or_protocol_amendments: none。一次内部诊断发现 candidate ledger 的 `coverage_rows_canonical_digest` 使用历史兼容摘要域 `canonical_sha256({"rows": coverage_rows})`；按其实际、已由顶层 self-digest 绑定的约定验证后通过，不修改 source。
+- failures_and_retries_retained: 保留首次过期 `8fff...` 提示词导致的 fail-closed 诊断提交 `b45ce8858e831cca656d25cd1ce392ef66e6a64f` 于独立分支；本次从 D0 anchor 重新发起。D1 开发测试仅有上述测试夹具失败，无 source/candidate blocker、科学 failure、模型/GPU/OOM 或正式执行 retry。
+- known_limitations_and_claim_boundaries: D1 只验证 candidate metadata 中已记录 image SHA-256 的格式、内部绑定和来源链，不复算 live JPEG；live-byte equality 延迟到 D8.0 且只能在 D7 execution authorization 后进行。prior-access 结论只表示 500 个 identity 未出现在声明且封闭的 ledger 范围中；source spec 明确 `historical_directory_byte_audit_performed=false`、`historical_directory_exhaustiveness_claimed=false`，不得声称 `RESERVE_ABSOLUTELY_NEVER_VIEWED`。C10 仍是 `NO_GO_NOVELTY/FAIL_SPATIAL/BLOCKED/HOLM_BLOCKED_UNDERSPECIFIED/downstream_authorized=false/stage_d_started=false`。
+- next_task_authorized: true（只授权 D2 metadata-only protocol/statistics/run-contract freeze）
+- authorization_issued_this_task: false
+- execution_authorization_observed_valid: false
+- next_task: D2
+
+#### 下一对话完整提示词
+
+```text
+你现在只执行 ViT-NNS fidelity-only Stage D 路线的 D2：在任何 reserve JPEG、模型或 Stage D outcome 访问前，冻结正式 protocol、acceptance、closed config/schema、统计合同与 exact typed run-spec contract。不要开始 D3，不要实现 loader/planner/runner/finalize/aggregate，不要运行 smoke 或正式 workload，也不要签发 execution authorization。
+
+工作目录：
+/data00/home/yeziqi.831/testcode/vitnns_rebuild
+
+启动边界：
+- D0 completion anchor 仍为 `refs/archive/stage-d-d0-completion` -> `4c76d468e1368858c52ff8ef73e640463e15ac49`，D0 machine canonical digest 为 `7508dcb7c063eaeecfc41f2f63f18e70dd5d660bec06c50e7b4b893d9a48ac5f`。
+- D1 completion anchor 为 `refs/archive/stage-d-d1-completion`；必须用 `git rev-parse 'refs/archive/stage-d-d1-completion^{commit}'` 唯一解析，要求 HEAD 精确等于该 commit、index/worktree clean。重新验证 `manifests/stage_d_fidelity_v1/manifest.json` 的完整 6-file hash chain、closed schema、deterministic rebuild 与 source bindings。
+- D1 registry file/canonical digest 为 `9aace3abf02a2c07d992d88b765c53cfeffa7f83a6ed72ecefb8cecf9eb79b6b` / `514ce4dd2e1fedc1744893e5543651ea42c053458b233ff11a45f700bb4bc028`；package manifest file/canonical 为 `f38bf9773ad172100c22f50ec3b4fe5251664e5c9f5c7ee78ae46532aec372fe` / `cf3e21b88488dcb928f9a98557c2ee9896a7c5210ddb8dda64427c1792fa299d`；pre-authorization attestation file/canonical 为 `610794455a1d75ef0243c5252c1e2bc14f6a4ea36f6c2ff2acf380dfd2c27644` / `9d89a6596de5027f72aeb76aca4aa600f03b6bb4cf45c8259840fd01e85638fe`。
+- D1 cohort 固定 500 rows，selection order `0..499`；与 Stage C 20 图在 sample ID/path/image hash 上重叠 `0/0/0`；audit overlay 恰好 5 个且 statistical n increment 为 0。D1 只验证 candidate-recorded image hashes，live equality 未评估。
+- D1 pre-authorization facts 必须保持 `reserve_image_bytes_accessed=false`、`reserve_result_accessed=false`、`model_or_gpu_used=false`、`execution_authorization=NOT_ISSUED`；candidate access log 不得修改。prior-access claim 只限于声明且封闭 ledger 的范围，不得声称绝对未查看。
+- sealed C10 继续保持 `NO_GO_NOVELTY/FAIL_SPATIAL/BLOCKED/HOLM_BLOCKED_UNDERSPECIFIED/downstream_authorized=false/stage_d_started=false`；不得重建 C10 科学结果。
+
+第一步完整阅读 `docs/阶段D-step-by-step.md` 的 D2、§3、§5–§9 与最新 D1 record，D0 scope document/machine/schema，D1 package/schema/attestation/source binding，`../论文1实现审计与后续计划.md` 的 post-C10 与 Stage D/E/F，以及 Stage C protocol §6、§9–§10 和 acceptance C0/C5/C9/C10。只读复核 D0、D1 和 sealed C10 hash/ref/inventory 链。
+
+D2 必须新增 `docs/阶段D_protocol.md`、`docs/stage_d_acceptance.md`、`docs/stage_d_config_contract.md`、closed `config/stage_d.json` 与 schema、run spec 与 schema，消除结果后自由度。固定 500 images、primary `(0,9)`、两种同目标方法、fine-4×4 endpoint、insertion/deletion 各 21 fractions、5 paired tie repeats、`run_stability=false`、无 random/center sanity、无 patch-scale/其他方法/层头；5 个 D1 audit IDs 只用于 repeatability/L2，`audit_repeatability_runs=2` 且不增加统计 n。typed contract 必须独立重算 500 image groups、1,000 units、1,010 map work items、210,000 curve points、总 211,010 logical work items。
+
+冻结 `delta_fid`、全部 validity 条件、误分类保留、500/400 guard 及设计理由、paired image-bootstrap 次数/seed namespace/PCG64/linear percentile/tie/invalidity、互斥 decision priority/equality boundaries、retry/fresh-root 语义、retention、provenance、launch safety caps 与 completed campaign cost gate 的区别。Stage D spatial 仅 mandatory disclosure；`holm_status=NOT_APPLICABLE_NO_SECONDARY_INFERENCE` 只在没有 secondary inference 时成立且不修复 C10 blocker。
+
+禁止读取、stat/hash/decode/preprocess 任一 reserve JPEG；禁止读取 Stage D predictions/logits/maps/AUC/delta_fid/summary/outcome；禁止模型、CPU inference、GPU/CUDA、attribution；禁止开始 D3、实现运行链或签发 `AUTHORIZED_STAGE_D_FIDELITY_SCOPE`。D2 tests 只能使用 metadata/静态或 synthetic fixtures，必须保留 D0/D1 access/authorization/hash tests。完成后更新本文 D2 为 PASS/BLOCKED，追加完整 completion record 与 D3/诊断提示词，一任务一提交并最终 clean。
 ```
 
 ## 10. D0 首次启动的完整可复制提示词

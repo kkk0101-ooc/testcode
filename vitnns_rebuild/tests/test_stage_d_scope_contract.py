@@ -367,7 +367,8 @@ def test_d0_static_files_keep_execution_and_reserve_closed() -> None:
     rebuild_readme = REBUILD_README.read_text(encoding="utf-8")
     top_readme = TOP_LEVEL_README.read_text(encoding="utf-8")
     assert "D0 | PASS（首次尝试 BLOCKED；严格重试 PASS）" in roadmap
-    assert "当前 next task：`D1`" in roadmap
+    assert "当前 next task：`D2`" in roadmap
+    assert "| D1 | PASS |" in roadmap
     assert "D0_INITIAL_ATTEMPT_20260825" in roadmap
     assert "D0_MODEL_FREE_RERUN_20260825" in roadmap
     assert "D0_NO_MODEL_OR_INFERENCE_GATE_VIOLATED" in roadmap
@@ -375,9 +376,10 @@ def test_d0_static_files_keep_execution_and_reserve_closed() -> None:
     assert D0_SCOPE_CANONICAL_DIGEST in roadmap
     current_handoff = roadmap.split(
         "#### 当前权威的下一对话完整提示词", 1
-    )[1].split("## 10.", 1)[0]
+    )[1].split("### 2026-08-25 13:49 +0800 — D1 completion record", 1)[0]
     assert D0_SCOPE_CANONICAL_DIGEST in current_handoff
     assert "8fff3955c488a344262e5e0fde5dfc1e9178de6f25dda5b866010c8c0861c3ce" not in current_handoff
+    assert "只执行 ViT-NNS fidelity-only Stage D 路线的 D1" in current_handoff
     assert "C10 v1 primary decision 为 `NO_GO_NOVELTY`" in roadmap
     assert "Stage D 不运行、不分析新的 spatial/stability endpoint" in roadmap
     assert "Stage C acceptance 为 `BLOCKED`" in plan
