@@ -1,0 +1,487 @@
+"""Synthetic-only tests for the Stage D D4 runtime."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+import pytest
+
+from vitnns.stage_d_plan import (
+    build_stage_d_plan, canonical_json_bytes, canonical_sha256,
+    estimate_stage_d_run, preflight_stage_d,
+)
+from vitnns.stage_d_producer import (
+    StageDInfrastructureFailure, StageDScientificFailure,
+)
+from vitnns.stage_d_artifacts import StageDUnitPayload
+from vitnns.stage_d_runtime import (
+    NONRETRYABLE_FAILURE_CLASSES, RETRYABLE_INFRASTRUCTURE_FAILURE_CODES,
+    RUNTIME_CHECKPOINT_FILENAME, StageDConcurrentClaimError,
+    StageDExecutionAuthorizationRequired, StageDRecoveryAuthorizationRequired,
+    StageDRuntimeBlockedError, StageDRuntimeIntegrityError,
+    _issue_synthetic_d4_test_context, initialize_stage_d_output_root,
+    recover_stage_d_claim, run_stage_d_shard,
+)
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+ZERO = {
+    "elapsed_seconds": 0.0, "forward_calls": 0, "backward_calls": 0,
+    "l0_l1_payload_bytes": 0, "l2_payload_bytes": 0,
+    "control_and_provenance_bytes": 0, "cuda_peak_reserved_bytes": 0,
+}
+
+
+@pytest.fixture(scope="module")
+def controls():
+    config = json.loads((REPO_ROOT / "config/stage_d.json").read_text())
+    run_spec = json.loads((REPO_ROOT / "config/stage_d_run_spec.json").read_text())
+    registry = json.loads(
+        (REPO_ROOT / "manifests/stage_d_fidelity_v1/registry.json").read_text()
+    )
+    plan = build_stage_d_plan(config, run_spec, registry)
+    estimate = estimate_stage_d_run(config, plan)
+    return plan, estimate, preflight_stage_d(estimate)
+
+
+class FakeBackend:
+    def __init__(self, behavior):
+        self.behavior = behavior
+        self.active = None
+        self.order: list[int] = []
+
+    def image_scope(self, sample_id, *, device):
+        backend = self
+
+        class Scope:
+            def __enter__(self):
+                assert backend.active is None
+                backend.active = (sample_id, device)
+
+            def __exit__(self, *_args):
+                backend.active = None
+
+        return Scope()
+
+    def run_stage_d_unit(self, group, unit, *, device, call_counter):
+        del group, device, call_counter
+        self.order.append(unit.method_index)
+        return self.behavior(unit)
+
+
+def payload() -> StageDUnitPayload:
+    return StageDUnitPayload(
+        l0_scalars={
+            "endpoint_parity": 0.0,
+        },
+        metric_ready_map=np.zeros((56, 56), dtype=np.float32),
+        fidelity_curves=np.zeros((2, 5, 21), dtype=np.float64),
+    )
+
+
+def permit(controls, count=500):
+    return _issue_synthetic_d4_test_context(*controls, shard_count=count)
+
+
+def init_root(controls, tmp_path: Path, count=500):
+    plan, estimate, preflight = controls
+    context, gate = permit(controls, count)
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    root = tmp_path / "synthetic-runtime"
+    initialize_stage_d_output_root(
+        root, plan, estimate, preflight,
+        execution_context=context, execution_gate=gate,
+    )
+    return root, context, gate
+
+
+def run(controls, root, context, gate, factory, **kwargs):
+    plan, estimate, preflight = controls
+    return run_stage_d_shard(
+        plan, output_root=root, estimate=estimate, preflight=preflight,
+        shard_id=0, execution_context=context, execution_gate=gate,
+        backend_factory=factory, **kwargs,
+    )
+
+
+def checkpoint(root: Path) -> dict[str, Any]:
+    return json.loads((root / RUNTIME_CHECKPOINT_FILENAME).read_text())
+
+
+def resign(root: Path, value: dict[str, Any]) -> None:
+    value["canonical_digest"] = canonical_sha256({
+        key: child for key, child in value.items() if key != "canonical_digest"
+    })
+    (root / RUNTIME_CHECKPOINT_FILENAME).write_bytes(canonical_json_bytes(value) + b"\n")
+
+
+def test_gate_and_controls_precede_root_and_backend(controls, tmp_path: Path) -> None:
+    plan, estimate, preflight = controls
+    root = tmp_path / "never-created"
+    calls: list[str] = []
+    with pytest.raises(StageDExecutionAuthorizationRequired):
+        initialize_stage_d_output_root(root, plan, estimate, preflight)
+    with pytest.raises(StageDExecutionAuthorizationRequired):
+        run_stage_d_shard(
+            plan, output_root=root, estimate=estimate, preflight=preflight,
+            shard_id=0, backend_factory=lambda **_kwargs: calls.append("backend"),
+        )
+    assert calls == [] and not root.exists()
+
+
+def test_runtime_seals_formal_gate_result_before_backend_and_unit(controls) -> None:
+    import vitnns.stage_d_runtime as runtime
+
+    plan, estimate, preflight = controls
+    synthetic, _synthetic_gate = permit(controls)
+    values = {
+        name: getattr(synthetic, name)
+        for name in (
+            "authorization_slot", "shard_count", "shard_mapping",
+            "plan_digest", "budget_digest", "preflight_digest",
+            "code_binding", "dependency_binding", "model_binding",
+            "source_bindings", "access_attestation",
+        )
+    }
+    values.update({
+        "formal": True, "authorization_scope": "D7_FORMAL_TEST_FIXTURE",
+        "execution_authorization": "AUTHORIZED_STAGE_D_FIDELITY_SCOPE",
+    })
+    values["canonical_digest"] = canonical_sha256({
+        **values, "shard_mapping": [
+            values["shard_mapping"][index] for index in range(500)
+        ],
+    })
+    gate_result = type("ForgableGateResult", (), values)()
+
+    # Once a gate result passes complete normalization, runtime replaces it
+    # with a private capability before either execution callback receives it.
+    binding = runtime._normalize_execution_context(
+        gate_result, plan=plan, estimate=estimate, preflight=preflight
+    )
+    sealed = runtime._seal_execution_context(gate_result, binding)
+    assert sealed is not gate_result
+    assert runtime._is_runtime_execution_capability(sealed) is True
+    assert runtime._is_runtime_execution_capability(gate_result) is False
+
+    forged = type("ForgedFormalCapability", (), {
+        **values, "_d7_validated_context": True,
+        "_issuer": runtime._RUNTIME_CAPABILITY_ISSUER,
+    })()
+    assert runtime._is_runtime_execution_capability(forged) is False
+
+    observed: list[object] = []
+    runtime._call_backend_factory(
+        lambda *, context, **_kwargs: observed.append(context),
+        context=sealed, device="cpu",
+    )
+    (lambda *, context: observed.append(context))(context=sealed)
+    assert observed == [sealed, sealed]
+
+
+def test_real_attempt_source_validation_half_pair_retry_and_no_leak(
+    controls, tmp_path: Path,
+) -> None:
+    root, context, gate = init_root(controls, tmp_path)
+    initial = checkpoint(root)
+    assert len(initial["groups"]) == 500
+    assert len(initial["units"]) == len(initial["failure_rows"]) == 1000
+    assert [row["shard_id"] for row in initial["groups"][:4]] == [0, 1, 2, 3]
+
+    backend = FakeBackend(lambda unit: (
+        (_ for _ in ()).throw(StageDScientificFailure(
+            "degenerate_direction", phase="attribution",
+            l0_scalars={"finite": True},
+        )) if unit.method_index == 0 else
+        (_ for _ in ()).throw(StageDInfrastructureFailure(
+            "SCHEDULER_PREEMPTION", ZERO
+        ))
+    ))
+    first = run(controls, root, context, gate, lambda **_kwargs: backend)
+    assert first.state == "retry_pending"
+    assert backend.order == [0, 1]
+    current = checkpoint(root)
+    rows = current["units"][:2]
+    assert [row["state"] for row in rows] == ["scientific_failed", "retry_pending"]
+    assert all(row["attempts"][0]["attempt_inventory_digest"] for row in rows)
+
+    retry = {
+        "schema_version": 1, "document_type": "stage_d_runtime_retry_authorization",
+        "status": "COORDINATOR_AUTHORIZED_RETRY",
+        "unit_digest": rows[1]["unit_digest"],
+        "prior_attempt_digest": rows[1]["attempts"][0]["attempt_inventory_digest"],
+        "failure_code": "SCHEDULER_PREEMPTION", "next_attempt_number": 2,
+        "execution_context_digest": current["execution_context"]["runtime_binding_digest"],
+    }
+    retry["canonical_digest"] = canonical_sha256(retry)
+    backend.behavior = lambda _unit: payload()
+
+    def lying_runner(*args, **kwargs):
+        from vitnns.stage_d_producer import run_stage_d_execution_unit
+
+        result = run_stage_d_execution_unit(*args, **kwargs)
+        # Runtime must derive these from the attempt tree, not trust producer
+        # claims.  The underlying real artifact is a valid terminal attempt.
+        result["result_manifest_published"] = False
+        result["published_l0_l1_payload_count"] = 0
+        result["resources"] = ZERO
+        return result
+
+    second = run(
+        controls, root, context, gate, lambda **_kwargs: backend,
+        retry_authorizations=[retry], unit_runner=lying_runner,
+    )
+    assert second.state == "completed"
+    assert backend.order == [0, 1, 1]
+    assert second.counts["scientific_failed_units"] == 1
+    assert second.counts["succeeded_units"] == 1
+    assert second.counts["skipped_terminal_units"] == 1
+    rendered = json.dumps(second.to_dict()).lower()
+    assert all(word not in rendered for word in ("auc", "delta", "prediction", "logit"))
+
+    factories: list[str] = []
+    assert run(
+        controls, root, context, gate,
+        lambda **_kwargs: factories.append("constructed"),
+    ).state == "completed"
+    assert factories == []
+
+
+def test_resume_rejects_tampered_extra_and_missing_attempts_before_backend(
+    controls, tmp_path: Path,
+) -> None:
+    root, context, gate = init_root(controls, tmp_path)
+    backend = FakeBackend(lambda _unit: payload())
+    run(controls, root, context, gate, lambda **_kwargs: backend)
+    calls: list[str] = []
+    first_attempt = next((root / "units").glob("*/attempts/attempt-000001"))
+    (first_attempt / "status.json").write_bytes(b"{}\n")
+    with pytest.raises(StageDRuntimeIntegrityError, match="source-recomputing|source evidence"):
+        run(controls, root, context, gate, lambda **_kwargs: calls.append("backend"))
+    assert calls == []
+
+    # A self-resigned checkpoint cannot legitimize an unrecorded attempt.
+    root2, context2, gate2 = init_root(controls, tmp_path / "extra")
+    unit_root = next((root2 / "units").iterdir()) / "attempts"
+    (unit_root / "attempt-000001").mkdir()
+    with pytest.raises(StageDRuntimeIntegrityError, match="unrecorded attempt"):
+        run(controls, root2, context2, gate2, lambda **_kwargs: calls.append("backend"))
+
+    root3, context3, gate3 = init_root(controls, tmp_path / "missing")
+    value = checkpoint(root3)
+    value["units"][0]["state"] = "succeeded"
+    value["units"][0]["terminal"] = True
+    value["groups"][0]["state"] = "claimed"
+    value["groups"][0]["owner_token_digest"] = "a" * 64
+    value["shards"][0]["state"] = "leased"
+    value["shards"][0]["owner_token_digest"] = "b" * 64
+    resign(root3, value)
+    with pytest.raises(StageDRuntimeIntegrityError):
+        run(controls, root3, context3, gate3, lambda **_kwargs: calls.append("backend"))
+    assert calls == []
+
+
+def test_crash_claim_is_persisted_rereadable_and_not_stolen(controls, tmp_path: Path) -> None:
+    root, context, gate = init_root(controls, tmp_path)
+    backend = FakeBackend(lambda _unit: (_ for _ in ()).throw(RuntimeError("boom 1.23")))
+    with pytest.raises(RuntimeError, match="boom"):
+        run(controls, root, context, gate, lambda **_kwargs: backend)
+    current = checkpoint(root)
+    assert current["shards"][0]["state"] == "leased"
+    assert current["groups"][0]["state"] == "claimed"
+    assert current["units"][0]["state"] == "claimed"
+    with pytest.raises(StageDConcurrentClaimError):
+        run(controls, root, context, gate, lambda **_kwargs: backend)
+    with pytest.raises(StageDRecoveryAuthorizationRequired):
+        recover_stage_d_claim(
+            controls[0], output_root=root, estimate=controls[1], preflight=controls[2],
+            unit_digest=current["units"][0]["unit_digest"],
+            owner_token_digest=current["units"][0]["owner_token_digest"],
+            failure_code="WORKER_PROCESS_CRASH_BEFORE_RESULT_PUBLISH",
+            execution_context=context, execution_gate=gate,
+        )
+
+
+def test_checkpoint_projection_and_runner_publication_claims_fail_closed(
+    controls, tmp_path: Path,
+) -> None:
+    root, context, gate = init_root(controls, tmp_path)
+    value = checkpoint(root)
+    value["lifecycle"]["terminal_units"] = 1
+    resign(root, value)
+    with pytest.raises(StageDRuntimeIntegrityError, match="lifecycle counters"):
+        run(controls, root, context, gate, lambda **_kwargs: FakeBackend(lambda _: payload()))
+
+
+def test_coordinator_recovery_of_missing_attempt_is_durable(controls, tmp_path: Path) -> None:
+    root, context, gate = init_root(controls, tmp_path)
+    backend = FakeBackend(lambda _unit: (_ for _ in ()).throw(RuntimeError("crash")))
+    with pytest.raises(RuntimeError):
+        run(controls, root, context, gate, lambda **_kwargs: backend)
+    before = checkpoint(root)
+    row = before["units"][0]
+
+    class Recovery:
+        def validate_recovery_authorization(
+            self, authorization, *, unit, attempt, owner_token_digest,
+            failure_code, execution_context_digest, checkpoint_digest,
+        ):
+            assert authorization == {"coordinator": True}
+            assert unit.canonical_digest == row["unit_digest"]
+            assert attempt["attempt_id"] == "attempt-000001"
+            assert owner_token_digest == row["owner_token_digest"]
+            assert failure_code == "WORKER_PROCESS_CRASH_BEFORE_RESULT_PUBLISH"
+            assert checkpoint_digest == before["canonical_digest"]
+            return type("Permit", (), {
+                "canonical_digest": canonical_sha256({
+                    "unit": unit.canonical_digest,
+                    "context": execution_context_digest,
+                })
+            })()
+
+    digest = recover_stage_d_claim(
+        controls[0], output_root=root, estimate=controls[1], preflight=controls[2],
+        unit_digest=row["unit_digest"],
+        owner_token_digest=row["owner_token_digest"],
+        failure_code="WORKER_PROCESS_CRASH_BEFORE_RESULT_PUBLISH",
+        recovery_authorization={"coordinator": True}, recovery_gate=Recovery(),
+        execution_context=context, execution_gate=gate,
+    )
+    after = checkpoint(root)
+    assert after["canonical_digest"] == digest
+    assert after["units"][0]["state"] == "retry_pending"
+    assert (
+        after["units"][0]["attempts"][0]["failure_code"]
+        == "WORKER_PROCESS_CRASH_BEFORE_RESULT_PUBLISH"
+    )
+    assert (
+        Path(after["units"][0]["attempts"][0]["attempt_path"])
+        / "status.json"
+    ).is_file()
+    with pytest.raises(StageDRuntimeBlockedError):
+        recover_stage_d_claim(
+            controls[0], output_root=root, estimate=controls[1],
+            preflight=controls[2], unit_digest=row["unit_digest"],
+            owner_token_digest=row["owner_token_digest"],
+            failure_code="WORKER_PROCESS_CRASH_BEFORE_RESULT_PUBLISH",
+            recovery_authorization={"coordinator": True}, recovery_gate=Recovery(),
+            execution_context=context, execution_gate=gate,
+        )
+
+
+def test_frozen_failure_taxonomy() -> None:
+    assert len(RETRYABLE_INFRASTRUCTURE_FAILURE_CODES) == 7
+    assert len(NONRETRYABLE_FAILURE_CLASSES) == 7
+    assert set(RETRYABLE_INFRASTRUCTURE_FAILURE_CODES).isdisjoint(
+        NONRETRYABLE_FAILURE_CLASSES
+    )
+
+
+def _force_small_l0_cap(controls, maximum: int):
+    from dataclasses import replace
+
+    estimate = controls[1]
+    caps = dict(estimate.launch_safety_caps)
+    caps["l0_l1_bytes_per_execution_unit_max"] = maximum
+    # This is a runtime-only injected estimate used to exercise online cap
+    # disposition after the real attempt has already been validated.
+    altered = replace(estimate, launch_safety_caps=caps)
+    object.__setattr__(altered, "canonical_digest", canonical_sha256(altered._payload()))
+    preflight = preflight_stage_d(altered)
+    return controls[0], altered, preflight
+
+
+def test_cap_breach_preserves_attempt_fact_but_blocks_unit_and_root(
+    controls, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root, context, gate = init_root(controls, tmp_path)
+    import vitnns.stage_d_runtime as runtime
+
+    real_caps = runtime._resource_cap_errors
+    monkeypatch.setattr(
+        runtime, "_resource_cap_errors",
+        lambda result, estimate: ["l0_l1_bytes_per_execution_unit_max"],
+    )
+    backend = FakeBackend(lambda _unit: payload())
+    summary = run(controls, root, context, gate, lambda **_kwargs: backend)
+    assert summary.state == "blocked"
+    value = checkpoint(root)
+    assert value["units"][0]["state"] == "blocked"
+    assert value["units"][0]["failure_class"] == "LAUNCH_SAFETY_CAP_BREACH"
+    assert value["units"][0]["attempts"][0]["state"] == "succeeded"
+    monkeypatch.setattr(runtime, "_resource_cap_errors", real_caps)
+    calls: list[str] = []
+    with pytest.raises(StageDRuntimeBlockedError):
+        run(controls, root, context, gate, lambda **_kwargs: calls.append("backend"))
+    assert calls == []
+
+
+@pytest.mark.parametrize("fault", ["after_manifest", "after_status", "before_checkpoint"])
+def test_recovery_reconciles_publication_faults(
+    controls, tmp_path: Path, fault: str,
+) -> None:
+    root, context, gate = init_root(controls, tmp_path / fault)
+    backend = FakeBackend(lambda _unit: (_ for _ in ()).throw(RuntimeError("crash")))
+    with pytest.raises(RuntimeError):
+        run(controls, root, context, gate, lambda **_kwargs: backend)
+    before = checkpoint(root)
+    row = before["units"][0]
+
+    class Recovery:
+        def validate_recovery_authorization(self, *_args, **kwargs):
+            return type("Permit", (), {
+                "canonical_digest": canonical_sha256({
+                    "unit": kwargs["unit"].canonical_digest, "fault": fault,
+                })
+            })()
+
+    arguments = dict(
+        plan=controls[0], output_root=root, estimate=controls[1], preflight=controls[2],
+        unit_digest=row["unit_digest"], owner_token_digest=row["owner_token_digest"],
+        failure_code="WORKER_PROCESS_CRASH_BEFORE_RESULT_PUBLISH",
+        recovery_authorization={"coordinator": True}, recovery_gate=Recovery(),
+        execution_context=context, execution_gate=gate,
+    )
+    with pytest.raises(RuntimeError, match="recovery crash"):
+        recover_stage_d_claim(**arguments, fault_injector=fault)
+    assert checkpoint(root)["units"][0]["state"] == "claimed"
+    recover_stage_d_claim(**arguments)
+    assert checkpoint(root)["units"][0]["state"] == "retry_pending"
+
+
+def test_second_infrastructure_attempt_exhaustion_is_reReadable(
+    controls, tmp_path: Path,
+) -> None:
+    root, context, gate = init_root(controls, tmp_path)
+    backend = FakeBackend(lambda _unit: (_ for _ in ()).throw(
+        StageDInfrastructureFailure("SCHEDULER_PREEMPTION", ZERO)
+    ))
+    run(controls, root, context, gate, lambda **_kwargs: backend)
+    first = checkpoint(root)
+    row = first["units"][0]
+    retry = {
+        "schema_version": 1, "document_type": "stage_d_runtime_retry_authorization",
+        "status": "COORDINATOR_AUTHORIZED_RETRY",
+        "unit_digest": row["unit_digest"],
+        "prior_attempt_digest": row["attempts"][0]["attempt_inventory_digest"],
+        "failure_code": row["failure_code"], "next_attempt_number": 2,
+        "execution_context_digest": first["execution_context"]["runtime_binding_digest"],
+    }
+    retry["canonical_digest"] = canonical_sha256(retry)
+    summary = run(
+        controls, root, context, gate, lambda **_kwargs: backend,
+        retry_authorizations=[retry],
+    )
+    assert summary.state == "blocked"
+    final = checkpoint(root)
+    assert final["units"][0]["state"] == "blocked"
+    assert [item["state"] for item in final["units"][0]["attempts"]] == [
+        "infrastructure_failed", "infrastructure_failed",
+    ]
+    calls: list[str] = []
+    with pytest.raises(StageDRuntimeBlockedError):
+        run(controls, root, context, gate, lambda **_kwargs: calls.append("backend"))
+    assert calls == []

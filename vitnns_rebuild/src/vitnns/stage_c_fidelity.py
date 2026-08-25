@@ -21,6 +21,7 @@ import numpy as np
 import torch
 from torch import nn
 
+from .fidelity_seed import FidelitySeedError, derive_fidelity_seed
 from .retention import _deep_freeze, _immutable_array
 from .stage_c_class_logit import (
     FrozenClassLogitTarget,
@@ -54,6 +55,7 @@ TARGET_DELTA_RELATIVE_THRESHOLD = 1e-6
 CURVE_FRACTIONS = tuple(index / 20.0 for index in range(21))
 TIE_REPLICATES = 5
 FIDELITY_BASE_SEED = 20260821
+STAGE_C_FIDELITY_SEED_NAMESPACE = f"stage-c-fidelity|{FIDELITY_BASE_SEED}|"
 SUFFICIENCY_FRACTION = 0.2
 NORMALIZED_INPUT_SHAPE = (1, 3, 224, 224)
 VALUE_TARGET_REF = "fixed_clean_attention_cls_head_direction"
@@ -907,27 +909,34 @@ def fidelity_target_provenance_binding(response: TargetResponse) -> dict[str, An
     return {"fidelity_target_identity": _thaw(response.target_identity)}
 
 
+def fidelity_seed_for_namespace(
+    namespace: str, sample_id: str, block: int, head: int, replicate: int
+) -> int:
+    """Derive a fidelity seed from an explicit, auditable namespace.
+
+    The helper deliberately accepts the complete namespace prefix, including
+    its trailing separator.  This keeps Stage C's historic seed schedule
+    unchanged while allowing later stages to use their separately registered
+    namespace without copying the hashing formula.
+    """
+
+    try:
+        return derive_fidelity_seed(
+            namespace, sample_id, block, head, replicate,
+            repeat_count=TIE_REPLICATES,
+        )
+    except FidelitySeedError as error:
+        message = str(error).replace("repeat_index", "replicate")
+        raise FidelityContractError(message) from error
+
+
 def fidelity_seed(
     sample_id: str, block: int, head: int, replicate: int
 ) -> int:
-    """Derive the exact preregistered unsigned 64-bit fidelity seed."""
+    """Derive the exact preregistered Stage C unsigned 64-bit seed."""
 
-    if not isinstance(sample_id, str) or not sample_id or "|" in sample_id:
-        raise FidelityContractError("sample_id must be non-empty and contain no '|'")
-    for value, name in ((block, "block"), (head, "head"), (replicate, "replicate")):
-        if type(value) is not int or value < 0:
-            raise TypeError(f"{name} must be a non-negative integer (not bool)")
-    if block >= 12 or head >= 12:
-        raise FidelityContractError("block and head must be in [0,11]")
-    if replicate >= TIE_REPLICATES:
-        raise FidelityContractError("replicate must be in [0,4]")
-    namespace = (
-        f"stage-c-fidelity|{FIDELITY_BASE_SEED}|{sample_id}|"
-        f"{block}|{head}|{replicate}"
-    )
-    return int.from_bytes(
-        hashlib.sha256(namespace.encode("utf-8")).digest()[:8],
-        byteorder="big", signed=False,
+    return fidelity_seed_for_namespace(
+        STAGE_C_FIDELITY_SEED_NAMESPACE, sample_id, block, head, replicate
     )
 
 
@@ -1052,6 +1061,7 @@ class InterventionSchedule:
         head: int,
         seed: int | None,
         replicate: int | None,
+        seed_namespace: str,
         issuer_secret: object,
     ) -> None:
         if issuer_secret is not _SCHEDULE_ISSUER_SECRET:
@@ -1088,7 +1098,7 @@ class InterventionSchedule:
             )
         # Validate context even for the deterministic center sanity so every
         # schedule remains attributable to one registered sample/config.
-        fidelity_seed(sample_id, block, head, 0)
+        fidelity_seed_for_namespace(seed_namespace, sample_id, block, head, 0)
         if ranking_kind is RankingKind.CENTER_DISTANCE_ROW_MAJOR:
             if seed is not None or replicate is not None:
                 raise FidelityContractError("center ranking is deterministic and unseeded")
@@ -1100,7 +1110,9 @@ class InterventionSchedule:
         else:
             if type(replicate) is not int or not 0 <= replicate < TIE_REPLICATES:
                 raise TypeError("seeded ranking replicate must be an integer in [0,4]")
-            expected_seed = fidelity_seed(sample_id, block, head, replicate)
+            expected_seed = fidelity_seed_for_namespace(
+                seed_namespace, sample_id, block, head, replicate
+            )
             if seed != expected_seed:
                 raise FidelityContractError(
                     "seed does not match the preregistered sample/block/head/replicate hash"
@@ -1129,6 +1141,7 @@ class InterventionSchedule:
         self.block = block
         self.head = head
         self.seed = seed
+        self.seed_namespace = seed_namespace
         self.replicate = replicate
         self.tie_priority_sha256 = (
             None if seed is None else tie_priority_sha256(scale.unit_count, seed)
@@ -1232,7 +1245,7 @@ class InterventionSchedule:
 
     def to_dict(self) -> dict[str, Any]:
         self.verify_integrity()
-        return {
+        result = {
             "scale": self.scale.value,
             "direction": self.direction.value,
             "ranking_kind": self.ranking_kind.value,
@@ -1256,6 +1269,9 @@ class InterventionSchedule:
             "intervention_sha256": list(self.intervention_sha256),
             "replacement": "normalized_zero_rgb_channels_together",
         }
+        if self.seed_namespace != STAGE_C_FIDELITY_SEED_NAMESPACE:
+            result["seed_namespace"] = self.seed_namespace
+        return result
 
 
 def build_intervention_schedule(
@@ -1275,6 +1291,7 @@ def build_intervention_schedule(
     head: int,
     seed: int | None = None,
     replicate: int | None = None,
+    seed_namespace: str = STAGE_C_FIDELITY_SEED_NAMESPACE,
 ) -> InterventionSchedule:
     parsed_kind = _parse_ranking_kind(ranking_kind)
     if parsed_kind is RankingKind.TARGET_ORIENTED_POSITIVE:
@@ -1295,6 +1312,7 @@ def build_intervention_schedule(
         ranking_kind=parsed_kind,
         sample_id=sample_id, block=block, head=head,
         seed=seed, replicate=replicate,
+        seed_namespace=seed_namespace,
         issuer_secret=_SCHEDULE_ISSUER_SECRET,
     )
 
@@ -1304,6 +1322,7 @@ def build_method_intervention_schedule(
     unit_map: UnitMassMap, response: TargetResponse, *,
     sample_id: str, block: int, head: int, replicate: int,
     direction: CurveDirection | str,
+    seed_namespace: str = STAGE_C_FIDELITY_SEED_NAMESPACE,
 ) -> InterventionSchedule:
     """Build a target-oriented schedule from its exact registered method map."""
 
@@ -1315,7 +1334,9 @@ def build_method_intervention_schedule(
             "method schedule clean tensor does not match UnitMassMap source"
         )
     scores = np.asarray(scores_2d, dtype=np.float32).reshape(-1)
-    seed = fidelity_seed(sample_id, block, head, replicate)
+    seed = fidelity_seed_for_namespace(
+        seed_namespace, sample_id, block, head, replicate
+    )
     ranking = tie_permuted_ranking(scores, seed)
     return InterventionSchedule(
         clean_inputs=clean_inputs, baseline_inputs=baseline_inputs, ranking=ranking,
@@ -1326,7 +1347,8 @@ def build_method_intervention_schedule(
         scale=unit_map.scale, direction=_parse_direction(direction),
         ranking_kind=RankingKind.TARGET_ORIENTED_POSITIVE,
         sample_id=sample_id, block=block, head=head, seed=seed,
-        replicate=replicate, issuer_secret=_SCHEDULE_ISSUER_SECRET,
+        replicate=replicate, seed_namespace=seed_namespace,
+        issuer_secret=_SCHEDULE_ISSUER_SECRET,
     )
 
 
@@ -1355,6 +1377,7 @@ class FidelityCurveResult:
     responses: tuple[float, ...] | None
     auc: float | None
     na: StructuredNA | None = None
+    seed_namespace: str = STAGE_C_FIDELITY_SEED_NAMESPACE
 
     def __post_init__(self) -> None:
         if self.method_id not in VALUE_METHODS | CLASS_METHODS:
@@ -1363,7 +1386,13 @@ class FidelityCurveResult:
         scale = _parse_scale(self.scale)
         direction = _parse_direction(self.direction)
         ranking_kind = _parse_ranking_kind(self.ranking_kind)
-        fidelity_seed(self.sample_id, self.block, self.head, 0)
+        if not isinstance(self.seed_namespace, str) or not self.seed_namespace.endswith("|"):
+            raise FidelityContractError(
+                "curve seed_namespace must be a string ending in '|'"
+            )
+        fidelity_seed_for_namespace(
+            self.seed_namespace, self.sample_id, self.block, self.head, 0
+        )
         if ranking_kind is RankingKind.CENTER_DISTANCE_ROW_MAJOR:
             if self.seed is not None or self.replicate is not None:
                 raise FidelityContractError("center curve must be unseeded")
@@ -1374,8 +1403,9 @@ class FidelityCurveResult:
         else:
             if type(self.replicate) is not int or not 0 <= self.replicate < 5:
                 raise FidelityContractError("seeded curve requires replicate 0..4")
-            if self.seed != fidelity_seed(
-                self.sample_id, self.block, self.head, self.replicate
+            if self.seed != fidelity_seed_for_namespace(
+                self.seed_namespace, self.sample_id, self.block, self.head,
+                self.replicate
             ):
                 raise FidelityContractError("curve seed violates the frozen namespace")
             expected_priority = tie_priority_sha256(
@@ -1471,6 +1501,8 @@ class FidelityCurveResult:
             "auc": self.auc, "response_clipped": False,
             "auc_integration": "trapezoid_over_actual_k_divided_by_units",
         }
+        if self.seed_namespace != STAGE_C_FIDELITY_SEED_NAMESPACE:
+            result["seed_namespace"] = self.seed_namespace
         if self.na is not None:
             result["na"] = self.na.to_dict()
         return result
@@ -1560,6 +1592,7 @@ def evaluate_fidelity_curve(
         direction=schedule.direction, ranking_kind=schedule.ranking_kind,
         sample_id=schedule.sample_id, block=schedule.block, head=schedule.head,
         replicate=schedule.replicate, seed=schedule.seed,
+        seed_namespace=schedule.seed_namespace,
         tie_priority_sha256=schedule.tie_priority_sha256,
         source_unit_map_sha256=schedule.source_unit_map_sha256,
         score_sha256=schedule.score_sha256,
@@ -1591,6 +1624,7 @@ class CurveAggregate:
             "ranking_kind", "sample_id", "block", "head",
             "input_pair_sha256", "unit_counts",
             "actual_fractions", "source_unit_map_sha256", "score_sha256",
+            "seed_namespace",
         )
         for curve in self.curves[1:]:
             if any(getattr(curve, field) != getattr(first, field) for field in paired_fields):
@@ -1600,8 +1634,9 @@ class CurveAggregate:
         if len({curve.seed for curve in self.curves}) != 5:
             raise FidelityContractError("tie aggregate requires five distinct seeds")
         for replicate, curve in enumerate(self.curves):
-            if curve.seed != fidelity_seed(
-                curve.sample_id, curve.block, curve.head, replicate
+            if curve.seed != fidelity_seed_for_namespace(
+                curve.seed_namespace, curve.sample_id, curve.block, curve.head,
+                replicate
             ):
                 raise FidelityContractError("aggregate curve seed violates namespace")
             if curve.tie_priority_sha256 != tie_priority_sha256(
@@ -1887,8 +1922,9 @@ def value_path_delta_fidelity(
                 "delta_fid inputs are not paired by replicate/seed/tie-priority/context/input/target"
             )
         sample_id, block, head = next(iter(contexts))
-        if next(iter(seeds)) != fidelity_seed(
-            sample_id, block, head, replicate
+        namespaces = {curve.seed_namespace for curve in curves}
+        if len(namespaces) != 1 or next(iter(seeds)) != fidelity_seed_for_namespace(
+            next(iter(namespaces)), sample_id, block, head, replicate
         ):
             raise FidelityContractError("delta_fid paired seed violates namespace")
         if (
@@ -1959,7 +1995,7 @@ def random_rankings(
 __all__ = [
     "CLASS_METHODS", "CLASS_TARGET_REF", "CURVE_FRACTIONS",
     "ClassLogitScalarAdapter", "CurveAggregate", "CurveDirection",
-    "FIDELITY_BASE_SEED",
+    "FIDELITY_BASE_SEED", "STAGE_C_FIDELITY_SEED_NAMESPACE",
     "FidelityContractError", "FidelityCurveResult", "FidelityScale",
     "FrozenScalarEvaluator", "InterventionSchedule", "MATCHED_METHOD_ID",
     "NNS_METHOD_ID", "RankingKind", "TIE_REPLICATES",
@@ -1971,6 +2007,7 @@ __all__ = [
     "build_method_intervention_schedule",
     "center_distance_ranking", "curve_unit_counts",
     "evaluate_fidelity_curve", "fidelity_seed",
+    "fidelity_seed_for_namespace",
     "fidelity_target_provenance_binding",
     "global_random_ranking", "method_unit_masses",
     "paired_rankings_for_method", "random_rankings",

@@ -1,4 +1,4 @@
-"""Focused metadata-only tests for the Stage D D3 CLI."""
+"""Focused metadata/fake-runtime tests for the Stage D D4 CLI."""
 
 from __future__ import annotations
 
@@ -89,6 +89,60 @@ def _invoke(
     )
 
 
+def _runtime_argv(
+    command: str, authorization: Path, output_root: Path,
+    *, retry_authorizations: tuple[Path, ...] = (),
+) -> list[str]:
+    argv = [
+        command, "--authorization", str(authorization),
+        "--output-root", str(output_root),
+    ]
+    if command == "run-shard":
+        argv.extend(["--shard-index", "2", "--device", "fake-device"])
+        for retry_authorization in retry_authorizations:
+            argv.extend(["--retry-authorization", str(retry_authorization)])
+    return argv
+
+
+def _write_authorization(path: Path, payload: dict | None = None) -> dict:
+    document = {
+        "document_type": "fake_d7_execution_authorization",
+        "canonical_digest": "7" * 64,
+    } if payload is None else payload
+    path.write_text(json.dumps(document), encoding="utf-8")
+    return document
+
+
+def _runtime_summary(**changes) -> _Document:
+    document = {
+        "schema_version": 1,
+        "document_type": "stage_d_shard_summary",
+        "shard_id": 2,
+        "shard_count": 4,
+        "state": "completed",
+        "counts": {
+            "expected_groups": 4, "visited_groups": 4,
+            "claimed_groups": 3, "terminal_groups": 4,
+            "expected_units": 8, "attempted_units": 6,
+            "terminal_units": 8, "succeeded_units": 7,
+            "scientific_failed_units": 1, "retry_pending_units": 0,
+            "blocked_units": 0, "skipped_terminal_units": 2,
+        },
+        "resources": {
+            "elapsed_seconds": 2.5, "forward_calls": 12,
+            "backward_calls": 6, "l0_l1_payload_bytes": 1024,
+            "l2_payload_bytes": 0,
+            "control_and_provenance_bytes": 512,
+            "cuda_peak_reserved_bytes": 4096,
+        },
+        "checkpoint_generation": 9,
+        "checkpoint_digest": "a" * 64,
+        "execution_context_digest": "b" * 64,
+    }
+    document.update(changes)
+    return _Document(document)
+
+
 def _install_estimate_pipeline(
     monkeypatch: pytest.MonkeyPatch, *, blocked: bool = False,
     calls: list | None = None,
@@ -122,7 +176,7 @@ def _install_estimate_pipeline(
     return estimate, preflight
 
 
-def test_parser_exposes_exact_d3_command_surface() -> None:
+def test_parser_exposes_exact_d4_command_surface() -> None:
     parser = cli.build_parser()
     subparsers = [
         action for action in parser._actions
@@ -131,10 +185,10 @@ def test_parser_exposes_exact_d3_command_surface() -> None:
     assert len(subparsers) == 1
     assert set(subparsers[0].choices) == {
         "validate-contracts", "plan", "estimate",
-        "prepare-authorization",
+        "prepare-authorization", "init", "run-shard",
     }
     forbidden = {
-        "init", "run-shard", "finalize", "aggregate", "export",
+        "finalize", "aggregate", "export", "synthetic",
     }
     assert forbidden.isdisjoint(subparsers[0].choices)
 
@@ -523,3 +577,530 @@ def test_cli_source_has_no_model_or_runtime_imports() -> None:
         name == blocked or name.startswith(blocked + ".")
         for name in imported for blocked in forbidden
     )
+
+
+def test_runtime_parsers_require_formal_inputs_and_expose_no_bypass() -> None:
+    parser = cli.build_parser()
+    subparsers = next(
+        action for action in parser._actions
+        if isinstance(action, argparse._SubParsersAction)
+    )
+    for command in ("init", "run-shard"):
+        command_parser = subparsers.choices[command]
+        options = {
+            option
+            for action in command_parser._actions
+            for option in action.option_strings
+        }
+        assert {"--output-root", "--authorization"} <= options
+        assert {
+            "--synthetic", "--skip-authorization", "--shard-count",
+            "--finalize", "--aggregate", "--result",
+        }.isdisjoint(options)
+    run_options = {
+        option
+        for action in subparsers.choices["run-shard"]._actions
+        for option in action.option_strings
+    }
+    assert {
+        "--shard-index", "--device", "--retry-authorization",
+    } <= run_options
+    init_options = {
+        option
+        for action in subparsers.choices["init"]._actions
+        for option in action.option_strings
+    }
+    assert "--retry-authorization" not in init_options
+
+
+def test_init_uses_strict_authorization_and_injected_runtime_gate(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    estimate, preflight = _install_estimate_pipeline(monkeypatch)
+    authorization_path = tmp_path / "authorization.json"
+    authorization = _write_authorization(authorization_path)
+    output_root = tmp_path / "formal-root"
+    pipeline = _pipeline()
+    events: list[str] = []
+
+    class Gate:
+        def validate_execution_context(self, context, **kwargs):
+            events.append("gate")
+            assert context == authorization
+            assert kwargs == {
+                "operation": "init", "output_root": output_root,
+                "plan": pipeline.plan, "estimate": estimate,
+                "preflight": preflight,
+            }
+            return SimpleNamespace(canonical_digest="8" * 64)
+
+    def gate_factory():
+        events.append("gate-factory")
+        return Gate()
+
+    def initializer(
+        root, plan, observed_estimate, observed_preflight, *,
+        execution_context, execution_gate,
+    ):
+        events.append("initializer")
+        assert (root, plan, observed_estimate, observed_preflight) == (
+            output_root, pipeline.plan, estimate, preflight,
+        )
+        execution_gate.validate_execution_context(
+            execution_context, operation="init", output_root=root, plan=plan,
+            estimate=observed_estimate, preflight=observed_preflight,
+        )
+        events.append("runtime-metadata")
+        return root
+
+    code, output, error = _invoke(
+        _runtime_argv("init", authorization_path, output_root),
+        pipeline_provider=lambda _args: events.append("pipeline") or pipeline,
+        runtime_initializer=initializer,
+        execution_gate_factory=gate_factory,
+        backend_factory=lambda **_kwargs: pytest.fail(
+            "init must not construct a backend"
+        ),
+    )
+    assert code == cli.EXIT_SUCCESS
+    assert error is None
+    assert events == [
+        "pipeline", "gate-factory", "initializer", "gate",
+        "runtime-metadata",
+    ]
+    assert output == {
+        "schema_version": 1,
+        "document_type": "stage_d_initialization_control",
+        "status": "PASS",
+        "control": {
+            "operation": "init",
+            "output_root": str(output_root),
+            "external_execution_gate_validated": True,
+            "analysis_authorization": "NOT_EVALUATED",
+        },
+        "digests": {"plan_digest": "2" * 64},
+        "counts": {},
+    }
+    assert not output_root.exists()
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        {
+            "document_type": "stage_d_initialization_control",
+            "control": {"score": 0.9},
+        },
+        {
+            "document_type": "stage_d_initialization_control",
+            "progress": {"value": 0.8},
+        },
+    ],
+)
+def test_init_rejects_runtime_documents_instead_of_forwarding_unknown_fields(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, result: dict,
+) -> None:
+    _install_estimate_pipeline(monkeypatch)
+    authorization_path = tmp_path / "authorization.json"
+    _write_authorization(authorization_path)
+    code, output, error = _invoke(
+        _runtime_argv("init", authorization_path, tmp_path / "formal-root"),
+        pipeline_provider=lambda _args: _pipeline(),
+        runtime_initializer=lambda *_args, **_kwargs: result,
+        execution_gate_factory=lambda: (lambda *_args, **_kwargs: object()),
+    )
+    assert code == cli.EXIT_INTEGRITY_FAILURE
+    assert output is None
+    assert error["error"]["code"] == "STAGE_D_RUNTIME_INTEGRITY_ERROR"
+    serialized = json.dumps(error)
+    assert "0.9" not in serialized
+    assert "0.8" not in serialized
+
+
+def test_run_shard_orders_gate_and_runtime_metadata_before_backend(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    estimate, preflight = _install_estimate_pipeline(monkeypatch)
+    authorization_path = tmp_path / "authorization.json"
+    authorization = _write_authorization(authorization_path)
+    output_root = tmp_path / "initialized-root"
+    pipeline = _pipeline()
+    events: list[str] = []
+    backend = object()
+
+    class Gate:
+        def validate_execution_context(self, context, **kwargs):
+            events.append("authorization")
+            assert context == authorization
+            assert kwargs["operation"] == "run-shard"
+            assert kwargs["output_root"] == output_root
+            assert kwargs["plan"] is pipeline.plan
+            assert kwargs["estimate"] is estimate
+            assert kwargs["preflight"] is preflight
+            return SimpleNamespace(canonical_digest="8" * 64)
+
+    def backend_factory(**kwargs):
+        events.append("backend")
+        assert kwargs["device"] == "fake-device"
+        return backend
+
+    def shard_runner(
+        plan, *, output_root, estimate, preflight, shard_id,
+        execution_context, execution_gate, backend_factory, device,
+        retry_authorizations,
+    ):
+        events.append("runner")
+        execution_gate.validate_execution_context(
+            execution_context, operation="run-shard",
+            output_root=output_root, plan=plan, estimate=estimate,
+            preflight=preflight,
+        )
+        events.append("runtime-metadata")
+        assert shard_id == 2
+        assert retry_authorizations == ()
+        assert backend_factory(device=device) is backend
+        events.append("run")
+        return _runtime_summary()
+
+    code, output, error = _invoke(
+        _runtime_argv("run-shard", authorization_path, output_root),
+        pipeline_provider=lambda _args: events.append("pipeline") or pipeline,
+        shard_runner=shard_runner, execution_gate_factory=Gate,
+        backend_factory=backend_factory,
+    )
+    assert code == cli.EXIT_SUCCESS
+    assert error is None
+    assert events == [
+        "pipeline", "runner", "authorization", "runtime-metadata",
+        "backend", "run",
+    ]
+    assert output["control"]["shard_index"] == 2
+    assert output["counts"]["expected_units"] == 8
+    assert output["resources"]["l0_l1_payload_bytes"] == 1024
+
+
+def test_runtime_shard_summary_is_projected_to_closed_output_categories(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    _install_estimate_pipeline(monkeypatch)
+    authorization_path = tmp_path / "authorization.json"
+    _write_authorization(authorization_path)
+    counts = {
+        "expected_groups": 4, "visited_groups": 4,
+        "claimed_groups": 3, "terminal_groups": 4,
+        "expected_units": 8, "attempted_units": 6,
+        "terminal_units": 8, "succeeded_units": 7,
+        "scientific_failed_units": 1, "retry_pending_units": 0,
+        "blocked_units": 0, "skipped_terminal_units": 2,
+    }
+    resources = {
+        "elapsed_seconds": 2.5, "forward_calls": 12,
+        "backward_calls": 6, "l0_l1_payload_bytes": 1024,
+        "l2_payload_bytes": 0, "control_and_provenance_bytes": 512,
+        "cuda_peak_reserved_bytes": 4096,
+    }
+    runtime_summary = _runtime_summary(counts=counts, resources=resources)
+    code, output, error = _invoke(
+        _runtime_argv(
+            "run-shard", authorization_path, tmp_path / "formal-root",
+        ),
+        pipeline_provider=lambda _args: _pipeline(),
+        shard_runner=lambda *_args, **_kwargs: runtime_summary,
+        execution_gate_factory=lambda: (lambda *_args, **_kwargs: object()),
+        backend_factory=lambda **_kwargs: object(),
+    )
+    assert code == cli.EXIT_SUCCESS
+    assert error is None
+    assert set(output) == {
+        "schema_version", "document_type", "status", "control",
+        "terminal", "resources", "digests", "counts",
+    }
+    assert output["document_type"] == "stage_d_shard_control"
+    assert output["status"] == "PASS"
+    assert output["control"] == {
+        "shard_index": 2, "shard_count": 4,
+        "checkpoint_generation": 9,
+    }
+    assert output["terminal"] == {"state": "completed"}
+    assert output["counts"] == counts
+    assert output["resources"] == resources
+    assert output["digests"] == {
+        "checkpoint_digest": "a" * 64,
+        "execution_context_digest": "b" * 64,
+    }
+
+
+def test_retry_authorizations_are_strictly_loaded_and_passed_in_cli_order(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    _install_estimate_pipeline(monkeypatch)
+    authorization_path = tmp_path / "authorization.json"
+    _write_authorization(authorization_path)
+    first_path = tmp_path / "retry-one.json"
+    second_path = tmp_path / "retry-two.json"
+    first = _write_authorization(
+        first_path, {"unit_digest": "1" * 64, "retry": 1},
+    )
+    second = _write_authorization(
+        second_path, {"unit_digest": "2" * 64, "retry": 1},
+    )
+    observed: list[tuple] = []
+
+    def shard_runner(*_args, retry_authorizations, **_kwargs):
+        observed.append(retry_authorizations)
+        return _runtime_summary()
+
+    code, output, error = _invoke(
+        _runtime_argv(
+            "run-shard", authorization_path, tmp_path / "formal-root",
+            retry_authorizations=(first_path, second_path),
+        ),
+        pipeline_provider=lambda _args: _pipeline(),
+        shard_runner=shard_runner,
+        execution_gate_factory=lambda: (lambda *_args, **_kwargs: object()),
+        backend_factory=lambda **_kwargs: object(),
+    )
+    assert code == cli.EXIT_SUCCESS
+    assert error is None
+    assert output["document_type"] == "stage_d_shard_control"
+    assert observed == [(first, second)]
+
+
+def test_malformed_retry_authorization_fails_before_gate_runner_and_backend(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    _install_estimate_pipeline(monkeypatch)
+    authorization_path = tmp_path / "authorization.json"
+    _write_authorization(authorization_path)
+    retry_path = tmp_path / "retry.json"
+    retry_path.write_text('{"unit":1,"unit":2}', encoding="utf-8")
+    events: list[str] = []
+    code, output, error = _invoke(
+        _runtime_argv(
+            "run-shard", authorization_path, tmp_path / "formal-root",
+            retry_authorizations=(retry_path,),
+        ),
+        pipeline_provider=lambda _args: _pipeline(),
+        shard_runner=lambda *_args, **_kwargs: events.append("runner"),
+        execution_gate_factory=lambda: events.append("gate") or object(),
+        backend_factory=lambda **_kwargs: events.append("backend"),
+    )
+    assert code == cli.EXIT_INPUT_ERROR
+    assert output is None
+    assert events == []
+    assert error["error"]["code"] == "STAGE_D_INPUT_ERROR"
+    assert "duplicate JSON key" in error["error"]["message"]
+
+
+@pytest.mark.parametrize("payload", [[], "retry", 1, None])
+def test_retry_authorization_requires_one_strict_json_object_per_option(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, payload,
+) -> None:
+    _install_estimate_pipeline(monkeypatch)
+    authorization_path = tmp_path / "authorization.json"
+    _write_authorization(authorization_path)
+    retry_path = tmp_path / "retry.json"
+    retry_path.write_text(json.dumps(payload), encoding="utf-8")
+    events: list[str] = []
+    code, output, error = _invoke(
+        _runtime_argv(
+            "run-shard", authorization_path, tmp_path / "formal-root",
+            retry_authorizations=(retry_path,),
+        ),
+        pipeline_provider=lambda _args: _pipeline(),
+        shard_runner=lambda *_args, **_kwargs: events.append("runner"),
+        execution_gate_factory=lambda: events.append("gate") or object(),
+        backend_factory=lambda **_kwargs: events.append("backend"),
+    )
+    assert code == cli.EXIT_INPUT_ERROR
+    assert output is None
+    assert events == []
+    assert error["error"]["code"] == "STAGE_D_INPUT_ERROR"
+    assert "must be a JSON object" in error["error"]["message"]
+
+
+def test_retry_authorization_rejects_symlink_and_oversized_file_before_gate(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    _install_estimate_pipeline(monkeypatch)
+    authorization_path = tmp_path / "authorization.json"
+    _write_authorization(authorization_path)
+    target = tmp_path / "retry-target.json"
+    target.write_text("{}", encoding="utf-8")
+    symlink = tmp_path / "retry-link.json"
+    symlink.symlink_to(target)
+    oversized = tmp_path / "retry-oversized.json"
+    oversized.write_text('{"x":1}', encoding="utf-8")
+    monkeypatch.setattr(cli, "_RETRY_AUTHORIZATION_FILE_LIMIT", 2)
+
+    for retry_path in (symlink, oversized):
+        events: list[str] = []
+        code, output, error = _invoke(
+            _runtime_argv(
+                "run-shard", authorization_path, tmp_path / "formal-root",
+                retry_authorizations=(retry_path,),
+            ),
+            pipeline_provider=lambda _args: _pipeline(),
+            shard_runner=lambda *_args, **_kwargs: events.append("runner"),
+            execution_gate_factory=lambda: events.append("gate") or object(),
+            backend_factory=lambda **_kwargs: events.append("backend"),
+        )
+        assert code == cli.EXIT_INPUT_ERROR
+        assert output is None
+        assert events == []
+        assert error["error"]["code"] == "STAGE_D_INPUT_ERROR"
+
+
+def test_authorization_error_prevents_backend_and_hides_runtime_message(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    _install_estimate_pipeline(monkeypatch)
+    authorization_path = tmp_path / "authorization.json"
+    _write_authorization(authorization_path)
+    events: list[str] = []
+
+    class StageDExecutionAuthorizationRequired(Exception):
+        pass
+
+    class RefusingGate:
+        def validate_execution_context(self, *_args, **_kwargs):
+            events.append("authorization")
+            raise StageDExecutionAuthorizationRequired(
+                "secret prediction=0.91 and delta_fid=0.42"
+            )
+
+    def shard_runner(
+        plan, *, output_root, estimate, preflight, execution_context,
+        execution_gate, backend_factory, **_kwargs,
+    ):
+        events.append("runner")
+        execution_gate.validate_execution_context(
+            execution_context, operation="run-shard",
+            output_root=output_root, plan=plan, estimate=estimate,
+            preflight=preflight,
+        )
+        backend_factory()  # pragma: no cover - the gate must have raised
+
+    code, output, error = _invoke(
+        _runtime_argv(
+            "run-shard", authorization_path, tmp_path / "formal-root",
+        ),
+        pipeline_provider=lambda _args: _pipeline(),
+        shard_runner=shard_runner, execution_gate_factory=RefusingGate,
+        backend_factory=lambda **_kwargs: events.append("backend"),
+    )
+    assert code == cli.EXIT_PREFLIGHT_BLOCKED
+    assert output is None
+    assert events == ["runner", "authorization"]
+    assert error["error"] == {
+        "code": "STAGE_D_EXECUTION_BLOCKED",
+        "message": (
+            "Stage D execution is blocked because its D7/runtime gate "
+            "did not authorize a safe operation"
+        ),
+        "type": "StageDCLIRuntimeBlockedError",
+    }
+    serialized = json.dumps(error).casefold()
+    assert "prediction" not in serialized
+    assert "delta_fid" not in serialized
+
+
+def test_default_unavailable_gate_fails_closed_without_running_default_path(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    _install_estimate_pipeline(monkeypatch)
+    authorization_path = tmp_path / "authorization.json"
+    _write_authorization(authorization_path)
+    output_root = tmp_path / "formal-root"
+    events: list[str] = []
+
+    def initializer(
+        root, plan, estimate, preflight, *, execution_context, execution_gate,
+    ):
+        events.append("initializer")
+        return execution_gate.validate_execution_context(
+            execution_context, operation="init", output_root=root, plan=plan,
+            estimate=estimate, preflight=preflight,
+        )
+
+    code, output, error = _invoke(
+        _runtime_argv("init", authorization_path, output_root),
+        pipeline_provider=lambda _args: _pipeline(),
+        runtime_initializer=initializer,
+        backend_factory=lambda **_kwargs: events.append("backend"),
+    )
+    assert code == cli.EXIT_PREFLIGHT_BLOCKED
+    assert output is None
+    assert events == ["initializer"]
+    assert error["error"]["code"] == "STAGE_D_EXECUTION_BLOCKED"
+    assert "D7/runtime gate" in error["error"]["message"]
+    assert not output_root.exists()
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda d: d.update({"AUC": 0.8}),
+        lambda d: d.update({"progress": {"value": 0.7}}),
+        lambda d: d["counts"].update({"value": 5}),
+        lambda d: d["resources"].update({"score": 0.6}),
+        lambda d: d.update({"control": {"score": 0.9}}),
+        lambda d: d.update({"terminal": {"ranking": ["sample"]}}),
+        lambda d: d.update({"delta_fid": 0.4}),
+        lambda d: d.update({"summary": "hidden"}),
+        lambda d: d.update({"prediction": 0.9}),
+    ],
+)
+def test_runtime_stdout_rejects_all_unknown_and_scientific_fields(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, mutate,
+) -> None:
+    _install_estimate_pipeline(monkeypatch)
+    authorization_path = tmp_path / "authorization.json"
+    _write_authorization(authorization_path)
+
+    def shard_runner(*_args, **_kwargs):
+        document = _runtime_summary().to_dict()
+        mutate(document)
+        return document
+
+    code, output, error = _invoke(
+        _runtime_argv(
+            "run-shard", authorization_path, tmp_path / "formal-root",
+        ),
+        pipeline_provider=lambda _args: _pipeline(),
+        shard_runner=shard_runner,
+        execution_gate_factory=lambda: (lambda *_args, **_kwargs: object()),
+        backend_factory=lambda **_kwargs: object(),
+    )
+    assert code == cli.EXIT_INTEGRITY_FAILURE
+    assert output is None
+    assert error["error"]["code"] == "STAGE_D_RUNTIME_INTEGRITY_ERROR"
+    serialized = json.dumps(error).casefold()
+    assert "0.8" not in serialized
+    assert "0.9" not in serialized
+    assert "0.4" not in serialized
+    assert "0.7" not in serialized
+    assert "0.6" not in serialized
+
+
+def test_malformed_authorization_fails_before_gate_runner_and_backend(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    _install_estimate_pipeline(monkeypatch)
+    authorization_path = tmp_path / "authorization.json"
+    authorization_path.write_text('{"digest":1,"digest":2}', encoding="utf-8")
+    events: list[str] = []
+    code, output, error = _invoke(
+        _runtime_argv(
+            "run-shard", authorization_path, tmp_path / "formal-root",
+        ),
+        pipeline_provider=lambda _args: _pipeline(),
+        shard_runner=lambda *_args, **_kwargs: events.append("runner"),
+        execution_gate_factory=lambda: events.append("gate") or object(),
+        backend_factory=lambda **_kwargs: events.append("backend"),
+    )
+    assert code == cli.EXIT_INPUT_ERROR
+    assert output is None
+    assert events == []
+    assert error["error"]["code"] == "STAGE_D_INPUT_ERROR"
+    assert "duplicate JSON key" in error["error"]["message"]

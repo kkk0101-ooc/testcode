@@ -346,7 +346,8 @@ numeric chain.
 
 ### Stage D fidelity-only roadmap
 
-Stage D execution is not implemented or authorized yet. The initial D0 attempt
+Stage D's D4 execution producer/runtime is implemented and synthetic-tested,
+but formal execution is not authorized or started. The initial D0 attempt
 remains `BLOCKED` because it loaded/ran a CPU model and decoded non-reserve
 JPEGs. A separate strict model-free/no-JPEG D0 rerun passed and froze the
 preparation-only scope in `docs/stage_d_scope_decision.md` and
@@ -364,14 +365,22 @@ generation into `D0`–`D10`. Do not start the formal Stage D GPU workload befor
 D7 issues `AUTHORIZED_STAGE_D_FIDELITY_SCOPE`. D0's
 `APPROVED_TO_PREPARE_STAGE_D` is not execution authorization.
 
-The D3 CPU-only control plane exposes only these metadata commands:
+The D3/D4 CPU-only control and runtime interfaces expose these commands:
 
 ~~~bash
 vitnns-stage-d validate-contracts
 vitnns-stage-d plan
 vitnns-stage-d estimate
 vitnns-stage-d prepare-authorization
+vitnns-stage-d init
+vitnns-stage-d run-shard
 ~~~
+
+`init` and `run-shard` remain fail-closed behind an external D7 gate. D4 did
+not provide a formal issuer or run a formal workload; its runtime evidence was
+created only in temporary synthetic test roots. D5 is the next task and may
+implement/test finalize and source-recomputing validation only with synthetic
+or tampered fixtures.
 
 Without later measured profiles, `estimate` remains
 `D7_PROFILE_REQUIRED` / `NOT_EVALUATED`. The preparation artifact always keeps

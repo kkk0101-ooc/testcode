@@ -17,6 +17,7 @@ import torch
 from vitnns.stage_c_runner import (
     ProductionStageCBackend,
     StageCBackendError,
+    StageCScientificInvalidity,
     StageCPreflightError,
     StageCRunnerError,
     UnitPayload,
@@ -1516,10 +1517,14 @@ def test_production_backend_fails_on_nonrepeatable_clean_map(monkeypatch):
         [_method_result(ROLLOUT_METHOD, 0.0), _method_result(ROLLOUT_METHOD, 0.01)],
     )
 
-    with pytest.raises(StageCBackendError, match="repeatability failed"):
+    with pytest.raises(
+        StageCScientificInvalidity, match="repeatability failed"
+    ) as captured:
         backend.run(unit, device="cpu", call_counter=CallCounter())
 
     assert len(method_calls) == 2
+    assert captured.value.failure_code == "audit_repeatability_failed"
+    assert captured.value.partial_evidence.metric_ready_map.shape == (14, 14)
 
 
 def test_production_backend_without_stability_never_builds_perturbations(
@@ -1698,6 +1703,7 @@ def test_structured_na_is_terminal_failure_without_fabricated_l1(
 
     assert result.state == "failed"
     assert "structured NA" in result.failure["message"]
+    assert result.failure["type"].endswith("StageCScientificInvalidity")
     attempt = _path(result.attempt_path)
     status = _json(attempt / "status.json")
     assert status["terminal"] is True

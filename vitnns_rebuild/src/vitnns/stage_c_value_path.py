@@ -51,6 +51,7 @@ from .stage_c_maps import (
     signed_rgb_channel_sum,
     stage_c_metric_ready,
 )
+from .stage_c_runner import StageCScientificInvalidity
 
 
 METHOD_VERSION = "1.0.0"
@@ -106,6 +107,48 @@ _ISSUED_TARGETS: "weakref.WeakKeyDictionary[FrozenHeadDirectionTarget, tuple[Any
 
 class StageCValuePathError(ValueError):
     """Raised when a C4 Value-path contract is violated."""
+
+
+class StageCValuePathScientificInvalidity(
+    StageCValuePathError, StageCScientificInvalidity
+):
+    """Nominal base for closed scientific-invalidity outcomes."""
+
+    def __init__(
+        self, message: str, *, failure_code: str, phase: str,
+        details: Mapping[str, Any] | None = None,
+    ) -> None:
+        StageCScientificInvalidity.__init__(
+            self, failure_code, phase=phase, details=details, message=message
+        )
+
+
+class StageCValuePathEndpointParityError(StageCValuePathScientificInvalidity):
+    """A measured endpoint parity exceeded its frozen tolerance."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(
+            message, failure_code="endpoint_parity_failed",
+            phase="target_resolution",
+        )
+
+
+class StageCValuePathMatchedConservationError(
+    StageCValuePathScientificInvalidity
+):
+    """Matched token contributions violated their frozen conservation rule."""
+
+    def __init__(
+        self, message: str, *, absolute_error: float, tolerance: float,
+    ) -> None:
+        super().__init__(
+            message, failure_code="matched_token_conservation_failed",
+            phase="clean_map",
+            details={
+                "absolute_error": float(absolute_error),
+                "tolerance": float(tolerance),
+            },
+        )
 
 
 @dataclass(frozen=True, init=False)
@@ -192,7 +235,7 @@ class FrozenScalarEvaluation:
         }
 
 
-class StageCValuePathConvergenceError(StageCValuePathError):
+class StageCValuePathConvergenceError(StageCValuePathScientificInvalidity):
     """Raised after the complete frozen IG schedule fails conservation.
 
     ``ig_result`` is retained verbatim so callers can audit all attempts even
@@ -200,7 +243,14 @@ class StageCValuePathConvergenceError(StageCValuePathError):
     """
 
     def __init__(self, message: str, ig_result: IGResult) -> None:
-        super().__init__(message)
+        super().__init__(
+            message, failure_code="ig_conservation_failed",
+            phase="clean_map",
+            details={
+                "selected_steps": ig_result.steps,
+                "attempt_count": len(ig_result.attempts),
+            },
+        )
         self.ig_result = ig_result
         self.result = ig_result
         self.attempts = ig_result.attempts
@@ -1577,10 +1627,11 @@ def _matched_token_contributions_from_values(
         TOKEN_CONSERVATION_RTOL * abs(conservation_target)
     )
     if conservation_error > conservation_tolerance:
-        raise StageCValuePathError(
+        raise StageCValuePathMatchedConservationError(
             "matched token conservation failed: "
             f"error={conservation_error:.17g}, "
-            f"tolerance={conservation_tolerance:.17g}"
+            f"tolerance={conservation_tolerance:.17g}",
+            absolute_error=conservation_error, tolerance=conservation_tolerance,
         )
     cls_contribution = float(contributions[CLS_TOKEN_INDEX].item())
     patch = _owned_tensor(contributions[1:])
@@ -2259,7 +2310,7 @@ def resolve_fixed_clean_attention_head_directions(
                         clean_values_error < ENDPOINT_PARITY_MAX_ABS
                         and baseline_values_error < ENDPOINT_PARITY_MAX_ABS
                     ):
-                        raise StageCValuePathError(
+                        raise StageCValuePathEndpointParityError(
                             "selected block Value endpoints changed under its "
                             "attention intervention"
                         )
@@ -2270,7 +2321,7 @@ def resolve_fixed_clean_attention_head_directions(
                         natural_g, resolution.clean_head_output
                     )
                     if not clean_formula_error < ENDPOINT_PARITY_MAX_ABS:
-                        raise StageCValuePathError(
+                        raise StageCValuePathEndpointParityError(
                             "natural clean pre-projection head output does not "
                             "match clean attention @ clean V: "
                             f"block={block_index}, head={head_index}, "
@@ -2292,12 +2343,12 @@ def resolve_fixed_clean_attention_head_directions(
                         clean_model_output, clean_replay_model_output
                     )
                     if not clean_replay_error < ENDPOINT_PARITY_MAX_ABS:
-                        raise StageCValuePathError(
+                        raise StageCValuePathEndpointParityError(
                             "clean natural vs fixed-clean-A replay parity must "
                             "have max_abs_error < 1e-6"
                         )
                     if not baseline_replay_error < ENDPOINT_PARITY_MAX_ABS:
-                        raise StageCValuePathError(
+                        raise StageCValuePathEndpointParityError(
                             "baseline fixed-clean-A internal output vs independent "
                             "clean-A @ natural baseline V parity must have "
                             "max_abs_error < 1e-6: "
@@ -2305,7 +2356,7 @@ def resolve_fixed_clean_attention_head_directions(
                             f"max_abs_error={baseline_replay_error!r}"
                         )
                     if not clean_model_output_error < ENDPOINT_PARITY_MAX_ABS:
-                        raise StageCValuePathError(
+                        raise StageCValuePathEndpointParityError(
                             "clean natural vs fixed-clean-A complete model-output "
                             "parity must have max_abs_error < 1e-6"
                         )
@@ -3440,8 +3491,11 @@ __all__ = [
     "POSITIVE_PATCH_EVIDENCE_MINIMUM",
     "STATUS_OK",
     "StageCValuePathConvergenceError",
+    "StageCValuePathEndpointParityError",
     "StageCValuePathError",
     "StageCValuePathIGConvergenceError",
+    "StageCValuePathMatchedConservationError",
+    "StageCValuePathScientificInvalidity",
     "TARGET_REF",
     "TOKENS",
     "TOKEN_CONSERVATION_ATOL",

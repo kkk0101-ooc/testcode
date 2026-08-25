@@ -22,6 +22,7 @@ import math
 import os
 import stat
 import tempfile
+import threading
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass, field
@@ -79,6 +80,58 @@ class StageCPreflightError(StageCRunnerError):
 
 class StageCBackendError(StageCRunnerError):
     """A backend returned data that violates the execution-unit contract."""
+
+
+_SCIENTIFIC_INVALIDITY_CODES = frozenset({
+    "empty_valid_region",
+    "shape_mismatch",
+    "non_finite",
+    "degenerate_direction",
+    "degenerate_target_delta",
+    "missing_artifact",
+    "audit_repeatability_failed",
+    "endpoint_parity_failed",
+    "ig_conservation_failed",
+    "matched_token_conservation_failed",
+})
+
+
+@dataclass(frozen=True, slots=True)
+class StageCPartialEvidence:
+    """Ordered, stage-neutral evidence completed before invalidity."""
+
+    l0_scalars: Mapping[str, Any] | None = None
+    metric_ready_map: Any | None = None
+    fidelity_curves: Any | None = None
+    audit_evidence: Mapping[str, Any] | None = None
+
+
+class StageCScientificInvalidity(StageCBackendError):
+    """Nominal closed scientific failure emitted by the production runner."""
+
+    def __init__(
+        self, code: str, *, phase: str,
+        l0_scalars: Mapping[str, Any] | None = None,
+        details: Mapping[str, Any] | None = None,
+        partial_evidence: StageCPartialEvidence | None = None,
+        message: str | None = None,
+    ) -> None:
+        if code not in _SCIENTIFIC_INVALIDITY_CODES:
+            raise ValueError("scientific invalidity code is outside the closed set")
+        if not isinstance(phase, str) or not phase:
+            raise TypeError("scientific invalidity phase must be non-empty")
+        if partial_evidence is not None and not isinstance(
+            partial_evidence, StageCPartialEvidence
+        ):
+            raise TypeError("partial_evidence must be StageCPartialEvidence")
+        self.failure_code = code
+        self.phase = phase
+        self.l0_scalars = {} if l0_scalars is None else dict(l0_scalars)
+        self.details = None if details is None else dict(details)
+        self.partial_evidence = partial_evidence
+        super().__init__(
+            f"Stage C scientific invalidity: {code}" if message is None else message
+        )
 
 
 class StageCBatchValidationError(StageCRunnerError):
@@ -414,6 +467,8 @@ class ProductionStageCBackend:
     from each :class:`~vitnns.stage_c_plan.WorkItem`.
     """
 
+    DEFAULT_FIDELITY_SEED_NAMESPACE = "stage-c-fidelity|20260821|"
+
     def __init__(
         self,
         *,
@@ -426,6 +481,8 @@ class ProductionStageCBackend:
         plan: Any = None,
         config_path: Path | str | None = None,
         code_state: Mapping[str, Any] | None = None,
+        fidelity_seed_namespace: str | None = None,
+        empty_cuda_cache_on_release: bool = False,
     ) -> None:
         if not callable(sample_loader):
             raise TypeError("sample_loader must be callable")
@@ -445,6 +502,20 @@ class ProductionStageCBackend:
 
             code_state = capture_git_state(REPO_ROOT)
         self.code_state = None if code_state is None else dict(code_state)
+        namespace = (
+            self.DEFAULT_FIDELITY_SEED_NAMESPACE
+            if fidelity_seed_namespace is None else fidelity_seed_namespace
+        )
+        if not isinstance(namespace, str) or not namespace.endswith("|"):
+            raise TypeError(
+                "fidelity_seed_namespace must be a string ending in '|'"
+            )
+        if type(empty_cuda_cache_on_release) is not bool:
+            raise TypeError(
+                "empty_cuda_cache_on_release must be a boolean"
+            )
+        self.fidelity_seed_namespace = namespace
+        self.empty_cuda_cache_on_release = empty_cuda_cache_on_release
         self._models: dict[str, Any] = {}
         self._model_load_snapshots: dict[str, Any] = {}
         self._samples: dict[tuple[str, str], dict[str, Any]] = {}
@@ -452,6 +523,56 @@ class ProductionStageCBackend:
         self._extractions: dict[tuple[str, str], Any] = {}
         self._class_targets: dict[tuple[str, str], Any] = {}
         self._value_targets: dict[tuple[str, str, int, int], Any] = {}
+        self._image_scope_lock = threading.Lock()
+        self._active_image_scope: tuple[str, str] | None = None
+
+    def release_sample(self, sample_id: str, device: str) -> None:
+        """Release every sample-scoped cache entry for one image/device.
+
+        Device-scoped models and their integrity snapshots intentionally remain
+        resident.  The optional CUDA allocator cleanup is off by default and is
+        never needed by CPU/synthetic callers.
+        """
+
+        if not isinstance(sample_id, str) or not sample_id:
+            raise TypeError("sample_id must be a non-empty string")
+        if not isinstance(device, str) or not device:
+            raise TypeError("device must be a non-empty string")
+        pair_key = (sample_id, device)
+        for cache in (
+            self._samples, self._perturbations, self._extractions,
+            self._class_targets,
+        ):
+            cache.pop(pair_key, None)
+        for key in tuple(self._value_targets):
+            if key[:2] == pair_key:
+                del self._value_targets[key]
+        if self.empty_cuda_cache_on_release and device.startswith("cuda"):
+            import torch
+
+            torch.cuda.empty_cache()
+
+    @contextmanager
+    def image_scope(self, sample_id: str, *, device: str) -> Iterator["ProductionStageCBackend"]:
+        """Exclusively own one image and release its caches on every exit."""
+
+        if not isinstance(sample_id, str) or not sample_id:
+            raise TypeError("sample_id must be a non-empty string")
+        if not isinstance(device, str) or not device:
+            raise TypeError("device must be a non-empty string")
+        if not self._image_scope_lock.acquire(blocking=False):
+            raise StageCBackendError(
+                "ProductionStageCBackend is already owned by another image scope"
+            )
+        self._active_image_scope = (sample_id, device)
+        try:
+            yield self
+        finally:
+            try:
+                self.release_sample(sample_id, device)
+            finally:
+                self._active_image_scope = None
+                self._image_scope_lock.release()
 
     def _phase(self, name: str):
         timer = getattr(self, "_active_phase_timer", None)
@@ -597,6 +718,38 @@ class ProductionStageCBackend:
                 "structured-NA method result has no L1 map; refusing to fabricate zeros"
             )
         return np.array(result.metric_map.data, dtype=np.float32, copy=True)
+
+    def _retained_metric_array(self, result: Any, response: Any) -> np.ndarray:
+        """Return the metric-ready map retained by this backend.
+
+        Stage C keeps its historical 14x14 representation.  Stage-specific
+        adapters may override this hook and reuse the registered projection
+        primitive without duplicating its formula.
+        """
+
+        del response
+        return self._metric_array(result)
+
+    def _retain_repeat_clean_maps(self) -> bool:
+        """Whether repeat-clean metric maps belong in L1 retention."""
+
+        return False
+
+    def _make_unit_payload(
+        self, *, l0: Mapping[str, Any], l1: Mapping[str, np.ndarray],
+        l2: Mapping[str, Any], l3: Mapping[str, bytes] | None = None,
+        provenance: Mapping[str, Any] | None = None,
+        resources: Mapping[str, Any] | None = None,
+        lifecycle: Mapping[str, Any] | None = None,
+    ) -> UnitPayload:
+        """Construct a payload through a retention-policy override point."""
+
+        return UnitPayload(
+            l0=l0, l1=l1, l2=l2, l3={} if l3 is None else l3,
+            provenance={} if provenance is None else provenance,
+            resources={} if resources is None else resources,
+            lifecycle={} if lifecycle is None else lifecycle,
+        )
 
     @staticmethod
     def _native_array(result: Any) -> np.ndarray | None:
@@ -969,7 +1122,7 @@ class ProductionStageCBackend:
                     else boundary.restoration_evidence.to_dict()
                 ),
             }
-            return UnitPayload(
+            return self._make_unit_payload(
                 l0=l0, l1=payload.l1, l2=payload.l2, l3=payload.l3,
                 provenance=payload.provenance, resources=payload.resources,
                 lifecycle=l0["lifecycle"],
@@ -1115,11 +1268,22 @@ class ProductionStageCBackend:
             }
         )
         if clean_result.na is not None:
-            raise StageCBackendError(
-                "method returned an invalidating structured NA; retain as a failed "
-                "terminal unit instead of fabricating an L1 map"
+            reason = getattr(clean_result.na, "reason", None)
+            code = getattr(reason, "value", reason)
+            if code not in _SCIENTIFIC_INVALIDITY_CODES:
+                raise StageCBackendError(
+                    "method returned an unregistered structured NA"
+                )
+            raise StageCScientificInvalidity(
+                code, phase="clean_map", l0_scalars=l0,
+                details={"structured_na": clean_result.na.to_dict()},
+                partial_evidence=StageCPartialEvidence(l0_scalars=l0),
+                message=(
+                    "method returned an invalidating structured NA; retain as a "
+                    "failed terminal unit instead of fabricating an L1 map"
+                ),
             )
-        l1 = {"clean": self._metric_array(clean_result)}
+        l1 = {"clean": self._retained_metric_array(clean_result, response)}
         l2: dict[str, Any] = {}
         if _unit_audit(unit):
             native = self._native_array(clean_result)
@@ -1348,8 +1512,8 @@ class ProductionStageCBackend:
             )
             if repeated.metric_map is None:
                 raise StageCBackendError("repeatability result has no numeric map")
-            reference = self._metric_array(clean_result)
-            observed = self._metric_array(repeated)
+            reference = self._retained_metric_array(clean_result, response)
+            observed = self._retained_metric_array(repeated, response)
             absolute = np.abs(reference.astype(np.float64) - observed.astype(np.float64))
             passed = bool(np.allclose(reference, observed, atol=1e-6, rtol=1e-5))
             item_record = {
@@ -1358,12 +1522,27 @@ class ProductionStageCBackend:
                 "max_abs_error": float(absolute.max()), "pass": passed,
             }
             repeatability.append(item_record)
+            if self._retain_repeat_clean_maps():
+                l1[f"repeat_clean_{repeat_index}"] = observed
             if _unit_audit(unit):
                 repeated_native = self._native_array(repeated)
                 if repeated_native is not None:
                     l2[f"repeat_{item_record['repeat_index']}_native"] = repeated_native
             if not passed:
-                raise StageCBackendError("audit clean-map repeatability failed")
+                raise StageCScientificInvalidity(
+                    "audit_repeatability_failed", phase="audit_repeatability",
+                    l0_scalars={**l0, "repeatability": repeatability},
+                    details={
+                        "repeat_index": repeat_index,
+                        "atol": 1e-6, "rtol": 1e-5,
+                        "max_abs_error": item_record["max_abs_error"],
+                    },
+                    partial_evidence=StageCPartialEvidence(
+                        l0_scalars={**l0, "repeatability": repeatability},
+                        metric_ready_map=l1["clean"],
+                    ),
+                    message="audit clean-map repeatability failed",
+                )
         l0["repeatability"] = repeatability
 
         if curve_items:
@@ -1371,11 +1550,22 @@ class ProductionStageCBackend:
         else:
             fidelity_phase = nullcontext()
         with fidelity_phase:
-            self._run_fidelity_work(
-                unit=unit, identity=identity, clean=clean, baseline=baseline,
-                clean_result=clean_result, response=response, evaluator=evaluator,
-                curve_items=curve_items, l0=l0,
-            )
+            try:
+                self._run_fidelity_work(
+                    unit=unit, identity=identity, clean=clean, baseline=baseline,
+                    clean_result=clean_result, response=response, evaluator=evaluator,
+                    curve_items=curve_items, l0=l0,
+                )
+            except StageCScientificInvalidity as error:
+                # At this boundary the clean method and its metric-ready map
+                # are already complete.  Retain only that closed prefix; any
+                # unfinished curve and audit payload remains absent.
+                if error.partial_evidence is None:
+                    error.l0_scalars = dict(l0)
+                    error.partial_evidence = StageCPartialEvidence(
+                        l0_scalars=dict(l0), metric_ready_map=l1["clean"],
+                    )
+                raise
         l0["perturbations"] = [item.to_dict() for item in bundle.values()]
         l0["target_identity"] = (
             None if target_identity is None else _jsonable(target_identity)
@@ -1390,7 +1580,7 @@ class ProductionStageCBackend:
         }
         l0["fidelity_enabled"] = bool(curve_items)
         l0["stability_enabled"] = needs_stability
-        return UnitPayload(l0=l0, l1=l1, l2=l2)
+        return self._make_unit_payload(l0=l0, l1=l1, l2=l2)
 
     def _run_fidelity_work(
         self, *, unit: Any, identity: Mapping[str, Any], clean: Any,
@@ -1401,7 +1591,8 @@ class ProductionStageCBackend:
             CurveDirection, FidelityScale, RankingKind, aggregate_five_curves,
             build_intervention_schedule, build_method_intervention_schedule,
             center_distance_ranking, evaluate_fidelity_curve,
-            global_random_ranking, method_unit_masses,
+            fidelity_seed_for_namespace, global_random_ranking,
+            method_unit_masses,
         )
 
         curve_records: list[dict[str, Any]] = []
@@ -1443,12 +1634,15 @@ class ProductionStageCBackend:
                         clean, baseline, unit_map, response,
                         sample_id=identity["sample_id"], block=block, head=head,
                         replicate=replicate, direction=parsed_direction,
+                        seed_namespace=self.fidelity_seed_namespace,
                     )
                 else:
                     count = parsed_scale.unit_count
                     if parsed_kind is RankingKind.GLOBAL_RANDOM:
-                        from .stage_c_fidelity import fidelity_seed
-                        seed = fidelity_seed(identity["sample_id"], block, head, replicate)
+                        seed = fidelity_seed_for_namespace(
+                            self.fidelity_seed_namespace, identity["sample_id"],
+                            block, head, replicate,
+                        )
                         ranking = global_random_ranking(count, seed)
                     else:
                         seed = replicate = None
@@ -1458,6 +1652,7 @@ class ProductionStageCBackend:
                         direction=parsed_direction, ranking_kind=parsed_kind,
                         sample_id=identity["sample_id"], block=block, head=head,
                         seed=seed, replicate=replicate,
+                        seed_namespace=self.fidelity_seed_namespace,
                     )
                 curve = evaluate_fidelity_curve(
                     evaluator, response, schedule, method_id=identity["method_id"]
@@ -1560,7 +1755,7 @@ class ProductionStageCBackend:
         from .constants import MODEL_NAME, MODEL_SHA256, REPO_ROOT, WORKSPACE_ROOT
         from .io_utils import sha256_file
         from .stage_c_config import DEFAULT_STAGE_C_CONFIG, DEFAULT_STAGE_C_SCHEMA
-        from .stage_c_fidelity import fidelity_seed
+        from .stage_c_fidelity import fidelity_seed_for_namespace
         from .stage_c_plan import DEFAULT_REGISTRY_SCHEMA, DEFAULT_SELECTION_SCHEMA
         from .stage_c_provenance import (
             CANONICAL_RGB_HASH_DOMAIN, NORMALIZED_INPUT_HASH_DOMAIN,
@@ -1635,7 +1830,12 @@ class ProductionStageCBackend:
             block = int(_attribute(curve_item, "pairing_block_index"))
             head = int(_attribute(curve_item, "pairing_head_index"))
             pairing = {"block_index": block, "head_index": head}
-            seeds = [fidelity_seed(sample_id, block, head, index) for index in range(5)]
+            seeds = [
+                fidelity_seed_for_namespace(
+                    self.fidelity_seed_namespace, sample_id, block, head, index
+                )
+                for index in range(5)
+            ]
         perturbation_records: list[dict[str, Any]] = []
         if scalars.get("stability_enabled"):
             parameters = _provenance_perturbation_parameters(
@@ -1777,7 +1977,8 @@ class ProductionStageCBackend:
                 "noise_seed_rule": "base_seed_plus_registry_selection_order",
                 "fidelity_enabled": fidelity_enabled,
                 "fidelity_seed_namespace": (
-                    "stage-c-fidelity|20260821|sample_id|block|head|replicate"
+                    self.fidelity_seed_namespace
+                    + "sample_id|block|head|replicate"
                 ),
                 "fidelity_pairing_context": pairing,
                 "fidelity_seeds": seeds,
@@ -1961,7 +2162,8 @@ class ProductionStageCBackend:
                 "noise_seed_rule": "base_seed_plus_registry_selection_order",
                 "fidelity_enabled": False,
                 "fidelity_seed_namespace": (
-                    "stage-c-fidelity|20260821|sample_id|block|head|replicate"
+                    self.fidelity_seed_namespace
+                    + "sample_id|block|head|replicate"
                 ),
                 "fidelity_pairing_context": None, "fidelity_seeds": [],
             },
@@ -3323,6 +3525,7 @@ def aggregate_stage_c_batch(
 __all__ = [
     "BatchRunResult", "BatchValidation", "ProductionStageCBackend",
     "StageCBackend", "StageCBackendError", "StageCBatchValidationError",
+    "StageCPartialEvidence", "StageCScientificInvalidity",
     "StageCPreflightError", "StageCRunnerError", "UnitPayload",
     "UnitRunResult", "aggregate_stage_c_batch", "run_execution_unit",
     "run_stage_c_batch", "run_stage_c_sample",

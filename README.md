@@ -47,6 +47,10 @@ matched patch baseline 和 fine-4×4-cell endpoint 的 fidelity component 为
 通过并冻结 fidelity-only scope，仅签发 `APPROVED_TO_PREPARE_STAGE_D`。后续按
 `vitnns_rebuild/docs/阶段D-step-by-step.md`
 执行 D1–D7 准备，在 D7 签发独立执行授权前不得启动正式 GPU workload。
+当前 D0–D4 已完成；D4 仅用 synthetic/mock fixtures 实现并验证了
+Stage-D-specific producer、image-group runner、sharding/recovery runtime、
+immutable attempts 和 provenance。下一任务是 D5 synthetic/tampered
+finalize/validator；正式执行仍未授权、未启动。
 
 ## 开始使用
 

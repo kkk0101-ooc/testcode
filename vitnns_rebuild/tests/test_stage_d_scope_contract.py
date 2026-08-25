@@ -367,7 +367,7 @@ def test_d0_static_files_keep_execution_and_reserve_closed() -> None:
     rebuild_readme = REBUILD_README.read_text(encoding="utf-8")
     top_readme = TOP_LEVEL_README.read_text(encoding="utf-8")
     assert "D0 | PASS（首次尝试 BLOCKED；严格重试 PASS）" in roadmap
-    assert "当前 next task：`D4`" in roadmap
+    assert "当前 next task：`D5`" in roadmap
     assert "| D1 | PASS |" in roadmap
     assert "| D2 | PASS |" in roadmap
     assert "D0_INITIAL_ATTEMPT_20260825" in roadmap
