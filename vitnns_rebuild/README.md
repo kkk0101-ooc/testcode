@@ -364,3 +364,17 @@ generation into `D0`–`D10`. Do not start the formal Stage D GPU workload befor
 D7 issues `AUTHORIZED_STAGE_D_FIDELITY_SCOPE`. D0's
 `APPROVED_TO_PREPARE_STAGE_D` is not execution authorization.
 
+The D3 CPU-only control plane exposes only these metadata commands:
+
+~~~bash
+vitnns-stage-d validate-contracts
+vitnns-stage-d plan
+vitnns-stage-d estimate
+vitnns-stage-d prepare-authorization
+~~~
+
+Without later measured profiles, `estimate` remains
+`D7_PROFILE_REQUIRED` / `NOT_EVALUATED`. The preparation artifact always keeps
+execution `NOT_ISSUED` and analysis `NOT_EVALUATED`; it is not a D7 launch
+authorization.
+

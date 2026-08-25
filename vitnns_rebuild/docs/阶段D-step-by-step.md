@@ -3,8 +3,8 @@
 > 创建日期：2026-08-25。
 > 文档性质：阶段 D 的路线图、任务状态表、数据访问边界和跨对话追加式交接日志。
 > 当前状态：阶段 A、B 已完成；Stage C/C0–C10 的执行和证据封存已完成，但 Stage C acceptance 为 `BLOCKED`，C10 v1 primary decision 为 `NO_GO_NOVELTY`。D0 首次尝试因模型/推理与非-reserve JPEG decode 保持 `BLOCKED`；独立 model-free/no-JPEG 重试已 `PASS`，只签发 `APPROVED_TO_PREPARE_STAGE_D`。D1 metadata-only registry formalization 与 D2 protocol/statistics/run-spec freeze 均已 `PASS`。Stage D 正式执行仍未授权、未启动。
-> 当前 next task：`D3`。
-> 当前权威交接：最新 Stage D completion record 是 `2026-08-25 16:33 +0800 — D2 completion record`；当前可执行入口是该记录后的 D3 提示词勘误版。更早提示词只作审计历史，不再授权执行。
+> 当前 next task：`D4`。
+> 当前权威交接：最新 Stage D completion record 是 `2026-08-25 21:26 +0800 — D3 completion record`；当前可执行入口是该记录后的 D4 提示词。更早提示词只作审计历史，不再授权执行。
 > 使用规则：每个新对话先读文首状态、第 7 节执行协议、第 9 节最新权威记录和当前提示词，再读提示词列出的章节与上游证据；一次只执行一个 `D_i` 或一个明确编号的 `D8-Sxx` shard。未更新本文、未追加 completion record、未给出下一任务完整提示词的任务，不算完成。
 > 测试原则：只做与当前任务和实际改动直接相关的必要测试，避免无关、重复或低价值测试。每个测试/验证批次开始前一次性说明测试项目、必要性和预计耗时；只有新增高成本测试或扩大影响面时才补充说明。
 
@@ -207,7 +207,7 @@ D10 建议固定生成以下 machine-readable paper data 和数值图；只有 v
 | D0 | PASS（首次尝试 BLOCKED；严格重试 PASS） | 冻结 post-C10 fidelity-only scope | sealed C10；reserve metadata existence only | `APPROVED_TO_PREPARE_STAGE_D` | C10 evidence sealed |
 | D1 | PASS | 正式化 500 图 registry 与 audit overlay | reserve/ledger/官方标签 metadata；禁止图像字节 | 无效果结论 | D0 PASS |
 | D2 | PASS | 冻结 protocol/config/schema/statistics/exact workload | D0/D1 与 Stage C 合同；禁止图像和 outcome | 无效果结论 | D1 PASS |
-| D3 | NOT_STARTED | 实现 strict loaders、typed plan、preflight/authorization | synthetic/metadata only | 无效果结论 | D2 PASS |
+| D3 | PASS | 实现 strict loaders、typed plan、preflight/authorization | synthetic/metadata only | 无效果结论 | D2 PASS |
 | D4 | NOT_STARTED | 实现 image-group runner、shards、artifact/provenance | synthetic/mock only | 无效果结论 | D3 PASS |
 | D5 | NOT_STARTED | 实现 finalize 与 source-recomputing validation | synthetic/tampered fixtures only | package/QC 状态 | D4 PASS |
 | D6 | NOT_STARTED | 实现 aggregation、statistics、decision、paper export | synthetic fixtures only | synthetic decision only | D5 PASS |
@@ -1041,4 +1041,84 @@ D3 必须完成：
 1. D3 通过时，把第 5 节 D3 状态改为 `PASS`；失败或无法建立可信边界时改为 `BLOCKED`。
 2. 在第 9 节追加 D3 completion record，填写全部模板字段、关键 hashes、数据访问事实、测试计划/结果和未运行测试理由。
 3. 只提交 D3 相关文件，不夹带无关改动；原则上一任务一提交。提交后确认 worktree clean，并在最终回复报告 commit、关键文件、验证结果和下一任务。
+```
+
+### 2026-08-25 21:26 +0800 — D3 completion record
+
+- status: PASS
+- objective_completed: 已把 D0–D2 frozen contracts 实现为独立、fail-closed、CPU-only Stage D 控制层：strict config/run-spec loader、同一 descriptor snapshot 的上游 manifest verifier、content-addressed typed plan、metadata-only estimate/preflight、preparation-only authorization builder/validator，以及仅含 `validate-contracts`、`plan`、`estimate`、`prepare-authorization` 的 CLI。没有实现或启动 D4 runtime。
+- authority_and_scope: D0 的 `APPROVED_TO_PREPARE_STAGE_D` 仍是唯一准备授权；`execution_authorization=NOT_ISSUED`、`analysis_authorization=NOT_EVALUATED`、`stage_d_execution_started=false`、scientific result `NOT_EVALUATED`。D3 preparation artifact 不是 D7 execution authorization，且代码不签发 `AUTHORIZED_STAGE_D_FIDELITY_SCOPE`。
+- git_sha_before: `f3cc4b5ea4688de98828f76dcc63f066a816ef74`；它的直接父提交是冻结 D2 anchor `c57438640e882604031775c944d8ff5ce7932713`，工作树启动时 clean；该单一后继提交只包含当前提示词勘误和路线澄清，属于本任务明确要求读取/沿用的权威 handoff，不是未归属改动。
+- git_sha_producer: SELF（D3 control-plane implementation commit；最终 SHA 在提交后以 Git 为准并在最终回复报告）
+- git_sha_postprocessor: none
+- git_sha_completion: SELF
+- tree_clean_at_boundaries: 启动时 clean；实现期间仅出现本 record 列出的 D3 文件；提交后 clean 状态由 post-commit 检查与最终回复报告。未 stash、reset、删除、覆盖或夹带用户改动。
+- upstream_commits_and_refs: D2 `refs/archive/stage-d-d2-completion` / `c57438640e882604031775c944d8ff5ce7932713`；D1 `refs/archive/stage-d-d1-completion` / `d594eadae5b5aa715d12346f6dc93507f1e093a9`；D0 `refs/archive/stage-d-d0-completion` / `4c76d468e1368858c52ff8ef73e640463e15ac49`；C10 producer `refs/archive/c10-aggregation-producer` / `92ad81342ff22e2710df495a9961a3ab8c015a3a`，C10 completion `69e1fa887862e00da4441842c6de149fe2424225`。
+- files_added_or_changed: 新增 `src/vitnns/{stage_d_config.py,stage_d_manifest.py,stage_d_plan.py,stage_d_authorization.py,stage_d_cli.py}`、`tests/d3_guard/sitecustomize.py`、`tests/test_stage_d_{config,manifest,plan,authorization,cli}.py`；修改 `src/vitnns/stage_d_registry.py` 以允许对同一已捕获 bytes snapshot 验证 D1 package；修改 `pyproject.toml` 注册 `vitnns-stage-d` 并把 loader 运行期需要的 `jsonschema==4.23.0` 从 test extra 提升为基础依赖；最小调整受 D3 路线状态影响的 Stage D tests；更新 `README.md`、本文与仓库顶层 `论文1实现审计与后续计划.md` 的 D3/D4 状态。未修改 D0/D1/D2 frozen JSON/schema/document、candidate access log 或 C9/C10 evidence。
+- frozen_inputs_and_sha256: D0 canonical `7508dcb7c063eaeecfc41f2f63f18e70dd5d660bec06c50e7b4b893d9a48ac5f`；D1 registry file/canonical `9aace3abf02a2c07d992d88b765c53cfeffa7f83a6ed72ecefb8cecf9eb79b6b` / `514ce4dd2e1fedc1744893e5543651ea42c053458b233ff11a45f700bb4bc028`；D1 package manifest file/canonical `f38bf9773ad172100c22f50ec3b4fe5251664e5c9f5c7ee78ae46532aec372fe` / `cf3e21b88488dcb928f9a98557c2ee9896a7c5210ddb8dda64427c1792fa299d`；D1 source binding file/canonical `f1109304a23674bdadc62306bc927e7ac10b397f68754fae13967971b4f94cac` / `2eafef71035b95035a92c5ccfba7d536c3b924df4081def86fb0a1fa06dba2b8`；sealed C10 whole-root digest `382992d94f071ce46164b92ab9eed6a60743a30fdab0bf73253bab95156986a4`。
+- config_plan_and_canonical_digests: D2 config file/canonical `88fdc9cb2b4a5bd74ff7d8e68c79463cafac6437e29b5564c2115a13f1f1136d` / `21f9dcf1d615f2531f7d7d9a36319b958e06d0606c325890dd31ad89b7c2caae`；D2 config schema SHA-256 `64fed10aed29a1c97807ebee2d91a29c3dc218993909b4f0c8fab345d8f78c32`；D2 run-spec file/canonical `43c61f190a9ad5811d878a7516039287f3914548f5444934fc06f41769c97d20` / `56a1d946c96ce5f86699e52a359557c1cdfd6ebbfd5aa43646d5e3a2d6428c85`；run-spec schema SHA-256 `ea23b61bb0d9f42fd6a18498c1c6d900b82f159da2b9f87ef51f7c0428d87646`；verified source-manifest digest `146ddf1eb84d4dd8fb5c919e0d531d63532812ba5af1b15e1de4fb04eae1bad5`；typed plan canonical/coordinate digest `5a40051ac17a7bfd6663640b1d2478c69d45eea07d3182653b90d2c7ca760443` / `cc560e2a2d4e1220ccd812c073119a2b679de213f9770358f7decf51824661fb`；no-profile estimate/preflight digest `30527205d2b349e22c5d4fb9225ce54cd89f2157d5c78313c5483ddeebc92531` / `b117272df621086f4a8b75368d697e7ad099d58908b5195ed1528ebbe30e1fa6`。
+- data_access_statement: 只读取 Git、Markdown、Python source、JSON/CSV metadata、`config/model.json` 和 `requirements.lock.txt`；sealed C10 仅做既有 byte/hash/manifest/status/ref/inventory 静态验证，不重算科学结果。没有读取、stat、hash、decode 或 preprocess 任一 reserve JPEG；没有访问 Stage D prediction/logit/map/AUC/`delta_fid`/summary/outcome；没有加载模型或 state-dict，没有运行 CPU inference、GPU/CUDA 或 attribution；没有修改 candidate access log、D1 frozen package、D2 frozen contracts 或 C9/C10 evidence。`reserve_metadata_contents_accessed=true`、`reserve_image_paths_statted=false`、`reserve_image_bytes_accessed=false`、`reserve_result_accessed=false`、`model_or_gpu_used=false`。
+- artifacts_and_absolute_paths: 代码位于 `/data00/home/yeziqi.831/testcode/vitnns_rebuild/src/vitnns/stage_d_{config,manifest,plan,authorization,cli}.py`；CLI 为 `vitnns-stage-d`。仅为验证生成临时 `/tmp/stage_d_d3_plan.json` 与 `/tmp/stage_d_d3_estimate.json`，不是正式 evidence、未纳入提交，可删除；无 runtime/formal/paper artifact。
+- status_manifest_inventory_hashes: D1 package 仍为 6 files，file/canonical chain 由同一 descriptor-backed bytes snapshot 验证；C10 仍为 12 files、`524796892` bytes、whole-root digest `382992d94f071ce46164b92ab9eed6a60743a30fdab0bf73253bab95156986a4`。D3 源文件 SHA-256：config loader `31c4df8e49cb20b87475171ebfe87f17331e1edcb2779c737318fc2543cc5c20`、manifest verifier `3a0075842b15c82a446365bd9b7f772ac1a8e585eb208e8e168d97ce04113223`、plan `ab74e4c61e4fcf73421fdb369f0528acb39075081ae714c9ac56a9f86b60b23d`、authorization `b2f49e7354e26945e65eb6f1b3c917a379f70b1564f25b80cb60e2c66d2c92f9`、CLI `b761bd6677137b0c963bd596aeb083e2400d5b4c9a3ca2ea4cb57f3069e67198`。
+- expected_vs_observed_counts: image groups `500/500`；execution units `1,000/1,000`；primary clean maps `1,000/1,000`；audit repeat-clean maps `10/10`；map work items `1,010/1,010`；fidelity curves `10,000/10,000`；curve points `210,000/210,000`；logical work items `211,010/211,010`；statistical n `500/500`，audit increment `0/0`。
+- tests_reused_from_prior_commit: D2 completion record 的 focused `23 passed`、D1 `10 passed`、D0 `24 passed` 仅作冻结基线证据；因 D3 未修改 frozen D0/D1/D2/C10 scientific contracts，未重跑它们的全套 suites。
+- test_plan_announced_before_execution: 已在测试前一次性声明 D3 focused tests、CLI help/metadata-only smoke、schema meta-validation、typed deterministic counts/negative scope、preparation authorization boundary、只读 binding verifier、`py_compile` 和 `git diff --check`；预计 3–6 分钟；明确排除全量 non-GPU、GPU、模型、图像、smoke/formal workload。后续只因修复失败节点及共享 D1 bytes validator/最终 Git hardening 扩大最小受影响节点，并在执行前说明。
+- tests_executed_this_task: 首次命令误用不存在的 `/usr/bin/time`，在 pytest 收集前退出 127；改用 shell `time` 后首轮 `115 passed, 6 failed in 238.93s`，失败为 3 个实现/测试文本边角和 3 个最终路线状态尚未写入；针对前四项修复重跑 `4 passed in 0.19s`。第二轮 focused（尚不含最终路线断言）`118 passed, 2 failed in 249.59s`，两项均为正确 fail-closed 后错误消息 regex 过窄；修复后参数节点 `2 passed in 0.10s`。D1 same-snapshot validator 最小回归 `10 passed in 7.11s`；manifest/auth/CLI hardening 回归 `55 passed in 175.65s`；Git sanitation/ref/snapshot 节点 `5 passed in 0.83s`；完成文档后整批先因 3 个临时 D1 fixture 未隔离新 repo-identity gate 得到 `122 passed, 3 failed in 258.34s`，fixture 修复节点 `3 passed in 0.07s`，最终合并批次 `125 passed in 254.10s`。CLI `--help` PASS；真实 `validate-contracts` PASS（约 3.52s）；真实 `plan` 成功生成（约 29.52s，临时摘要脚本因索引不存在的 `dimensions.sharding` 发生一次 `KeyError`，产品命令输出本身完整有效）；真实 `estimate` PASS（约 29.18s）。新增 Python 文件 `py_compile` PASS；两份 schema meta-validation/current-instance validation PASS；路线状态最小 3 nodes `3 passed in 0.08s`；`git diff --check` PASS；post-commit checks 在最终回复据实补充。
+- tests_not_run_and_reason: 计划内没有 skip/deselect。未运行全量 non-GPU suite、D0/D1/D2/C10 suites（仅运行共享 D1 validator 一个节点和四个静态 contract 节点）、GPU/model/image tests、Stage C integration、smoke、正式 workload、runner/finalize/aggregate/paper tests；原因是 D3 只修改 metadata control plane，扩大范围会重复覆盖或违反本阶段访问边界。`prepare-authorization` 的真实 CLI 在提交前必然因 dirty tree fail closed，故由 issued synthetic metadata/clean-Git test double 覆盖，提交后再执行真实命令。
+- acceptance_results: strict loaders 拒绝 duplicate/nonfinite/unknown/missing/bool-as-int/path/symlink/hardlink/self-digest/source drift；上游 D0/D1/D2/C10 refs/hashes/status 静态验证通过；typed plan 顺序、pair bindings、work taxonomy、完整坐标 digest 与 exact counts 通过，所有 forbidden scale/sanity/stability/method/head/repeat/stat-n 变体 fail closed；estimate 以 typed profile 相加且 `logical_work_items_used_as_call_count=false`，D2 两类 cost gates 分离，D7 profile/final budget 明确保留；preparation builder 只接受 loader/verifier/capture 私有签发对象，验证 clean Git 与 `config/model.json`/dependency lock metadata 而不接触 state dict，保留全部 C10 历史状态且不能生成执行或分析授权；CLI 仅含四个 D3 命令。
+- package_complete: true
+- scientific_validity: not_evaluated
+- analysis_authorized: false
+- budget_results: `D7_PROFILE_REQUIRED` / `NOT_EVALUATED`；D3 只保留并可对 synthetic/pre-D7 profile 投影 launch-safety caps 与 completed-campaign gates，任何该投影仍非 D7 final budget。
+- paper_data_or_figures_generated: none
+- deviations_or_protocol_amendments: none。没有改动 D2 frozen contract；实现审查中把 `jsonschema` 提升为运行时依赖、增加 D1 same-snapshot bytes validator、强化 ambient Git 隔离与 repo identity、静态 model/dependency metadata binding，这些均为 D3 fail-closed 实现细化，不改变科学 protocol。
+- failures_and_retries_retained: 保留 `/usr/bin/time` 未安装导致的 pre-collection exit 127、两轮 focused 开发失败及 plan 后处理摘要脚本 `KeyError`；它们均是测试/显示工具问题，修复后最小节点通过，不是科学或正式 workload failure。没有 runtime attempt/retry/formal root。
+- known_limitations_and_claim_boundaries: D3 不证明 live reserve JPEG 等于 D1 candidate-recorded hash；该验证延迟至 D8.0 且须先有 D7 authorization。D3 不提供 image loader、model backend、runner、sharding runtime、finalize、aggregate、paper export，不产生 Stage D validity/effect/cost 结论；shard count 仍延迟到 D7。C10 历史 blocker/spatial failure 不被修复或改写。
+- next_task_authorized: true（只授权 D4 使用 synthetic/mock 实现 Stage D evidence producer、image-group runner、sharding/recovery/provenance；不授权 reserve access、smoke、正式 workload或 execution authorization）
+- authorization_issued_this_task: false
+- execution_authorization_observed_valid: false
+- next_task: D4
+
+#### 下一对话完整提示词
+
+```text
+本次唯一任务：只执行 Stage D 的 D4。
+
+目标是在 D3 已验证的 CPU-only 控制层之上，实现 Stage D 专属 evidence producer、image-group runner、sharding runtime、immutable attempts/checkpoint/recovery 和 provenance。D4 只使用 synthetic/mock inputs，不运行 smoke 或正式 workload，不读取 reserve JPEG，不加载真实模型，不开始 D5，也不签发 `AUTHORIZED_STAGE_D_FIDELITY_SCOPE`。
+
+工作目录：
+/data00/home/yeziqi.831/testcode/vitnns_rebuild
+
+开始条件：
+1. 读取本文文首状态、第 3 节、第 5 节、第 7–9 节与最新 D3 completion record；核验 D3 completion commit（以 `git log -1 --format=%H` 取得本文 `git_sha_completion: SELF` 的实际 SHA）且工作树/index clean。
+2. 唯一解析并复核 D2 `refs/archive/stage-d-d2-completion`=`c57438640e882604031775c944d8ff5ce7932713`，以及 D0/D1/D2/C10 frozen hashes。调用 D3 `validate-contracts` 和 typed-plan validator；不得重建既有科学结果。
+3. D3 plan canonical digest 必须为 `5a40051ac17a7bfd6663640b1d2478c69d45eea07d3182653b90d2c7ca760443`，coordinate digest 必须为 `cc560e2a2d4e1220ccd812c073119a2b679de213f9770358f7decf51824661fb`，counts 必须保持 500/1,000/1,010/10,000/210,000/211,010。
+4. 继续保持 `execution_authorization=NOT_ISSUED`、`analysis_authorization=NOT_EVALUATED`、`stage_d_execution_started=false`；D3 preparation artifact 不是 execution authorization。
+
+必读材料：
+1. `docs/阶段D-step-by-step.md` 的 D4、§3、§5–§9 和最新 D3 record；`docs/阶段D_protocol.md`、`docs/stage_d_acceptance.md`、`docs/stage_d_config_contract.md`。
+2. D3 modules：`stage_d_config.py`、`stage_d_manifest.py`、`stage_d_plan.py`、`stage_d_authorization.py`、`stage_d_cli.py`，及其 focused tests。
+3. Stage C 已验证的 runner/artifact/provenance/resource primitives；只复用数学或生命周期 primitive，不得让 Stage D artifact 绑定 Stage C config/selection/stage identity。
+
+必须完成：
+1. 实现 Stage-D-specific evidence producer 和 image-group runner。一次独占完整 image group，严格 NNS→matched 执行；两 units 共享 frozen input/model/target/baseline/fractions/tie/operator bindings。
+2. 实现 `init` 与 `run-shard` runtime API/CLI，但 D4 测试只能用 synthetic/mock backend；所有 authorization/metadata checks 必须发生在 backend/model 构造前。
+3. 实现 atomic shard lease、image-group claim、immutable attempt IDs/directories、checkpoint、failure table、lifecycle/activity locks 和 closed output layout；一 GPU 一独立进程/backend，禁止共享 backend 并发。
+4. 每 unit 显式覆盖 clean map 和 `2 directions × 5 repeats × 21 fractions` coordinates；audit 图每方法仅增加一个 repeat-clean map。禁止 patch scale、spatial/stability、random/center sanity、额外 method/head、secondary inference 和 display。
+5. Resume 只跳过完整验证的 terminal unit；half-pair 和 paired scientific failure 按 D2 执行至 terminal。只允许 closed outcome-blind infrastructure failure codes申请一次 retry（最多两 attempts）；scientific invalidity、OOM、contract/authorization drift、tamper/unsafe root、ambiguity、safety-cap breach不可重试。旧 attempts 必须保留。
+6. 每个 unit/attempt/artifact 写 Stage-D-specific provenance，绑定 D7 authorization slot、D0/D1/D2、plan/unit/work-item、code/dependency/model、image identity、method/target/operator/seed/fraction、terminal/failure/resource/inventory；D4 不得伪造已存在的 D7 authorization。
+7. 按 L0/L1/L2/L3 合同实现 retention：L0/L1 全 1,000 units，L2 仅五个 audit IDs，L3 none；禁止 display PNG 和 per-step/per-pixel/per-dimension file explosion。Runtime CLI/log 只输出 progress/control/terminal/resource，不泄漏 map、AUC、ranking、`delta_fid` 或 summary。
+8. 用 synthetic/mock fixtures 覆盖 group ownership/order、pair binding、shard modulo/不拆组、并发 claim、crash/checkpoint/tamper、resume、retry limits、scientific failure terminal、cache/resource release、artifact/provenance 和 no-result-leak；更新本文 D4 状态并追加完整 completion record。
+
+明确禁止：
+- 不读取、stat、hash、decode 或 preprocess 任一 reserve JPEG；不访问 Stage D outcome。
+- 不加载真实模型/state dict，不运行 CPU inference、GPU/CUDA 或 attribution。
+- 不运行 smoke 或正式 workload；不实现 D5 finalize/validation、D6 aggregate/statistics/paper export；不签发 execution/analysis authorization。
+- 不修改 D0/D1/D2 frozen contracts、candidate access log 或 C9/C10 evidence。
+
+测试计划：
+测试前先一次性说明 focused synthetic/mock 测试、直接受影响共享模块、static checks 和预计耗时。优先 D4 新测试与最小共享节点；不得运行 GPU/model/image tests、smoke/formal workload或全量 non-GPU suite，除非先证明必要依赖链并说明扩展范围。
+
+完成与交接：
+D4 只有在 producer/runtime/recovery/provenance 的 synthetic 验收全部通过、未发生 forbidden access、未签发 execution authorization时才标记 PASS。更新第 5 节，追加完整 D4 completion record 与只授权 D5 synthetic/tampered finalize/validator 的下一提示词；只提交 D4 相关文件并确认最终 clean。
 ```

@@ -1542,6 +1542,33 @@ def validate_stage_d_registry_package(
         bound = {name: _safe_read_relative(root_fd, name) for name in PACKAGE_FILES}
     finally:
         os.close(root_fd)
+    return validate_stage_d_registry_package_bytes(
+        {name: item.payload for name, item in bound.items()},
+        repo_root=repo_root, verify_sources=verify_sources,
+        verify_rebuild=verify_rebuild,
+    )
+
+
+def validate_stage_d_registry_package_bytes(
+    payloads: Mapping[str, bytes], *, repo_root: Path | str = REPO_ROOT,
+    verify_sources: bool = True, verify_rebuild: bool = True,
+) -> dict[str, Any]:
+    """Validate one caller-held immutable snapshot of the D1 package."""
+
+    if set(payloads) != set(PACKAGE_FILES):
+        raise StageDRegistryError(
+            "D1 package payload inventory drifted: "
+            f"missing={sorted(set(PACKAGE_FILES) - set(payloads))}, "
+            f"extra={sorted(set(payloads) - set(PACKAGE_FILES))}"
+        )
+    bound = {
+        name: BoundMetadata(
+            relative_path=name, size_bytes=len(payload), mtime_ns=0,
+            sha256=hashlib.sha256(payload).hexdigest(), payload=payload,
+            document=None,
+        )
+        for name, payload in payloads.items()
+    }
     documents: dict[str, Mapping[str, Any]] = {}
     for name, item in bound.items():
         value = strict_json_bytes(item.payload, name)
@@ -1642,6 +1669,7 @@ __all__ = [
     "build_stage_d_registry_package", "canonical_file_bytes",
     "canonical_json_bytes", "canonical_sha256",
     "load_and_validate_sources", "semantic_digest", "strict_json_bytes",
-    "validate_stage_d_registry_package", "verify_d0_completion_ref",
+    "validate_stage_d_registry_package",
+    "validate_stage_d_registry_package_bytes", "verify_d0_completion_ref",
     "write_stage_d_registry_package",
 ]

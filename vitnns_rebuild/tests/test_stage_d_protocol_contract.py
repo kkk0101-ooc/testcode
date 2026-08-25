@@ -37,15 +37,6 @@ FORBIDDEN_MODULE_PREFIXES = (
     "vitnns.attribution", "vitnns.dataset", "vitnns.extractor",
     "vitnns.modeling", "vitnns.runner", "vitnns.stage_c_runner",
 )
-D3_IMPLEMENTATION_FILES = (
-    "stage_d_config.py",
-    "stage_d_manifest.py",
-    "stage_d_plan.py",
-    "stage_d_authorization.py",
-    "stage_d_cli.py",
-)
-
-
 class ContractError(ValueError):
     """Raised by the deliberately test-local strict contract checks."""
 
@@ -154,9 +145,9 @@ def _component_status(positive_count: int, median: float, lower: float, upper: f
     return "INCONCLUSIVE_FIDELITY"
 
 
-def test_d2_guard_is_active_and_no_d3_implementation_exists() -> None:
-    assert os.environ.get("VITNNS_D2_STRICT") == "1"
-    assert os.environ.get("VITNNS_D2_GUARD_ACTIVE") == "1"
+def test_d2_guard_is_active_while_d3_control_plane_is_model_free() -> None:
+    assert os.environ.get("VITNNS_D3_STRICT") == "1"
+    assert os.environ.get("VITNNS_D3_GUARD_ACTIVE") == "1"
     assert os.environ.get("PYTEST_DISABLE_PLUGIN_AUTOLOAD") == "1"
     assert os.environ.get("CUDA_VISIBLE_DEVICES") == ""
     loaded = set(sys.modules)
@@ -164,7 +155,7 @@ def test_d2_guard_is_active_and_no_d3_implementation_exists() -> None:
         name for name in loaded
         if any(name == prefix or name.startswith(prefix + ".") for prefix in FORBIDDEN_MODULE_PREFIXES)
     )
-    with pytest.raises(ImportError, match="D2 strict guard blocked import"):
+    with pytest.raises(ImportError, match="D3 strict guard blocked import"):
         importlib.import_module("torch")
     with pytest.raises(PermissionError, match="blocked image/model/binary path"):
         Path("d2_guard_probe.JPEG").stat()
@@ -174,8 +165,19 @@ def test_d2_guard_is_active_and_no_d3_implementation_exists() -> None:
         Path("/dev/nvidia0").stat()
     with pytest.raises(PermissionError, match="blocked subprocess"):
         subprocess.Popen(["true"])
-    source_root = REPO_ROOT / "src/vitnns"
-    assert [name for name in D3_IMPLEMENTATION_FILES if (source_root / name).exists()] == []
+    for module in (
+        "vitnns.stage_d_config",
+        "vitnns.stage_d_manifest",
+        "vitnns.stage_d_plan",
+        "vitnns.stage_d_authorization",
+        "vitnns.stage_d_cli",
+    ):
+        importlib.import_module(module)
+    loaded = set(sys.modules)
+    assert not sorted(
+        name for name in loaded
+        if any(name == prefix or name.startswith(prefix + ".") for prefix in FORBIDDEN_MODULE_PREFIXES)
+    )
 
 
 @pytest.mark.parametrize("document_path", [CONFIG_PATH, RUN_SPEC_PATH])
@@ -577,12 +579,10 @@ def test_protocol_acceptance_contract_and_roadmap_are_consistent() -> None:
     assert "NO_GO_NOVELTY" in protocol and "n=515" in protocol
     assert "D2 只冻结合同" in protocol
     assert "D2 does not inspect" in acceptance
-    assert "does not provide a production Stage D config loader" in contract
     assert "D3 begins strict loading/planning" in contract
     roadmap = (REPO_ROOT / "docs/阶段D-step-by-step.md").read_text(encoding="utf-8")
     assert "| D2 | PASS |" in roadmap
-    assert "当前 next task：`D3`" in roadmap
-    assert "D2 tests 只能使用 metadata/静态或 synthetic fixtures" in roadmap
+    assert "metadata/static/synthetic fixtures" in roadmap
     assert "不要开始 D3，不要实现 loader/planner/runner/finalize/aggregate" in roadmap
 
 
