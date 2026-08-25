@@ -4,7 +4,9 @@
 > 文档性质：阶段 D 的路线图、任务状态表、数据访问边界和跨对话追加式交接日志。
 > 当前状态：阶段 A、B 已完成；Stage C/C0–C10 的执行和证据封存已完成，但 Stage C acceptance 为 `BLOCKED`，C10 v1 primary decision 为 `NO_GO_NOVELTY`。D0 首次尝试因模型/推理与非-reserve JPEG decode 保持 `BLOCKED`；独立 model-free/no-JPEG 重试已 `PASS`，只签发 `APPROVED_TO_PREPARE_STAGE_D`。D1 metadata-only registry formalization 与 D2 protocol/statistics/run-spec freeze 均已 `PASS`。Stage D 正式执行仍未授权、未启动。
 > 当前 next task：`D3`。
-> 使用规则：每个新对话必须先完整阅读本文、`docs/阶段C-step-by-step.md` 的 C10 completion record 和上一条 Stage D completion record；一次只执行一个 `D_i` 或一个明确编号的 `D8-Sxx` shard。未更新本文、未追加 completion record、未给出下一任务完整提示词的任务，不算完成。
+> 当前权威交接：最新 Stage D completion record 是 `2026-08-25 16:33 +0800 — D2 completion record`；当前可执行入口是该记录后的 D3 提示词勘误版。更早提示词只作审计历史，不再授权执行。
+> 使用规则：每个新对话先读文首状态、第 7 节执行协议、第 9 节最新权威记录和当前提示词，再读提示词列出的章节与上游证据；一次只执行一个 `D_i` 或一个明确编号的 `D8-Sxx` shard。未更新本文、未追加 completion record、未给出下一任务完整提示词的任务，不算完成。
+> 测试原则：只做与当前任务和实际改动直接相关的必要测试，避免无关、重复或低价值测试。每个测试/验证批次开始前一次性说明测试项目、必要性和预计耗时；只有新增高成本测试或扩大影响面时才补充说明。
 
 ## 1. 为什么需要这份文档
 
@@ -136,6 +138,8 @@ Stage D 保持 C10 的 endpoint、effect-size threshold、CI 方向和“注册�
 2. 否则，若 median `delta_fid >= 0.02`、positive `>=400/500` 且 CI lower `>0`，判 `PASS_FIDELITY`；
 3. 其余判 `INCONCLUSIVE_FIDELITY`；CI 恰等于排他的 CI 边界不触发对应条件。
 
+这里的 `0.02` 在 PASS 条件中是 median 点估计门槛；CI lower `>0` 只证明方向为正，不要求 CI lower `>0.02`。FAIL 条件中的 CI upper `<0.02` 是预注册的早期失败门，表示 bootstrap 区间上界也低于最小效果阈值。
+
 `400/500` 是 Stage D 新协议要注册的门槛，不是把 C10 的绝对 `12/15` 原样搬运。D2 必须记录 500 样本规模与 80% consistency guard 的理由，并冻结 bootstrap 次数、seed namespace、PRNG、paired median statistic、分位数算法、tie 和 invalidity 处理。
 
 决策顺序拟冻结为：
@@ -196,7 +200,7 @@ D10 建议固定生成以下 machine-readable paper data 和数值图；只有 v
 
 ## 5. D0–D10 总路线与状态
 
-任务状态只使用 `NOT_STARTED`、`IN_PROGRESS`、`PASS`、`BLOCKED`。`next_task` 单独记录，不使用 `NEXT` 混入状态。只有代码/文档、测试、产物验证、completion record 和下一提示词都完成后，任务才能标记 `PASS`。
+任务状态只使用 `NOT_STARTED`、`IN_PROGRESS`、`PASS`、`BLOCKED`。`next_task` 单独记录，不使用 `NEXT` 混入状态。只有代码/文档、必要测试或静态验证、产物验证、completion record 和下一提示词都完成后，任务才能标记 `PASS`；若测试不适用，必须写明 `not_applicable` 及理由。
 
 | 任务 | 状态 | 唯一目标 | 允许的数据访问 | 允许产生的结论 | 前置 |
 |---|---|---|---|---|---|
@@ -404,7 +408,7 @@ D7 内部按四个顺序子门执行：`smoke → budget → freeze producer/ref
 - 测试同图两 unit、fine-only curves、cache release、artifact、finalize、validate、aggregate 和 paper export 全链；
 - 按 D2 typed plan 和 smoke/历史保守实测重新计算 1,000-unit 时间、存储、调用数和显存预算；旧 8,000-unit `PASS_COST` 只作旁证；
 - 新预算必须从 typed plan 的 method/work-item profile 求和，禁止调用旧 `STAGE_D_EXECUTION_UNITS=8000` 作为新 preflight；分别报告总 GPU-hours、每 image-group GPU-hours、最大单 unit reserved memory、总 artifact bytes、audit L2 增量以及冻结 safety/overhead factor；
-- 运行 Stage D focused tests、受影响 Stage A–C tests、C0 clean/tracked validator 和一次全量 non-GPU suite；
+- 运行 Stage D focused tests、实际受影响的 Stage A–C tests 和 C0 clean/tracked validator。全量 non-GPU suite 只在 producer commit 缺少可复用全量证据、共享基础代码发生变化且影响面无法可靠界定，或最小受影响集合出现回归信号时运行；不得仅因进入 D7 而机械重复；
 - 冻结一个 clean execution/analysis producer commit，并建立只读 archive ref（建议 `refs/archive/stage-d-fidelity-v1-producer`）；
 - 从该 commit 创建 authorization，绑定 C10、D0 scope、D1 registry/ledger、D2 protocol/config/schema/run spec、plan、budget、依赖、模型和代码 hashes；
 - authorization 只能输出 `AUTHORIZED_STAGE_D_FIDELITY_SCOPE`，并声明它不改变 C10 `downstream_authorized=false`；
@@ -511,7 +515,7 @@ D10 应先原子生成并完整验证 machine-readable decision package，再从
 
 ### 7.1 每个新对话开始时必须做
 
-1. 完整阅读本文、上一任务 completion record、其内的完整提示词，以及提示词列出的正式 protocol/acceptance/config/schema。
+1. 先核对文首 `当前 next task`，再定位第 9 节最新权威 completion record；只把该记录后紧跟的提示词或其追加勘误当作当前指令。完整阅读第 7 节、该记录、当前提示词及提示词列出的正式 protocol/acceptance/config/schema；更早提示词仅作审计历史。
 2. 检查 Git root、`HEAD`、branch、worktree/index clean 状态和上一记录的 commit。
 3. 复核上一任务列出的关键 file SHA-256、canonical digest、archive ref 和 artifact status。
 4. 只执行一个指定 `D_i`；D8 只执行一个明确的 `D8.0` 或 `D8-Sxx`。不得顺手启动下一任务。
@@ -520,22 +524,39 @@ D10 应先原子生成并完整验证 machine-readable decision package，再从
 
 ### 7.2 每个任务结束时必须做
 
-1. 完成该任务的实现、测试、文档和产物验证，不用后续任务补齐当前验收。
+1. 完成该任务的实现、必要测试或静态验证、文档和产物验证，不用后续任务补齐当前验收；若测试不适用，记录 `not_applicable` 及理由。
 2. 将第 5 节状态改为 `PASS` 或 `BLOCKED`；D8.0 和单个 D8 shard 使用第 8.1 节的子任务状态，父任务 D8 保持 `IN_PROGRESS`，只有 campaign completion record 确认所有 frozen shards terminal 后才能整体 `PASS`。
 3. 在第 9 节追加 completion record。失败、偏差、中断、retry 和废弃 root 也必须保留。D8 的上一条权威交接记录是最新 coordinator completion commit 中的 D8.0/shard/campaign record，不是 execution worktree HEAD。
 4. completion record 后紧跟下一任务的完整可复制提示词，不能只写“继续 D_i+1”。
-5. 最终回复重复：状态、关键文件、实际测试、commit/ref/hash、产物路径、数据访问事实、遗留问题和下一提示词。
+5. 最终回复重复：状态、关键文件、测试前计划、实际测试、主要未运行测试类别及理由、commit/ref/hash、产物路径、数据访问事实、遗留问题和下一提示词。
 6. 原则上一任务一提交并最终 clean。D0–D7/D9/D10 的代码或文档任务遵守普通提交规则；D8 正式 runtime evidence 必须绑定 D7 producer ref，不能归因给 main 上只追加 completion record 的 commit。
 7. 只在上一任务 `PASS` 且 `next_task_authorized=true` 时进入正常下一任务；否则 next task 必须是诊断或修复。只有 D7 可以写 `authorization_issued_this_task=true`；D8–D10 只能在重新验证 D7 authorization digest 后写 `execution_authorization_observed_valid=true`。D0 的 `APPROVED_TO_PREPARE_STAGE_D` 只允许 D1–D7 准备工作。
 
-### 7.3 回归测试复用规则
+### 7.3 最小充分测试与复用规则
 
-- 若当前 HEAD 精确等于上一 completion commit、工作树 clean、冻结 inputs 未漂移、上一任务已在该 commit 完成全量 non-GPU suite，可复用为“上一任务已验证基线”；不得写成本次重新执行。
-- 本任务必须运行自己的 tests 和所有被实际修改的共享模块 tests。修改 Stage C primitives 时必须补跑受影响的 Stage C focused tests；影响面不清时运行全量 non-GPU suite。
-- D7 在 producer commit 上必须运行 Stage D focused、受影响 Stage A–C、C0 clean/tracked validator 和全量 non-GPU suite。
-- D8 不因文档 completion commit 重跑全部测试，但每个 shard 启动都必须重验 producer ref、authorization 和 immutable controls。
+1. 执行本任务测试/验证批次前，一次性向用户说明清单、范围、必要性、覆盖风险和粗略耗时；普通只读启动核验可合并为一项。只有新增高成本检查、扩大影响面或改变测试批次时，才需要补充说明。
+2. 默认只运行当前任务新增/修改功能的 focused tests、被实际改动的共享模块测试，以及完成本任务验收不可替代的静态检查。不得运行与本任务无关、重复覆盖同一风险、只为增加数量或价值很低的测试。
+3. 若精确 commit、相关文件 digest、冻结输入 digest 与依赖锁/关键运行环境一致，可把既有结果记录为“复用的基线证据”；不得伪称本次重新执行。若只能证明文件未漂移、不能证明运行环境一致，则只复用不依赖运行环境的静态证据。
+4. 扩大测试范围前，先写清具体共享模块或依赖链，并先跑最小受影响集合。只有该集合出现回归信号，或仍无法界定影响面时，才运行更大范围或全量 non-GPU suite；“更保险”或“顺便跑一下”不是充分理由。
+5. GPU、模型推理、JPEG decode、正式数据访问和长时间 smoke 还必须得到当前任务的明确授权；单元测试不能用昂贵正式 workload 替代。D7 的 producer gate 也按影响面选择测试，只有 exact producer commit 缺少有效全量证据或影响面仍无法界定时才运行全量 non-GPU suite。
+6. D8 不因 completion 文档提交重跑测试套件；每个 shard 只执行启动所必需的 producer ref、authorization、immutable controls 和 shard preflight 验证。
+7. Completion record 记录测试前计划、实际命令/结果/耗时、复用证据、计划内 skip/deselect，以及主要未运行测试类别及理由；不需要穷举整个 suite。失败后只重跑能验证修复的最小集合。
 
-### 7.4 Git、producer 与正式 root
+### 7.4 提示词写作规则
+
+每条新的“下一对话完整提示词”都按以下顺序写，避免把背景、任务和禁令挤在一个长段落里：
+
+1. **本次唯一任务**：用一句话说明要交付什么，并立即写明不得开始的下一任务。
+2. **工作目录与开始条件**：列出 commit/ref/hash、clean 状态和 fail-closed 条件。
+3. **必读材料**：只列本任务真正需要的文件和章节。
+4. **必须完成**：用编号列出可验收的交付物、冻结值和输出合同。
+5. **明确禁止**：单列数据访问、模型/GPU、结果读取和越级执行边界。
+6. **测试计划**：要求先报告测试/验证批次的项目、必要性和预计耗时，再按第 7.3 节选择最小充分测试。
+7. **完成与交接**：写清 PASS/BLOCKED 条件、Git 提交、completion record 和下一提示词要求。
+
+首次出现的英文缩写或内部术语应附简短中文解释；历史事实、当前动作和未来条件必须分开写。动态值必须填实，不把选择留给下一位执行者猜测。
+
+### 7.5 Git、producer 与正式 root
 
 - D0–D6 可以各自一任务一提交。
 - D7 必须区分 baseline commit、execution/analysis producer commit、archive ref 和 completion-only commit。
@@ -567,7 +588,9 @@ D10 应先原子生成并完整验证 machine-readable decision package，再从
 - status_manifest_inventory_hashes:
 - expected_vs_observed_counts:
 - tests_reused_from_prior_commit:
+- test_plan_announced_before_execution:
 - tests_executed_this_task:
+- tests_not_run_and_reason:
 - acceptance_results:
 - package_complete: true | false | not_applicable
 - scientific_validity: PASS | FAIL | not_evaluated
@@ -585,9 +608,9 @@ D10 应先原子生成并完整验证 machine-readable decision package，再从
 #### 下一对话完整提示词
 
 ```text
-（写入完整、可直接复制的提示词：唯一任务与禁止越界、工作目录、
-前置 commit/ref/hash、必读文件、允许的数据访问、精确 workload、
-输出合同、failure/retry 规则、测试、验收、Git 和本文更新要求。）
+（按第 7.4 节写入完整、可直接复制的提示词：唯一任务、工作目录、
+开始条件、必读材料、交付物、禁止事项、failure/retry 规则、
+测试前说明与最小充分测试、验收、Git 和本文更新要求。）
 ```
 ````
 
@@ -615,7 +638,7 @@ D10 应先原子生成并完整验证 machine-readable decision package，再从
 
 ## 9. 执行日志
 
-已有记录只允许追加勘误，不允许删除或改写失败史。每个 `D_i` 末尾的“完成后”条款均要求使用第 8 节全部字段，并生成任务特定的完整下一提示词；动态 commit、hash、root 和测试结果必须填实，不能保留占位符。D10 也必须追加 completion record；其下一提示词须根据第 6 节 D10 的四类结果分支完整写出，而不是只写任务名。
+已有记录只允许追加勘误，不允许删除或改写失败史。历史记录内的提示词反映当时的交接状态，即使仍可复制也不代表当前授权；只有最新权威 completion record 后的提示词或其追加勘误可以执行。每个 `D_i` 末尾的“完成后”条款均要求使用第 8 节全部字段，并按第 7.4 节生成任务特定的完整下一提示词；动态 commit、hash、root 和测试结果必须填实，不能保留占位符。D10 也必须追加 completion record；其下一提示词须根据第 6 节 D10 的四类结果分支完整写出，而不是只写任务名。
 
 ### 2026-08-25 10:18 +0800 — D0 初始 completion 草案（已勘误为 BLOCKED）
 
@@ -955,4 +978,67 @@ D3 必须完成：
 8. 更新本文 D3 为 PASS/BLOCKED，追加完整 D3 completion record 和 D4/诊断提示词；原则上一任务一提交并最终 clean。
 
 验收：无需且不得访问 reserve JPEG/model/outcome 即可确定性生成并验证 exact typed plan；所有 500/1,000/1,010/10,000/210,000/211,010 counts 与 source bindings 匹配；所有 forbidden scope fail closed；D3 未开始 D4，未运行 smoke/formal workload，未签发 execution authorization。
+```
+
+### 2026-08-25 17:55 +0800 — D2 后 D3 提示词勘误
+
+> 勘误性质：不改变 D2 的 `PASS` 结论、D2 frozen contracts 或任何 hash。上一条 D3 提示词仍是 D2 completion record 的历史内容；为降低误读和过度测试风险，当前执行 D3 时应使用下面的易读版提示词。它只授权 D3，不授权 D4、smoke、formal workload 或 execution authorization。
+
+#### 当前权威 D3 提示词
+
+```text
+本次唯一任务：只执行 Stage D 的 D3。
+
+目标是把 D0-D2 已冻结的合同实现成 CPU-only 控制层，包括 strict loaders、typed plan、metadata-only estimate/preflight、preparation-only authorization builder/validator 和对应 CLI。D3 不运行实验，不读取 reserve JPEG，不加载模型，不开始 D4，也不签发 `AUTHORIZED_STAGE_D_FIDELITY_SCOPE`。
+
+工作目录：
+/data00/home/yeziqi.831/testcode/vitnns_rebuild
+
+开始条件：
+1. `refs/archive/stage-d-d2-completion` 必须唯一解析到 `c57438640e882604031775c944d8ff5ce7932713`。
+2. 从该 ref 的 clean tree 启动；若当前工作树已有 dirty 文件，先逐项判断归属。不得覆盖、stash、reset、删除或夹带无关改动；若无法建立可信基线，D3 标记 `BLOCKED`。
+3. 只读核验 D0/D1/D2/C10 binding，不重建科学结果：
+   - D0 canonical：`7508dcb7c063eaeecfc41f2f63f18e70dd5d660bec06c50e7b4b893d9a48ac5f`；
+   - D1 registry file/canonical：`9aace3abf02a2c07d992d88b765c53cfeffa7f83a6ed72ecefb8cecf9eb79b6b` / `514ce4dd2e1fedc1744893e5543651ea42c053458b233ff11a45f700bb4bc028`；
+   - D2 config file/canonical：`88fdc9cb2b4a5bd74ff7d8e68c79463cafac6437e29b5564c2115a13f1f1136d` / `21f9dcf1d615f2531f7d7d9a36319b958e06d0606c325890dd31ad89b7c2caae`；
+   - D2 run spec file/canonical：`43c61f190a9ad5811d878a7516039287f3914548f5444934fc06f41769c97d20` / `56a1d946c96ce5f86699e52a359557c1cdfd6ebbfd5aa43646d5e3a2d6428c85`；
+   - sealed C10 whole-root digest：`382992d94f071ce46164b92ab9eed6a60743a30fdab0bf73253bab95156986a4`。
+4. 继续保持 `execution_authorization=NOT_ISSUED`、`analysis_authorization=NOT_EVALUATED`、`stage_d_execution_started=false`。
+
+必读材料：
+1. `docs/阶段D-step-by-step.md`：文首状态、第 3 节、第 5 节状态表、第 7 节、第 8 节模板、第 9 节最新 D2 record 和本勘误提示词。
+2. `docs/阶段D_protocol.md`、`docs/stage_d_acceptance.md`、`docs/stage_d_config_contract.md`。
+3. `config/stage_d.json`、`config/stage_d.schema.json`、`config/stage_d_run_spec.json`、`config/stage_d_run_spec.schema.json`。
+4. D0 scope machine/schema/document、D1 registry package/attestation/source binding，以及 Stage C 中可复用的 strict config/plan/provenance primitives。
+
+D3 必须完成：
+1. 实现 strict config/run-spec loaders：拒绝 duplicate keys、NaN/Infinity、unknown/missing fields、bool-as-int、路径逃逸、symlink/hardlink、自摘要漂移和 source binding drift。
+2. 实现 Stage D 独立 typed plan。这里的 typed plan 是 CPU-only、metadata/synthetic 的计划对象，不是 runner；它只从 D1 registry 和 D2 run spec 构造 expected coordinates、pair bindings、work-item taxonomy 和 counts。
+3. typed plan 必须确定性生成并验证：500 image groups、1,000 units、1,010 map work items、10,000 curves、210,000 curve points、211,010 logical work items。
+4. typed plan 必须 fail closed 拒绝：spatial/stability、random/center sanity、patch-scale、额外方法、额外层头、非 audit repeat、audit 增加统计 n、错样本数、错顺序、错 scale 或错 primary。
+5. 实现 metadata-only estimate/preflight：按 typed unit/profile 求和，不把 logical work items 当成模型调用数；保留 D2 的 launch safety caps 与 completed-campaign cost gates 分类，D7 才填实测 profile 和最终预算。
+6. 实现 preparation-only authorization builder/validator：绑定 D0、D1、D2、plan、budget、code/dependency/model metadata，并原样保留 C10 `NO_GO_NOVELTY/FAIL_SPATIAL/BLOCKED/HOLM_BLOCKED_UNDERSPECIFIED/downstream_authorized=false/stage_d_started=false`。D3 artifact 只能说明准备链完整，不能冒充 D7 execution authorization。
+7. 增加 CLI：`validate-contracts`、`plan`、`estimate`、`prepare-authorization`，名称可按仓库风格微调，但职责必须分层。不得新增 `init`、`run-shard`、`finalize`、`aggregate` 或 paper export。
+8. 更新本文 D3 状态并追加完整 completion record。PASS 时写出 D4 提示词；BLOCKED 时写诊断/修复提示词。
+
+明确禁止：
+- 不读取、stat、hash、decode 或 preprocess 任一 reserve JPEG。
+- 不访问 Stage D prediction、logit、map、AUC、`delta_fid`、summary 或其他 outcome。
+- 不加载模型，不运行 CPU inference、GPU/CUDA 或 attribution。
+- 不实现 evidence producer、image loader、model backend、runner、sharding runtime、finalize、aggregate 或 paper export。
+- 不运行 smoke 或正式 workload，不签发 `AUTHORIZED_STAGE_D_FIDELITY_SCOPE`。
+- 不修改 candidate access log、D1 package、D2 frozen contracts 或 C9/C10 evidence，除非 D3 因发现合同自相矛盾而按 BLOCKED 记录诊断。
+
+测试要求：
+1. 测试前先一次性说明本批次测试/验证清单、范围、必要性、覆盖风险和预计耗时。普通只读 ref/digest/schema binding 核验可合并成一项；只有新增高成本测试、扩大影响面或改变批次时才补充说明。
+2. 只运行与 D3 代码、CLI、typed plan、authorization 边界和被实际修改共享模块直接相关的必要测试。优先使用 metadata、static 和 synthetic fixtures。
+3. 对 D0/D1/D2/C10 只做当前 HEAD 上的 ref/digest/schema binding 静态核验；不要重跑既有 D0/D1/D2/C10 suites。只有 D3 修改了它们共享的 loader/schema/assertion/hash 逻辑时，才运行最小受影响节点。
+4. 不运行无关、重复覆盖同一风险或低价值的测试；不运行全量 non-GPU suite、GPU 测试、模型测试、图像测试、smoke 或正式 workload。若确需扩大范围，先写清具体共享模块或依赖链，并先跑最小受影响集合。
+5. 建议最小 D3 验证集合包括：new D3 focused tests；CLI help/contract smoke with synthetic or metadata-only inputs；schema meta-validation；typed-count deterministic test；forbidden-work-item negative tests；preparation-authorization boundary tests；只读 D0/D1/D2/C10 binding verifier；`py_compile`；`git diff --check`。根据实际修改范围增减，并记录理由。
+6. Completion record 分开记录测试前计划、实际命令/结果/耗时、复用证据、计划内 skip/deselect，以及主要未运行测试类别及理由；不需要穷举整个 suite。
+
+完成与提交：
+1. D3 通过时，把第 5 节 D3 状态改为 `PASS`；失败或无法建立可信边界时改为 `BLOCKED`。
+2. 在第 9 节追加 D3 completion record，填写全部模板字段、关键 hashes、数据访问事实、测试计划/结果和未运行测试理由。
+3. 只提交 D3 相关文件，不夹带无关改动；原则上一任务一提交。提交后确认 worktree clean，并在最终回复报告 commit、关键文件、验证结果和下一任务。
 ```
