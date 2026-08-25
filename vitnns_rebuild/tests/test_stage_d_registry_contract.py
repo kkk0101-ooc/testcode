@@ -232,11 +232,12 @@ def test_rebuild_detects_source_metadata_drift_without_images(tmp_path: Path) ->
         validate_stage_d_registry_package(target)
 
 
-def test_static_route_keeps_d1_metadata_only_and_d2_unstarted() -> None:
+def test_static_route_keeps_d1_metadata_only_as_d2_hands_off_to_d3() -> None:
     roadmap = ROADMAP.read_text(encoding="utf-8")
-    assert "当前 next task：`D2`" in roadmap
+    assert "当前 next task：`D3`" in roadmap
     assert "| D1 | PASS |" in roadmap
-    assert "| D2 | NOT_STARTED |" in roadmap
+    assert "| D2 | PASS |" in roadmap
+    assert "| D3 | NOT_STARTED |" in roadmap
     assert "reserve_image_bytes_accessed=false" in roadmap
     assert "reserve_result_accessed=false" in roadmap
     assert "model_or_gpu_used=false" in roadmap
