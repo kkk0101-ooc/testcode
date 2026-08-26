@@ -176,7 +176,7 @@ def _install_estimate_pipeline(
     return estimate, preflight
 
 
-def test_parser_exposes_exact_d5_command_surface() -> None:
+def test_parser_exposes_exact_d6_command_surface() -> None:
     parser = cli.build_parser()
     subparsers = [
         action for action in parser._actions
@@ -186,11 +186,10 @@ def test_parser_exposes_exact_d5_command_surface() -> None:
     assert set(subparsers[0].choices) == {
         "validate-contracts", "plan", "estimate",
         "prepare-authorization", "init", "run-shard",
-        "finalize", "validate",
+        "finalize", "validate", "aggregate",
+        "build-paper-package", "validate-paper-package",
     }
-    forbidden = {
-        "aggregate", "export", "synthetic",
-    }
+    forbidden = {"export", "synthetic", "smoke", "budget"}
     assert forbidden.isdisjoint(subparsers[0].choices)
 
     for command in ("finalize", "validate"):
@@ -204,6 +203,19 @@ def test_parser_exposes_exact_d5_command_surface() -> None:
             "--authorization", "--profiles", "--device",
             "--shard-index", "--synthetic", "--aggregate",
         }.isdisjoint(options)
+
+    for command in ("aggregate", "build-paper-package", "validate-paper-package"):
+        options = {
+            option
+            for action in subparsers[0].choices[command]._actions
+            for option in action.option_strings
+        }
+        assert {"--authorization", "--profiles", "--device", "--shard-index"}.isdisjoint(options)
+    aggregate_options = {
+        option for action in subparsers[0].choices["aggregate"]._actions
+        for option in action.option_strings
+    }
+    assert {"--output-root", "--analysis-root"} <= aggregate_options
 
 
 def test_help_is_success_and_does_not_load_pipeline(capsys) -> None:
@@ -232,6 +244,51 @@ def test_non_d5_command_does_not_load_finalization_api(
     assert code == cli.EXIT_SUCCESS
     assert error is None
     assert output["document_type"] == "stage_d_execution_plan"
+
+
+def test_d6_cli_control_summary_never_leaks_effects_or_decision(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    pipeline = _pipeline()
+
+    class InputAPI:
+        @staticmethod
+        def validate_stage_d_analysis_input(*_args):
+            return object()
+
+    class AnalysisAPI:
+        @staticmethod
+        def aggregate_stage_d_analysis(*_args):
+            return {"delta_fid": 0.42}
+
+        @staticmethod
+        def closed_analysis_summary(*_args):
+            return {
+                "schema_version": 1, "document_type": "stage_d_d6_control_summary",
+                "status": "PASS", "synthetic_only": True, "formal_result": False,
+                "analysis_canonical_digest": "a" * 64, "coordinate_count": 500,
+                "execution_authorization": "NOT_ISSUED",
+                "analysis_authorization": "NOT_EVALUATED",
+                "stage_d_execution_started": False,
+            }
+
+    class PaperAPI:
+        @staticmethod
+        def build_stage_d_analysis_package(*_args, **_kwargs):
+            return {}
+
+    monkeypatch.setattr(cli, "_analysis_api", lambda: (InputAPI, AnalysisAPI, PaperAPI))
+    _install_estimate_pipeline(monkeypatch)
+    code, output, error = _invoke(
+        ["aggregate", "--output-root", str(tmp_path / "synthetic-root"),
+         "--analysis-root", str(tmp_path / "analysis")],
+        pipeline_provider=lambda _args: pipeline,
+    )
+    assert code == cli.EXIT_SUCCESS
+    assert error is None
+    assert output["coordinate_count"] == 500
+    rendered = json.dumps(output).casefold()
+    assert all(token not in rendered for token in ("delta_fid", "decision", "0.42"))
 
 
 def test_argument_errors_are_structured_json_on_stderr() -> None:

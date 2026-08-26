@@ -62,6 +62,9 @@ _RETRY_AUTHORIZATION_FILE_LIMIT = 16 * 1024 * 1024
 _MAX_RETRY_AUTHORIZATIONS = 1000
 _D4_RUNTIME_COMMANDS = frozenset({"init", "run-shard"})
 _D5_FINALIZATION_COMMANDS = frozenset({"finalize", "validate"})
+_D6_ANALYSIS_COMMANDS = frozenset({
+    "aggregate", "build-paper-package", "validate-paper-package",
+})
 
 _SHARD_SUMMARY_KEYS = frozenset({
     "schema_version", "document_type", "shard_id", "shard_count",
@@ -132,6 +135,10 @@ class StageDCLIRuntimeBlockedError(RuntimeError):
 
 class StageDCLIRuntimeIntegrityError(RuntimeError):
     """Raised when D4 runtime validation fails closed."""
+
+
+class StageDCLIAnalysisIntegrityError(RuntimeError):
+    """Raised when D6 cannot produce or validate a safe package."""
 
 
 class _JSONArgumentParser(argparse.ArgumentParser):
@@ -233,6 +240,39 @@ def _add_finalization_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_analysis_arguments(
+    parser: argparse.ArgumentParser, *, operation: str,
+) -> None:
+    """Add only synthetic D6 package paths; never execution controls."""
+
+    _add_source_arguments(parser)
+    if operation == "aggregate":
+        parser.add_argument(
+            "--output-root", type=Path, required=True,
+            help="sealed synthetic D5 root; formal roots are rejected",
+        )
+        parser.add_argument(
+            "--analysis-root", type=Path, required=True,
+            help="fresh D6 synthetic analysis-package destination",
+        )
+    elif operation == "build-paper-package":
+        parser.add_argument(
+            "--analysis-root", type=Path, required=True,
+            help="validated synthetic D6 analysis package",
+        )
+        parser.add_argument(
+            "--paper-root", type=Path, required=True,
+            help="fresh D6 synthetic paper-package destination",
+        )
+    elif operation == "validate-paper-package":
+        parser.add_argument(
+            "--paper-root", type=Path, required=True,
+            help="synthetic D6 package to validate",
+        )
+    else:  # defensive boundary
+        raise ValueError(f"unknown D6 operation: {operation}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = _JSONArgumentParser(
         prog="vitnns-stage-d",
@@ -290,6 +330,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="independently validate a sealed Stage D root",
     )
     _add_finalization_arguments(validate_root)
+
+    aggregate = commands.add_parser(
+        "aggregate",
+        help="aggregate one sealed synthetic D5 root into a fresh D6 package",
+    )
+    _add_analysis_arguments(aggregate, operation="aggregate")
+
+    build_paper = commands.add_parser(
+        "build-paper-package",
+        help="copy a validated synthetic D6 analysis package to fresh paper data",
+    )
+    _add_analysis_arguments(build_paper, operation="build-paper-package")
+
+    validate_paper = commands.add_parser(
+        "validate-paper-package",
+        help="independently validate a closed synthetic D6 paper package",
+    )
+    _add_analysis_arguments(validate_paper, operation="validate-paper-package")
     return parser
 
 
@@ -940,6 +998,23 @@ def _finalization_api() -> Any:
         ) from error
 
 
+def _analysis_api() -> tuple[Any, Any, Any]:
+    """Load D6-only modules lazily, after D3 controls have been rebuilt."""
+
+    try:
+        return (
+            importlib.import_module(".stage_d_analysis_input", __package__),
+            importlib.import_module(".stage_d_analysis", __package__),
+            importlib.import_module(".stage_d_paper", __package__),
+        )
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except Exception as error:
+        raise StageDCLIAnalysisIntegrityError(
+            "Stage D D6 analysis support could not be loaded safely"
+        ) from error
+
+
 def _runtime_callable(injected: Callable[..., Any] | None, name: str) -> Callable[..., Any]:
     if injected is not None:
         return injected
@@ -1187,6 +1262,80 @@ def _run_finalization_command(
     )
 
 
+def _d6_control_document(value: Any, *, operation: str) -> dict[str, Any]:
+    """Validate the deliberately non-numeric, non-identifying D6 CLI surface."""
+
+    source = _json_value(value, "D6 control summary")
+    expected = {
+        "schema_version", "document_type", "status", "synthetic_only",
+        "formal_result", "analysis_canonical_digest", "coordinate_count",
+        "execution_authorization", "analysis_authorization", "stage_d_execution_started",
+    }
+    if (
+        set(source) != expected
+        or source["schema_version"] != 1
+        or source["document_type"] != "stage_d_d6_control_summary"
+        or source["status"] != "PASS"
+        or source["synthetic_only"] is not True
+        or source["formal_result"] is not False
+        or not isinstance(source["analysis_canonical_digest"], str)
+        or _SHA256_RE.fullmatch(source["analysis_canonical_digest"]) is None
+        or source["coordinate_count"] != 500
+        or source["execution_authorization"] != "NOT_ISSUED"
+        or source["analysis_authorization"] != "NOT_EVALUATED"
+        or source["stage_d_execution_started"] is not False
+    ):
+        raise StageDCLIAnalysisIntegrityError(
+            "Stage D D6 operation did not return a safe closed control summary"
+        )
+    return source
+
+
+def _run_analysis_command(
+    args: argparse.Namespace, pipeline: StageDCLIPipeline,
+) -> Mapping[str, Any]:
+    """Run D6 on synthetic-only inputs and project no numerical values."""
+
+    try:
+        input_api, analysis_api, paper_api = _analysis_api()
+        if args.command == "aggregate":
+            estimate, preflight = _estimate_and_preflight(pipeline, None)
+            receipt = input_api.validate_stage_d_analysis_input(
+                args.output_root, pipeline.plan, estimate, preflight,
+            )
+            result = analysis_api.aggregate_stage_d_analysis(receipt, pipeline.plan)
+            paper_api.build_stage_d_analysis_package(
+                result, args.analysis_root, repo_root=args.repo_root,
+            )
+            return analysis_api.closed_analysis_summary(result)
+        if args.command == "build-paper-package":
+            paper_api.validate_stage_d_analysis_package(
+                args.analysis_root, repo_root=args.repo_root,
+            )
+            paper_api.build_stage_d_paper_package(
+                args.analysis_root, args.paper_root, repo_root=args.repo_root,
+            )
+            analysis = paper_api.analysis_control_from_package(
+                args.paper_root, repo_root=args.repo_root,
+            )
+            return analysis_api.closed_analysis_summary(analysis)
+        if args.command == "validate-paper-package":
+            paper_api.validate_stage_d_paper_package(
+                args.paper_root, repo_root=args.repo_root,
+            )
+            analysis = paper_api.analysis_control_from_package(
+                args.paper_root, repo_root=args.repo_root,
+            )
+            return analysis_api.closed_analysis_summary(analysis)
+        raise StageDCLIAnalysisIntegrityError("unsupported Stage D D6 operation")
+    except (KeyboardInterrupt, SystemExit, StageDCLIAnalysisIntegrityError):
+        raise
+    except Exception as error:
+        raise StageDCLIAnalysisIntegrityError(
+            "Stage D D6 synthetic analysis or package validation failed closed"
+        ) from error
+
+
 def _estimate_and_preflight(
     pipeline: StageDCLIPipeline, profile_path: Path | None,
 ) -> tuple[Any, Any]:
@@ -1285,6 +1434,13 @@ def main(
             _write_json(document, output)
             return EXIT_SUCCESS
 
+        if args.command in _D6_ANALYSIS_COMMANDS:
+            document = _d6_control_document(
+                _run_analysis_command(args, pipeline), operation=args.command,
+            )
+            _write_json(document, output)
+            return EXIT_SUCCESS
+
         estimate, preflight = _estimate_and_preflight(
             pipeline, getattr(args, "profiles", None),
         )
@@ -1341,6 +1497,11 @@ def main(
             _error_document(error, "STAGE_D_RUNTIME_INTEGRITY_ERROR"), errors,
         )
         return EXIT_INTEGRITY_FAILURE
+    except StageDCLIAnalysisIntegrityError as error:
+        _write_json(
+            _error_document(error, "STAGE_D_INTEGRITY_ERROR"), errors,
+        )
+        return EXIT_INTEGRITY_FAILURE
     except (
         StageDCLIIntegrityError, StageDConfigError, StageDManifestError,
         StageDPlanError, StageDAuthorizationError,
@@ -1362,5 +1523,6 @@ __all__ = [
     "StageDCLIInputError", "StageDCLIIntegrityError",
     "StageDCLIFinalizationBlockedError",
     "StageDCLIRuntimeBlockedError", "StageDCLIRuntimeIntegrityError",
+    "StageDCLIAnalysisIntegrityError",
     "StageDCLIPipeline", "build_parser", "main",
 ]

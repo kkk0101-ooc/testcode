@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vitnns.local/schemas/stage_d_analysis_package.schema.json",
+  "title": "Stage D D6 synthetic analysis package documents",
+  "oneOf": [
+    {"$ref": "#/$defs/analysis"},
+    {"$ref": "#/$defs/table"},
+    {"$ref": "#/$defs/decision"},
+    {"$ref": "#/$defs/recipes"},
+    {"$ref": "#/$defs/provenance"},
+    {"$ref": "#/$defs/report"},
+    {"$ref": "#/$defs/manifest"},
+    {"$ref": "#/$defs/status"}
+  ],
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "json": {
+      "anyOf": [
+        {"type": "null"}, {"type": "boolean"}, {"type": "number"},
+        {"type": "string"}, {"type": "array", "items": {"$ref": "#/$defs/json"}},
+        {"type": "object", "additionalProperties": {"$ref": "#/$defs/json"}}
+      ]
+    },
+    "analysis": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version","document_type","validity_status","fidelity_status","cost_status","overall_decision","per_sample","summary","bootstrap","curves","c10_reference","resources_and_qc","provenance","canonical_digest"],
+      "properties": {
+        "schema_version": {"const": 1}, "document_type": {"const": "stage_d_analysis_result"},
+        "validity_status": {"enum": ["PASS","FAIL"]},
+        "fidelity_status": {"enum": ["PASS_FIDELITY","FAIL_FIDELITY","INCONCLUSIVE_FIDELITY","NOT_EVALUATED_DUE_TO_VALIDITY"]},
+        "cost_status": {"type": "string"},
+        "overall_decision": {"enum": ["NO_GO_VALIDITY","NO_GO_FIDELITY","INCONCLUSIVE_FIDELITY","NO_GO_COST","GO_FIDELITY_SCOPE"]},
+        "per_sample": {"type": "array", "minItems": 500, "maxItems": 500, "items": {"$ref": "#/$defs/perSample"}},
+        "summary": {"$ref": "#/$defs/json"}, "bootstrap": {"anyOf": [{"type": "null"},{"$ref": "#/$defs/json"}]},
+        "curves": {"type": "array", "items": {"$ref": "#/$defs/curve"}},
+        "c10_reference": {"$ref": "#/$defs/json"}, "resources_and_qc": {"$ref": "#/$defs/json"},
+        "provenance": {"$ref": "#/$defs/json"}, "canonical_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "perSample": {
+      "type": "object", "additionalProperties": false,
+      "required": ["selection_order","sample_id","status","validity_status","misclassified","nns_insertion_auc","nns_deletion_auc","matched_insertion_auc","matched_deletion_auc","delta_fid","nns_insertion_auc_repeat_sd_ddof_0","nns_deletion_auc_repeat_sd_ddof_0","matched_insertion_auc_repeat_sd_ddof_0","matched_deletion_auc_repeat_sd_ddof_0"],
+      "properties": {
+        "selection_order": {"type": "integer", "minimum": 0, "maximum": 499}, "sample_id": {"type": "string", "minLength": 1},
+        "status": {"type": "string"}, "validity_status": {"enum": ["PASS","FAIL"]},
+        "misclassified": {"type": ["boolean","null"]},
+        "nns_insertion_auc": {"type": ["number","null"]}, "nns_deletion_auc": {"type": ["number","null"]},
+        "matched_insertion_auc": {"type": ["number","null"]}, "matched_deletion_auc": {"type": ["number","null"]},
+        "delta_fid": {"type": ["number","null"]},
+        "nns_insertion_auc_repeat_sd_ddof_0": {"type": ["number","null"]}, "nns_deletion_auc_repeat_sd_ddof_0": {"type": ["number","null"]},
+        "matched_insertion_auc_repeat_sd_ddof_0": {"type": ["number","null"]}, "matched_deletion_auc_repeat_sd_ddof_0": {"type": ["number","null"]}
+      }
+    },
+    "curve": {
+      "type": "object", "additionalProperties": false,
+      "required": ["method_id","direction","fraction_index","fraction","n","median","pointwise_ci_lower","pointwise_ci_upper"],
+      "properties": {
+        "method_id": {"enum": ["conditional_fixed_clean_attention_head_direction_value_path_ig","matched_fixed_clean_attention_patch_token_contribution"]},
+        "direction": {"enum": ["insertion","deletion"]}, "fraction_index": {"type": "integer", "minimum": 0, "maximum": 20},
+        "fraction": {"type": "number"}, "n": {"const": 500}, "median": {"type": "number"},
+        "pointwise_ci_lower": {"type": "number"}, "pointwise_ci_upper": {"type": "number"}
+      }
+    },
+    "table": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version","document_type","table_id","columns","row_count","rows","canonical_digest"],
+      "properties": {
+        "schema_version": {"const": 1}, "document_type": {"const": "stage_d_paper_table"}, "table_id": {"enum": ["per_sample_delta","main_fidelity_table","cohort_comparison","resource_and_qc","curve_summary"]},
+        "columns": {"type": "array", "items": {"type": "string"}}, "row_count": {"type": "integer", "minimum": 0},
+        "rows": {"type": "array", "items": {"$ref": "#/$defs/json"}}, "generation": {"$ref": "#/$defs/json"}, "canonical_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "decision": {
+      "type": "object", "additionalProperties": false, "required": ["schema_version","document_type","validity_status","fidelity_status","cost_status","overall_decision","component_flags","holm_status","effect_artifacts_status","canonical_digest"],
+      "properties": {"schema_version": {"const": 1},"document_type": {"const": "stage_d_paper_decision"},"validity_status": {"type": "string"},"fidelity_status": {"type": "string"},"cost_status": {"type": "string"},"overall_decision": {"type": "string"},"component_flags": {"$ref": "#/$defs/json"},"holm_status": {"const": "NOT_APPLICABLE_NO_SECONDARY_INFERENCE"},"effect_artifacts_status": {"type": "string"},"canonical_digest": {"$ref": "#/$defs/digest"}}
+    },
+    "recipes": {"type": "object", "additionalProperties": false, "required": ["schema_version","document_type","renders_png","numeric_source","c10_stage_d_pooling_allowed","cohort_order","figures","canonical_digest"], "properties": {"schema_version": {"const": 1},"document_type": {"const": "stage_d_figure_recipes"},"renders_png": {"const": false},"numeric_source": {"const": "paper_data_only"},"c10_stage_d_pooling_allowed": {"const": false},"cohort_order": {"const": ["c10","stage_d"]},"figures": {"type": "array","minItems": 3,"maxItems": 3,"items": {"$ref": "#/$defs/json"}},"canonical_digest": {"$ref": "#/$defs/digest"}}},
+    "provenance": {"type": "object", "additionalProperties": false, "required": ["schema_version","document_type","source_analysis_canonical_digest","analysis_provenance","numeric_sources","execution_root_read","l0_read","l1_read","l2_read","image_read","model_loaded","png_rendered","formal_result","canonical_digest"], "properties": {"schema_version": {"const": 1},"document_type": {"const": "stage_d_paper_provenance"},"source_analysis_canonical_digest": {"$ref": "#/$defs/digest"},"analysis_provenance": {"$ref": "#/$defs/json"},"numeric_sources": {"const": ["analysis.json"]},"execution_root_read": {"const": false},"l0_read": {"const": false},"l1_read": {"const": false},"l2_read": {"const": false},"image_read": {"const": false},"model_loaded": {"const": false},"png_rendered": {"const": false},"formal_result": {"const": false},"canonical_digest": {"$ref": "#/$defs/digest"}}},
+    "report": {"type": "object", "additionalProperties": false, "required": ["schema_version","document_type","complete","synthetic_only","formal_result","validity_status","fidelity_status","overall_decision","expected_coordinate_count","observed_coordinate_count","bootstrap_performed","effect_outputs_status","c10_n","stage_d_n","pooled_n","figures_rendered","canonical_digest"], "properties": {"schema_version": {"const": 1},"document_type": {"const": "stage_d_analysis_report"},"complete": {"const": true},"synthetic_only": {"const": true},"formal_result": {"const": false},"validity_status": {"type": "string"},"fidelity_status": {"type": "string"},"overall_decision": {"type": "string"},"expected_coordinate_count": {"const": 500},"observed_coordinate_count": {"const": 500},"bootstrap_performed": {"type": "boolean"},"effect_outputs_status": {"type": "string"},"c10_n": {"const": 15},"stage_d_n": {"const": 500},"pooled_n": {"const": null},"figures_rendered": {"const": 0},"canonical_digest": {"$ref": "#/$defs/digest"}}},
+    "manifest": {"type": "object", "additionalProperties": false, "required": ["schema_version","document_type","immutable","payload_count","artifacts","canonical_digest"], "properties": {"schema_version": {"const": 1},"document_type": {"const": "stage_d_analysis_payload_manifest"},"immutable": {"const": true},"payload_count": {"const": 15},"artifacts": {"type": "array","minItems": 15,"maxItems": 15,"items": {"$ref": "#/$defs/json"}},"canonical_digest": {"$ref": "#/$defs/digest"}}},
+    "status": {"type": "object", "additionalProperties": false, "required": ["schema_version","document_type","complete","terminal","immutable","formal_result","file_count_excluding_status","whole_root_excluding_status","whole_root_excluding_status_digest","payload_manifest_sha256","canonical_digest"], "properties": {"schema_version": {"const": 1},"document_type": {"const": "stage_d_analysis_package_status"},"complete": {"const": true},"terminal": {"const": true},"immutable": {"const": true},"formal_result": {"const": false},"file_count_excluding_status": {"const": 16},"whole_root_excluding_status": {"type": "array","minItems": 16,"maxItems": 16,"items": {"$ref": "#/$defs/json"}},"whole_root_excluding_status_digest": {"$ref": "#/$defs/digest"},"payload_manifest_sha256": {"$ref": "#/$defs/digest"},"canonical_digest": {"$ref": "#/$defs/digest"}}}
+  }
+}
