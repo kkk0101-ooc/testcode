@@ -346,7 +346,8 @@ numeric chain.
 
 ### Stage D fidelity-only roadmap
 
-Stage D's D4 execution producer/runtime is implemented and synthetic-tested,
+Stage D's D4 execution producer/runtime and D5 finalization/independent
+source-recomputing validator are implemented and synthetic-tested,
 but formal execution is not authorized or started. The initial D0 attempt
 remains `BLOCKED` because it loaded/ran a CPU model and decoded non-reserve
 JPEGs. A separate strict model-free/no-JPEG D0 rerun passed and froze the
@@ -365,7 +366,7 @@ generation into `D0`–`D10`. Do not start the formal Stage D GPU workload befor
 D7 issues `AUTHORIZED_STAGE_D_FIDELITY_SCOPE`. D0's
 `APPROVED_TO_PREPARE_STAGE_D` is not execution authorization.
 
-The D3/D4 CPU-only control and runtime interfaces expose these commands:
+The D3–D5 CPU-only control, runtime, and sealing interfaces expose these commands:
 
 ~~~bash
 vitnns-stage-d validate-contracts
@@ -374,13 +375,16 @@ vitnns-stage-d estimate
 vitnns-stage-d prepare-authorization
 vitnns-stage-d init
 vitnns-stage-d run-shard
+vitnns-stage-d finalize --output-root /path/to/synthetic-root
+vitnns-stage-d validate --output-root /path/to/sealed-synthetic-root
 ~~~
 
-`init` and `run-shard` remain fail-closed behind an external D7 gate. D4 did
-not provide a formal issuer or run a formal workload; its runtime evidence was
-created only in temporary synthetic test roots. D5 is the next task and may
-implement/test finalize and source-recomputing validation only with synthetic
-or tampered fixtures.
+`init` and `run-shard` remain fail-closed behind an external D7 gate. D4/D5 did
+not provide a formal issuer or run a formal workload; all finalized evidence
+was created only in synthetic test roots. D5 explicitly rejects formal roots
+and keeps package completeness separate from scientific validity. D6 is the
+next task and is authorized only for synthetic aggregation/statistics/paper
+export implementation.
 
 Without later measured profiles, `estimate` remains
 `D7_PROFILE_REQUIRED` / `NOT_EVALUATED`. The preparation artifact always keeps

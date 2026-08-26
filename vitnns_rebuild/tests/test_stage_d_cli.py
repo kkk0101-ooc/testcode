@@ -1,4 +1,4 @@
-"""Focused metadata/fake-runtime tests for the Stage D D4 CLI."""
+"""Focused metadata/fake-runtime/finalization tests for the Stage D CLI."""
 
 from __future__ import annotations
 
@@ -176,7 +176,7 @@ def _install_estimate_pipeline(
     return estimate, preflight
 
 
-def test_parser_exposes_exact_d4_command_surface() -> None:
+def test_parser_exposes_exact_d5_command_surface() -> None:
     parser = cli.build_parser()
     subparsers = [
         action for action in parser._actions
@@ -186,11 +186,24 @@ def test_parser_exposes_exact_d4_command_surface() -> None:
     assert set(subparsers[0].choices) == {
         "validate-contracts", "plan", "estimate",
         "prepare-authorization", "init", "run-shard",
+        "finalize", "validate",
     }
     forbidden = {
-        "finalize", "aggregate", "export", "synthetic",
+        "aggregate", "export", "synthetic",
     }
     assert forbidden.isdisjoint(subparsers[0].choices)
+
+    for command in ("finalize", "validate"):
+        options = {
+            option
+            for action in subparsers[0].choices[command]._actions
+            for option in action.option_strings
+        }
+        assert "--output-root" in options
+        assert {
+            "--authorization", "--profiles", "--device",
+            "--shard-index", "--synthetic", "--aggregate",
+        }.isdisjoint(options)
 
 
 def test_help_is_success_and_does_not_load_pipeline(capsys) -> None:
@@ -202,6 +215,23 @@ def test_help_is_success_and_does_not_load_pipeline(capsys) -> None:
     assert "validate-contracts" in captured.out
     assert "prepare-authorization" in captured.out
     assert captured.err == ""
+
+
+def test_non_d5_command_does_not_load_finalization_api(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        cli, "_finalization_api",
+        lambda: pytest.fail("non-D5 command must not load finalization code"),
+    )
+
+    code, output, error = _invoke(
+        ["plan"], pipeline_provider=lambda _args: _pipeline(),
+    )
+
+    assert code == cli.EXIT_SUCCESS
+    assert error is None
+    assert output["document_type"] == "stage_d_execution_plan"
 
 
 def test_argument_errors_are_structured_json_on_stderr() -> None:
@@ -611,6 +641,246 @@ def test_runtime_parsers_require_formal_inputs_and_expose_no_bypass() -> None:
         for option in action.option_strings
     }
     assert "--retry-authorization" not in init_options
+
+
+def _finalization_result(**changes) -> _Document:
+    document = {
+        "package_complete": True,
+        "scientific_validity": "PASS",
+        "workflow_status": "PASS",
+        "plan_digest": "2" * 64,
+        "final_status_sha256": "8" * 64,
+        "root_inventory": {
+            "file_count": 7005,
+            "total_bytes": 123456,
+            "canonical_digest": "9" * 64,
+        },
+        # Rich core data must never escape the closed CLI projection.
+        "evidence_report": {"prediction": 0.91},
+        "reconciliation": {"delta_fid": 0.42},
+        "source_inventory": {"files": [{"path": "secret"}]},
+        "payload_manifest": {"artifacts": []},
+        "whole_root_ordered_inventory": [{"path": "secret"}],
+    }
+    document.update(changes)
+    return _Document(document)
+
+
+@pytest.mark.parametrize("command, hook_name", [
+    ("finalize", "finalizer"), ("validate", "root_validator"),
+])
+def test_finalize_and_validate_emit_only_closed_control_summary(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    command: str, hook_name: str,
+) -> None:
+    estimate, preflight = _install_estimate_pipeline(monkeypatch)
+    monkeypatch.setattr(
+        cli, "_finalization_api",
+        lambda: pytest.fail(
+            "successful injected D5 operation must not load finalization code"
+        ),
+    )
+    root = tmp_path / "execution-root"
+    pipeline = _pipeline()
+    calls: list[tuple] = []
+
+    def operation(*args):
+        calls.append(args)
+        return _finalization_result()
+
+    kwargs = {hook_name: operation}
+    code, output, error = _invoke(
+        [command, "--output-root", str(root)],
+        pipeline_provider=lambda _args: pipeline,
+        execution_gate_factory=lambda: pytest.fail(
+            "D5 must not construct an execution gate"
+        ),
+        backend_factory=lambda **_kwargs: pytest.fail(
+            "D5 must not construct a backend"
+        ),
+        **kwargs,
+    )
+
+    assert code == cli.EXIT_SUCCESS
+    assert error is None
+    assert calls == [(root, pipeline.plan, estimate, preflight)]
+    assert output == {
+        "schema_version": 1,
+        "document_type": "stage_d_finalization_control",
+        "operation": command,
+        "status": "PASS",
+        "package_complete": True,
+        "scientific_validity": "PASS",
+        "plan_digest": "2" * 64,
+        "final_status_sha256": "8" * 64,
+        "root_inventory": {
+            "file_count": 7005,
+            "total_bytes": 123456,
+            "canonical_digest": "9" * 64,
+        },
+    }
+    rendered = json.dumps(output).casefold()
+    assert all(
+        token not in rendered
+        for token in ("prediction", "delta_fid", "secret", "artifact")
+    )
+
+
+@pytest.mark.parametrize("scientific_validity", ["PASS", "FAIL"])
+def test_finalization_complete_result_allows_independent_scientific_status(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    scientific_validity: str,
+) -> None:
+    _install_estimate_pipeline(monkeypatch)
+    result = _finalization_result(scientific_validity=scientific_validity)
+    code, output, error = _invoke(
+        ["validate", "--output-root", str(tmp_path / "root")],
+        pipeline_provider=lambda _args: _pipeline(),
+        root_validator=lambda *_args: result,
+    )
+    assert code == cli.EXIT_SUCCESS
+    assert error is None
+    assert output["status"] == "PASS"
+    assert output["package_complete"] is True
+    assert output["scientific_validity"] == scientific_validity
+
+
+def test_canonical_finalization_blocked_subclass_is_redacted(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    _install_estimate_pipeline(monkeypatch)
+    from vitnns.stage_d_finalize import StageDFinalizationBlockedError
+
+    class CanonicalBlockedSubclass(StageDFinalizationBlockedError):
+        pass
+
+    def refuse(*_args):
+        raise CanonicalBlockedSubclass(
+            "prediction=0.91 delta_fid=0.42 sample=secret"
+        )
+
+    code, output, error = _invoke(
+        ["finalize", "--output-root", str(tmp_path / "root")],
+        pipeline_provider=lambda _args: _pipeline(), finalizer=refuse,
+    )
+    assert code == cli.EXIT_PREFLIGHT_BLOCKED
+    assert output is None
+    assert error["error"] == {
+        "code": "STAGE_D_FINALIZATION_BLOCKED",
+        "message": (
+            "Stage D finalization is blocked because the output root is "
+            "not safely sealable"
+        ),
+        "type": "StageDCLIFinalizationBlockedError",
+    }
+    serialized = json.dumps(error).casefold()
+    assert all(token not in serialized for token in ("prediction", "delta_fid", "secret"))
+
+
+def test_same_named_noncanonical_blocked_exception_is_integrity_failure(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    _install_estimate_pipeline(monkeypatch)
+
+    class StageDFinalizationBlockedError(Exception):
+        pass
+
+    def refuse(*_args):
+        raise StageDFinalizationBlockedError(
+            "prediction=0.91 delta_fid=0.42 sample=secret"
+        )
+
+    code, output, error = _invoke(
+        ["finalize", "--output-root", str(tmp_path / "root")],
+        pipeline_provider=lambda _args: _pipeline(), finalizer=refuse,
+    )
+    assert code == cli.EXIT_INTEGRITY_FAILURE
+    assert output is None
+    assert error["error"] == {
+        "code": "STAGE_D_INTEGRITY_ERROR",
+        "message": (
+            "Stage D finalization validation failed closed before a safe "
+            "control result was available"
+        ),
+        "type": "StageDCLIIntegrityError",
+    }
+    serialized = json.dumps(error).casefold()
+    assert all(
+        token not in serialized
+        for token in ("prediction", "delta_fid", "secret")
+    )
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        lambda: _finalization_result(plan_digest="bad"),
+        lambda: _finalization_result(workflow_status="prediction=0.8"),
+        lambda: _finalization_result(root_inventory={
+            "file_count": 1, "total_bytes": 2,
+            "canonical_digest": "9" * 64, "prediction": 0.7,
+        }),
+        lambda: _finalization_result(
+            workflow_status="PASS", package_complete=False,
+            scientific_validity="FAIL",
+        ),
+        lambda: _finalization_result(
+            workflow_status="BLOCKED", package_complete=False,
+            scientific_validity="NOT_EVALUATED",
+        ),
+        lambda: _finalization_result(
+            workflow_status="PASS", package_complete=True,
+            scientific_validity="NOT_EVALUATED",
+        ),
+    ],
+)
+def test_finalization_malformed_control_is_integrity_error_without_leak(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, result,
+) -> None:
+    _install_estimate_pipeline(monkeypatch)
+    code, output, error = _invoke(
+        ["validate", "--output-root", str(tmp_path / "root")],
+        pipeline_provider=lambda _args: _pipeline(),
+        root_validator=lambda *_args: result(),
+    )
+    assert code == cli.EXIT_INTEGRITY_FAILURE
+    assert output is None
+    assert error["error"]["code"] == "STAGE_D_INTEGRITY_ERROR"
+    assert error["error"]["type"] == "StageDCLIIntegrityError"
+    rendered = json.dumps(error).casefold()
+    assert all(token not in rendered for token in ("auc", "0.8", "prediction", "0.7"))
+
+
+def test_finalization_integrity_exception_is_redacted(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    _install_estimate_pipeline(monkeypatch)
+    from vitnns.stage_d_finalize import StageDFinalizationIntegrityError
+
+    def refuse(*_args):
+        raise StageDFinalizationIntegrityError(
+            "AUC=0.88 prediction=secret delta_fid=-0.2"
+        )
+
+    code, output, error = _invoke(
+        ["validate", "--output-root", str(tmp_path / "root")],
+        pipeline_provider=lambda _args: _pipeline(), root_validator=refuse,
+    )
+    assert code == cli.EXIT_INTEGRITY_FAILURE
+    assert output is None
+    assert error["error"] == {
+        "code": "STAGE_D_INTEGRITY_ERROR",
+        "message": (
+            "Stage D finalization validation failed closed before a safe "
+            "control result was available"
+        ),
+        "type": "StageDCLIIntegrityError",
+    }
+    rendered = json.dumps(error).casefold()
+    assert all(
+        token not in rendered
+        for token in ("auc", "0.88", "prediction", "secret", "delta_fid")
+    )
 
 
 def test_init_uses_strict_authorization_and_injected_runtime_gate(

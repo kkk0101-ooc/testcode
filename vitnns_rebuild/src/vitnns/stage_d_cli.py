@@ -4,6 +4,9 @@ Importing the module performs no Git query, filesystem validation, runtime
 import, model construction, image access, or scientific computation.  The D4
 runtime commands consume a separately issued D7 authorization and fail closed
 when its validator is unavailable; this module never issues that authority.
+The D5 finalization commands independently rebuild the metadata controls, load
+their finalization implementation only on demand, and expose only a closed
+control summary rather than scientific result values.
 """
 
 from __future__ import annotations
@@ -57,7 +60,8 @@ _PROFILE_FILE_LIMIT = 16 * 1024 * 1024
 _AUTHORIZATION_FILE_LIMIT = 16 * 1024 * 1024
 _RETRY_AUTHORIZATION_FILE_LIMIT = 16 * 1024 * 1024
 _MAX_RETRY_AUTHORIZATIONS = 1000
-_RUNTIME_COMMANDS = frozenset({"init", "run-shard"})
+_D4_RUNTIME_COMMANDS = frozenset({"init", "run-shard"})
+_D5_FINALIZATION_COMMANDS = frozenset({"finalize", "validate"})
 
 _SHARD_SUMMARY_KEYS = frozenset({
     "schema_version", "document_type", "shard_id", "shard_count",
@@ -95,6 +99,14 @@ _SHARD_TERMINAL_KEYS = frozenset({"state"})
 _SHARD_DIGEST_KEYS = frozenset({
     "checkpoint_digest", "execution_context_digest",
 })
+_FINALIZATION_OUTPUT_KEYS = frozenset({
+    "schema_version", "document_type", "operation", "status",
+    "package_complete", "scientific_validity", "plan_digest",
+    "final_status_sha256", "root_inventory",
+})
+_ROOT_INVENTORY_KEYS = frozenset({
+    "file_count", "total_bytes", "canonical_digest",
+})
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -108,6 +120,10 @@ class StageDCLIInputError(ValueError):
 
 class StageDCLIIntegrityError(RuntimeError):
     """Raised when a live control-plane observation cannot be trusted."""
+
+
+class StageDCLIFinalizationBlockedError(RuntimeError):
+    """Raised when D5 cannot safely seal or validate the requested root."""
 
 
 class StageDCLIRuntimeBlockedError(RuntimeError):
@@ -207,10 +223,23 @@ def _add_runtime_arguments(
         )
 
 
+def _add_finalization_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add D5 inputs without adding a D4 execution gate or backend."""
+
+    _add_source_arguments(parser)
+    parser.add_argument(
+        "--output-root", type=Path, required=True,
+        help="initialized Stage D output root to finalize or validate",
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = _JSONArgumentParser(
         prog="vitnns-stage-d",
-        description="Strict metadata-only Stage D planning and preparation",
+        description=(
+            "Strict Stage D planning, authorized execution, and "
+            "control-only finalization"
+        ),
     )
     commands = parser.add_subparsers(dest="command", required=True)
 
@@ -249,6 +278,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="run one D7-authorized shard without exposing scientific values",
     )
     _add_runtime_arguments(run_shard, run_shard=True)
+
+    finalize = commands.add_parser(
+        "finalize",
+        help="seal a complete Stage D root without exposing result values",
+    )
+    _add_finalization_arguments(finalize)
+
+    validate_root = commands.add_parser(
+        "validate",
+        help="independently validate a sealed Stage D root",
+    )
+    _add_finalization_arguments(validate_root)
     return parser
 
 
@@ -495,6 +536,169 @@ def _write_runtime_json(value: Any, stream: TextIO) -> dict[str, Any]:
     return document
 
 
+def _finalization_mapping(value: Any) -> Mapping[str, Any]:
+    """Expose a finalizer result as a mapping without serializing its rows."""
+
+    if isinstance(value, Mapping):
+        return value
+    converter = getattr(value, "to_dict", None)
+    if not callable(converter):
+        raise StageDCLIIntegrityError(
+            "Stage D finalization returned an invalid control result"
+        )
+    try:
+        document = converter()
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except Exception as error:
+        raise StageDCLIIntegrityError(
+            "Stage D finalization result could not be converted to control JSON"
+        ) from error
+    if not isinstance(document, Mapping):
+        raise StageDCLIIntegrityError(
+            "Stage D finalization result must convert to an object"
+        )
+    return document
+
+
+def _finalization_field(
+    document: Mapping[str, Any], *names: str, required: bool = True,
+) -> Any:
+    """Read one safe control field without reflecting its value in errors."""
+
+    try:
+        present = [name for name in names if name in document]
+        if not present:
+            if required:
+                raise StageDCLIIntegrityError(
+                    "Stage D finalization result omits a required control field"
+                )
+            return None
+        values = [document[name] for name in present]
+    except StageDCLIIntegrityError:
+        raise
+    except Exception as error:
+        raise StageDCLIIntegrityError(
+            "Stage D finalization control fields could not be read safely"
+        ) from error
+    first = values[0]
+    try:
+        conflicting = any(value != first for value in values[1:])
+    except Exception as error:
+        raise StageDCLIIntegrityError(
+            "Stage D finalization control aliases could not be compared safely"
+        ) from error
+    if conflicting:
+        raise StageDCLIIntegrityError(
+            "Stage D finalization result has conflicting control fields"
+        )
+    return first
+
+
+def _finalization_document(
+    value: Any, *, operation: str, pipeline: StageDCLIPipeline,
+) -> dict[str, Any]:
+    """Project a rich D5 validation result onto the closed CLI surface."""
+
+    source = _finalization_mapping(value)
+    schema_version = _finalization_field(
+        source, "schema_version", required=False,
+    )
+    document_type = _finalization_field(
+        source, "document_type", required=False,
+    )
+    reported_operation = _finalization_field(
+        source, "operation", required=False,
+    )
+    status = _finalization_field(source, "status", "workflow_status")
+    package_complete = _finalization_field(source, "package_complete")
+    scientific_validity = _finalization_field(source, "scientific_validity")
+    plan_digest = _finalization_field(source, "plan_digest")
+    final_status_sha256 = _finalization_field(
+        source, "final_status_sha256",
+    )
+    root_inventory = _finalization_field(source, "root_inventory")
+
+    if (
+        (
+            schema_version is not None
+            and (type(schema_version) is not int or schema_version != 1)
+        )
+        or (
+            document_type is not None
+            and (
+                not isinstance(document_type, str)
+                or document_type != "stage_d_finalization_control"
+            )
+        )
+        or (
+            reported_operation is not None
+            and (
+                not isinstance(reported_operation, str)
+                or reported_operation != operation
+            )
+        )
+        or operation not in _D5_FINALIZATION_COMMANDS
+        or not isinstance(status, str)
+        or status != "PASS"
+        or package_complete is not True
+        or not isinstance(scientific_validity, str)
+        or scientific_validity not in {"PASS", "FAIL"}
+        or not isinstance(plan_digest, str)
+        or _SHA256_RE.fullmatch(plan_digest) is None
+        or plan_digest
+        != _field(pipeline.plan, "canonical_digest", "Stage D plan")
+        or not isinstance(final_status_sha256, str)
+        or _SHA256_RE.fullmatch(final_status_sha256) is None
+        or not isinstance(root_inventory, Mapping)
+    ):
+        raise StageDCLIIntegrityError(
+            "Stage D finalization output contains invalid control values"
+        )
+    try:
+        inventory_keys = set(root_inventory)
+        file_count = root_inventory["file_count"]
+        total_bytes = root_inventory["total_bytes"]
+        inventory_digest = root_inventory["canonical_digest"]
+    except Exception as error:
+        raise StageDCLIIntegrityError(
+            "Stage D finalization root inventory is not a safe control object"
+        ) from error
+    if (
+        inventory_keys != _ROOT_INVENTORY_KEYS
+        or type(file_count) is not int
+        or file_count < 0
+        or type(total_bytes) is not int
+        or total_bytes < 0
+        or not isinstance(inventory_digest, str)
+        or _SHA256_RE.fullmatch(inventory_digest) is None
+    ):
+        raise StageDCLIIntegrityError(
+            "Stage D finalization root inventory contains invalid controls"
+        )
+
+    document = {
+        "schema_version": 1,
+        "document_type": "stage_d_finalization_control",
+        "operation": operation,
+        "status": status,
+        "package_complete": package_complete,
+        "scientific_validity": scientific_validity,
+        "plan_digest": plan_digest,
+        "final_status_sha256": final_status_sha256,
+        "root_inventory": {
+            "file_count": file_count,
+            "total_bytes": total_bytes,
+            "canonical_digest": inventory_digest,
+        },
+    }
+    if set(document) != _FINALIZATION_OUTPUT_KEYS:
+        raise StageDCLIIntegrityError(
+            "Stage D finalization output does not match its closed schema"
+        )
+    return document
+
+
 def _load_pipeline(args: argparse.Namespace) -> StageDCLIPipeline:
     """Load each source once and perform full C10 verification by default."""
 
@@ -723,6 +927,19 @@ def _runtime_api() -> Any:
     return importlib.import_module(".stage_d_runtime", __package__)
 
 
+def _finalization_api() -> Any:
+    """Import finalization code only when a D5 command actually needs it."""
+
+    try:
+        return importlib.import_module(".stage_d_finalize", __package__)
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except Exception as error:
+        raise StageDCLIIntegrityError(
+            "Stage D finalization support could not be loaded safely"
+        ) from error
+
+
 def _runtime_callable(injected: Callable[..., Any] | None, name: str) -> Callable[..., Any]:
     if injected is not None:
         return injected
@@ -732,6 +949,57 @@ def _runtime_callable(injected: Callable[..., Any] | None, name: str) -> Callabl
             f"Stage D runtime does not expose {name}"
         )
     return candidate
+
+
+def _finalization_callable(
+    injected: Callable[..., Any] | None, name: str,
+) -> Callable[..., Any]:
+    if injected is not None:
+        if not callable(injected):
+            raise StageDCLIIntegrityError(
+                "injected Stage D finalization operation is not callable"
+            )
+        return injected
+    candidate = getattr(_finalization_api(), name, None)
+    if not callable(candidate):
+        raise StageDCLIIntegrityError(
+            f"Stage D finalization support does not expose {name}"
+        )
+    return candidate
+
+
+def _finalization_exception_types(
+) -> tuple[type[Exception], type[Exception], type[Exception]]:
+    """Resolve and validate the canonical D5 exception hierarchy lazily."""
+
+    api = _finalization_api()
+    names = (
+        "StageDFinalizationError",
+        "StageDFinalizationBlockedError",
+        "StageDFinalizationIntegrityError",
+    )
+    candidates = tuple(getattr(api, name, None) for name in names)
+    if any(
+        not isinstance(candidate, type)
+        or not issubclass(candidate, Exception)
+        for candidate in candidates
+    ):
+        raise StageDCLIIntegrityError(
+            "Stage D finalization support has an invalid exception contract"
+        )
+    base, blocked, integrity = candidates
+    if (
+        base in {Exception, BaseException}
+        or blocked is base
+        or integrity is base
+        or blocked is integrity
+        or not issubclass(blocked, base)
+        or not issubclass(integrity, base)
+    ):
+        raise StageDCLIIntegrityError(
+            "Stage D finalization support has an invalid exception hierarchy"
+        )
+    return base, blocked, integrity
 
 
 def _execution_gate(factory: Callable[..., Any] | None) -> Any:
@@ -777,6 +1045,42 @@ def _call_runtime(operation: Callable[..., Any], /, *args: Any, **kwargs: Any) -
         raise
     except Exception as error:
         raise _runtime_failure(error) from error
+
+
+def _finalization_failure(
+    error: BaseException,
+) -> StageDCLIFinalizationBlockedError | StageDCLIIntegrityError:
+    """Map D5 failures without copying potentially scientific messages."""
+
+    base_type, blocked_type, integrity_type = _finalization_exception_types()
+    if isinstance(error, blocked_type):
+        return StageDCLIFinalizationBlockedError(
+            "Stage D finalization is blocked because the output root is "
+            "not safely sealable"
+        )
+    # Canonical integrity/base failures and unexpected injected failures all
+    # share one fail-closed public surface.  Keep the explicit checks here so
+    # a same-named foreign exception can never acquire D5 blocked semantics.
+    if isinstance(error, (integrity_type, base_type)):
+        return StageDCLIIntegrityError(
+            "Stage D finalization validation failed closed before a safe "
+            "control result was available"
+        )
+    return StageDCLIIntegrityError(
+        "Stage D finalization validation failed closed before a safe "
+        "control result was available"
+    )
+
+
+def _call_finalization(
+    operation: Callable[..., Any], /, *args: Any, **kwargs: Any,
+) -> Any:
+    try:
+        return operation(*args, **kwargs)
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except Exception as error:
+        raise _finalization_failure(error) from error
 
 
 def _initialization_document(
@@ -855,6 +1159,34 @@ def _run_runtime_command(
     return _closed_shard_summary(result)
 
 
+def _run_finalization_command(
+    args: argparse.Namespace, pipeline: StageDCLIPipeline,
+    *, finalizer: Callable[..., Any] | None,
+    root_validator: Callable[..., Any] | None,
+) -> Mapping[str, Any]:
+    """Run D5 from rebuilt metadata controls, without a gate or backend."""
+
+    estimate, preflight = _estimate_and_preflight(pipeline, None)
+    if args.command == "finalize":
+        operation = _finalization_callable(
+            finalizer, "finalize_stage_d_root",
+        )
+    elif args.command == "validate":
+        operation = _finalization_callable(
+            root_validator, "validate_stage_d_root",
+        )
+    else:  # defensive boundary
+        raise StageDCLIIntegrityError(
+            "unsupported Stage D finalization operation"
+        )
+    result = _call_finalization(
+        operation, args.output_root, pipeline.plan, estimate, preflight,
+    )
+    return _finalization_document(
+        result, operation=args.command, pipeline=pipeline,
+    )
+
+
 def _estimate_and_preflight(
     pipeline: StageDCLIPipeline, profile_path: Path | None,
 ) -> tuple[Any, Any]:
@@ -893,6 +1225,8 @@ def main(
     preparation_input_provider: Callable[..., Any] | None = None,
     runtime_initializer: Callable[..., Any] | None = None,
     shard_runner: Callable[..., Any] | None = None,
+    finalizer: Callable[..., Any] | None = None,
+    root_validator: Callable[..., Any] | None = None,
     execution_gate_factory: Callable[..., Any] | None = None,
     backend_factory: Callable[..., Any] | None = None,
     stdout: TextIO | None = None,
@@ -903,6 +1237,9 @@ def main(
     The four D3 commands remain metadata-only.  Runtime dependencies are
     resolved only for D4 commands, and ``backend_factory`` is passed through
     uncalled so the runtime can validate authority and root controls first.
+    D5 finalization is also loaded on demand; it receives freshly rebuilt
+    metadata controls but no authorization document, execution gate, backend,
+    profile, device, or scientific result value.
     """
 
     output = sys.stdout if stdout is None else stdout
@@ -926,7 +1263,7 @@ def main(
             _write_json(pipeline.plan, output)
             return EXIT_SUCCESS
 
-        if args.command in _RUNTIME_COMMANDS:
+        if args.command in _D4_RUNTIME_COMMANDS:
             result = _run_runtime_command(
                 args, pipeline, runtime_initializer=runtime_initializer,
                 shard_runner=shard_runner,
@@ -939,6 +1276,14 @@ def main(
                 if document.get("status") == "BLOCKED"
                 else EXIT_SUCCESS
             )
+
+        if args.command in _D5_FINALIZATION_COMMANDS:
+            document = _run_finalization_command(
+                args, pipeline, finalizer=finalizer,
+                root_validator=root_validator,
+            )
+            _write_json(document, output)
+            return EXIT_SUCCESS
 
         estimate, preflight = _estimate_and_preflight(
             pipeline, getattr(args, "profiles", None),
@@ -983,6 +1328,11 @@ def main(
     except (ArgumentError, StageDCLIInputError) as error:
         _write_json(_error_document(error, "STAGE_D_INPUT_ERROR"), errors)
         return EXIT_INPUT_ERROR
+    except StageDCLIFinalizationBlockedError as error:
+        _write_json(
+            _error_document(error, "STAGE_D_FINALIZATION_BLOCKED"), errors,
+        )
+        return EXIT_PREFLIGHT_BLOCKED
     except StageDCLIRuntimeBlockedError as error:
         _write_json(_error_document(error, "STAGE_D_EXECUTION_BLOCKED"), errors)
         return EXIT_PREFLIGHT_BLOCKED
@@ -1010,6 +1360,7 @@ __all__ = [
     "EXIT_INPUT_ERROR", "EXIT_INTEGRITY_FAILURE",
     "EXIT_PREFLIGHT_BLOCKED", "EXIT_SUCCESS", "ArgumentError",
     "StageDCLIInputError", "StageDCLIIntegrityError",
+    "StageDCLIFinalizationBlockedError",
     "StageDCLIRuntimeBlockedError", "StageDCLIRuntimeIntegrityError",
     "StageDCLIPipeline", "build_parser", "main",
 ]
