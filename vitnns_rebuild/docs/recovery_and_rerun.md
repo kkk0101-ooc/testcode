@@ -56,6 +56,17 @@ git lfs install
 git lfs pull
 ```
 
+Before the first push of this recovery commit, authenticate Git with a GitHub
+credential that has write access to `kkk0101-ooc/testcode` **and** enough Git
+LFS storage quota for the approximately 7.4 GB asset set. Then publish the
+current branch and verify both the commit and LFS payloads:
+
+```bash
+git push origin stage-d-d3-pass
+git lfs status
+git ls-remote --heads origin stage-d-d3-pass
+```
+
 This repository keeps `.conda/` and `.venv/` locally but ignores them in Git.
 A fresh clone should create the `vitnns` Conda environment from
 `requirements.lock.txt` or use a compatible Python 3.10 CUDA environment.
@@ -199,6 +210,25 @@ If no external backup exists, follow this order:
 The tracked `selection/stage_c_selection.json` records the historical selected
 heads, but it does not replace C8's source evidence. Do not skip C8 if the goal
 is to restore the original audit chain.
+
+## Persisting future formal outputs
+
+Do not use `/tmp`, a home-directory cache, `outputs/`, or `artifacts/` for any
+formal C7--D8 evidence that must survive a machine reset. Create each new
+formal run root under the versioned `evidence/` tree and give its `--output-root`
+an explicit path there, for example:
+
+```bash
+mkdir -p evidence/stage_c/c7_diagnostic_YYYYMMDD
+vitnns-stage-c run-sample \
+  --output-root evidence/stage_c/c7_diagnostic_YYYYMMDD \
+  # remaining frozen arguments from the authorized run specification
+```
+
+`evidence/**` is covered by Git LFS. After a formal run reaches its sealed
+terminal state, review it, commit it, and run `git push` before deleting the
+local source or moving to the next stage. Keep cache files and temporary
+reassembled archives outside that evidence root.
 
 ## Useful command skeletons
 
