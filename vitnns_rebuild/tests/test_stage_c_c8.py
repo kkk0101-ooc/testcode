@@ -7,12 +7,15 @@ import shutil
 import threading
 from contextlib import contextmanager
 from pathlib import Path
+from types import MappingProxyType
 from types import SimpleNamespace
 
 import pytest
 
 from vitnns import stage_c_artifacts
 from vitnns import stage_c_c8 as c8
+from vitnns import recovery_c8_launch
+from vitnns.recovery_v2 import load_recovery_v2_binding
 from vitnns.stage_c_config import load_stage_c_config
 from vitnns.stage_c_plan import (
     StageCEstimate,
@@ -22,18 +25,34 @@ from vitnns.stage_c_plan import (
     load_stage_c_registry,
 )
 from vitnns.stage_c_provenance import canonical_sha256
+from vitnns.recovery_c8_launch import RecoveryC8LaunchRecord
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = ROOT / "config/stage_c_c8_run_spec.json"
 LIVE_CODE = {"commit": "a" * 40, "dirty": False}
 ARCHIVE_TREE = "b" * 40
+RECOVERY_CODE = {"commit": "c" * 40, "dirty": False}
+RECOVERY_PROJECTIONS = {
+    "c7_slowest_unit_seconds": 80.01139638799941,
+    "c7_peak_reserved_bytes": 2_833_252_352,
+    "c7_projected_c8_h20_gpu_hours": 60.564181988138444,
+    "c7_projected_c8_artifact_bytes": 4_289_580_675,
+    "c7_projected_c8_c9_artifact_bytes": 4_841_884_075,
+    "c7_projected_c8_l2_bytes_per_audit": 488_599_600,
+}
 
 
 @pytest.fixture(scope="module")
 def exact():
     config = load_stage_c_config()
-    registry = load_stage_c_registry(config, verify_live_assets=False)
+    # The historical workspace-relative selection sources are intentionally
+    # absent in a recovery checkout.  Planning through the checked-in recovery
+    # binding keeps this fixture calibration-only without reading live images.
+    registry = load_stage_c_registry(
+        config, verify_live_assets=False,
+        recovery_binding=load_recovery_v2_binding(verify_assets=False),
+    )
     plan = build_execution_plan(config, registry, load_run_spec(SPEC))
     return config, plan
 
@@ -188,6 +207,82 @@ def _make_attempt(root, digest, *, number=1):
     attempt.mkdir(parents=True)
     (attempt / "status.json").write_text("{}\n", encoding="utf-8")
     return attempt
+
+
+def _recovery_record(tmp_path, binding):
+    repo = tmp_path / "repo"
+    report_path = repo / "evidence/c7/reports/stage_c_benchmark_report.json"
+    launch_path = repo / "evidence/c8/recovery_c8_launch_record.json"
+    schema_path = repo / "config/recovery_c8_launch_record.schema.json"
+    formal_root = repo / "evidence/c8/formal"
+    report_path.parent.mkdir(parents=True)
+    launch_path.parent.mkdir(parents=True, exist_ok=True)
+    schema_path.parent.mkdir(parents=True, exist_ok=True)
+    report = {
+        "canonical_digest": "1" * 64,
+        "status": "PASS",
+        "integrity_valid": True,
+        "projections": {
+            "time": {
+                "slowest_valid_measured_unit_seconds":
+                    RECOVERY_PROJECTIONS["c7_slowest_unit_seconds"],
+                "C8_h20_gpu_hours":
+                    RECOVERY_PROJECTIONS["c7_projected_c8_h20_gpu_hours"],
+            },
+            "measured_maxima": {
+                "cuda_peak_reserved_bytes_per_unit":
+                    RECOVERY_PROJECTIONS["c7_peak_reserved_bytes"],
+                "c8_projected_l2_bytes_per_audit_sample":
+                    RECOVERY_PROJECTIONS["c7_projected_c8_l2_bytes_per_audit"],
+            },
+            "storage": {"projected_bytes": {
+                "C8": RECOVERY_PROJECTIONS["c7_projected_c8_artifact_bytes"],
+                "C8_C9": RECOVERY_PROJECTIONS["c7_projected_c8_c9_artifact_bytes"],
+            }},
+        },
+    }
+    report_path.write_text(json.dumps(report), encoding="utf-8")
+    launch_path.write_text("{}", encoding="utf-8")
+    schema_path.write_text("{}", encoding="utf-8")
+    c7_launch = SimpleNamespace(binding=binding)
+    document = {
+        "c7_launch": {
+            "path": "evidence/c7/recovery_c7_launch_record.json",
+            "file_sha256": "2" * 64,
+            "canonical_digest": "3" * 64,
+            "launch_commit": "4" * 40,
+            "producer_commit": "5" * 40,
+            "producer_tree": "6" * 40,
+        },
+        "c7_report": {
+            "path": report_path.relative_to(repo).as_posix(),
+            "file_sha256": c8._file_sha256(report_path),
+            "canonical_digest": report["canonical_digest"],
+            "report_commit": "7" * 40,
+            "status": "PASS",
+            "source_commit": "4" * 40,
+        },
+        "model": {"identity": "recovery", "state_dict_sha256": "8" * 64},
+        "producer_git": {
+            "commit": "9" * 40, "tree": "a" * 40,
+            "source_subtree_path": "src/vitnns",
+            "source_subtree_tree": "b" * 40, "dirty": False,
+        },
+        "canonical_digest": "d" * 64,
+    }
+    return RecoveryC8LaunchRecord(
+        path=launch_path, schema_path=schema_path,
+        document=MappingProxyType(document), binding=binding,
+        c7_launch_record=c7_launch, model_path=repo / "model.pth",
+        data_root=repo / "data", devkit_path=repo / "devkit.tar.gz",
+        formal_root=formal_root, reports_root=repo / "evidence/c8/reports",
+        selection_root=repo / "evidence/c8/selection",
+        report_path=repo / "evidence/c8/reports/report.json",
+        selection_path=repo / "evidence/c8/selection/selection.json",
+        model_identity=MappingProxyType(document["model"]),
+        file_sha256="e" * 64, launch_commit=RECOVERY_CODE["commit"],
+        repo_root=repo,
+    ), report
 
 
 def test_checked_in_c8_plan_is_exact(exact):
@@ -787,3 +882,148 @@ def test_fixed_report_hash_is_checked_before_semantics(monkeypatch, tmp_path):
     monkeypatch.setattr(c8, "C7_REPORT_FILE_SHA256", "f" * 64)
     with pytest.raises(c8.StageCBenchmarkIntegrityError, match="file SHA-256"):
         c8.validate_fixed_c7_report(path)
+
+
+def test_recovery_preflight_uses_authority_bound_report_values(
+    monkeypatch, tmp_path, exact,
+):
+    config, plan = exact
+    binding = load_recovery_v2_binding(verify_assets=False)
+    record, report = _recovery_record(tmp_path, binding)
+    captured = {}
+    expected = SimpleNamespace(
+        within_budget=True, violations=(), canonical_digest="f" * 64,
+        compute={
+            "projected_h20_gpu_hours":
+                RECOVERY_PROJECTIONS["c7_projected_c8_h20_gpu_hours"],
+        },
+    )
+    monkeypatch.setattr(
+        recovery_c8_launch, "load_recovery_c8_launch_record",
+        lambda *_args, **_kwargs: record,
+    )
+
+    def fake_estimate(config_arg, plan_arg, **kwargs):
+        assert config_arg is config and plan_arg is plan
+        captured.update(kwargs)
+        return expected
+
+    monkeypatch.setattr(c8, "estimate_stage_c_run", fake_estimate)
+    assert c8.build_c8_measured_preflight(
+        plan, config, report, trusted_recovery_context=record,
+    ) is expected
+    assert captured == {
+        "measured_slowest_unit_seconds":
+            RECOVERY_PROJECTIONS["c7_slowest_unit_seconds"],
+        "measured_peak_reserved_bytes_per_unit":
+            RECOVERY_PROJECTIONS["c7_peak_reserved_bytes"],
+    }
+
+
+def test_recovery_authorization_projects_typed_authority_without_archive(
+    monkeypatch, tmp_path,
+):
+    binding = load_recovery_v2_binding(verify_assets=False)
+    record, report = _recovery_record(tmp_path, binding)
+    plan = SimpleNamespace(canonical_digest="f" * 64)
+    estimate = SimpleNamespace(canonical_digest="0" * 64)
+    monkeypatch.setattr(
+        recovery_c8_launch, "load_recovery_c8_launch_record",
+        lambda *_args, **_kwargs: record,
+    )
+    validations = []
+    monkeypatch.setattr(
+        c8, "_validate_formal_preflight",
+        lambda *args, **kwargs: validations.append((args, kwargs)),
+    )
+
+    authorization = c8._recovery_authorization(
+        record, report, plan, estimate, record.formal_root, RECOVERY_CODE,
+    )
+    c8.validate_c8_launch_authorization(
+        authorization, plan=plan, estimate=estimate,
+        output_root=record.formal_root, trusted_recovery_context=record,
+    )
+
+    assert authorization["authority_kind"] == "recovery_c8_launch_record"
+    assert authorization["projections"] == RECOVERY_PROJECTIONS
+    assert authorization["source"]["execution_git_state"] == RECOVERY_CODE
+    assert not any("archive" in key for key in authorization)
+    assert not Path(
+        authorization["recovery_c8_launch_record"]["path"]
+    ).is_absolute()
+    assert validations[-1][1]["projections"] == RECOVERY_PROJECTIONS
+
+    damaged = json.loads(json.dumps(authorization))
+    damaged["projections"]["c7_slowest_unit_seconds"] += 1.0
+    damaged["canonical_digest"] = canonical_sha256({
+        key: value for key, value in damaged.items()
+        if key != "canonical_digest"
+    })
+    with pytest.raises(
+        c8.StageCBenchmarkIntegrityError, match="report projections drifted"
+    ):
+        c8.validate_c8_launch_authorization(
+            damaged, plan=plan, estimate=estimate,
+            output_root=record.formal_root, trusted_recovery_context=record,
+        )
+
+
+def test_all_c8_attempt_validation_paths_receive_recovery_context(
+    monkeypatch, tmp_path,
+):
+    digest = "a" * 64
+    identity = {
+        "schema_version": 1, "sample_id": "sample",
+        "method_id": "method", "config_id": "config",
+        "block_index": None, "head_index": None,
+        "target_ref": None, "canonical_digest": digest,
+    }
+    key = SimpleNamespace(
+        canonical_digest=digest, to_dict=lambda: dict(identity),
+    )
+    unit = SimpleNamespace(key=key)
+    plan = SimpleNamespace(
+        canonical_digest="b" * 64, units=(unit,),
+        run_spec=SimpleNamespace(to_dict=lambda: {"schema_version": 1}),
+    )
+    caps = {
+        "bytes_per_l0_l1_execution_unit_max": 1,
+        "bytes_per_audit_sample_l2_max": 1,
+        "stage_c_c8_c9_total_artifact_bytes_max": 1,
+    }
+    estimate = SimpleNamespace(
+        canonical_digest="c" * 64, caps={"effective": caps},
+    )
+    attempt = _make_attempt(tmp_path, digest)
+    context = object()
+    received = []
+
+    def validate(*_args, **kwargs):
+        received.append(kwargs.get("trusted_recovery_context"))
+        return _valid_attempt()
+
+    monkeypatch.setattr(stage_c_artifacts, "validate_execution_unit", validate)
+    monkeypatch.setattr(
+        stage_c_artifacts, "attempt_directories", lambda *_args: (attempt,),
+    )
+    monkeypatch.setattr(
+        c8, "measure_artifact_tree_bytes",
+        lambda *_args: SimpleNamespace(total_bytes=0),
+    )
+    c8._result_row(
+        unit, SimpleNamespace(
+            state="succeeded", attempt_path=str(attempt), failure=None,
+        ), claim_token="d" * 64, caps=caps, root=tmp_path, plan=plan,
+        estimate=estimate, observed_git_state=LIVE_CODE,
+        trusted_recovery_context=context,
+    )
+    c8._selected_attempt_totals(
+        tmp_path, [{"selected_attempt": str(attempt), "unit_key": identity}],
+        caps, trusted_recovery_context=context,
+    )
+    c8._scan_rows(
+        tmp_path, plan, estimate, observed_git_state=LIVE_CODE,
+        trusted_recovery_context=context,
+    )
+    assert received == [context, context, context, context]

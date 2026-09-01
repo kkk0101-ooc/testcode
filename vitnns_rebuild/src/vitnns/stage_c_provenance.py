@@ -653,6 +653,80 @@ def _reload_recovery_authority(
     return authoritative_binding, authoritative_launch
 
 
+def _reload_recovery_c8_authority(outer_authority: Any) -> tuple[Any, Any]:
+    """Reload C8 authority, then return its validated historical C7 pair.
+
+    C8 has a different source boundary from C7: its producer necessarily
+    changes ``src/vitnns`` after the C7 producer commit.  Consequently this
+    path must use the C8 loader rather than feeding the embedded C7 launch
+    record back through the standalone C7 loader, whose current-source check
+    is intentionally appropriate only for a C7 execution.
+    """
+
+    try:
+        from .recovery_c8_launch import (
+            RecoveryC8LaunchRecord,
+            load_recovery_c8_launch_record,
+        )
+        from .recovery_c7_launch import RecoveryC7LaunchRecord
+        from .recovery_v2 import RecoveryV2Binding
+    except ImportError as error:  # pragma: no cover - rolling integration guard
+        raise StageCProvenanceError(
+            "recovery C8 authority support is unavailable"
+        ) from error
+
+    if type(outer_authority) is not RecoveryC8LaunchRecord:
+        raise StageCProvenanceError(
+            "trusted recovery C8 context requires a validated "
+            "RecoveryC8LaunchRecord"
+        )
+    if (
+        type(outer_authority.binding) is not RecoveryV2Binding
+        or type(outer_authority.c7_launch_record) is not RecoveryC7LaunchRecord
+        or outer_authority.c7_launch_record.binding is not outer_authority.binding
+    ):
+        raise StageCProvenanceError(
+            "trusted recovery C8 context lacks its validated binding and C7 "
+            "launch projection"
+        )
+
+    try:
+        authority_root = Path(outer_authority.repo_root).resolve(strict=True)
+        authoritative = load_recovery_c8_launch_record(
+            outer_authority.path,
+            repo_root=authority_root,
+            schema_path=outer_authority.schema_path,
+            # Provenance is also revalidated after formal output starts to
+            # exist, so freshness is not part of this read-only trust check.
+            require_fresh_roots=False,
+            require_tracked=True,
+        )
+    except Exception as error:
+        raise StageCProvenanceError(
+            "trusted recovery C8 authority could not be reloaded and validated"
+        ) from error
+    if (
+        type(authoritative) is not RecoveryC8LaunchRecord
+        or authoritative != outer_authority
+    ):
+        raise StageCProvenanceError(
+            "trusted recovery C8 context does not match reloaded authority"
+        )
+
+    binding = authoritative.binding
+    launch = authoritative.c7_launch_record
+    if (
+        type(binding) is not RecoveryV2Binding
+        or type(launch) is not RecoveryC7LaunchRecord
+        or launch.binding is not binding
+    ):
+        raise StageCProvenanceError(
+            "reloaded recovery C8 authority lacks its validated binding and "
+            "C7 launch projection"
+        )
+    return binding, launch
+
+
 def _authority_relative_path(path: Any, repo_root: Path, context: str) -> str:
     try:
         relative = Path(path).resolve(strict=True).relative_to(repo_root)
@@ -666,14 +740,19 @@ def _authority_relative_path(path: Any, repo_root: Path, context: str) -> str:
 def normalize_recovery_model_context(
     recovery_binding: Any, recovery_launch_record: Any | None = None,
 ) -> dict[str, Any]:
-    """Normalize trusted recovery inputs to the closed provenance shape."""
+    """Normalize C7 or outer-C8 authority to the closed model shape."""
+
+    from .recovery_c8_launch import RecoveryC8LaunchRecord
 
     if recovery_launch_record is None:
         # A genuine launch record includes its genuine binding; retain that
         # convenient single-object form without accepting arbitrary objects.
         from .recovery_c7_launch import RecoveryC7LaunchRecord
 
-        if isinstance(recovery_binding, RecoveryC7LaunchRecord):
+        if type(recovery_binding) is RecoveryC8LaunchRecord:
+            recovery_launch_record = recovery_binding
+            recovery_binding = recovery_launch_record.binding
+        elif isinstance(recovery_binding, RecoveryC7LaunchRecord):
             recovery_launch_record = recovery_binding
             recovery_binding = recovery_launch_record.binding
         else:
@@ -685,9 +764,19 @@ def normalize_recovery_model_context(
                 )
             recovery_binding, recovery_launch_record = pair
 
-    binding, launch = _reload_recovery_authority(
-        recovery_binding, recovery_launch_record,
-    )
+    if type(recovery_launch_record) is RecoveryC8LaunchRecord:
+        if recovery_binding is not recovery_launch_record.binding:
+            raise StageCProvenanceError(
+                "trusted recovery C8 context is not the binding owned by its "
+                "RecoveryC8LaunchRecord"
+            )
+        binding, launch = _reload_recovery_c8_authority(
+            recovery_launch_record
+        )
+    else:
+        binding, launch = _reload_recovery_authority(
+            recovery_binding, recovery_launch_record,
+        )
     repo_root = Path(launch.repo_root).resolve(strict=True)
     binding_path = _authority_relative_path(
         binding.path, repo_root, "recovery_binding_path",
@@ -744,9 +833,9 @@ def normalize_recovery_model_context(
 
 
 def recovery_model_provenance(
-    recovery_binding: Any, recovery_launch_record: Any,
+    recovery_binding: Any, recovery_launch_record: Any | None = None,
 ) -> dict[str, Any]:
-    """Build the recovery model block used by Stage C provenance."""
+    """Build the unchanged recovery model block from C7 or C8 authority."""
 
     return normalize_recovery_model_context(
         recovery_binding, recovery_launch_record,

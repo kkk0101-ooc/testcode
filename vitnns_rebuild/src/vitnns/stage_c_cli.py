@@ -35,6 +35,12 @@ from .recovery_c7_launch import (
     capture_authorized_c7_source_state,
     load_recovery_c7_launch_record,
 )
+from .recovery_c8_launch import (
+    RecoveryC8LaunchError,
+    capture_authorized_c8_source_state,
+    load_recovery_c8_launch_record,
+    recovery_provenance_context as recovery_c8_provenance_context,
+)
 from .stage_c_plan import (
     DEFAULT_ACCEPTANCE,
     DEFAULT_DEPENDENCY_LOCK,
@@ -144,6 +150,13 @@ def _add_recovery_c7_argument(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_recovery_c8_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--recovery-c8-launch-record", type=Path,
+        help="validated recovery-v2 C8-only launch authority",
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = _JSONArgumentParser(
         prog="vitnns-stage-c",
@@ -197,14 +210,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     c8_init = commands.add_parser("c8-init")
     _add_c8_plan_arguments(c8_init)
+    _add_recovery_c8_argument(c8_init)
     c8_init.add_argument("--output-root", type=Path, required=True)
     c8_init.add_argument("--c7-report", type=Path, required=True)
 
     c8_shard = commands.add_parser("c8-run-shard")
     _add_c8_plan_arguments(c8_shard)
+    _add_recovery_c8_argument(c8_shard)
     c8_shard.add_argument("--output-root", type=Path, required=True)
     c8_shard.add_argument("--device", default="cpu")
-    c8_shard.add_argument("--state-dict", type=Path, default=DEFAULT_STATE_DICT)
+    c8_shard.add_argument("--state-dict", type=Path)
     c8_shard.add_argument(
         "--shard-index", type=int, required=True,
         help="zero-based index of this deterministic plan-order shard",
@@ -216,10 +231,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     c8_finalize = commands.add_parser("c8-finalize")
     _add_c8_plan_arguments(c8_finalize)
+    _add_recovery_c8_argument(c8_finalize)
     c8_finalize.add_argument("--output-root", type=Path, required=True)
 
     c8_select = commands.add_parser("c8-select")
     _add_c8_plan_arguments(c8_select)
+    _add_recovery_c8_argument(c8_select)
     c8_select.add_argument("--output-root", type=Path, required=True)
     c8_select.add_argument("--mode", choices=("build", "validate"), default="build")
     c8_select.add_argument("--report-output", type=Path, required=True)
@@ -272,7 +289,7 @@ def _write_json(value: Any, stream: TextIO) -> None:
 
 def _load_pipeline(
     args: argparse.Namespace, *, c8: bool = False, c9: bool = False,
-    recovery_record: Any | None = None,
+    recovery_record: Any | None = None, recovery_c8_record: Any | None = None,
 ) -> tuple[Any, Any, Any, Any, Any, Any]:
     if c8 and c9:
         raise ValueError("a pipeline cannot be both C8 and C9")
@@ -282,8 +299,9 @@ def _load_pipeline(
         registry_kwargs["registry_path"] = args.registry
     if getattr(args, "data_root", None) is not None:
         registry_kwargs["data_root"] = args.data_root
-    if recovery_record is not None:
-        registry_kwargs["recovery_binding"] = recovery_record.binding
+    recovery_authority = recovery_c8_record or recovery_record
+    if recovery_authority is not None:
+        registry_kwargs["recovery_binding"] = recovery_authority.binding
     if c8 or c9:
         # Planning must never decode or hash the 15 holdout images.  The
         # production backend later reads only a UnitSample already present in
@@ -403,7 +421,8 @@ def _validate_c9_shard_arguments(
 
 
 def _load_c8_initialized_estimate(
-    output_root: Path | str, plan: Any
+    output_root: Path | str, plan: Any, *,
+    trusted_recovery_context: Any | None = None,
 ) -> tuple[StageCEstimate, dict[str, Any]]:
     root = Path(output_root).absolute()
     try:
@@ -412,7 +431,8 @@ def _load_c8_initialized_estimate(
         )
         authorization = strict_json_load(root / C8_AUTHORIZATION_FILENAME)
         validate_c8_launch_authorization(
-            authorization, plan=plan, estimate=preflight, output_root=root
+            authorization, plan=plan, estimate=preflight, output_root=root,
+            trusted_recovery_context=trusted_recovery_context,
         )
         if strict_json_load(root / "execution_plan.json") != plan.to_dict():
             raise StageCBenchmarkIntegrityError(
@@ -481,12 +501,16 @@ def _validate_c8_shard_checkpoint_locked(
 def _c8_input_hashes(
     *, config: Any, config_path: Path, evidence: Mapping[str, Any],
     source_git_state: Mapping[str, Any],
+    recovery_record: Any | None = None,
 ) -> dict[str, Any]:
     protocol_path = REPO_ROOT / config.protocol.path
     return {
         "code_commit": source_git_state["commit"],
         "code_tree_clean": not source_git_state["dirty"],
-        "model_sha256": MODEL_SHA256,
+        "model_sha256": (
+            MODEL_SHA256 if recovery_record is None
+            else recovery_record.model_identity["state_dict_sha256"]
+        ),
         "dependency_lock_sha256": sha256_file(DEFAULT_DEPENDENCY_LOCK),
         "registry_sha256": config.registry.sha256,
         "registry_metadata_sha256": config.registry.metadata_sha256,
@@ -505,18 +529,45 @@ def _c8_report_binding(
 ) -> dict[str, Any]:
     """Build selection-budget evidence only from the freshly validated C7 report."""
 
-    binding = {
-        key: authorization[key]
-        for key in (
-            "c7_report_path", "c7_report_file_sha256",
-            "c7_report_canonical_digest", "c7_code_commit",
-            "c7_archive_ref", "c7_archive_tree",
-            "c7_slowest_unit_seconds", "c7_peak_reserved_bytes",
-            "c7_projected_c8_h20_gpu_hours",
-            "c7_projected_c8_artifact_bytes",
-            "c7_projected_c8_l2_bytes_per_audit",
-        )
-    }
+    if authorization.get("authority_kind") == "recovery_c8_launch_record":
+        report_binding = authorization.get("c7_report")
+        launch_binding = authorization.get("c7_launch")
+        projections = authorization.get("projections")
+        if not all(isinstance(item, Mapping) for item in (
+            report_binding, launch_binding, projections,
+        )):
+            raise StageCBenchmarkIntegrityError(
+                "recovery C8 authorization lacks C7 report projections"
+            )
+        binding = {
+            "c7_report_path": str(REPO_ROOT / report_binding["path"]),
+            "c7_report_file_sha256": report_binding["file_sha256"],
+            "c7_report_canonical_digest": report_binding["canonical_digest"],
+            "c7_code_commit": report_binding["source_commit"],
+            "c7_launch_path": launch_binding["path"],
+            "c7_launch_file_sha256": launch_binding["file_sha256"],
+            "c7_launch_canonical_digest": launch_binding["canonical_digest"],
+            "c7_launch_commit": launch_binding["launch_commit"],
+            **{key: projections[key] for key in (
+                "c7_slowest_unit_seconds", "c7_peak_reserved_bytes",
+                "c7_projected_c8_h20_gpu_hours",
+                "c7_projected_c8_artifact_bytes",
+                "c7_projected_c8_l2_bytes_per_audit",
+            )},
+        }
+    else:
+        binding = {
+            key: authorization[key]
+            for key in (
+                "c7_report_path", "c7_report_file_sha256",
+                "c7_report_canonical_digest", "c7_code_commit",
+                "c7_archive_ref", "c7_archive_tree",
+                "c7_slowest_unit_seconds", "c7_peak_reserved_bytes",
+                "c7_projected_c8_h20_gpu_hours",
+                "c7_projected_c8_artifact_bytes",
+                "c7_projected_c8_l2_bytes_per_audit",
+            )
+        }
     report_bindings = c7_report.get("bindings")
     measurement = c7_report.get("measurement_boundary")
     if not isinstance(report_bindings, Mapping) or not isinstance(
@@ -536,6 +587,36 @@ def _c8_report_binding(
     )
     binding["source_batch_control_bytes"] = control_bytes
     return binding
+
+
+def _c8_authorization_source_state(
+    authorization: Mapping[str, Any],
+) -> Mapping[str, Any]:
+    if authorization.get("authority_kind") == "recovery_c8_launch_record":
+        source = authorization.get("source")
+        code = (
+            source.get("execution_git_state")
+            if isinstance(source, Mapping) else None
+        )
+    else:
+        code = authorization.get("code")
+    if not isinstance(code, Mapping) or set(code) != {"commit", "dirty"}:
+        raise StageCBenchmarkIntegrityError(
+            "C8 authorization lacks its execution Git state"
+        )
+    return code
+
+
+def _c8_authorization_report_path(
+    authorization: Mapping[str, Any], recovery_record: Any | None,
+) -> Path | str:
+    if authorization.get("authority_kind") == "recovery_c8_launch_record":
+        if recovery_record is None:
+            raise StageCBenchmarkIntegrityError(
+                "recovery C8 authorization lacks its launch authority"
+            )
+        return REPO_ROOT / recovery_record.document["c7_report"]["path"]
+    return authorization["c7_report_path"]
 
 
 def _default_backend_factory(
@@ -598,6 +679,7 @@ def _default_backend_factory(
         }
 
     recovery_binding = getattr(args, "_recovery_binding", None)
+    recovery_c8_record = getattr(args, "_recovery_c8_launch_record", None)
     state_dict_path = (
         recovery_binding.model_path if recovery_binding is not None
         else (getattr(args, "state_dict", None) or DEFAULT_STATE_DICT)
@@ -606,6 +688,7 @@ def _default_backend_factory(
         sample_loader=load_sample, state_dict_path=state_dict_path,
         recovery_binding=recovery_binding,
         recovery_launch_record=getattr(args, "_recovery_launch_record", None),
+        recovery_c8_launch_record=recovery_c8_record,
         config=config, registry=registry, plan=plan, config_path=args.config,
         code_state=(
             getattr(args, "_recovery_code_state", None)
@@ -719,6 +802,67 @@ def _trusted_recovery_context(record: Any) -> dict[str, Any]:
     return {
         "recovery_binding": record.binding,
         "recovery_launch_record": record,
+    }
+
+
+def _validate_recovery_c8_arguments(
+    args: argparse.Namespace, record: Any,
+) -> None:
+    """Bind every caller-selected C8 path to the validated authority."""
+
+    contracts = record.document["c8_contracts"]
+    config_binding = contracts.get("stage_c_config")
+    run_spec_binding = contracts.get("run_spec")
+    if not isinstance(config_binding, Mapping) or not _same_path(
+        args.config, REPO_ROOT / config_binding["path"]
+    ):
+        raise ArgumentError("--config disagrees with recovery C8 launch record")
+    if not isinstance(run_spec_binding, Mapping) or not _same_path(
+        args.run_spec, REPO_ROOT / run_spec_binding["path"]
+    ):
+        raise ArgumentError("--run-spec disagrees with recovery C8 launch record")
+    if getattr(args, "registry", None) is not None and not _same_path(
+        args.registry, REPO_ROOT / record.binding.stage_c_input["registry_path"]
+    ):
+        raise ArgumentError("--registry disagrees with recovery C8 launch record")
+    if getattr(args, "data_root", None) is not None and not _same_path(
+        args.data_root, record.data_root
+    ):
+        raise ArgumentError("--data-root disagrees with recovery C8 launch record")
+    if getattr(args, "state_dict", None) is not None and not _same_path(
+        args.state_dict, record.model_path
+    ):
+        raise ArgumentError("--state-dict disagrees with recovery C8 launch record")
+    if not _same_path(args.output_root, record.formal_root):
+        raise ArgumentError("--output-root disagrees with recovery C8 launch record")
+    if args.command == "c8-init":
+        c7_report = REPO_ROOT / record.document["c7_report"]["path"]
+        if not _same_path(args.c7_report, c7_report):
+            raise ArgumentError("--c7-report disagrees with recovery C8 launch record")
+    if args.command == "c8-select":
+        expected_report = Path(record.report_path)
+        expected_selection = Path(record.selection_path)
+        if not _same_path(args.report_output, expected_report):
+            raise ArgumentError(
+                "--report-output disagrees with recovery C8 launch record"
+            )
+        if args.selection_output is None or not _same_path(
+            args.selection_output, expected_selection
+        ):
+            raise ArgumentError(
+                "--selection-output disagrees with recovery C8 launch record"
+            )
+        if _same_path(args.selection_output, _TRACKED_STAGE_C_SELECTION):
+            raise ArgumentError(
+                "recovery C8 must not overwrite the historical selection"
+            )
+
+
+def _c8_recovery_kwargs(record: Any | None) -> dict[str, Any]:
+    if record is None:
+        return {}
+    return {
+        "trusted_recovery_context": record,
     }
 
 
@@ -886,6 +1030,21 @@ def main(
         is_c9_command = args.command in _C9_COMMANDS
         is_c10_command = args.command in _C10_COMMANDS
         recovery_record = None
+        recovery_c8_record = None
+        recovery_c8_path = getattr(args, "recovery_c8_launch_record", None)
+        if is_c8_command and recovery_c8_path is None:
+            raise ArgumentError(
+                "exact C8 commands require --recovery-c8-launch-record"
+            )
+        if recovery_c8_path is not None:
+            recovery_c8_record = load_recovery_c8_launch_record(
+                recovery_c8_path, repo_root=REPO_ROOT,
+                require_fresh_roots=False, require_tracked=True,
+            )
+            _validate_recovery_c8_arguments(args, recovery_c8_record)
+            args._recovery_binding = recovery_c8_record.binding
+            args._recovery_launch_record = recovery_c8_record.c7_launch_record
+            args._recovery_c8_launch_record = recovery_c8_record
         recovery_path = getattr(args, "recovery_c7_launch_record", None)
         if recovery_path is not None:
             recovery_record = load_recovery_c7_launch_record(
@@ -899,7 +1058,9 @@ def main(
         if is_c9_command or is_c10_command:
             pipeline = _load_pipeline(args, c9=True)
         elif is_c8_command:
-            pipeline = _load_pipeline(args, c8=True)
+            pipeline = _load_pipeline(
+                args, c8=True, recovery_c8_record=recovery_c8_record,
+            )
         else:
             pipeline = _load_pipeline(args, recovery_record=recovery_record)
         config, registry, _selection, _spec, plan, estimate = pipeline
@@ -1033,16 +1194,24 @@ def main(
             return EXIT_TERMINAL_FAILURE if terminal else EXIT_INTEGRITY_FAILURE
 
         if args.command == "c8-init":
-            git_state = capture_git_state(REPO_ROOT)
-            _require_clean_c8_git(git_state)
+            if recovery_c8_record is None:
+                git_state = capture_git_state(REPO_ROOT)
+                _require_clean_c8_git(git_state)
+                recovery_kwargs: dict[str, Any] = {}
+            else:
+                git_state = capture_authorized_c8_source_state(
+                    recovery_c8_record, "pre_formal"
+                )
+                recovery_kwargs = _c8_recovery_kwargs(recovery_c8_record)
             authorization, measured = build_c8_launch_authorization(
                 plan, config, c7_report_path=args.c7_report,
                 output_root=args.output_root, observed_git_state=git_state,
-                repo_root=REPO_ROOT,
+                repo_root=REPO_ROOT, **recovery_kwargs,
             )
             root = initialize_c8_output_root(
                 args.output_root, plan, measured, authorization, config=config,
                 observed_git_state=git_state, repo_root=REPO_ROOT,
+                **recovery_kwargs,
             )
             _write_json(
                 {
@@ -1060,9 +1229,18 @@ def main(
             return EXIT_SUCCESS
 
         if args.command == "c8-finalize":
-            git_state = capture_git_state(REPO_ROOT)
+            if recovery_c8_record is None:
+                git_state = capture_git_state(REPO_ROOT)
+                recovery_kwargs = {}
+            else:
+                git_state = capture_authorized_c8_source_state(
+                    recovery_c8_record, "finalize"
+                )
+                recovery_kwargs = _c8_recovery_kwargs(recovery_c8_record)
             result = finalize_c8_output_root(
-                args.output_root, plan, observed_git_state=git_state
+                args.output_root, plan, observed_git_state=git_state,
+                repo_root=REPO_ROOT,
+                **recovery_kwargs,
             )
             _write_json(result, sys.stdout)
             if result.get("status") == "PASS":
@@ -1074,28 +1252,45 @@ def main(
             )
 
         if args.command == "c8-select":
+            recovery_context = recovery_c8_provenance_context(
+                recovery_c8_record
+            )
             initialized_preflight, authorization = _load_c8_initialized_estimate(
-                args.output_root, plan
+                args.output_root, plan,
+                trusted_recovery_context=recovery_c8_record,
             )
             report = validate_fixed_c7_report(
-                authorization["c7_report_path"], repo_root=REPO_ROOT
+                _c8_authorization_report_path(
+                    authorization, recovery_c8_record
+                ), repo_root=REPO_ROOT,
+                **_c8_recovery_kwargs(recovery_c8_record),
             )
-            measured = build_c8_measured_preflight(plan, config, report)
+            measured = build_c8_measured_preflight(
+                plan, config, report,
+                trusted_recovery_context=recovery_c8_record,
+            )
             if measured.to_dict() != initialized_preflight.to_dict():
                 raise StageCBenchmarkIntegrityError(
                     "freshly measured C8 preflight differs from initialized preflight"
                 )
-            generator_git_state = capture_git_state(REPO_ROOT)
-            _require_clean_c8_git(generator_git_state)
-            source_git_state = authorization["code"]
+            if recovery_c8_record is None:
+                generator_git_state = capture_git_state(REPO_ROOT)
+                _require_clean_c8_git(generator_git_state)
+            else:
+                generator_git_state = capture_authorized_c8_source_state(
+                    recovery_c8_record, "selection"
+                )
+            source_git_state = _c8_authorization_source_state(authorization)
             c7_binding = _c8_report_binding(authorization, c7_report=report)
             evidence = build_c8_calibration_evidence(
                 args.output_root, plan, config, source_git_state,
-                c7_binding,
+                c7_binding, trusted_recovery_authority=recovery_c8_record,
+                trusted_recovery_context=recovery_context,
             )
             input_hashes = _c8_input_hashes(
                 config=config, config_path=args.config, evidence=evidence,
                 source_git_state=source_git_state,
+                recovery_record=recovery_c8_record,
             )
             if args.mode == "validate":
                 report = validate_stage_c_selection_from_source(
@@ -1104,6 +1299,8 @@ def main(
                     observed_git_state=source_git_state, input_hashes=input_hashes,
                     c7_report_binding=c7_binding,
                     generator_git_state=generator_git_state,
+                    trusted_recovery_authority=recovery_c8_record,
+                    trusted_recovery_context=recovery_context,
                 )
                 _write_json(report, sys.stdout)
                 return (
@@ -1117,11 +1314,15 @@ def main(
             report = build_stage_c_selection(
                 evidence, input_hashes,
                 generator_git_state=generator_git_state,
+                trusted_recovery_authority=recovery_c8_record,
+                trusted_recovery_context=recovery_context,
             )
             outputs = write_stage_c_selection_outputs(
                 args.selection_output, args.report_output, report,
                 evidence=evidence, input_hashes=input_hashes,
                 generator_git_state=generator_git_state,
+                trusted_recovery_authority=recovery_c8_record,
+                trusted_recovery_context=recovery_context,
             )
             result = {
                 **outputs,
@@ -1144,18 +1345,32 @@ def main(
                 plan, shard_index=args.shard_index, shard_count=args.shard_count
             )
             initialized_preflight, authorization = _load_c8_initialized_estimate(
-                args.output_root, plan
+                args.output_root, plan,
+                trusted_recovery_context=recovery_c8_record,
             )
+            recovery_context = recovery_c8_record
             report = validate_fixed_c7_report(
-                authorization["c7_report_path"], repo_root=REPO_ROOT
+                _c8_authorization_report_path(
+                    authorization, recovery_c8_record
+                ), repo_root=REPO_ROOT,
+                **_c8_recovery_kwargs(recovery_c8_record),
             )
-            measured = build_c8_measured_preflight(plan, config, report)
+            measured = build_c8_measured_preflight(
+                plan, config, report,
+                trusted_recovery_context=recovery_c8_record,
+            )
             if measured.to_dict() != initialized_preflight.to_dict():
                 raise StageCBenchmarkIntegrityError(
                     "freshly measured C8 preflight differs from initialized preflight"
                 )
-            git_state = capture_git_state(REPO_ROOT)
-            if git_state != authorization["code"]:
+            git_state = (
+                capture_authorized_c8_source_state(
+                    recovery_c8_record, "formal"
+                )
+                if recovery_c8_record is not None
+                else capture_git_state(REPO_ROOT)
+            )
+            if git_state != _c8_authorization_source_state(authorization):
                 raise StageCBenchmarkIntegrityError(
                     "C8 shard requires the clean Git state bound at initialization"
                 )
@@ -1163,6 +1378,8 @@ def main(
                 args.output_root, plan, digests
             )
             _configure_c8_execution(args.device)
+            if recovery_c8_record is not None:
+                args._recovery_code_state = git_state
             factory = backend_factory or _default_backend_factory
             backend = _make_backend(
                 factory, config=config, registry=registry, plan=plan, args=args
@@ -1171,6 +1388,8 @@ def main(
                 plan, output_root=args.output_root, backend=backend,
                 estimate=measured, unit_digests=digests, device=args.device,
                 observed_git_state=git_state,
+                repo_root=REPO_ROOT,
+                trusted_recovery_context=recovery_context,
             )
             result_documents = [
                 item.to_dict() if callable(getattr(item, "to_dict", None)) else item
@@ -1490,6 +1709,12 @@ def main(
         )
         return EXIT_INTEGRITY_FAILURE
     except RecoveryC7LaunchError as error:
+        _write_json(
+            {"error": {"message": str(error), "type": type(error).__name__}},
+            sys.stderr,
+        )
+        return EXIT_INTEGRITY_FAILURE
+    except RecoveryC8LaunchError as error:
         _write_json(
             {"error": {"message": str(error), "type": type(error).__name__}},
             sys.stderr,

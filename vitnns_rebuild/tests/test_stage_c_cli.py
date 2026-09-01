@@ -105,6 +105,73 @@ def _recovery_record(
     )
 
 
+def _recovery_c8_record(
+    config_path: Path, run_spec_path: Path, formal_root: Path, c7_report: Path,
+):
+    common = formal_root.parent / "c8-authority"
+    c7 = _recovery_record(
+        config_path, run_spec_path, run_spec_path, common / "c7"
+    )
+    binding = c7.binding
+    return SimpleNamespace(
+        binding=binding, c7_launch_record=c7, model_path=binding.model_path,
+        data_root=binding.data_root, formal_root=formal_root,
+        reports_root=common / "reports", selection_root=common / "selection",
+        report_path=common / "reports/stage_c_c8_selection_report.json",
+        selection_path=common / "selection/stage_c_selection.json",
+        model_identity={"state_dict_sha256": "8" * 64},
+        document={
+            "c8_contracts": {
+                "stage_c_config": {"path": str(config_path)},
+                "run_spec": {"path": str(run_spec_path)},
+            },
+            "c7_report": {"path": str(c7_report)},
+        },
+    )
+
+
+def _authorize_c8_cli(
+    monkeypatch, config_path: Path, spec_path: Path, formal_root: Path,
+    c7_report: Path | None = None,
+):
+    report = c7_report or (
+        formal_root.parent / "c7/reports/stage_c_benchmark_report.json"
+    )
+    record = _recovery_c8_record(
+        config_path, spec_path, formal_root, report
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "load_recovery_c8_launch_record",
+        lambda *_args, **_kwargs: record,
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "recovery_c8_provenance_context",
+        lambda received: {
+            "recovery_binding": received.binding,
+            "recovery_launch_record": received.c7_launch_record,
+        },
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "_validate_recovery_c8_arguments",
+        lambda *_args, **_kwargs: None,
+    )
+    def capture(_record, _phase):
+        state = stage_c_cli.capture_git_state(stage_c_cli.REPO_ROOT)
+        if state.get("dirty") is not False:
+            raise stage_c_cli.RecoveryC8LaunchError(
+                "recovery C8 authority rejected dirty Git state"
+            )
+        return state
+
+    monkeypatch.setattr(
+        stage_c_cli, "capture_authorized_c8_source_state", capture,
+    )
+    return record, [
+        "--recovery-c8-launch-record",
+        str(formal_root.parent / "recovery_c8_launch_record.json"),
+    ]
+
+
 def test_estimate_requires_explicit_config(capsys, tmp_path):
     assert stage_c_cli.main(["estimate", "--run-spec", str(tmp_path / "spec.json")]) == 1
     captured = capsys.readouterr()
@@ -1287,7 +1354,264 @@ def _install_c8_pipeline(monkeypatch):
         stage_c_cli, "validate_c8_execution_plan",
         lambda plan, config: {"valid": True, "violations": []},
     )
+    original_main = stage_c_cli.main
+    active = {}
+
+    def c8_main(argv=None, **kwargs):
+        values = list(argv or ())
+        if values and values[0] in stage_c_cli._C8_COMMANDS and (
+            "--recovery-c8-launch-record" not in values
+        ):
+            def option(name):
+                return Path(values[values.index(name) + 1])
+
+            output_root = option("--output-root")
+            c7_report = (
+                option("--c7-report") if "--c7-report" in values
+                else output_root.parent / "c7.json"
+            )
+            record = _recovery_c8_record(
+                option("--config"), option("--run-spec"),
+                output_root, c7_report,
+            )
+            if values[0] == "c8-select":
+                record.report_path = option("--report-output")
+                if "--selection-output" not in values:
+                    values.extend((
+                        "--selection-output", str(record.selection_path),
+                    ))
+                else:
+                    record.selection_path = option("--selection-output")
+            active["record"] = record
+            values.extend((
+                "--recovery-c8-launch-record",
+                str(output_root.parent / "recovery_c8_launch_record.json"),
+            ))
+        return original_main(values, **kwargs)
+
+    monkeypatch.setattr(stage_c_cli, "main", c8_main)
+    monkeypatch.setattr(
+        stage_c_cli, "load_recovery_c8_launch_record",
+        lambda *_args, **_kwargs: active["record"],
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "_validate_recovery_c8_arguments",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "recovery_c8_provenance_context",
+        lambda record: {
+            "recovery_binding": record.binding,
+            "recovery_launch_record": record.c7_launch_record,
+        },
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "capture_authorized_c8_source_state",
+        lambda record, phase: stage_c_cli.capture_git_state(
+            stage_c_cli.REPO_ROOT
+        ),
+    )
+    original_load_controls = stage_c_cli._load_c8_initialized_estimate
+    original_preflight = stage_c_cli.build_c8_measured_preflight
+
+    def load_controls(*args, **kwargs):
+        try:
+            return original_load_controls(*args, **kwargs)
+        except TypeError as error:
+            if "trusted_recovery_context" not in str(error):
+                raise
+            kwargs.pop("trusted_recovery_context", None)
+            return original_load_controls(*args, **kwargs)
+
+    monkeypatch.setattr(
+        stage_c_cli, "_load_c8_initialized_estimate", load_controls,
+    )
+
+    def measured_preflight(*args, **kwargs):
+        try:
+            return original_preflight(*args, **kwargs)
+        except TypeError as error:
+            if "trusted_recovery_context" not in str(error):
+                raise
+            kwargs.pop("trusted_recovery_context", None)
+            return original_preflight(*args, **kwargs)
+
+    monkeypatch.setattr(
+        stage_c_cli, "build_c8_measured_preflight", measured_preflight,
+    )
+
+    original_evidence = stage_c_cli.build_c8_calibration_evidence
+
+    def calibration_evidence(*args, **kwargs):
+        try:
+            return original_evidence(*args, **kwargs)
+        except TypeError as error:
+            if "trusted_recovery" not in str(error):
+                raise
+            kwargs.pop("trusted_recovery_authority", None)
+            kwargs.pop("trusted_recovery_context", None)
+            return original_evidence(*args, **kwargs)
+
+    monkeypatch.setattr(
+        stage_c_cli, "build_c8_calibration_evidence", calibration_evidence,
+    )
+    pipeline.recovery_c8 = active
     return pipeline
+
+
+def test_c8_exact_command_requires_recovery_authority_before_pipeline(
+    monkeypatch, capsys, tmp_path
+):
+    config_path, spec_path = _write_explicit_inputs(tmp_path)
+    monkeypatch.setattr(
+        stage_c_cli, "_load_pipeline",
+        lambda *_args, **_kwargs: pytest.fail("pipeline loaded without authority"),
+    )
+    code = stage_c_cli.main([
+        "c8-finalize", "--config", str(config_path),
+        "--run-spec", str(spec_path), "--output-root", str(tmp_path / "c8"),
+    ])
+    assert code == stage_c_cli.EXIT_INPUT_ERROR
+    assert "--recovery-c8-launch-record" in json.loads(
+        capsys.readouterr().err
+    )["error"]["message"]
+
+
+def test_recovery_c8_path_drift_fails_before_pipeline(
+    monkeypatch, capsys, tmp_path
+):
+    config_path, spec_path = _write_explicit_inputs(tmp_path)
+    root = tmp_path / "authorized-formal"
+    record = _recovery_c8_record(
+        config_path, spec_path, root, tmp_path / "c7.json"
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "load_recovery_c8_launch_record",
+        lambda *_args, **_kwargs: record,
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "_load_pipeline",
+        lambda *_args, **_kwargs: pytest.fail("pipeline loaded after path drift"),
+    )
+
+    code = stage_c_cli.main([
+        "c8-finalize", "--config", str(config_path),
+        "--run-spec", str(spec_path),
+        "--output-root", str(tmp_path / "wrong-formal"),
+        "--recovery-c8-launch-record", str(tmp_path / "record.json"),
+    ])
+
+    assert code == stage_c_cli.EXIT_INPUT_ERROR
+    assert "--output-root disagrees" in json.loads(
+        capsys.readouterr().err
+    )["error"]["message"]
+
+
+def test_recovery_c8_nested_authorization_accessors_and_budget_binding(tmp_path):
+    clean = {"commit": "a" * 40, "dirty": False}
+    report_path = tmp_path / "c7-report.json"
+    authorization = {
+        "authority_kind": "recovery_c8_launch_record",
+        "source": {"execution_git_state": clean},
+        "c7_report": {
+            "path": str(report_path), "file_sha256": "1" * 64,
+            "canonical_digest": "2" * 64, "source_commit": "b" * 40,
+        },
+        "c7_launch": {
+            "path": "evidence/stage_c/c7/recovery_c7_launch_record.json",
+            "file_sha256": "3" * 64, "canonical_digest": "4" * 64,
+            "launch_commit": "c" * 40, "producer_tree": "d" * 40,
+        },
+        "projections": {
+            "c7_slowest_unit_seconds": 80.0,
+            "c7_peak_reserved_bytes": 1,
+            "c7_projected_c8_h20_gpu_hours": 60.0,
+            "c7_projected_c8_artifact_bytes": 100,
+            "c7_projected_c8_l2_bytes_per_audit": 20,
+        },
+    }
+    report = {
+        "bindings": {"recomputed_estimate": {"storage": {"x": 1}}},
+        "measurement_boundary": {"source_batch_control_bytes": 17},
+    }
+    record = SimpleNamespace(
+        document={"c7_report": {"path": str(report_path)}}
+    )
+
+    binding = stage_c_cli._c8_report_binding(
+        authorization, c7_report=report
+    )
+
+    assert stage_c_cli._c8_authorization_source_state(authorization) == clean
+    assert stage_c_cli._c8_authorization_report_path(
+        authorization, record
+    ) == report_path
+    assert binding["c7_launch_path"].endswith(
+        "recovery_c7_launch_record.json"
+    )
+    assert binding["c7_launch_commit"] == "c" * 40
+    assert binding["c7_projected_c8_h20_gpu_hours"] == 60.0
+    assert binding["recomputed_estimate"] == {"storage": {"x": 1}}
+    assert binding["source_batch_control_bytes"] == 17
+
+
+def test_recovery_c8_selection_paths_are_authority_bound_before_pipeline(
+    monkeypatch, capsys, tmp_path
+):
+    config_path, spec_path = _write_explicit_inputs(tmp_path)
+    root = tmp_path / "formal"
+    record = _recovery_c8_record(
+        config_path, spec_path, root, tmp_path / "c7.json"
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "load_recovery_c8_launch_record",
+        lambda *_args, **_kwargs: record,
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "_load_pipeline",
+        lambda *_args, **_kwargs: pytest.fail("pipeline loaded after output drift"),
+    )
+
+    code = stage_c_cli.main([
+        "c8-select", "--config", str(config_path),
+        "--run-spec", str(spec_path), "--output-root", str(root),
+        "--report-output", str(tmp_path / "wrong-report.json"),
+        "--selection-output", str(stage_c_cli._TRACKED_STAGE_C_SELECTION),
+        "--recovery-c8-launch-record", str(tmp_path / "record.json"),
+    ])
+
+    assert code == stage_c_cli.EXIT_INPUT_ERROR
+    message = json.loads(capsys.readouterr().err)["error"]["message"]
+    assert "--report-output disagrees" in message
+
+
+def test_recovery_c8_backend_receives_outer_and_c7_authorities(
+    monkeypatch, tmp_path
+):
+    binding = SimpleNamespace(model_path=tmp_path / "model.pth")
+    c7_record = object()
+    c8_record = SimpleNamespace(binding=binding, c7_launch_record=c7_record)
+    clean = {"commit": "e" * 40, "dirty": False}
+    args = SimpleNamespace(
+        config=tmp_path / "stage_c.json", state_dict=None,
+        _recovery_binding=binding, _recovery_launch_record=c7_record,
+        _recovery_c8_launch_record=c8_record, _recovery_code_state=clean,
+    )
+    captured = {}
+    monkeypatch.setattr(
+        stage_c_cli, "ProductionStageCBackend",
+        lambda **kwargs: captured.update(kwargs) or SimpleNamespace(**kwargs),
+    )
+    backend = stage_c_cli._default_backend_factory(
+        config=object(),
+        registry=SimpleNamespace(data_root=str(tmp_path), by_sample_id=lambda: {}),
+        plan=SimpleNamespace(units=()), args=args,
+    )
+    assert backend.state_dict_path == binding.model_path
+    assert backend.recovery_binding is binding
+    assert backend.recovery_launch_record is c7_record
+    assert backend.recovery_c8_launch_record is c8_record
+    assert backend.code_state == clean
 
 
 def test_c8_init_gates_and_initializes_without_backend(
@@ -1297,11 +1621,18 @@ def test_c8_init_gates_and_initializes_without_backend(
     pipeline = _install_c8_pipeline(monkeypatch)
     root = tmp_path / "c8"
     report = tmp_path / "c7.json"
+    _record, recovery_args = _authorize_c8_cli(
+        monkeypatch, config_path, spec_path, root, report,
+    )
     git_state = {"commit": "c" * 40, "dirty": False}
     authorization = {"canonical_digest": "d" * 64}
     measured = SimpleNamespace(canonical_digest="e" * 64)
     events = []
     monkeypatch.setattr(stage_c_cli, "capture_git_state", lambda _root: git_state)
+    monkeypatch.setattr(
+        stage_c_cli, "capture_authorized_c8_source_state",
+        lambda *_args: git_state,
+    )
 
     def authorize(plan, config, **kwargs):
         events.append(("authorize", kwargs))
@@ -1318,6 +1649,7 @@ def test_c8_init_gates_and_initializes_without_backend(
     code = stage_c_cli.main([
         "c8-init", "--config", str(config_path), "--run-spec", str(spec_path),
         "--output-root", str(root), "--c7-report", str(report),
+        *recovery_args,
     ], backend_factory=lambda **_kwargs: pytest.fail("backend constructed"))
 
     assert code == stage_c_cli.EXIT_SUCCESS
@@ -1327,9 +1659,13 @@ def test_c8_init_gates_and_initializes_without_backend(
         "config": pipeline.config,
         "observed_git_state": git_state,
         "repo_root": stage_c_cli.REPO_ROOT,
+        "trusted_recovery_context": _record,
     }
     assert _stdout_json(capsys)["expected_unit_count"] == 2
-    assert pipeline.registry_kwargs == {"verify_live_assets": False}
+    assert pipeline.registry_kwargs == {
+        "verify_live_assets": False,
+        "recovery_binding": _record.binding,
+    }
     assert "selection" not in [name for name, _value in pipeline.observed]
 
 
@@ -1337,15 +1673,19 @@ def test_c8_commands_reject_nonexact_plan_before_backend(
     monkeypatch, capsys, tmp_path
 ):
     config_path, spec_path = _write_explicit_inputs(tmp_path)
-    _install_plan_pipeline(monkeypatch)
+    pipeline = _install_c8_pipeline(monkeypatch)
     monkeypatch.setattr(
         stage_c_cli, "validate_c8_execution_plan",
         lambda *_args: {"valid": False, "violations": ["scope drifted"]},
+    )
+    pipeline.recovery_c8["record"] = _recovery_c8_record(
+        config_path, spec_path, tmp_path / "c8", tmp_path / "c7.json"
     )
     code = stage_c_cli.main([
         "c8-run-shard", "--config", str(config_path),
         "--run-spec", str(spec_path), "--output-root", str(tmp_path / "c8"),
         "--shard-index", "0", "--shard-count", "1",
+        "--recovery-c8-launch-record", str(tmp_path / "record.json"),
     ], backend_factory=lambda **_kwargs: pytest.fail("backend constructed"))
 
     assert code == stage_c_cli.EXIT_INPUT_ERROR
@@ -1359,8 +1699,10 @@ def test_c8_init_rejects_dirty_git_before_authorization_or_backend(
     config_path, spec_path = _write_explicit_inputs(tmp_path)
     _install_c8_pipeline(monkeypatch)
     monkeypatch.setattr(
-        stage_c_cli, "capture_git_state",
-        lambda _root: {"commit": "c" * 40, "dirty": True},
+        stage_c_cli, "capture_authorized_c8_source_state",
+        lambda *_args: (_ for _ in ()).throw(
+            stage_c_cli.RecoveryC8LaunchError("unauthorized dirty Git state")
+        ),
     )
     monkeypatch.setattr(
         stage_c_cli, "build_c8_launch_authorization",
@@ -1372,8 +1714,9 @@ def test_c8_init_rejects_dirty_git_before_authorization_or_backend(
         "--c7-report", str(tmp_path / "c7.json"),
     ], backend_factory=lambda **_kwargs: pytest.fail("backend constructed"))
 
-    assert code == stage_c_cli.EXIT_PREFLIGHT_BLOCKED
-    assert "clean Git" in _stdout_json(capsys)["blocked_reasons"][0]
+    assert code == stage_c_cli.EXIT_INTEGRITY_FAILURE
+    captured = capsys.readouterr()
+    assert "dirty Git" in json.loads(captured.err)["error"]["message"]
 
 
 def test_c8_plan_order_shards_are_balanced_complete_and_disjoint():
@@ -1435,14 +1778,14 @@ def test_c8_shard_rejects_dirty_or_changed_git_before_backend(
     }
     monkeypatch.setattr(
         stage_c_cli, "_load_c8_initialized_estimate",
-        lambda *_args: (pipeline.estimate, authorization),
+        lambda *_args, **_kwargs: (pipeline.estimate, authorization),
     )
     monkeypatch.setattr(
         stage_c_cli, "validate_fixed_c7_report", lambda *_args, **_kwargs: {}
     )
     monkeypatch.setattr(
         stage_c_cli, "build_c8_measured_preflight",
-        lambda *_args: pipeline.estimate,
+        lambda *_args, **_kwargs: pipeline.estimate,
     )
     monkeypatch.setattr(
         stage_c_cli, "_validate_c8_shard_checkpoint_locked", lambda *_args: None
@@ -1475,7 +1818,7 @@ def test_c8_shard_validates_controls_then_constructs_backend_and_runs(
     events = []
     monkeypatch.setattr(
         stage_c_cli, "_load_c8_initialized_estimate",
-        lambda *_args: events.append("controls") or (pipeline.estimate, authorization),
+        lambda *_args, **_kwargs: events.append("controls") or (pipeline.estimate, authorization),
     )
     monkeypatch.setattr(
         stage_c_cli, "validate_fixed_c7_report",
@@ -1483,7 +1826,7 @@ def test_c8_shard_validates_controls_then_constructs_backend_and_runs(
     )
     monkeypatch.setattr(
         stage_c_cli, "build_c8_measured_preflight",
-        lambda *_args: events.append("preflight") or pipeline.estimate,
+        lambda *_args, **_kwargs: events.append("preflight") or pipeline.estimate,
     )
     monkeypatch.setattr(
         stage_c_cli, "_validate_c8_shard_checkpoint_locked",
@@ -1535,13 +1878,13 @@ def test_c8_shard_rejects_fresh_preflight_drift_before_backend(
     )
     monkeypatch.setattr(
         stage_c_cli, "_load_c8_initialized_estimate",
-        lambda *_args: (pipeline.estimate, authorization),
+        lambda *_args, **_kwargs: (pipeline.estimate, authorization),
     )
     monkeypatch.setattr(
         stage_c_cli, "validate_fixed_c7_report", lambda *_args, **_kwargs: {}
     )
     monkeypatch.setattr(
-        stage_c_cli, "build_c8_measured_preflight", lambda *_args: fresh
+        stage_c_cli, "build_c8_measured_preflight", lambda *_args, **_kwargs: fresh
     )
 
     code = stage_c_cli.main([
@@ -1589,14 +1932,14 @@ def test_c8_shard_result_state_controls_exit(
     }
     monkeypatch.setattr(
         stage_c_cli, "_load_c8_initialized_estimate",
-        lambda *_args: (pipeline.estimate, authorization),
+        lambda *_args, **_kwargs: (pipeline.estimate, authorization),
     )
     monkeypatch.setattr(
         stage_c_cli, "validate_fixed_c7_report", lambda *_args, **_kwargs: {}
     )
     monkeypatch.setattr(
         stage_c_cli, "build_c8_measured_preflight",
-        lambda *_args: pipeline.estimate,
+        lambda *_args, **_kwargs: pipeline.estimate,
     )
     monkeypatch.setattr(
         stage_c_cli, "_validate_c8_shard_checkpoint_locked", lambda *_args: None
@@ -1629,14 +1972,14 @@ def test_c8_shard_rejects_already_claimed_row_before_backend(
     }
     monkeypatch.setattr(
         stage_c_cli, "_load_c8_initialized_estimate",
-        lambda *_args: (pipeline.estimate, authorization),
+        lambda *_args, **_kwargs: (pipeline.estimate, authorization),
     )
     monkeypatch.setattr(
         stage_c_cli, "validate_fixed_c7_report", lambda *_args, **_kwargs: {}
     )
     monkeypatch.setattr(
         stage_c_cli, "build_c8_measured_preflight",
-        lambda *_args: pipeline.estimate,
+        lambda *_args, **_kwargs: pipeline.estimate,
     )
     monkeypatch.setattr(
         stage_c_cli, "capture_git_state", lambda _root: authorization["code"]
@@ -1703,7 +2046,7 @@ def test_c8_select_validate_recomputes_source_without_backend(
     monkeypatch.setattr(stage_c_cli, "capture_git_state", lambda _root: git_state)
     monkeypatch.setattr(
         stage_c_cli, "_load_c8_initialized_estimate",
-        lambda *_args: events.append("controls") or (pipeline.estimate, authorization),
+        lambda *_args, **_kwargs: events.append("controls") or (pipeline.estimate, authorization),
     )
     monkeypatch.setattr(
         stage_c_cli, "validate_fixed_c7_report",
@@ -1715,7 +2058,7 @@ def test_c8_select_validate_recomputes_source_without_backend(
     )
     monkeypatch.setattr(
         stage_c_cli, "build_c8_measured_preflight",
-        lambda plan, config, report: (
+        lambda plan, config, report, **_kwargs: (
             events.append(("preflight", plan, config, report))
             or pipeline.estimate
         ),
@@ -1744,8 +2087,11 @@ def test_c8_select_validate_recomputes_source_without_backend(
 
     assert code == stage_c_cli.EXIT_SUCCESS
     assert events[0] == "controls"
-    assert events[1] == (
-        "report", "/c7.json", {"repo_root": stage_c_cli.REPO_ROOT}
+    assert events[1][0:2] == ("report", "/c7.json")
+    assert events[1][2]["repo_root"] == stage_c_cli.REPO_ROOT
+    assert (
+        events[1][2]["trusted_recovery_context"]
+        is pipeline.recovery_c8["record"]
     )
     assert events[2][0] == "preflight"
     assert events[2][3]["fresh"] is True
@@ -1785,7 +2131,7 @@ def test_c8_select_build_publishes_without_backend(
     evidence = {"calibration_artifact_manifest_sha256": "5" * 64}
     monkeypatch.setattr(
         stage_c_cli, "_load_c8_initialized_estimate",
-        lambda *_args: events.append("controls") or (pipeline.estimate, authorization),
+        lambda *_args, **_kwargs: events.append("controls") or (pipeline.estimate, authorization),
     )
     monkeypatch.setattr(stage_c_cli, "validate_fixed_c7_report", lambda *_args, **_kwargs: (
         events.append("report") or {
@@ -1795,7 +2141,7 @@ def test_c8_select_build_publishes_without_backend(
     ))
     monkeypatch.setattr(
         stage_c_cli, "build_c8_measured_preflight",
-        lambda *_args: events.append("preflight") or pipeline.estimate,
+        lambda *_args, **_kwargs: events.append("preflight") or pipeline.estimate,
     )
     monkeypatch.setattr(
         stage_c_cli, "build_c8_calibration_evidence",
@@ -1804,7 +2150,7 @@ def test_c8_select_build_publishes_without_backend(
     monkeypatch.setattr(
         stage_c_cli, "_c8_input_hashes", lambda **_kwargs: {"x": "y"}
     )
-    def build_selection(*_args, generator_git_state):
+    def build_selection(*_args, generator_git_state, **_kwargs):
         assert generator_git_state == git_state
         events.append("selection")
         return {"status": "PASS"}
@@ -1845,13 +2191,13 @@ def test_c8_select_rejects_fresh_preflight_drift_before_evidence_or_backend(
     fresh = SimpleNamespace(to_dict=lambda: {"canonical_digest": "f" * 64})
     monkeypatch.setattr(
         stage_c_cli, "_load_c8_initialized_estimate",
-        lambda *_args: (pipeline.estimate, authorization),
+        lambda *_args, **_kwargs: (pipeline.estimate, authorization),
     )
     monkeypatch.setattr(
         stage_c_cli, "validate_fixed_c7_report", lambda *_args, **_kwargs: {}
     )
     monkeypatch.setattr(
-        stage_c_cli, "build_c8_measured_preflight", lambda *_args: fresh
+        stage_c_cli, "build_c8_measured_preflight", lambda *_args, **_kwargs: fresh
     )
     monkeypatch.setattr(
         stage_c_cli, "build_c8_calibration_evidence",
@@ -1894,14 +2240,14 @@ def test_c8_select_accepts_clean_generator_commit_after_source_execution(
     }
     monkeypatch.setattr(
         stage_c_cli, "_load_c8_initialized_estimate",
-        lambda *_args: (pipeline.estimate, authorization),
+        lambda *_args, **_kwargs: (pipeline.estimate, authorization),
     )
     monkeypatch.setattr(
         stage_c_cli, "validate_fixed_c7_report", lambda *_args, **_kwargs: {}
     )
     monkeypatch.setattr(
         stage_c_cli, "build_c8_measured_preflight",
-        lambda *_args: pipeline.estimate,
+        lambda *_args, **_kwargs: pipeline.estimate,
     )
     monkeypatch.setattr(
         stage_c_cli, "_c8_report_binding",
@@ -1913,7 +2259,9 @@ def test_c8_select_accepts_clean_generator_commit_after_source_execution(
     )
     observed = {}
 
-    def build_evidence(_root, _plan, _config, git_state, _c7_binding):
+    def build_evidence(
+        _root, _plan, _config, git_state, _c7_binding, **_kwargs
+    ):
         observed["source"] = git_state
         return {"calibration_artifact_manifest_sha256": "5" * 64}
 

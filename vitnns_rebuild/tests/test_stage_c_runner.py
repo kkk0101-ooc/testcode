@@ -692,6 +692,50 @@ def _runner_recovery_authority(monkeypatch, tmp_path):
     return binding, launch, reloads
 
 
+def _runner_c8_authority(monkeypatch, tmp_path):
+    from vitnns import recovery_c7_launch, recovery_c8_launch
+    from vitnns.recovery_c8_launch import RecoveryC8LaunchRecord
+
+    binding, launch, c7_reloads = _runner_recovery_authority(
+        monkeypatch, tmp_path,
+    )
+    path = tmp_path / "recovery_c8_launch_record.json"
+    schema_path = tmp_path / "recovery_c8_launch_record.schema.json"
+    path.write_bytes(b"test C8 launch authority\n")
+    schema_path.write_bytes(b"{}\n")
+    record = RecoveryC8LaunchRecord(
+        path=path, schema_path=schema_path,
+        document={"canonical_digest": "8" * 64}, binding=binding,
+        c7_launch_record=launch, model_path=binding.model_path,
+        data_root=binding.data_root, devkit_path=binding.devkit_path,
+        formal_root=tmp_path / "c8/formal",
+        reports_root=tmp_path / "c8/reports",
+        selection_root=tmp_path / "c8/selection",
+        report_path=tmp_path / "c8/reports/stage_c_c8_selection_report.json",
+        selection_path=tmp_path / "c8/selection/stage_c_selection.json",
+        model_identity=binding.model,
+        file_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+        launch_commit="8" * 40, repo_root=tmp_path,
+    )
+    c8_reloads = []
+
+    def reload_c8(*args, **kwargs):
+        c8_reloads.append((args, kwargs))
+        return record
+
+    monkeypatch.setattr(
+        recovery_c8_launch, "load_recovery_c8_launch_record", reload_c8,
+    )
+    c7_reloads.clear()
+    monkeypatch.setattr(
+        recovery_c7_launch, "load_recovery_c7_launch_record",
+        lambda *_args, **_kwargs: pytest.fail(
+            "C8 backend provenance must not use the C7 loader"
+        ),
+    )
+    return binding, launch, record, c8_reloads
+
+
 def test_production_backend_recovery_context_drives_loader_and_model_record(
     monkeypatch, tmp_path,
 ):
@@ -734,6 +778,117 @@ def test_production_backend_recovery_context_drives_loader_and_model_record(
     )
     assert reloads
     assert all(call[1]["require_tracked"] is True for call in reloads)
+
+
+def test_production_backend_preserves_c8_outer_authority_for_provenance(
+    monkeypatch, tmp_path,
+):
+    from vitnns.stage_c_provenance import recovery_model_provenance
+
+    binding, launch, record, reloads = _runner_c8_authority(
+        monkeypatch, tmp_path,
+    )
+    backend = ProductionStageCBackend(
+        sample_loader=lambda *_args: None,
+        recovery_c8_launch_record=record,
+    )
+
+    assert backend.recovery_binding is binding
+    assert backend.recovery_launch_record is launch
+    assert backend.trusted_recovery_context is record
+    assert backend._bound_state_dict_path() == binding.model_path.resolve()
+    assert backend._bound_model_record() == recovery_model_provenance(record)
+    assert reloads
+    assert all(call[0] == (record.path,) for call in reloads)
+    assert all(call[1] == {
+        "repo_root": record.repo_root,
+        "schema_path": record.schema_path,
+        "require_fresh_roots": False,
+        "require_tracked": True,
+    } for call in reloads)
+
+
+def test_production_backend_rejects_invalid_or_conflicting_c8_authority(
+    monkeypatch, tmp_path,
+):
+    binding, launch, record, _reloads = _runner_c8_authority(
+        monkeypatch, tmp_path,
+    )
+    with pytest.raises(TypeError, match="RecoveryC8LaunchRecord"):
+        ProductionStageCBackend(
+            sample_loader=lambda *_args: None,
+            recovery_c8_launch_record=SimpleNamespace(
+                binding=binding, c7_launch_record=launch,
+            ),
+        )
+    with pytest.raises(StageCBackendError, match="recovery_binding differs"):
+        ProductionStageCBackend(
+            sample_loader=lambda *_args: None,
+            recovery_binding=dataclasses.replace(binding),
+            recovery_c8_launch_record=record,
+        )
+    with pytest.raises(
+        StageCBackendError, match="recovery_launch_record differs",
+    ):
+        ProductionStageCBackend(
+            sample_loader=lambda *_args: None, recovery_binding=binding,
+            recovery_launch_record=dataclasses.replace(
+                launch, launch_commit="9" * 40,
+            ),
+            recovery_c8_launch_record=record,
+        )
+
+
+def test_c8_outer_authority_survives_run_validation_aggregate_and_resume(
+    monkeypatch, tmp_path,
+):
+    from vitnns.stage_c_provenance import recovery_model_provenance
+
+    _binding, _launch, record, reloads = _runner_c8_authority(
+        monkeypatch, tmp_path,
+    )
+
+    class RecoveryC8ToyBackend(ToyBackend):
+        @property
+        def trusted_recovery_context(self):
+            return record
+
+        def _bound_model_record(self):
+            return recovery_model_provenance(record)
+
+        def build_provenance(self, **kwargs):
+            provenance = super().build_provenance(**kwargs)
+            provenance["bindings"]["model"] = self._bound_model_record()
+            return provenance
+
+    plan = toy_plan()
+    backend = RecoveryC8ToyBackend(plan=plan)
+    output_root = tmp_path / "recovery-c8-run"
+    estimate = passing_estimate(plan)
+    first = run_stage_c_batch(
+        plan, output_root=output_root, backend=backend, estimate=estimate,
+        _allow_unissued_estimate=True,
+    )
+
+    assert first.successful is True
+    assert len(backend.calls) == 1
+    validation = validate_stage_c_batch(
+        output_root, plan, trusted_recovery_context=record,
+    )
+    assert validation.valid is True and validation.successful is True
+    aggregate = aggregate_stage_c_batch(
+        output_root, plan, trusted_recovery_context=record,
+    )
+    assert aggregate["successful"] is True
+
+    second = run_stage_c_batch(
+        plan, output_root=output_root, backend=backend, estimate=estimate,
+        _allow_unissued_estimate=True,
+    )
+    assert second.successful is True
+    assert second.unit_results[0].resumed is True
+    assert len(backend.calls) == 1
+    assert reloads
 
 
 def test_recovery_runner_finalize_validation_and_resume_keep_authority(

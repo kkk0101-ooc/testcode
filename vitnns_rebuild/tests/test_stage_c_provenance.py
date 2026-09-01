@@ -4,6 +4,7 @@ import copy
 import hashlib
 import json
 from dataclasses import replace
+from pathlib import Path
 from types import MappingProxyType, SimpleNamespace
 
 import pytest
@@ -469,6 +470,51 @@ def _recovery_authority(tmp_path, monkeypatch):
     return binding, launch, expected, calls
 
 
+def _recovery_c8_authority(tmp_path, monkeypatch):
+    from vitnns import recovery_c7_launch, recovery_c8_launch
+    from vitnns.recovery_c8_launch import RecoveryC8LaunchRecord
+
+    binding, launch, expected, c7_calls = _recovery_authority(
+        tmp_path, monkeypatch,
+    )
+    repo = Path(launch.repo_root)
+    c8_path = repo / "evidence/stage_c/c8/recovery_c8_launch_record.json"
+    c8_schema = repo / "config/recovery_c8_launch_record.schema.json"
+    for path, data in ((c8_path, b"c8 authority\n"), (c8_schema, b"{}\n")):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+    record = RecoveryC8LaunchRecord(
+        path=c8_path, schema_path=c8_schema,
+        document={"canonical_digest": "7" * 64}, binding=binding,
+        c7_launch_record=launch, model_path=launch.model_path,
+        data_root=launch.data_root, devkit_path=launch.devkit_path,
+        formal_root=repo / "c8/formal", reports_root=repo / "c8/reports",
+        selection_root=repo / "c8/selection",
+        report_path=repo / "c8/reports/stage_c_c8_selection_report.json",
+        selection_path=repo / "c8/selection/stage_c_selection.json",
+        model_identity=launch.model_identity,
+        file_sha256=hashlib.sha256(c8_path.read_bytes()).hexdigest(),
+        launch_commit="8" * 40, repo_root=repo,
+    )
+    c8_calls = []
+
+    def reload_c8(path, **kwargs):
+        c8_calls.append((path, kwargs))
+        return record
+
+    monkeypatch.setattr(
+        recovery_c8_launch, "load_recovery_c8_launch_record", reload_c8,
+    )
+    c7_calls.clear()
+    monkeypatch.setattr(
+        recovery_c7_launch, "load_recovery_c7_launch_record",
+        lambda *_args, **_kwargs: pytest.fail(
+            "C8 provenance must not use the current-source C7 loader"
+        ),
+    )
+    return record, expected, c8_calls
+
+
 def test_recovery_helpers_reload_real_binding_and_launch_authority(
     tmp_path, monkeypatch,
 ):
@@ -487,6 +533,53 @@ def test_recovery_helpers_reload_real_binding_and_launch_authority(
     assert all(call[1]["require_tracked"] is True for call in calls)
 
     validate_stage_c_model_binding(expected, trusted_recovery_context=launch)
+
+
+def test_c8_outer_authority_is_strictly_reloaded_then_projected_to_c7_model(
+    tmp_path, monkeypatch,
+):
+    record, expected, calls = _recovery_c8_authority(tmp_path, monkeypatch)
+
+    assert normalize_recovery_model_context(record) == expected
+    assert recovery_model_provenance(record) == expected
+    validate_stage_c_model_binding(
+        expected, trusted_recovery_context=record,
+    )
+
+    payload = valid_document().to_dict()
+    payload["bindings"]["model"] = expected
+    validate_stage_c_provenance(
+        payload, trusted_recovery_context=record,
+    )
+    assert set(expected) == set(recovery_model())
+    assert calls
+    assert all(call[0] == record.path for call in calls)
+    assert all(call[1] == {
+        "repo_root": record.repo_root,
+        "schema_path": record.schema_path,
+        "require_fresh_roots": False,
+        "require_tracked": True,
+    } for call in calls)
+
+
+def test_c8_outer_authority_rejects_forged_or_inconsistent_records(
+    tmp_path, monkeypatch,
+):
+    record, _expected, _calls = _recovery_c8_authority(
+        tmp_path, monkeypatch,
+    )
+
+    forged = replace(record, file_sha256="9" * 64)
+    with pytest.raises(StageCProvenanceError, match="reloaded authority"):
+        normalize_recovery_model_context(forged)
+
+    cloned_binding = replace(record.binding)
+    inconsistent = replace(record, binding=cloned_binding)
+    with pytest.raises(StageCProvenanceError, match="binding and C7 launch"):
+        normalize_recovery_model_context(inconsistent)
+
+    with pytest.raises(StageCProvenanceError, match="RecoveryV2Binding"):
+        normalize_recovery_model_context(SimpleNamespace(**vars(record)))
 
 
 def test_recovery_context_rejects_claims_and_forged_public_objects(

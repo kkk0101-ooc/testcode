@@ -100,6 +100,31 @@ _AGGREGATE_KEYS = {
     "standard_deviation", "curves", "response_mean",
     "response_std", "auc_mean", "auc_std",
 }
+_EVIDENCE_BINDING_KEYS = {
+    "source_root", "execution_plan_sha256", "run_spec_sha256",
+    "preflight_sha256", "control_file_sha256", "code",
+    "source_tree_total_bytes",
+}
+_RECOVERY_AUTHORITY_KEYS = {
+    "interpretation", "model", "recovery_binding", "c7_launch",
+    "c7_report", "c8_launch", "c8_execution_source",
+}
+_RECOVERY_MODEL_KEYS = {
+    "identity", "state_dict_sha256", "canonical_tensor_digest",
+}
+_RECOVERY_BINDING_KEYS = {"path", "file_sha256", "canonical_digest"}
+_RECOVERY_C7_LAUNCH_KEYS = {
+    "path", "file_sha256", "canonical_digest", "launch_commit",
+    "producer_commit", "producer_tree",
+}
+_RECOVERY_C7_REPORT_KEYS = {
+    "path", "file_sha256", "canonical_digest", "report_commit",
+    "status", "source_commit",
+}
+_RECOVERY_C8_LAUNCH_KEYS = {
+    "file_sha256", "canonical_digest", "launch_commit",
+}
+_RECOVERY_INTERPRETATION = "recovery_replication_not_confirmatory"
 
 
 class StageCSelectionError(ValueError):
@@ -162,6 +187,288 @@ def _selection_generator_code(value: Any) -> dict[str, Any]:
     return {"commit": commit, "dirty": False}
 
 
+def _validated_recovery_inputs(
+    trusted_recovery_authority: Any | None,
+    trusted_recovery_context: Any | None,
+) -> tuple[Any | None, Any | None, dict[str, Any] | None]:
+    """Reload the C8 authority and derive its closed selection binding.
+
+    Recovery selection needs two trust layers.  The outer C8 launch record
+    authorizes this exact C8 source and output custody, while the context is
+    the validated C7 binding/launch pair understood by the existing per-unit
+    provenance validators.  Neither input is accepted on its own.
+    """
+
+    if trusted_recovery_authority is None and trusted_recovery_context is None:
+        return None, None, None
+    if trusted_recovery_authority is None:
+        raise StageCSelectionIntegrityError(
+            "recovery C8 provenance context requires its outer launch authority"
+        )
+    try:
+        from . import recovery_c8_launch as recovery_c8
+
+        record_type = recovery_c8.RecoveryC8LaunchRecord
+    except Exception as error:
+        raise StageCSelectionIntegrityError(
+            "recovery C8 authority support is unavailable"
+        ) from error
+    if type(trusted_recovery_authority) is not record_type:
+        raise StageCSelectionIntegrityError(
+            "trusted recovery authority must be a validated "
+            "RecoveryC8LaunchRecord"
+        )
+    try:
+        authority_root = Path(
+            trusted_recovery_authority.repo_root
+        ).resolve(strict=True)
+        reloaded = recovery_c8.load_recovery_c8_launch_record(
+            trusted_recovery_authority.path, repo_root=authority_root,
+            schema_path=trusted_recovery_authority.schema_path,
+            require_fresh_roots=False, require_tracked=True,
+        )
+    except Exception as error:
+        raise StageCSelectionIntegrityError(
+            "trusted recovery C8 authority could not be reloaded and validated"
+        ) from error
+    if type(reloaded) is not record_type or reloaded != trusted_recovery_authority:
+        raise StageCSelectionIntegrityError(
+            "trusted recovery C8 authority differs from its validated bytes"
+        )
+    expected_context = recovery_c8.recovery_provenance_context(reloaded)
+    if trusted_recovery_context is not None and (
+        not isinstance(trusted_recovery_context, Mapping)
+        or set(trusted_recovery_context)
+        != {"recovery_binding", "recovery_launch_record"}
+        or dict(trusted_recovery_context) != expected_context
+    ):
+        raise StageCSelectionIntegrityError(
+            "trusted recovery provenance context differs from C8 authority"
+        )
+    # Keep the outer C8 authority for every downstream provenance and batch
+    # validation.  Passing the projected C7 pair there would re-enter the C7
+    # loader, whose current-source check correctly pins the older C7 producer
+    # and therefore cannot authorize evidence produced by the later C8 tree.
+    # The caller-supplied C7 projection is checked above for consistency only.
+    recovery_context = reloaded
+
+    authority = reloaded.document
+    if not isinstance(authority, Mapping):
+        raise StageCSelectionIntegrityError(
+            "validated recovery C8 authority document is unavailable"
+        )
+    try:
+        model = _exact(
+            {name: authority["model"][name] for name in _RECOVERY_MODEL_KEYS},
+            _RECOVERY_MODEL_KEYS, "recovery authority model selection binding",
+        )
+        recovery_binding = _exact(
+            {name: authority["recovery_binding"][name]
+             for name in _RECOVERY_BINDING_KEYS},
+            _RECOVERY_BINDING_KEYS, "recovery authority binding identity",
+        )
+        c7_launch = _exact(
+            {name: authority["c7_launch"][name]
+             for name in _RECOVERY_C7_LAUNCH_KEYS},
+            _RECOVERY_C7_LAUNCH_KEYS, "recovery authority C7 launch binding",
+        )
+        c7_report = _exact(
+            {name: authority["c7_report"][name]
+             for name in _RECOVERY_C7_REPORT_KEYS},
+            _RECOVERY_C7_REPORT_KEYS, "recovery authority C7 report binding",
+        )
+    except (KeyError, TypeError) as error:
+        raise StageCSelectionIntegrityError(
+            "validated recovery C8 authority lacks selection bindings"
+        ) from error
+    scope = authority.get("scope")
+    if (
+        not isinstance(scope, Mapping)
+        or scope.get("rerun_interpretation")
+        != "recovery_replication_not_new_confirmatory"
+        or scope.get("c8_authorized") is not True
+        or scope.get("c8_selection_authorized") is not True
+        or scope.get("stage_c_holdout_access_authorized") is not False
+    ):
+        raise StageCSelectionIntegrityError(
+            "recovery C8 authority scope does not authorize calibration selection"
+        )
+    source = {"commit": reloaded.launch_commit, "dirty": False}
+    binding = {
+        "interpretation": _RECOVERY_INTERPRETATION,
+        "model": dict(model),
+        "recovery_binding": dict(recovery_binding),
+        "c7_launch": dict(c7_launch),
+        "c7_report": dict(c7_report),
+        "c8_launch": {
+            "file_sha256": reloaded.file_sha256,
+            "canonical_digest": reloaded.canonical_digest,
+            "launch_commit": reloaded.launch_commit,
+        },
+        "c8_execution_source": source,
+    }
+    _validate_recovery_authority_binding(binding)
+    return reloaded, recovery_context, binding
+
+
+def _validate_recovery_authority_binding(value: Any) -> dict[str, Any]:
+    binding = dict(_exact(value, _RECOVERY_AUTHORITY_KEYS, "recovery authority binding"))
+    if binding["interpretation"] != _RECOVERY_INTERPRETATION:
+        raise StageCSelectionIntegrityError(
+            "recovery selection interpretation is not frozen"
+        )
+    model = _exact(
+        binding["model"], _RECOVERY_MODEL_KEYS,
+        "recovery authority binding.model",
+    )
+    if not isinstance(model["identity"], str) or not model["identity"]:
+        raise StageCSelectionIntegrityError(
+            "recovery authority model identity is invalid"
+        )
+    for name in ("state_dict_sha256", "canonical_tensor_digest"):
+        _sha(model[name], f"recovery authority binding.model.{name}")
+    recovery_binding = _exact(
+        binding["recovery_binding"], _RECOVERY_BINDING_KEYS,
+        "recovery authority binding.recovery_binding",
+    )
+    if not isinstance(recovery_binding["path"], str) or not recovery_binding["path"]:
+        raise StageCSelectionIntegrityError(
+            "recovery binding path is invalid"
+        )
+    for name in ("file_sha256", "canonical_digest"):
+        _sha(recovery_binding[name], f"recovery authority binding.recovery_binding.{name}")
+    c7_launch = _exact(
+        binding["c7_launch"], _RECOVERY_C7_LAUNCH_KEYS,
+        "recovery authority binding.c7_launch",
+    )
+    if not isinstance(c7_launch["path"], str) or not c7_launch["path"]:
+        raise StageCSelectionIntegrityError(
+            "recovery C7 launch path is invalid"
+        )
+    for name in ("file_sha256", "canonical_digest"):
+        _sha(c7_launch[name], f"recovery authority binding.c7_launch.{name}")
+    for name in ("launch_commit", "producer_commit"):
+        _commit(c7_launch[name], f"recovery authority binding.c7_launch.{name}")
+    _git_object(
+        c7_launch["producer_tree"],
+        "recovery authority binding.c7_launch.producer_tree",
+    )
+    c7_report = _exact(
+        binding["c7_report"], _RECOVERY_C7_REPORT_KEYS,
+        "recovery authority binding.c7_report",
+    )
+    if (
+        not isinstance(c7_report["path"], str) or not c7_report["path"]
+        or c7_report["status"] != STATUS_PASS
+    ):
+        raise StageCSelectionIntegrityError(
+            "recovery C7 report binding is invalid"
+        )
+    for name in ("file_sha256", "canonical_digest"):
+        _sha(c7_report[name], f"recovery authority binding.c7_report.{name}")
+    for name in ("report_commit", "source_commit"):
+        _commit(c7_report[name], f"recovery authority binding.c7_report.{name}")
+    c8_launch = _exact(
+        binding["c8_launch"], _RECOVERY_C8_LAUNCH_KEYS,
+        "recovery authority binding.c8_launch",
+    )
+    for name in ("file_sha256", "canonical_digest"):
+        _sha(c8_launch[name], f"recovery authority binding.c8_launch.{name}")
+    _commit(
+        c8_launch["launch_commit"],
+        "recovery authority binding.c8_launch.launch_commit",
+    )
+    source = _selection_generator_code(binding["c8_execution_source"])
+    if source["commit"] != c8_launch["launch_commit"]:
+        raise StageCSelectionIntegrityError(
+            "recovery C8 execution source differs from launch authority"
+        )
+    return binding
+
+
+def _require_recovery_binding(
+    bindings: Any, expected: Mapping[str, Any] | None, *, context: str,
+) -> None:
+    if not isinstance(bindings, Mapping):
+        raise StageCSelectionIntegrityError(f"{context} bindings are invalid")
+    observed = bindings.get("recovery_authority")
+    if expected is None:
+        if observed is not None:
+            raise StageCSelectionIntegrityError(
+                f"{context} recovery authority requires trusted validation"
+            )
+        return
+    if observed is None:
+        raise StageCSelectionIntegrityError(
+            f"{context} lacks its recovery authority binding"
+        )
+    normalized = _validate_recovery_authority_binding(observed)
+    if normalized != dict(expected):
+        raise StageCSelectionIntegrityError(
+            f"{context} recovery authority binding drifted"
+        )
+
+
+def _require_recovery_c7_report_binding(
+    value: Any, authority: Any, recovery_binding: Mapping[str, Any],
+) -> None:
+    if not isinstance(value, Mapping):
+        raise StageCSelectionIntegrityError(
+            "recovery C8 evidence lacks its C7 report budget binding"
+        )
+    c7_report = recovery_binding["c7_report"]
+    c7_launch = recovery_binding["c7_launch"]
+    expected = {
+        "c7_report_path": str(
+            (Path(authority.repo_root) / c7_report["path"]).resolve()
+        ),
+        "c7_report_file_sha256": c7_report["file_sha256"],
+        "c7_report_canonical_digest": c7_report["canonical_digest"],
+        "c7_code_commit": c7_report["source_commit"],
+        "c7_launch_path": c7_launch["path"],
+        "c7_launch_file_sha256": c7_launch["file_sha256"],
+        "c7_launch_canonical_digest": c7_launch["canonical_digest"],
+        "c7_launch_commit": c7_launch["launch_commit"],
+    }
+    drift = [
+        name for name, expected_value in expected.items()
+        if value.get(name) != expected_value
+    ]
+    if drift:
+        raise StageCSelectionIntegrityError(
+            f"C7 report budget binding differs from recovery authority: {drift}"
+        )
+
+
+def _require_recovery_output_paths(
+    authority: Any | None, *, selection_path: Path | str | None = None,
+    report_path: Path | str | None = None,
+) -> None:
+    if authority is None:
+        return
+    repo = Path(authority.repo_root).resolve(strict=True)
+    historical = (repo / "selection/stage_c_selection.json").resolve(
+        strict=False
+    )
+    if selection_path is not None:
+        selected = Path(selection_path).absolute().resolve(strict=False)
+        if selected == historical:
+            raise StageCSelectionIntegrityError(
+                "historical selection cannot be used as recovery C8 output"
+            )
+        if selected != Path(authority.selection_path).resolve(strict=False):
+            raise StageCSelectionIntegrityError(
+                "selection output path differs from recovery C8 authority"
+            )
+    if report_path is not None and (
+        Path(report_path).absolute().resolve(strict=False)
+        != Path(authority.report_path).resolve(strict=False)
+    ):
+        raise StageCSelectionIntegrityError(
+            "selection report path differs from recovery C8 authority"
+        )
+
+
 def _canonical_bytes(value: Mapping[str, Any]) -> bytes:
     return json.dumps(
         _plain(value), sort_keys=True, separators=(",", ":"),
@@ -200,6 +507,28 @@ def _sha(value: Any, context: str) -> str:
     ):
         raise StageCSelectionIntegrityError(
             f"{context} must be a lowercase SHA-256"
+        )
+    return value
+
+
+def _git_object(value: Any, context: str) -> str:
+    if (
+        not isinstance(value, str) or len(value) not in {40, 64}
+        or set(value) - _SHA256
+    ):
+        raise StageCSelectionIntegrityError(
+            f"{context} must be a lowercase Git object ID"
+        )
+    return value
+
+
+def _commit(value: Any, context: str) -> str:
+    if (
+        not isinstance(value, str) or len(value) != 40
+        or set(value) - _SHA256
+    ):
+        raise StageCSelectionIntegrityError(
+            f"{context} must be a lowercase 40-hex commit"
         )
     return value
 
@@ -1096,8 +1425,17 @@ def _record_validity(record: Mapping[str, Any], context: str) -> list[str]:
     return list(dict.fromkeys(errors))
 
 
-def validate_c8_calibration_evidence(evidence: Mapping[str, Any]) -> None:
+def validate_c8_calibration_evidence(
+    evidence: Mapping[str, Any], *,
+    trusted_recovery_authority: Any | None = None,
+    trusted_recovery_context: Any | None = None,
+) -> None:
     """Validate the closed injectable 2,180-record C8 evidence document."""
+    authority, recovery_context, expected_recovery_binding = (
+        _validated_recovery_inputs(
+            trusted_recovery_authority, trusted_recovery_context,
+        )
+    )
 
     keys = {
         "schema_version", "document_type", "source_root",
@@ -1120,13 +1458,26 @@ def validate_c8_calibration_evidence(evidence: Mapping[str, Any]) -> None:
         raise StageCSelectionIntegrityError("C8 evidence does not use the exact five IDs")
     if document["method_ids"] != list(METHOD_ORDER):
         raise StageCSelectionIntegrityError("C8 evidence method order drifted")
-    bindings = _exact(
-        document["bindings"],
-        {"source_root", "execution_plan_sha256", "run_spec_sha256",
-         "preflight_sha256", "control_file_sha256", "code",
-         "source_tree_total_bytes"},
-        "C8 evidence.bindings",
-    )
+    binding_keys = set(_EVIDENCE_BINDING_KEYS)
+    if expected_recovery_binding is not None:
+        binding_keys.add("recovery_authority")
+    bindings = _exact(document["bindings"], binding_keys, "C8 evidence.bindings")
+    if expected_recovery_binding is not None:
+        observed_recovery_binding = _validate_recovery_authority_binding(
+            bindings["recovery_authority"]
+        )
+        if observed_recovery_binding != expected_recovery_binding:
+            raise StageCSelectionIntegrityError(
+                "C8 evidence recovery authority binding drifted"
+            )
+        if bindings["code"] != expected_recovery_binding["c8_execution_source"]:
+            raise StageCSelectionIntegrityError(
+                "C8 evidence code differs from recovery execution source"
+            )
+        _require_recovery_c7_report_binding(
+            document["c7_report_binding"], authority,
+            expected_recovery_binding,
+        )
     if bindings["source_root"] != document["source_root"]:
         raise StageCSelectionIntegrityError("C8 source_root bindings disagree")
     for name in ("execution_plan_sha256", "run_spec_sha256", "preflight_sha256"):
@@ -1193,7 +1544,13 @@ def validate_c8_calibration_evidence(evidence: Mapping[str, Any]) -> None:
             if record["provenance"].get("unit_identity") != key:
                 raise StageCSelectionIntegrityError(f"C8 evidence record {index} provenance identity drifted")
             try:
-                validate_stage_c_provenance(record["provenance"], expected_unit=key)
+                validate_stage_c_provenance(
+                    record["provenance"], expected_unit=key,
+                    trusted_recovery_context=recovery_context,
+                    require_trusted_recovery_context=(
+                        recovery_context is not None
+                    ),
+                )
             except Exception as error:
                 raise StageCSelectionIntegrityError(
                     f"C8 evidence record {index} provenance is invalid: {error}"
@@ -1208,7 +1565,13 @@ def validate_c8_calibration_evidence(evidence: Mapping[str, Any]) -> None:
                     _sha(digest_value, f"C8 evidence record {index}.hashes.{name}")
             if record["provenance"]:
                 try:
-                    validate_stage_c_provenance(record["provenance"], expected_unit=key)
+                    validate_stage_c_provenance(
+                        record["provenance"], expected_unit=key,
+                        trusted_recovery_context=recovery_context,
+                        require_trusted_recovery_context=(
+                            recovery_context is not None
+                        ),
+                    )
                 except Exception as error:
                     raise StageCSelectionIntegrityError(
                         f"C8 evidence record {index} retained provenance is invalid: {error}"
@@ -1307,6 +1670,8 @@ def _validate_finalized_batch_status(
 def build_c8_calibration_evidence(
     output_root: Path | str, plan: ExecutionPlan, config: Any,
     observed_git_state: Mapping[str, Any], c7_report_binding: Mapping[str, Any] | None = None,
+    *, trusted_recovery_authority: Any | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> dict[str, Any]:
     """Read and normalize a complete formal C8 root without image/L3 reads.
 
@@ -1315,17 +1680,33 @@ def build_c8_calibration_evidence(
     the two L0 JSON records needed for quantitative aggregation/provenance.
     """
 
+    authority, recovery_context, recovery_binding = _validated_recovery_inputs(
+        trusted_recovery_authority, trusted_recovery_context,
+    )
     plan_document = _validate_exact_plan(plan, config)
     code = dict(_exact(observed_git_state, {"commit", "dirty"}, "observed_git_state"))
     if code.get("dirty") is not False:
         raise StageCSelectionIntegrityError("formal C8 evidence requires clean Git state")
+    if recovery_binding is not None and code != recovery_binding["c8_execution_source"]:
+        raise StageCSelectionIntegrityError(
+            "C8 source Git state differs from recovery launch authority"
+        )
     root = Path(output_root).absolute()
     if root.is_symlink() or not root.is_dir():
         raise StageCSelectionIntegrityError("C8 output root is missing or unsafe")
+    if authority is not None and root.resolve() != Path(
+        authority.formal_root
+    ).resolve():
+        raise StageCSelectionIntegrityError(
+            "C8 evidence root differs from recovery launch authority"
+        )
     from .stage_c_benchmark import map_execution_records
     from .stage_c_resources import measure_artifact_tree_bytes
 
-    mapped = map_execution_records(root, plan, observed_git_state=code)
+    mapped = map_execution_records(
+        root, plan, observed_git_state=code,
+        trusted_recovery_context=recovery_context,
+    )
     validation = mapped.get("batch_validation")
     if not isinstance(validation, Mapping):
         raise StageCSelectionIntegrityError("C8 batch validation is unavailable")
@@ -1351,6 +1732,20 @@ def build_c8_calibration_evidence(
     _sha(preflight_digest, "C8 preflight canonical digest")
     if preflight_digest != _self_digest(preflight):
         raise StageCSelectionIntegrityError("C8 preflight canonical digest mismatch")
+    if authority is not None:
+        try:
+            from .stage_c_c8 import validate_c8_launch_authorization
+            from .stage_c_plan import StageCEstimate
+
+            validate_c8_launch_authorization(
+                control_documents["c8_launch_authorization.json"],
+                plan=plan, estimate=StageCEstimate.from_dict(preflight),
+                output_root=root, trusted_recovery_context=authority,
+            )
+        except Exception as error:
+            raise StageCSelectionIntegrityError(
+                f"recovery C8 launch authorization is invalid: {error}"
+            ) from error
     batch_status = control_documents["batch_status.json"]
     failure_table = control_documents["failure_table.json"]
     _validate_finalized_batch_status(
@@ -1449,13 +1844,18 @@ def build_c8_calibration_evidence(
             "preflight_sha256": preflight_digest,
             "control_file_sha256": control_hashes, "code": code,
             "source_tree_total_bytes": measure_artifact_tree_bytes(root).total_bytes,
+            **({"recovery_authority": recovery_binding}
+               if recovery_binding is not None else {}),
         },
         "records": records,
         "calibration_artifact_manifest_sha256": _records_digest(records),
         "c7_report_binding": binding,
     }
     document["canonical_digest"] = _self_digest(document)
-    validate_c8_calibration_evidence(document)
+    validate_c8_calibration_evidence(
+        document, trusted_recovery_authority=trusted_recovery_authority,
+        trusted_recovery_context=recovery_context,
+    )
     return document
 
 
@@ -1666,6 +2066,8 @@ def _selection_document(
 def build_stage_c_selection(
     evidence: Mapping[str, Any], input_hashes: Mapping[str, Any],
     *, generator_git_state: Mapping[str, Any] | None = None,
+    trusted_recovery_authority: Any | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> dict[str, Any]:
     """Build a PASS selection or an explicit BLOCKED report.
 
@@ -1673,7 +2075,16 @@ def build_stage_c_selection(
     impossible to publish as the frozen selection file.
     """
 
-    validate_c8_calibration_evidence(evidence)
+    _authority, _recovery_context, recovery_binding = _validated_recovery_inputs(
+        trusted_recovery_authority, trusted_recovery_context,
+    )
+    if trusted_recovery_authority is None and _recovery_context is None:
+        validate_c8_calibration_evidence(evidence)
+    else:
+        validate_c8_calibration_evidence(
+            evidence, trusted_recovery_authority=trusted_recovery_authority,
+            trusted_recovery_context=_recovery_context,
+        )
     document = _plain(evidence, "evidence")
     generator = _selection_generator_code(
         document["bindings"]["code"]
@@ -1684,6 +2095,14 @@ def build_stage_c_selection(
         input_hashes, document["calibration_artifact_manifest_sha256"],
         document["bindings"]["code"], document["records"],
     )
+    if (
+        recovery_binding is not None
+        and hashes["model_sha256"]
+        != recovery_binding["model"]["state_dict_sha256"]
+    ):
+        raise StageCSelectionIntegrityError(
+            "selection model SHA-256 differs from recovery C8 authority"
+        )
     records = document["records"]
     candidates: list[dict[str, Any]] = []
     audits: list[dict[str, Any]] = []
@@ -1783,15 +2202,23 @@ def build_stage_c_selection(
     }
     report["canonical_digest"] = _self_digest(report)
     validate_stage_c_selection_report(
-        report, generator_git_state=generator
+        report, generator_git_state=generator,
+        trusted_recovery_authority=trusted_recovery_authority,
+        trusted_recovery_context=_recovery_context,
     )
     return report
 
 
 def validate_stage_c_selection_document(
-    document: Mapping[str, Any], *, expected_input_hashes: Mapping[str, Any] | None = None,
+    document: Mapping[str, Any], *,
+    expected_input_hashes: Mapping[str, Any] | None = None,
+    trusted_recovery_authority: Any | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> None:
     """Public wrapper for the frozen schema's strict semantic validator."""
+    _authority, _context, recovery_binding = _validated_recovery_inputs(
+        trusted_recovery_authority, trusted_recovery_context,
+    )
 
     try:
         _validate_selection_document(document)
@@ -1804,6 +2231,13 @@ def validate_stage_c_selection_document(
         raise StageCSelectionIntegrityError("selection candidates must be block-major/head-minor")
     if expected_input_hashes is not None and document["input_hashes"] != dict(expected_input_hashes):
         raise StageCSelectionIntegrityError("selection input hashes differ from expected bindings")
+    if recovery_binding is not None and (
+        document["input_hashes"]["model_sha256"]
+        != recovery_binding["model"]["state_dict_sha256"]
+    ):
+        raise StageCSelectionIntegrityError(
+            "selection model SHA-256 differs from recovery C8 authority"
+        )
     failure_tuples = [(item["candidate_key"], item["sample_id"], item["reason"]) for item in document["failure_records"]]
     if len(failure_tuples) != len(set(failure_tuples)):
         raise StageCSelectionIntegrityError("selection failure records contain duplicates")
@@ -1813,9 +2247,14 @@ def validate_stage_c_selection_report(
     report: Mapping[str, Any], *, evidence: Mapping[str, Any] | None = None,
     input_hashes: Mapping[str, Any] | None = None,
     generator_git_state: Mapping[str, Any] | None = None,
+    trusted_recovery_authority: Any | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> None:
     """Validate report integrity and optionally recompute it from evidence."""
 
+    _authority, recovery_context, recovery_binding = _validated_recovery_inputs(
+        trusted_recovery_authority, trusted_recovery_context,
+    )
     keys = {
         "schema_version", "document_type", "status", "integrity_valid",
         "blocked_reasons", "holdout_accessed", "selection_performed",
@@ -1834,8 +2273,9 @@ def validate_stage_c_selection_report(
     if document["integrity_valid"] is not True or document["holdout_accessed"] is not False:
         raise StageCSelectionIntegrityError("selection report integrity/access flags are invalid")
     bindings = document["bindings"]
-    if not isinstance(bindings, Mapping):
-        raise StageCSelectionIntegrityError("selection report bindings are invalid")
+    _require_recovery_binding(
+        bindings, recovery_binding, context="selection report",
+    )
     generator = _selection_generator_code(
         bindings.get("selection_generator_code")
     )
@@ -1874,7 +2314,9 @@ def validate_stage_c_selection_report(
                 "selection generated_by differs from generator code binding"
             )
         validate_stage_c_selection_document(
-            selection, expected_input_hashes=document["bindings"]["input_hashes"]
+            selection, expected_input_hashes=document["bindings"]["input_hashes"],
+            trusted_recovery_authority=trusted_recovery_authority,
+            trusted_recovery_context=recovery_context,
         )
         if document["selection_document_sha256"] != _digest(selection):
             raise StageCSelectionIntegrityError("selection document digest mismatch")
@@ -1893,7 +2335,9 @@ def validate_stage_c_selection_report(
         if input_hashes is None:
             raise TypeError("input_hashes are required for source recomputation")
         rebuilt = build_stage_c_selection(
-            evidence, input_hashes, generator_git_state=expected_generator
+            evidence, input_hashes, generator_git_state=expected_generator,
+            trusted_recovery_authority=trusted_recovery_authority,
+            trusted_recovery_context=recovery_context,
         )
         if _plain(rebuilt) != _plain(report):
             raise StageCSelectionIntegrityError(
@@ -1905,17 +2349,25 @@ def validate_stage_c_selection(
     value: Mapping[str, Any], *, evidence: Mapping[str, Any] | None = None,
     input_hashes: Mapping[str, Any] | None = None,
     generator_git_state: Mapping[str, Any] | None = None,
+    trusted_recovery_authority: Any | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> None:
     """Validate either a frozen selection document or its C8 report."""
 
     if not isinstance(value, Mapping):
         raise TypeError("value must be a mapping")
     if value.get("document_type") == SELECTION_DOCUMENT_TYPE:
-        validate_stage_c_selection_document(value, expected_input_hashes=input_hashes)
+        validate_stage_c_selection_document(
+            value, expected_input_hashes=input_hashes,
+            trusted_recovery_authority=trusted_recovery_authority,
+            trusted_recovery_context=trusted_recovery_context,
+        )
     elif value.get("document_type") == REPORT_DOCUMENT_TYPE:
         validate_stage_c_selection_report(
             value, evidence=evidence, input_hashes=input_hashes,
             generator_git_state=generator_git_state,
+            trusted_recovery_authority=trusted_recovery_authority,
+            trusted_recovery_context=trusted_recovery_context,
         )
     else:
         raise StageCSelectionIntegrityError("unknown selection document type")
@@ -2009,23 +2461,33 @@ def write_stage_c_selection(
     evidence: Mapping[str, Any] | None = None,
     input_hashes: Mapping[str, Any] | None = None,
     generator_git_state: Mapping[str, Any] | None = None,
+    trusted_recovery_authority: Any | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> str:
     """Exclusively create the PASS selection file and return its byte hash."""
     if evidence is None or input_hashes is None:
         raise TypeError("formal selection publication requires evidence and input_hashes")
+    authority, recovery_context, _binding = _validated_recovery_inputs(
+        trusted_recovery_authority, trusted_recovery_context,
+    )
+    _require_recovery_output_paths(authority, selection_path=path)
 
     report = value if value.get("document_type") == REPORT_DOCUMENT_TYPE else None
     if report is not None:
         validate_stage_c_selection_report(
             report, evidence=evidence, input_hashes=input_hashes,
             generator_git_state=generator_git_state,
+            trusted_recovery_authority=trusted_recovery_authority,
+            trusted_recovery_context=recovery_context,
         )
         if report["status"] != STATUS_PASS:
             raise StageCSelectionBlockedError("BLOCKED C8 has no selection file", report=report)
         document = report["selection_document"]
     else:
         rebuilt = build_stage_c_selection(
-            evidence, input_hashes, generator_git_state=generator_git_state
+            evidence, input_hashes, generator_git_state=generator_git_state,
+            trusted_recovery_authority=trusted_recovery_authority,
+            trusted_recovery_context=recovery_context,
         )
         if rebuilt["status"] != STATUS_PASS or rebuilt["selection_document"] != value:
             raise StageCSelectionIntegrityError(
@@ -2040,14 +2502,22 @@ def write_stage_c_selection_report(
     evidence: Mapping[str, Any] | None = None,
     input_hashes: Mapping[str, Any] | None = None,
     generator_git_state: Mapping[str, Any] | None = None,
+    trusted_recovery_authority: Any | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> str:
     """Exclusively create a validated PASS or BLOCKED selection report."""
     if evidence is None or input_hashes is None:
         raise TypeError("formal report publication requires evidence and input_hashes")
+    authority, recovery_context, _binding = _validated_recovery_inputs(
+        trusted_recovery_authority, trusted_recovery_context,
+    )
+    _require_recovery_output_paths(authority, report_path=path)
 
     validate_stage_c_selection_report(
         report, evidence=evidence, input_hashes=input_hashes,
         generator_git_state=generator_git_state,
+        trusted_recovery_authority=trusted_recovery_authority,
+        trusted_recovery_context=recovery_context,
     )
     return _exclusive_json(Path(path).absolute(), report)
 
@@ -2057,12 +2527,22 @@ def write_stage_c_selection_outputs(
     report: Mapping[str, Any], *, evidence: Mapping[str, Any],
     input_hashes: Mapping[str, Any],
     generator_git_state: Mapping[str, Any] | None = None,
+    trusted_recovery_authority: Any | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> dict[str, Any]:
     """Publish the report and, only for PASS, the frozen selection."""
+    authority, recovery_context, _binding = _validated_recovery_inputs(
+        trusted_recovery_authority, trusted_recovery_context,
+    )
+    _require_recovery_output_paths(
+        authority, selection_path=selection_path, report_path=report_path,
+    )
 
     validate_stage_c_selection_report(
         report, evidence=evidence, input_hashes=input_hashes,
         generator_git_state=generator_git_state,
+        trusted_recovery_authority=trusted_recovery_authority,
+        trusted_recovery_context=recovery_context,
     )
     selection_destination = Path(selection_path).absolute()
     report_destination = Path(report_path).absolute()
@@ -2116,16 +2596,28 @@ def validate_stage_c_selection_from_source(
     observed_git_state: Mapping[str, Any], input_hashes: Mapping[str, Any],
     c7_report_binding: Mapping[str, Any] | None = None,
     generator_git_state: Mapping[str, Any] | None = None,
+    trusted_recovery_authority: Any | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> dict[str, Any]:
     """Re-read source evidence and reject manual report/selection edits."""
+    authority, recovery_context, _binding = _validated_recovery_inputs(
+        trusted_recovery_authority, trusted_recovery_context,
+    )
+    _require_recovery_output_paths(
+        authority, selection_path=selection_path, report_path=report_path,
+    )
 
     evidence = build_c8_calibration_evidence(
-        output_root, plan, config, observed_git_state, c7_report_binding
+        output_root, plan, config, observed_git_state, c7_report_binding,
+        trusted_recovery_authority=trusted_recovery_authority,
+        trusted_recovery_context=recovery_context,
     )
     report = _strict_json(Path(report_path).absolute())
     validate_stage_c_selection_report(
         report, evidence=evidence, input_hashes=input_hashes,
         generator_git_state=generator_git_state,
+        trusted_recovery_authority=trusted_recovery_authority,
+        trusted_recovery_context=recovery_context,
     )
     if report["status"] == STATUS_BLOCKED:
         if selection_path is not None and Path(selection_path).exists():
@@ -2134,7 +2626,11 @@ def validate_stage_c_selection_from_source(
     if selection_path is None:
         raise StageCSelectionIntegrityError("PASS report requires a selection file")
     selection = _strict_json(Path(selection_path).absolute())
-    validate_stage_c_selection_document(selection, expected_input_hashes=input_hashes)
+    validate_stage_c_selection_document(
+        selection, expected_input_hashes=input_hashes,
+        trusted_recovery_authority=trusted_recovery_authority,
+        trusted_recovery_context=recovery_context,
+    )
     if selection != report["selection_document"]:
         raise StageCSelectionIntegrityError("selection file differs from recomputed report")
     return report

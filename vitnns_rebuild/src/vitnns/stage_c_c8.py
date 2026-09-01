@@ -10,6 +10,7 @@ from __future__ import annotations
 import fcntl
 import hashlib
 import json
+import math
 import os
 import re
 import secrets
@@ -77,6 +78,22 @@ C7_PROJECTED_C8_H20_GPU_HOURS = 58.1698110242958
 C7_PROJECTED_C8_ARTIFACT_BYTES = 4_289_463_500
 C7_PROJECTED_C8_C9_ARTIFACT_BYTES = 4_841_749_700
 C7_PROJECTED_C8_L2_BYTES_PER_AUDIT = 488_599_600
+
+_RECOVERY_AUTHORITY_KIND = "recovery_c8_launch_record"
+_RECOVERY_AUTHORIZATION_KEYS = frozenset({
+    "schema_version", "document_type", "authority_kind", "status",
+    "holdout_accessed", "recovery_c8_launch_record", "c7_launch",
+    "c7_report", "model", "source", "projections",
+    "c8_execution_plan_sha256", "c8_preflight_sha256",
+    "c8_output_root", "canonical_digest",
+})
+_RECOVERY_PROJECTION_KEYS = frozenset({
+    "c7_slowest_unit_seconds", "c7_peak_reserved_bytes",
+    "c7_projected_c8_h20_gpu_hours",
+    "c7_projected_c8_artifact_bytes",
+    "c7_projected_c8_c9_artifact_bytes",
+    "c7_projected_c8_l2_bytes_per_audit",
+})
 
 AUTHORIZATION_FILENAME = "c8_launch_authorization.json"
 _CHECKPOINT_LOCK_FILENAME = ".c8-checkpoint.lock"
@@ -396,9 +413,14 @@ def _expected_unit_work_items(
     return [item.to_dict() for item in items]
 
 
-def validate_c8_execution_plan(plan: ExecutionPlan, config: Any) -> dict[str, Any]:
+def validate_c8_execution_plan(
+    plan: ExecutionPlan, config: Any, *,
+    trusted_recovery_context: Any | None = None,
+) -> dict[str, Any]:
     """Validate the exact ordered five-image, all-candidate C8 workload."""
 
+    if trusted_recovery_context is not None:
+        _trusted_recovery_c8_record(trusted_recovery_context)
     if not isinstance(plan, ExecutionPlan):
         raise TypeError("plan must be an ExecutionPlan")
     document = ExecutionPlan.from_dict(plan.to_dict()).to_dict()
@@ -517,6 +539,166 @@ def _exact_projection(report: Mapping[str, Any], path: Sequence[str], expected: 
     return type(value) is type(expected) and value == expected
 
 
+def _trusted_recovery_c8_record(value: Any) -> Any | None:
+    """Return only a source-revalidated recovery C8 authority.
+
+    Public dataclasses are deliberately not capabilities.  Every C8 boundary
+    reloads the record from its authoritative bytes, and the two-object
+    context must contain the exact binding owned by that record.
+    """
+
+    if value is None:
+        return None
+    try:
+        from .recovery_c8_launch import (
+            RecoveryC8LaunchRecord, load_recovery_c8_launch_record,
+        )
+        from .recovery_v2 import RecoveryV2Binding
+    except ImportError as error:  # pragma: no cover - rolling integration guard
+        raise StageCBenchmarkIntegrityError(
+            "recovery C8 launch support is unavailable"
+        ) from error
+
+    if isinstance(value, RecoveryC8LaunchRecord):
+        record = value
+        binding = record.binding
+    elif isinstance(value, Mapping) and set(value) == {
+        "recovery_binding", "recovery_launch_record",
+    }:
+        binding = value["recovery_binding"]
+        record = value["recovery_launch_record"]
+    else:
+        raise StageCBenchmarkIntegrityError(
+            "trusted recovery C8 context must be a validated "
+            "RecoveryC8LaunchRecord or its exact validated binding pair"
+        )
+    if type(record) is not RecoveryC8LaunchRecord:
+        raise StageCBenchmarkIntegrityError(
+            "trusted recovery C8 context lacks a validated "
+            "RecoveryC8LaunchRecord"
+        )
+    if type(binding) is not RecoveryV2Binding or record.binding is not binding:
+        raise StageCBenchmarkIntegrityError(
+            "trusted recovery C8 context is not the binding owned by its record"
+        )
+    try:
+        authority_root = Path(record.repo_root).resolve(strict=True)
+        authoritative = load_recovery_c8_launch_record(
+            record.path, repo_root=authority_root, schema_path=record.schema_path,
+            require_fresh_roots=False, require_tracked=True,
+        )
+    except Exception as error:
+        raise StageCBenchmarkIntegrityError(
+            "trusted recovery C8 launch record could not be reloaded and validated"
+        ) from error
+    if type(authoritative) is not RecoveryC8LaunchRecord or authoritative != record:
+        raise StageCBenchmarkIntegrityError(
+            "trusted recovery C8 context does not match reloaded authority"
+        )
+    return authoritative
+
+
+def _recovery_context(record: Any | None) -> Mapping[str, Any] | None:
+    if record is None:
+        return None
+    return {
+        "recovery_binding": record.binding,
+        "recovery_launch_record": record,
+    }
+
+
+def _authority_relative_record(
+    record: Any, document: Mapping[str, Any], key: str,
+) -> dict[str, Any]:
+    block = document.get(key)
+    if not isinstance(block, Mapping):
+        raise StageCBenchmarkIntegrityError(
+            f"recovery C8 authority lacks {key} binding"
+        )
+    return _plain(block)
+
+
+def _recovery_report_path(record: Any) -> Path:
+    binding = _authority_relative_record(record, record.document, "c7_report")
+    try:
+        path = (Path(record.repo_root) / str(binding["path"])).resolve(strict=True)
+        path.relative_to(Path(record.repo_root).resolve(strict=True))
+    except (KeyError, OSError, ValueError) as error:
+        raise StageCBenchmarkIntegrityError(
+            "recovery C7 report is outside the authority repository"
+        ) from error
+    if path.is_symlink() or not path.is_file():
+        raise StageCBenchmarkIntegrityError(
+            "recovery C7 report is missing, non-regular, or a symlink"
+        )
+    return path
+
+
+def _report_projection(report: Mapping[str, Any], path: Sequence[str]) -> Any:
+    value: Any = report
+    for key in path:
+        if not isinstance(value, Mapping) or key not in value:
+            raise StageCBenchmarkIntegrityError(
+                f"C7 report lacks projection {'.'.join(path)}"
+            )
+        value = value[key]
+    return value
+
+
+def _recovery_projections(report: Mapping[str, Any]) -> dict[str, Any]:
+    values = {
+        "c7_slowest_unit_seconds": _report_projection(
+            report, ("projections", "time",
+                     "slowest_valid_measured_unit_seconds")
+        ),
+        "c7_peak_reserved_bytes": _report_projection(
+            report, ("projections", "measured_maxima",
+                     "cuda_peak_reserved_bytes_per_unit")
+        ),
+        "c7_projected_c8_h20_gpu_hours": _report_projection(
+            report, ("projections", "time", "C8_h20_gpu_hours")
+        ),
+        "c7_projected_c8_artifact_bytes": _report_projection(
+            report, ("projections", "storage", "projected_bytes", "C8")
+        ),
+        "c7_projected_c8_c9_artifact_bytes": _report_projection(
+            report, ("projections", "storage", "projected_bytes", "C8_C9")
+        ),
+        "c7_projected_c8_l2_bytes_per_audit": _report_projection(
+            report, ("projections", "measured_maxima",
+                     "c8_projected_l2_bytes_per_audit_sample")
+        ),
+    }
+    if (
+        isinstance(values["c7_slowest_unit_seconds"], bool)
+        or not isinstance(values["c7_slowest_unit_seconds"], (int, float))
+        or not math.isfinite(float(values["c7_slowest_unit_seconds"]))
+        or values["c7_slowest_unit_seconds"] <= 0
+        or type(values["c7_peak_reserved_bytes"]) is not int
+        or values["c7_peak_reserved_bytes"] < 0
+        or any(
+            type(values[key]) is not int or values[key] < 0
+            for key in (
+                "c7_projected_c8_artifact_bytes",
+                "c7_projected_c8_c9_artifact_bytes",
+                "c7_projected_c8_l2_bytes_per_audit",
+            )
+        )
+        or isinstance(values["c7_projected_c8_h20_gpu_hours"], bool)
+        or not isinstance(
+            values["c7_projected_c8_h20_gpu_hours"], (int, float)
+        )
+        or not math.isfinite(
+            float(values["c7_projected_c8_h20_gpu_hours"])
+        )
+        or values["c7_projected_c8_h20_gpu_hours"] <= 0
+    ):
+        raise StageCBenchmarkIntegrityError(
+            "recovery C7 report projections have invalid types or values"
+        )
+    return values
+
+
 def _validate_c7_archive_ref(
     *, repo_root: Path | str | None = None, git_runner: Any = subprocess.run
 ) -> dict[str, str]:
@@ -550,9 +732,139 @@ def _validate_c7_archive_ref(
 
 
 def validate_fixed_c7_report(
-    path: Path | str, *, repo_root: Path | str | None = None
+    path: Path | str, *, repo_root: Path | str | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> dict[str, Any]:
-    """Validate the one frozen C7 report and its retained code reference."""
+    """Validate the legacy frozen or authority-bound recovery C7 report."""
+
+    recovery = _trusted_recovery_c8_record(trusted_recovery_context)
+    if recovery is not None:
+        source = Path(os.path.abspath(os.fspath(path)))
+        expected_source = _recovery_report_path(recovery)
+        if source != expected_source or source.is_symlink() or not source.is_file():
+            raise StageCBenchmarkIntegrityError(
+                "C7 report path differs from recovery C8 authority"
+            )
+        binding = _authority_relative_record(
+            recovery, recovery.document, "c7_report"
+        )
+        if _file_sha256(source) != binding.get("file_sha256"):
+            raise StageCBenchmarkIntegrityError(
+                "C7 report file SHA-256 differs from recovery C8 authority"
+            )
+        report = _strict_json(source)
+        validate_benchmark_report(
+            report, trusted_recovery_context={
+                "recovery_binding": recovery.binding,
+                "recovery_launch_record": recovery.c7_launch_record,
+            },
+        )
+        errors: list[str] = []
+        if report.get("canonical_digest") != binding.get("canonical_digest"):
+            errors.append("canonical digest differs from recovery C8 authority")
+        if binding.get("status") != STATUS_PASS:
+            errors.append("recovery C8 authority does not bind a PASS C7 report")
+        if report.get("status") != STATUS_PASS or report.get("integrity_valid") is not True:
+            errors.append("report is not an integrity-valid PASS")
+        validation = report.get("batch_validation", {})
+        if (
+            validation.get("valid") is not True
+            or validation.get("orchestration_complete") is not True
+            or validation.get("successful") is not True
+        ):
+            errors.append("C7 batch is not valid, complete, and successful")
+        records = report.get("unit_records")
+        if (
+            not isinstance(records, list)
+            or len(records) != 40
+            or any(
+                not isinstance(row, Mapping)
+                or row.get("state") != "succeeded"
+                or row.get("trusted_by_batch_validator") is not True
+                for row in records
+            )
+        ):
+            errors.append("C7 report does not contain 40/40 usable units")
+        completeness = report.get("projections", {}).get(
+            "measurement_completeness", {}
+        )
+        if completeness != {
+            "bytes_measured": True, "calls_measured": True,
+            "cuda_measured": True, "expected_units": 40,
+            "timing_measured": True, "usable_units": 40,
+        }:
+            errors.append("C7 measurement completeness differs from 40/40 measured")
+        checks = report.get("projections", {}).get("hard_cap_checks", [])
+        if (
+            not isinstance(checks, list)
+            or len(checks) != len(HARD_CAP_KEYS)
+            or [item.get("cap_key") for item in checks if isinstance(item, Mapping)]
+            != list(HARD_CAP_KEYS)
+            or any(
+                not isinstance(item, Mapping)
+                or item.get("status") != STATUS_PASS
+                or item.get("measured") is not True
+                or item.get("cap") != FROZEN_CAPS.get(item.get("cap_key"))
+                for item in checks
+            )
+        ):
+            errors.append(
+                "C7 report does not retain ten measured frozen-cap PASS checks"
+            )
+        bindings = report.get("bindings", {})
+        observed_code = (
+            bindings.get("observed_git_state")
+            if isinstance(bindings, Mapping) else None
+        )
+        shared_code = (
+            bindings.get("shared_provenance", {}).get("code")
+            if isinstance(bindings, Mapping)
+            and isinstance(bindings.get("shared_provenance"), Mapping)
+            else None
+        )
+        launch_code = (
+            bindings.get("launch_authorization", {}).get(
+                "observed_git_state"
+            )
+            if isinstance(bindings, Mapping)
+            and isinstance(bindings.get("launch_authorization"), Mapping)
+            else None
+        )
+        expected_code = {
+            "commit": binding.get("source_commit"), "dirty": False,
+        }
+        if (
+            observed_code != expected_code or shared_code != expected_code
+            or launch_code != expected_code
+        ):
+            errors.append(
+                "C7 report code bindings differ from recovery C8 authority"
+            )
+        projections = _recovery_projections(report)
+        recomputed_hours = (
+            float(projections["c7_slowest_unit_seconds"])
+            * C8_EXECUTION_UNITS
+            * float(FROZEN_CAPS["projection_safety_factor"]) / 3600.0
+        )
+        if recomputed_hours != projections["c7_projected_c8_h20_gpu_hours"]:
+            errors.append("C7-to-C8 time projection arithmetic is not exact")
+        for flag in (
+            "holdout_accessed", "selection_performed",
+            "bootstrap_performed", "decision_performed",
+        ):
+            if report.get(flag) is not False:
+                errors.append(f"C7 report {flag} must be false")
+        if errors:
+            raise StageCBenchmarkIntegrityError(
+                "invalid recovery C7 report: " + "; ".join(errors)
+            )
+        result = dict(report)
+        result["c8_validated_recovery_authority"] = {
+            "canonical_digest": recovery.canonical_digest,
+            "file_sha256": recovery.file_sha256,
+            "path": str(recovery.path),
+        }
+        return result
 
     source = Path(path).absolute()
     if source.is_symlink() or not source.is_file():
@@ -665,32 +977,80 @@ def validate_fixed_c7_report(
 
 
 def build_c8_measured_preflight(
-    plan: ExecutionPlan, config: Any, c7_report: Mapping[str, Any]
+    plan: ExecutionPlan, config: Any, c7_report: Mapping[str, Any], *,
+    trusted_recovery_context: Any | None = None,
 ) -> StageCEstimate:
-    scope = validate_c8_execution_plan(plan, config)
+    scope = validate_c8_execution_plan(
+        plan, config, trusted_recovery_context=trusted_recovery_context,
+    )
     if not scope["valid"]:
         raise StageCBenchmarkIntegrityError(
             "invalid C8 plan: " + "; ".join(scope["violations"])
         )
-    if not _exact_projection(
-        c7_report, ("projections", "time", "slowest_valid_measured_unit_seconds"),
-        C7_SLOWEST_UNIT_SECONDS,
-    ):
-        raise StageCBenchmarkIntegrityError("C7 slowest-unit measurement is not frozen")
-    if not _exact_projection(
-        c7_report, ("projections", "measured_maxima", "cuda_peak_reserved_bytes_per_unit"),
-        C7_PEAK_RESERVED_BYTES,
-    ):
-        raise StageCBenchmarkIntegrityError("C7 CUDA peak measurement is not frozen")
+    recovery = _trusted_recovery_c8_record(trusted_recovery_context)
+    if recovery is None:
+        if not _exact_projection(
+            c7_report,
+            ("projections", "time",
+             "slowest_valid_measured_unit_seconds"),
+            C7_SLOWEST_UNIT_SECONDS,
+        ):
+            raise StageCBenchmarkIntegrityError(
+                "C7 slowest-unit measurement is not frozen"
+            )
+        if not _exact_projection(
+            c7_report,
+            ("projections", "measured_maxima",
+             "cuda_peak_reserved_bytes_per_unit"),
+            C7_PEAK_RESERVED_BYTES,
+        ):
+            raise StageCBenchmarkIntegrityError(
+                "C7 CUDA peak measurement is not frozen"
+            )
+        projections = {
+            "c7_slowest_unit_seconds": C7_SLOWEST_UNIT_SECONDS,
+            "c7_peak_reserved_bytes": C7_PEAK_RESERVED_BYTES,
+            "c7_projected_c8_h20_gpu_hours": (
+                C7_PROJECTED_C8_H20_GPU_HOURS
+            ),
+        }
+    else:
+        report_binding = _authority_relative_record(
+            recovery, recovery.document, "c7_report"
+        )
+        authoritative_report = _strict_json(_recovery_report_path(recovery))
+        supplied_report = _plain(c7_report)
+        supplied_report.pop("c8_validated_recovery_authority", None)
+        if supplied_report != authoritative_report:
+            raise StageCBenchmarkIntegrityError(
+                "C7 report mapping differs from recovery authority bytes"
+            )
+        if c7_report.get("status") != STATUS_PASS or c7_report.get(
+            "integrity_valid"
+        ) is not True:
+            raise StageCBenchmarkIntegrityError(
+                "recovery C7 report is not an integrity-valid PASS"
+            )
+        if c7_report.get("canonical_digest") != report_binding.get(
+            "canonical_digest"
+        ):
+            raise StageCBenchmarkIntegrityError(
+                "C7 report differs from recovery C8 authority"
+            )
+        projections = _recovery_projections(c7_report)
     estimate = estimate_stage_c_run(
         config, plan,
-        measured_slowest_unit_seconds=C7_SLOWEST_UNIT_SECONDS,
-        measured_peak_reserved_bytes_per_unit=C7_PEAK_RESERVED_BYTES,
+        measured_slowest_unit_seconds=projections[
+            "c7_slowest_unit_seconds"
+        ],
+        measured_peak_reserved_bytes_per_unit=projections[
+            "c7_peak_reserved_bytes"
+        ],
     )
     projected = estimate.compute.get("projected_h20_gpu_hours")
-    if projected != C7_PROJECTED_C8_H20_GPU_HOURS:
+    if projected != projections["c7_projected_c8_h20_gpu_hours"]:
         raise StageCBenchmarkIntegrityError(
-            "C8 measured preflight does not prove the frozen 58.1698110242958 hours"
+            "C8 measured preflight does not reproduce the validated C7 projection"
         )
     if not estimate.within_budget:
         raise StageCBenchmarkBlockedError(
@@ -702,6 +1062,7 @@ def build_c8_measured_preflight(
 
 def _validate_formal_preflight(
     estimate: StageCEstimate, plan: ExecutionPlan, *, require_issuer: bool,
+    projections: Mapping[str, Any] | None = None,
 ) -> None:
     if not isinstance(estimate, StageCEstimate):
         raise StageCBenchmarkIntegrityError("C8 preflight is not a StageCEstimate")
@@ -712,6 +1073,16 @@ def _validate_formal_preflight(
             raise StageCBenchmarkIntegrityError(
                 f"C8 preflight is not freshly issuer-authenticated: {error}"
             ) from error
+    expected = (
+        {
+            "c7_slowest_unit_seconds": C7_SLOWEST_UNIT_SECONDS,
+            "c7_peak_reserved_bytes": C7_PEAK_RESERVED_BYTES,
+            "c7_projected_c8_h20_gpu_hours": (
+                C7_PROJECTED_C8_H20_GPU_HOURS
+            ),
+        }
+        if projections is None else projections
+    )
     if (
         estimate.plan_digest != plan.canonical_digest
         or estimate.within_budget is not True
@@ -721,11 +1092,11 @@ def _validate_formal_preflight(
         or estimate.caps.get("config_mutated") is not False
         or tuple(estimate.caps.get("unmeasured_caps", ())) != ()
         or estimate.compute.get("measured_slowest_unit_seconds")
-        != C7_SLOWEST_UNIT_SECONDS
+        != expected.get("c7_slowest_unit_seconds")
         or estimate.compute.get("measured_peak_reserved_bytes_per_unit")
-        != C7_PEAK_RESERVED_BYTES
+        != expected.get("c7_peak_reserved_bytes")
         or estimate.compute.get("projected_h20_gpu_hours")
-        != C7_PROJECTED_C8_H20_GPU_HOURS
+        != expected.get("c7_projected_c8_h20_gpu_hours")
     ):
         raise StageCBenchmarkIntegrityError(
             "C8 preflight is not the exact measured, frozen-cap estimate"
@@ -759,6 +1130,93 @@ def _require_live_git_state(
     return live
 
 
+def _recovery_source_state(record: Any, phase: str) -> dict[str, Any]:
+    try:
+        from .recovery_c8_launch import capture_authorized_c8_source_state
+
+        state = _plain(capture_authorized_c8_source_state(record, phase))
+    except Exception as error:
+        raise StageCBenchmarkIntegrityError(
+            f"cannot capture recovery C8 {phase} source authority"
+        ) from error
+    if state != {"commit": record.launch_commit, "dirty": False}:
+        raise StageCBenchmarkIntegrityError(
+            "recovery C8 source state differs from the committed launch authority"
+        )
+    return state
+
+
+def _require_recovery_root(record: Any, output_root: Path | str) -> Path:
+    root = Path(os.path.abspath(os.fspath(output_root)))
+    authorized = Path(os.path.abspath(os.fspath(record.formal_root)))
+    if root != authorized:
+        raise StageCBenchmarkIntegrityError(
+            "C8 output root differs from recovery launch authority"
+        )
+    try:
+        repo = Path(record.repo_root).resolve(strict=True)
+        evidence = (repo / "evidence").resolve(strict=True)
+        root.resolve(strict=False).relative_to(evidence)
+    except (OSError, ValueError) as error:
+        raise StageCBenchmarkIntegrityError(
+            "recovery C8 root must be under authority repository evidence"
+        ) from error
+    current = Path(root.anchor)
+    for part in root.parts[1:]:
+        current /= part
+        if os.path.lexists(current) and stat.S_ISLNK(current.lstat().st_mode):
+            raise StageCBenchmarkIntegrityError(
+                "recovery C8 output root contains a symlink"
+            )
+    return root
+
+
+def _recovery_authorization(
+    record: Any, report: Mapping[str, Any], plan: ExecutionPlan,
+    estimate: StageCEstimate, output_root: Path | str,
+    code: Mapping[str, Any],
+) -> dict[str, Any]:
+    launch_binding = _authority_relative_record(
+        record, record.document, "c7_launch"
+    )
+    report_binding = _authority_relative_record(
+        record, record.document, "c7_report"
+    )
+    model = _authority_relative_record(record, record.document, "model")
+    producer = _authority_relative_record(
+        record, record.document, "producer_git"
+    )
+    projections = _recovery_projections(report)
+    value = {
+        "schema_version": 1,
+        "document_type": "stage_c_c8_launch_authorization",
+        "authority_kind": _RECOVERY_AUTHORITY_KIND,
+        "status": "PASS",
+        "holdout_accessed": False,
+        "recovery_c8_launch_record": {
+            "path": Path(record.path).resolve().relative_to(
+                Path(record.repo_root).resolve()
+            ).as_posix(),
+            "file_sha256": record.file_sha256,
+            "canonical_digest": record.canonical_digest,
+            "launch_commit": record.launch_commit,
+        },
+        "c7_launch": launch_binding,
+        "c7_report": report_binding,
+        "model": model,
+        "source": {
+            "producer_git": producer,
+            "execution_git_state": _plain(code),
+        },
+        "projections": projections,
+        "c8_execution_plan_sha256": plan.canonical_digest,
+        "c8_preflight_sha256": estimate.canonical_digest,
+        "c8_output_root": str(Path(os.path.abspath(os.fspath(output_root)))),
+    }
+    value["canonical_digest"] = canonical_sha256(value)
+    return value
+
+
 def build_c8_launch_authorization(
     plan: ExecutionPlan,
     config: Any,
@@ -767,9 +1225,38 @@ def build_c8_launch_authorization(
     output_root: Path | str,
     observed_git_state: Mapping[str, Any] | None = None,
     repo_root: Path | str | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> tuple[dict[str, Any], StageCEstimate]:
-    report = validate_fixed_c7_report(c7_report_path, repo_root=repo_root)
-    estimate = build_c8_measured_preflight(plan, config, report)
+    recovery = _trusted_recovery_c8_record(trusted_recovery_context)
+    if recovery is not None:
+        _require_recovery_root(recovery, output_root)
+        if repo_root is not None and Path(repo_root).resolve() != Path(
+            recovery.repo_root
+        ).resolve():
+            raise StageCBenchmarkIntegrityError(
+                "repo_root differs from recovery C8 authority repository"
+            )
+    report = validate_fixed_c7_report(
+        c7_report_path, repo_root=repo_root,
+        trusted_recovery_context=recovery,
+    )
+    estimate = build_c8_measured_preflight(
+        plan, config, report, trusted_recovery_context=recovery,
+    )
+    if recovery is not None:
+        code = _recovery_source_state(recovery, "pre_formal")
+        if observed_git_state is not None and _plain(observed_git_state) != code:
+            raise StageCBenchmarkIntegrityError(
+                "supplied C8 Git state differs from recovery source authority"
+            )
+        authorization = _recovery_authorization(
+            recovery, report, plan, estimate, output_root, code
+        )
+        validate_c8_launch_authorization(
+            authorization, plan=plan, estimate=estimate,
+            output_root=output_root, trusted_recovery_context=recovery,
+        )
+        return authorization, estimate
     code = _require_live_git_state(
         supplied=observed_git_state, repo_root=repo_root
     )
@@ -807,7 +1294,94 @@ def validate_c8_launch_authorization(
     plan: ExecutionPlan,
     estimate: StageCEstimate,
     output_root: Path | str | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> None:
+    recovery = _trusted_recovery_c8_record(trusted_recovery_context)
+    if recovery is not None:
+        if not isinstance(value, Mapping) or set(value) != _RECOVERY_AUTHORIZATION_KEYS:
+            raise StageCBenchmarkIntegrityError(
+                "recovery C8 launch authorization fields drifted"
+            )
+        payload = {
+            key: item for key, item in value.items()
+            if key != "canonical_digest"
+        }
+        if value.get("canonical_digest") != canonical_sha256(payload):
+            raise StageCBenchmarkIntegrityError(
+                "recovery C8 launch authorization digest mismatch"
+            )
+        if (
+            value.get("schema_version") != 1
+            or value.get("document_type")
+            != "stage_c_c8_launch_authorization"
+            or value.get("authority_kind") != _RECOVERY_AUTHORITY_KIND
+            or value.get("status") != "PASS"
+            or value.get("holdout_accessed") is not False
+            or value.get("c8_execution_plan_sha256")
+            != plan.canonical_digest
+            or value.get("c8_preflight_sha256")
+            != estimate.canonical_digest
+        ):
+            raise StageCBenchmarkIntegrityError(
+                "recovery C8 launch authorization fixed binding drifted"
+            )
+        record_binding = value.get("recovery_c8_launch_record")
+        expected_record = {
+            "path": Path(recovery.path).resolve().relative_to(
+                Path(recovery.repo_root).resolve()
+            ).as_posix(),
+            "file_sha256": recovery.file_sha256,
+            "canonical_digest": recovery.canonical_digest,
+            "launch_commit": recovery.launch_commit,
+        }
+        expected_source = {
+            "producer_git": _authority_relative_record(
+                recovery, recovery.document, "producer_git"
+            ),
+            "execution_git_state": {
+                "commit": recovery.launch_commit, "dirty": False,
+            },
+        }
+        if (
+            record_binding != expected_record
+            or value.get("c7_launch") != _authority_relative_record(
+                recovery, recovery.document, "c7_launch"
+            )
+            or value.get("c7_report") != _authority_relative_record(
+                recovery, recovery.document, "c7_report"
+            )
+            or value.get("model") != _authority_relative_record(
+                recovery, recovery.document, "model"
+            )
+            or value.get("source") != expected_source
+        ):
+            raise StageCBenchmarkIntegrityError(
+                "recovery C8 launch authorization authority projection drifted"
+            )
+        projections = value.get("projections")
+        if not isinstance(projections, Mapping) or set(
+            projections
+        ) != _RECOVERY_PROJECTION_KEYS:
+            raise StageCBenchmarkIntegrityError(
+                "recovery C8 launch authorization projections drifted"
+            )
+        expected_projections = _recovery_projections(
+            _strict_json(_recovery_report_path(recovery))
+        )
+        if dict(projections) != expected_projections:
+            raise StageCBenchmarkIntegrityError(
+                "recovery C8 launch authorization report projections drifted"
+            )
+        _validate_formal_preflight(
+            estimate, plan, require_issuer=False, projections=projections
+        )
+        if output_root is not None:
+            root = _require_recovery_root(recovery, output_root)
+            if Path(os.path.abspath(str(value.get("c8_output_root")))) != root:
+                raise StageCBenchmarkIntegrityError(
+                    "recovery C8 launch authorization output-root drifted"
+                )
+        return
     expected = {
         "schema_version", "document_type", "status",
         "holdout_accessed", "c7_report_path",
@@ -943,34 +1517,76 @@ def initialize_c8_output_root(
     config: Any,
     observed_git_state: Mapping[str, Any] | None = None,
     repo_root: Path | str | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> Path:
-    scope = validate_c8_execution_plan(plan, config)
+    recovery = _trusted_recovery_c8_record(trusted_recovery_context)
+    scope = validate_c8_execution_plan(
+        plan, config, trusted_recovery_context=trusted_recovery_context,
+    )
     if not scope["valid"]:
         raise StageCBenchmarkIntegrityError(
             "invalid C8 plan: " + "; ".join(scope["violations"])
         )
     validate_c8_launch_authorization(
-        authorization, plan=plan, estimate=preflight, output_root=output_root
+        authorization, plan=plan, estimate=preflight, output_root=output_root,
+        trusted_recovery_context=recovery,
     )
-    _validate_formal_preflight(preflight, plan, require_issuer=True)
-    live_code = _require_live_git_state(
-        authorization["code"], supplied=observed_git_state,
-        repo_root=repo_root,
-    )
-    if live_code != authorization["code"]:
-        raise StageCBenchmarkIntegrityError("C8 initialization code binding drifted")
-    report = validate_fixed_c7_report(
-        authorization["c7_report_path"], repo_root=repo_root
-    )
-    if (
-        report["canonical_digest"] != authorization["c7_report_canonical_digest"]
-        or report["c8_validated_archive_ref"]["tree"]
-        != authorization["c7_archive_tree"]
-    ):
-        raise StageCBenchmarkIntegrityError(
-            "C8 initialization C7 evidence/archive binding drifted"
+    if recovery is None:
+        _validate_formal_preflight(preflight, plan, require_issuer=True)
+    else:
+        _validate_formal_preflight(
+            preflight, plan, require_issuer=True,
+            projections=authorization.get("projections"),
         )
-    root = _require_fresh_root(output_root)
+    if recovery is not None:
+        if repo_root is not None and Path(repo_root).resolve() != Path(
+            recovery.repo_root
+        ).resolve():
+            raise StageCBenchmarkIntegrityError(
+                "repo_root differs from recovery C8 authority repository"
+            )
+        live_code = _recovery_source_state(recovery, "pre_formal")
+        if observed_git_state is not None and _plain(observed_git_state) != live_code:
+            raise StageCBenchmarkIntegrityError(
+                "supplied C8 Git state differs from recovery source authority"
+            )
+        if live_code != authorization["source"]["execution_git_state"]:
+            raise StageCBenchmarkIntegrityError(
+                "C8 initialization recovery code binding drifted"
+            )
+        report_path = _recovery_report_path(recovery)
+        report = validate_fixed_c7_report(
+            report_path, repo_root=recovery.repo_root,
+            trusted_recovery_context=recovery,
+        )
+        if _recovery_projections(report) != authorization["projections"]:
+            raise StageCBenchmarkIntegrityError(
+                "C8 initialization recovery C7 projection binding drifted"
+            )
+        root = _require_recovery_root(recovery, output_root)
+    else:
+        live_code = _require_live_git_state(
+            authorization["code"], supplied=observed_git_state,
+            repo_root=repo_root,
+        )
+        if live_code != authorization["code"]:
+            raise StageCBenchmarkIntegrityError(
+                "C8 initialization code binding drifted"
+            )
+        report = validate_fixed_c7_report(
+            authorization["c7_report_path"], repo_root=repo_root
+        )
+        if (
+            report["canonical_digest"]
+            != authorization["c7_report_canonical_digest"]
+            or report["c8_validated_archive_ref"]["tree"]
+            != authorization["c7_archive_tree"]
+        ):
+            raise StageCBenchmarkIntegrityError(
+                "C8 initialization C7 evidence/archive binding drifted"
+            )
+        root = _require_fresh_root(output_root)
+    root = _require_fresh_root(root)
     root.mkdir(parents=True, exist_ok=True)
     rows = _pending_rows(plan)
     table = _failure_table(plan, rows)
@@ -988,7 +1604,9 @@ def initialize_c8_output_root(
 def _validate_initialized_controls(
     root: Path, plan: ExecutionPlan, estimate: StageCEstimate, *,
     require_issuer: bool = True, validate_checkpoint: bool = True,
+    trusted_recovery_context: Any | None = None,
 ) -> dict[str, Any]:
+    recovery = _trusted_recovery_c8_record(trusted_recovery_context)
     for name in _CONTROL_NAMES:
         path = root / name
         if path.is_symlink() or not path.is_file():
@@ -999,11 +1617,20 @@ def _validate_initialized_controls(
         raise StageCBenchmarkIntegrityError("C8 initialized execution plan drifted")
     if _strict_json(root / "preflight.json") != estimate.to_dict():
         raise StageCBenchmarkIntegrityError("C8 initialized preflight drifted")
-    _validate_formal_preflight(estimate, plan, require_issuer=require_issuer)
     authorization = _strict_json(root / AUTHORIZATION_FILENAME)
     validate_c8_launch_authorization(
-        authorization, plan=plan, estimate=estimate, output_root=root
+        authorization, plan=plan, estimate=estimate, output_root=root,
+        trusted_recovery_context=recovery,
     )
+    if recovery is None:
+        _validate_formal_preflight(
+            estimate, plan, require_issuer=require_issuer
+        )
+    else:
+        _validate_formal_preflight(
+            estimate, plan, require_issuer=require_issuer,
+            projections=authorization.get("projections"),
+        )
     if validate_checkpoint:
         _validate_checkpoint_controls(root, plan)
     return authorization
@@ -1022,6 +1649,7 @@ def _result_row(
     unit: Any, result: Any, *, claim_token: str,
     caps: Mapping[str, Any], root: Path, plan: ExecutionPlan,
     estimate: StageCEstimate, observed_git_state: Mapping[str, Any],
+    trusted_recovery_context: Any | None = None,
 ) -> dict[str, Any]:
     from .stage_c_artifacts import validate_execution_unit
 
@@ -1075,6 +1703,7 @@ def _result_row(
             expected_provenance_bindings=expected_bindings,
             observed_git_state=observed_git_state, caps=caps,
             require_runner_telemetry=True,
+            trusted_recovery_context=trusted_recovery_context,
         )
         if state == "succeeded" and not validation.resumable:
             state = "tampered"
@@ -1110,6 +1739,7 @@ def _exception_row(
     unit: Any, error: BaseException, *, claim_token: str,
     caps: Mapping[str, Any], root: Path, plan: ExecutionPlan,
     estimate: StageCEstimate, observed_git_state: Mapping[str, Any],
+    trusted_recovery_context: Any | None = None,
 ) -> dict[str, Any]:
     retained = getattr(error, "stage_c_unit_result", None)
     if retained is not None:
@@ -1117,6 +1747,7 @@ def _exception_row(
             unit, retained, claim_token=claim_token, caps=caps, root=root,
             plan=plan, estimate=estimate,
             observed_git_state=observed_git_state,
+            trusted_recovery_context=trusted_recovery_context,
         )
     return {
         "unit_key": unit.key.to_dict(),
@@ -1375,7 +2006,8 @@ def _claim_c8_unit(root: Path, plan: ExecutionPlan, unit: Any) -> str:
 
 
 def _selected_attempt_totals(
-    root: Path, rows: Sequence[Mapping[str, Any]], caps: Mapping[str, Any]
+    root: Path, rows: Sequence[Mapping[str, Any]], caps: Mapping[str, Any], *,
+    trusted_recovery_context: Any | None = None,
 ) -> list[str]:
     from .stage_c_artifacts import validate_execution_unit
 
@@ -1392,6 +2024,7 @@ def _selected_attempt_totals(
         checked = validate_execution_unit(
             attempt, expected_unit_identity=row.get("unit_key"), caps=caps,
             require_runner_telemetry=True,
+            trusted_recovery_context=trusted_recovery_context,
         )
         if checked.l0_l1_bytes > caps["bytes_per_l0_l1_execution_unit_max"]:
             errors.append(
@@ -1532,6 +2165,8 @@ def run_c8_shard(
     device: str = "cpu",
     caps: Mapping[str, Any] | None = None,
     observed_git_state: Mapping[str, Any] | None = None,
+    repo_root: Path | str | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> tuple[Any, ...]:
     """Run a disjoint shard and durably checkpoint after every unit.
 
@@ -1543,17 +2178,54 @@ def run_c8_shard(
 
     if not isinstance(plan, ExecutionPlan) or not isinstance(estimate, StageCEstimate):
         raise TypeError("plan and estimate must be formal Stage C objects")
+    recovery = _trusted_recovery_c8_record(trusted_recovery_context)
     root = Path(os.path.abspath(os.fspath(output_root)))
+    if recovery is not None:
+        _require_recovery_root(recovery, root)
+        if repo_root is not None and Path(repo_root).resolve() != Path(
+            recovery.repo_root
+        ).resolve():
+            raise StageCBenchmarkIntegrityError(
+                "repo_root differs from recovery C8 authority repository"
+            )
     # Static controls are immutable.  Checkpoint controls are mutable across
     # shard processes and must only be read while holding their lock; reading
     # failure_table.json and batch_status.json between their two atomic
     # replacements would otherwise create a false tamper failure.
     authorization = _validate_initialized_controls(
-        root, plan, estimate, validate_checkpoint=False
+        root, plan, estimate, validate_checkpoint=False,
+        trusted_recovery_context=recovery,
     )
-    live_code = _require_live_git_state(
-        authorization["code"], supplied=observed_git_state
-    )
+    if recovery is None:
+        live_code = _require_live_git_state(
+            authorization["code"], supplied=observed_git_state,
+            repo_root=repo_root,
+        )
+        artifact_context = None
+    else:
+        live_code = _recovery_source_state(recovery, "formal")
+        if observed_git_state is not None and _plain(observed_git_state) != live_code:
+            raise StageCBenchmarkIntegrityError(
+                "supplied C8 Git state differs from recovery source authority"
+            )
+        if live_code != authorization["source"]["execution_git_state"]:
+            raise StageCBenchmarkIntegrityError(
+                "C8 shard recovery code binding drifted"
+            )
+        report = validate_fixed_c7_report(
+            _recovery_report_path(recovery), repo_root=recovery.repo_root,
+            trusted_recovery_context=recovery,
+        )
+        if _recovery_projections(report) != authorization["projections"]:
+            raise StageCBenchmarkIntegrityError(
+                "C8 shard recovery C7 projection binding drifted"
+            )
+        artifact_context = recovery
+        backend_context = getattr(backend, "trusted_recovery_context", None)
+        if backend_context not in (recovery, _recovery_context(recovery)):
+            raise StageCBenchmarkIntegrityError(
+                "C8 shard backend lacks the authorized recovery context"
+            )
     requested = tuple(unit_digests)
     if not requested or len(requested) != len(set(requested)):
         raise ValueError("unit_digests must be non-empty and unique")
@@ -1588,6 +2260,7 @@ def run_c8_shard(
                     unit, error, claim_token=claim_token, caps=effective_caps,
                     root=root, plan=plan, estimate=estimate,
                     observed_git_state=live_code,
+                    trusted_recovery_context=artifact_context,
                 )
                 try:
                     _publish_checkpoint(
@@ -1611,6 +2284,7 @@ def run_c8_shard(
                     unit, error, claim_token=claim_token, caps=effective_caps,
                     root=root, plan=plan, estimate=estimate,
                     observed_git_state=live_code,
+                    trusted_recovery_context=artifact_context,
                 )
                 _publish_checkpoint(
                     root, plan, row, caps=effective_caps,
@@ -1628,6 +2302,7 @@ def run_c8_shard(
                 unit, result, claim_token=claim_token, caps=effective_caps,
                 root=root, plan=plan, estimate=estimate,
                 observed_git_state=live_code,
+                trusted_recovery_context=artifact_context,
             )
             _publish_checkpoint(
                 root, plan, row, caps=effective_caps, claim_token=claim_token
@@ -1640,6 +2315,7 @@ def _scan_rows(
     root: Path, plan: ExecutionPlan, estimate: StageCEstimate,
     *, observed_git_state: Mapping[str, Any],
     claim_tokens: Mapping[str, str | None] | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> tuple[list[dict[str, Any]], list[str]]:
     from .stage_c_artifacts import attempt_directories, validate_execution_unit
 
@@ -1691,6 +2367,7 @@ def _scan_rows(
                 expected_provenance_bindings=expected,
                 observed_git_state=observed_git_state, caps=caps,
                 require_runner_telemetry=True,
+                trusted_recovery_context=trusted_recovery_context,
             )
             l0_l1_bytes = checked.l0_l1_bytes
             l2_bytes = checked.l2_bytes
@@ -1721,7 +2398,10 @@ def _scan_rows(
             "l2_bytes": l2_bytes,
             "total_bytes": total_bytes,
         })
-    errors.extend(_selected_attempt_totals(root, rows, caps))
+    errors.extend(_selected_attempt_totals(
+        root, rows, caps,
+        trusted_recovery_context=trusted_recovery_context,
+    ))
     return rows, errors
 
 
@@ -1730,10 +2410,21 @@ def finalize_c8_output_root(
     plan: ExecutionPlan,
     *,
     observed_git_state: Mapping[str, Any] | None = None,
+    repo_root: Path | str | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> dict[str, Any]:
     """Rescan exact one-attempt layout and atomically publish final controls."""
 
+    recovery = _trusted_recovery_c8_record(trusted_recovery_context)
     root = Path(os.path.abspath(os.fspath(output_root)))
+    if recovery is not None:
+        _require_recovery_root(recovery, root)
+        if repo_root is not None and Path(repo_root).resolve() != Path(
+            recovery.repo_root
+        ).resolve():
+            raise StageCBenchmarkIntegrityError(
+                "repo_root differs from recovery C8 authority repository"
+            )
     # The lifecycle lock waits for all shards.  The exclusive activity lock
     # additionally proves that no artifact writer outside the normal shard
     # call stack is active while finalization scans the tree.
@@ -1747,10 +2438,34 @@ def finalize_c8_output_root(
         authorization = _validate_initialized_controls(
             root, plan, estimate, require_issuer=False,
             validate_checkpoint=False,
+            trusted_recovery_context=recovery,
         )
-        code = _require_live_git_state(
-            authorization["code"], supplied=observed_git_state
-        )
+        if recovery is None:
+            code = _require_live_git_state(
+                authorization["code"], supplied=observed_git_state,
+                repo_root=repo_root,
+            )
+            artifact_context = None
+        else:
+            code = _recovery_source_state(recovery, "formal")
+            if observed_git_state is not None and _plain(observed_git_state) != code:
+                raise StageCBenchmarkIntegrityError(
+                    "supplied C8 Git state differs from recovery source authority"
+                )
+            if code != authorization["source"]["execution_git_state"]:
+                raise StageCBenchmarkIntegrityError(
+                    "C8 finalization recovery code binding drifted"
+                )
+            report = validate_fixed_c7_report(
+                _recovery_report_path(recovery),
+                repo_root=recovery.repo_root,
+                trusted_recovery_context=recovery,
+            )
+            if _recovery_projections(report) != authorization["projections"]:
+                raise StageCBenchmarkIntegrityError(
+                    "C8 finalization recovery C7 projection binding drifted"
+                )
+            artifact_context = recovery
         current_rows, current_status = _validate_checkpoint_controls(
             root, plan, allowed_lifecycle=("running", "blocked")
         )
@@ -1771,6 +2486,7 @@ def finalize_c8_output_root(
         rows, errors = _scan_rows(
             root, plan, estimate, observed_git_state=code,
             claim_tokens=claim_tokens,
+            trusted_recovery_context=artifact_context,
         )
         # An online hard-cap or integrity failure is an immutable part of this
         # attempt.  A later clean rescan must not erase the reason the batch

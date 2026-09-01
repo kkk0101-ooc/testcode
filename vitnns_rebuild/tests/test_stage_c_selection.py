@@ -356,6 +356,109 @@ def test_build_selection_exact_candidates_ranking_and_schema(evidence):
     selection.validate_stage_c_selection_report(report, evidence=evidence, input_hashes=_input_hashes(evidence))
 
 
+def test_recovery_context_requires_outer_c8_authority(evidence):
+    with pytest.raises(
+        selection.StageCSelectionIntegrityError,
+        match="requires its outer launch authority",
+    ):
+        selection.validate_c8_calibration_evidence(
+            evidence, trusted_recovery_context={
+                "recovery_binding": object(),
+                "recovery_launch_record": object(),
+            },
+        )
+
+
+def test_recovery_input_model_hash_must_match_authority(
+    evidence, monkeypatch,
+):
+    recovery_sha = "4" * 64
+    recovery = {
+        "interpretation": selection._RECOVERY_INTERPRETATION,
+        "model": {
+            "identity": "RECOVERY_V2_NEW_ARTIFACT_NOT_HISTORICAL_2E718",
+            "state_dict_sha256": recovery_sha,
+            "canonical_tensor_digest": "5" * 64,
+        },
+        "recovery_binding": {
+            "path": "config/recovery.json", "file_sha256": "6" * 64,
+            "canonical_digest": "7" * 64,
+        },
+        "c7_launch": {
+            "path": "evidence/c7/launch.json",
+            "file_sha256": "8" * 64, "canonical_digest": "9" * 64,
+            "launch_commit": "1" * 40, "producer_commit": "2" * 40,
+            "producer_tree": "3" * 40,
+        },
+        "c7_report": {
+            "path": "evidence/c7/report.json",
+            "file_sha256": "a" * 64, "canonical_digest": "b" * 64,
+            "report_commit": "4" * 40, "status": "PASS",
+            "source_commit": "1" * 40,
+        },
+        "c8_launch": {
+            "file_sha256": "c" * 64, "canonical_digest": "d" * 64,
+            "launch_commit": "b" * 40,
+        },
+        "c8_execution_source": {"commit": "b" * 40, "dirty": False},
+    }
+    authority = object()
+    context = {"recovery_binding": object(), "recovery_launch_record": object()}
+    monkeypatch.setattr(
+        selection, "_validated_recovery_inputs",
+        lambda supplied, supplied_context: (authority, context, recovery),
+    )
+    monkeypatch.setattr(
+        selection, "validate_c8_calibration_evidence", lambda *_a, **_k: None,
+    )
+    hashes = _input_hashes(evidence)
+    assert hashes["model_sha256"] != recovery_sha
+    with pytest.raises(
+        selection.StageCSelectionIntegrityError,
+        match="model SHA-256 differs from recovery C8 authority",
+    ):
+        selection.build_stage_c_selection(
+            evidence, hashes, trusted_recovery_authority=authority,
+            trusted_recovery_context=context,
+        )
+
+
+def test_recovery_binding_validator_rejects_execution_source_drift():
+    value = {
+        "interpretation": selection._RECOVERY_INTERPRETATION,
+        "model": {
+            "identity": "RECOVERY_V2_NEW_ARTIFACT_NOT_HISTORICAL_2E718",
+            "state_dict_sha256": "4" * 64,
+            "canonical_tensor_digest": "5" * 64,
+        },
+        "recovery_binding": {
+            "path": "config/recovery.json", "file_sha256": "6" * 64,
+            "canonical_digest": "7" * 64,
+        },
+        "c7_launch": {
+            "path": "evidence/c7/launch.json",
+            "file_sha256": "8" * 64, "canonical_digest": "9" * 64,
+            "launch_commit": "1" * 40, "producer_commit": "2" * 40,
+            "producer_tree": "3" * 40,
+        },
+        "c7_report": {
+            "path": "evidence/c7/report.json",
+            "file_sha256": "a" * 64, "canonical_digest": "b" * 64,
+            "report_commit": "4" * 40, "status": "PASS",
+            "source_commit": "1" * 40,
+        },
+        "c8_launch": {
+            "file_sha256": "c" * 64, "canonical_digest": "d" * 64,
+            "launch_commit": "b" * 40,
+        },
+        "c8_execution_source": {"commit": "e" * 40, "dirty": False},
+    }
+    with pytest.raises(
+        selection.StageCSelectionIntegrityError, match="execution source differs",
+    ):
+        selection._validate_recovery_authority_binding(value)
+
+
 def test_na_propagates_to_aggregate_but_not_eligibility(evidence):
     changed = copy.deepcopy(evidence)
     record = next(item for item in changed["records"] if item["unit_key"]["method_id"] == NNS_METHOD_ID)

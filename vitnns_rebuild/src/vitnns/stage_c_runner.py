@@ -483,6 +483,7 @@ class ProductionStageCBackend:
         state_dict_path: Path | str | None = None,
         recovery_binding: Any | None = None,
         recovery_launch_record: Any | None = None,
+        recovery_c8_launch_record: Any | None = None,
         provenance_builder: Callable[..., Mapping[str, Any]] | None = None,
         config: Any = None,
         registry: Any = None,
@@ -496,9 +497,32 @@ class ProductionStageCBackend:
             raise TypeError("sample_loader must be callable")
         if model_loader is not None and not callable(model_loader):
             raise TypeError("model_loader must be callable or None")
-        # Recovery execution is authorized only by the paired, validated
-        # machine binding and C7 launch record.
-        if (recovery_binding is None) != (recovery_launch_record is None):
+        # Recovery execution is authorized either by the paired C7 authority
+        # or by the outer C8 authority that owns that exact historical pair.
+        if recovery_c8_launch_record is not None:
+            from .recovery_c8_launch import RecoveryC8LaunchRecord
+
+            if type(recovery_c8_launch_record) is not RecoveryC8LaunchRecord:
+                raise TypeError(
+                    "recovery_c8_launch_record must be a "
+                    "RecoveryC8LaunchRecord"
+                )
+            c8_binding = recovery_c8_launch_record.binding
+            c8_launch = recovery_c8_launch_record.c7_launch_record
+            if recovery_binding is not None and recovery_binding is not c8_binding:
+                raise StageCBackendError(
+                    "recovery_binding differs from the C8 launch authority"
+                )
+            if (
+                recovery_launch_record is not None
+                and recovery_launch_record is not c8_launch
+            ):
+                raise StageCBackendError(
+                    "recovery_launch_record differs from the C8 launch authority"
+                )
+            recovery_binding = c8_binding
+            recovery_launch_record = c8_launch
+        elif (recovery_binding is None) != (recovery_launch_record is None):
             raise TypeError(
                 "recovery_binding and recovery_launch_record must be provided together"
             )
@@ -527,6 +551,7 @@ class ProductionStageCBackend:
         self.state_dict_path = None if state_dict_path is None else Path(state_dict_path)
         self.recovery_binding = recovery_binding
         self.recovery_launch_record = recovery_launch_record
+        self.recovery_c8_launch_record = recovery_c8_launch_record
         self.provenance_builder = provenance_builder
         self.config = config
         self.registry = registry
@@ -563,11 +588,13 @@ class ProductionStageCBackend:
         self._active_image_scope: tuple[str, str] | None = None
 
     @property
-    def trusted_recovery_context(self) -> Mapping[str, Any] | None:
-        """Return the two already-validated recovery authorities, if present."""
+    def trusted_recovery_context(self) -> Any | None:
+        """Return the strongest supplied recovery authority, if present."""
 
         if self.recovery_binding is None:
             return None
+        if self.recovery_c8_launch_record is not None:
+            return self.recovery_c8_launch_record
         return {
             "recovery_binding": self.recovery_binding,
             "recovery_launch_record": self.recovery_launch_record,
@@ -579,6 +606,10 @@ class ProductionStageCBackend:
         if self.recovery_binding is not None:
             from .stage_c_provenance import recovery_model_provenance
 
+            if self.recovery_c8_launch_record is not None:
+                return recovery_model_provenance(
+                    self.recovery_c8_launch_record
+                )
             return recovery_model_provenance(
                 self.recovery_binding, self.recovery_launch_record
             )
