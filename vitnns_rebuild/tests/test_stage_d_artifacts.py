@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 from pathlib import Path
 
@@ -155,6 +156,162 @@ def test_closed_layout_success_validates_and_is_resumable(tmp_path: Path) -> Non
         writer.write_payload(payload_fixture())
     with pytest.raises(StageDAttemptNotEmptyError):
         StageDArtifactWriter(attempt, unit=group.units[0], group=group)
+
+
+def _trace_l0(mode: str) -> dict[str, object]:
+    l0: dict[str, object] = {
+        "endpoint_parity": 0.0, "trace_mode": mode,
+        "provenance_fragment": {"ig_result": {"selected_steps": 512}},
+        "map_execution_records": [{"status": "completed"}],
+        "method_id": NNS_METHOD_ID, "method_version": "1.0.0",
+        "comparison_line": "value_path",
+        "target_ref": "fixed_clean_attention_cls_head_direction",
+        "projection": "pixel_mass_to_patch_sum",
+        "sign_semantics": "signed",
+    }
+    contract_keys = (
+        "method_id", "method_version", "comparison_line",
+        "target_ref", "projection", "sign_semantics",
+    )
+    l0["nns_contract"] = {name: l0[name] for name in contract_keys}
+    l0["trace"] = {
+        "provenance_fragment": l0["provenance_fragment"],
+        "map_execution_records": l0["map_execution_records"],
+    }
+    return l0
+
+
+def _trace_payload(mode: str, *, include_l2_trace: bool = True) -> StageDUnitPayload:
+    audit: dict[str, np.ndarray] = {
+        "repeat_clean_metric_ready_map": np.zeros((56, 56), dtype=np.float32),
+        "raw_attribution": np.ones((2, 3), dtype=np.float32),
+    }
+    if include_l2_trace:
+        audit["nns_trace"] = np.ones((3, 4, 4), dtype=np.float32)
+    return StageDUnitPayload(
+        l0_scalars=_trace_l0(mode),
+        metric_ready_map=np.zeros((56, 56), dtype=np.float32),
+        fidelity_curves=np.zeros((2, 5, 21), dtype=np.float64),
+        audit_evidence=audit,
+    )
+
+
+def test_fast_trace_policy_filters_nns_trace_before_hashing(tmp_path: Path) -> None:
+    group = group_fixture(audit=False)
+    attempt = next_attempt_directory(tmp_path / "fast")
+    writer = StageDArtifactWriter(attempt, unit=group.units[0], group=group)
+    l0 = _trace_l0("fast")
+    writer.write_payload(StageDUnitPayload(
+        l0_scalars=l0,
+        metric_ready_map=np.zeros((56, 56), dtype=np.float32),
+        fidelity_curves=np.zeros((2, 5, 21), dtype=np.float64),
+    ))
+    manifest = writer.succeed(provenance=provenance_for(writer))
+
+    result = json.loads((attempt / RESULT_PATH).read_text(encoding="utf-8"))
+    assert result["trace_mode"] == "fast"
+    assert not {
+        "nns_contract", "trace", "provenance_fragment",
+        "map_execution_records",
+    } & set(result)
+    assert not (attempt / AUDIT_PATH).exists()
+    provenance = json.loads(
+        (attempt / PROVENANCE_PATH).read_text(encoding="utf-8")
+    )
+    assert provenance["bindings"]["artifact_inventory"] == [
+        item for item in manifest["artifacts"]
+        if item["path"] != PROVENANCE_PATH
+    ]
+    result_record = next(
+        item for item in manifest["artifacts"] if item["path"] == RESULT_PATH
+    )
+    assert result_record["sha256"] == hashlib.sha256(
+        (attempt / RESULT_PATH).read_bytes()
+    ).hexdigest()
+    assert validate_stage_d_attempt(
+        attempt, expected_unit=group.units[0], expected_group=group,
+    ).valid
+
+
+def test_full_trace_policy_requires_and_retains_all_trace_fields(tmp_path: Path) -> None:
+    group = group_fixture(audit=True)
+    missing_attempt = next_attempt_directory(tmp_path / "missing-full")
+    missing = StageDArtifactWriter(
+        missing_attempt, unit=group.units[0], group=group
+    )
+    with pytest.raises(StageDArtifactPolicyError, match="nns_trace"):
+        missing.write_payload(_trace_payload("full", include_l2_trace=False))
+
+    attempt = next_attempt_directory(tmp_path / "complete-full")
+    writer = StageDArtifactWriter(attempt, unit=group.units[0], group=group)
+    writer.write_payload(_trace_payload("full"))
+    manifest = writer.succeed(provenance=provenance_for(writer))
+    result = json.loads((attempt / RESULT_PATH).read_text(encoding="utf-8"))
+    assert result["trace_mode"] == "full"
+    assert {
+        "nns_contract", "trace", "provenance_fragment",
+        "map_execution_records",
+    } <= set(result)
+    with np.load(attempt / AUDIT_PATH, allow_pickle=False) as archive:
+        assert "nns_trace" in archive.files
+    provenance = json.loads(
+        (attempt / PROVENANCE_PATH).read_text(encoding="utf-8")
+    )
+    assert provenance["bindings"]["artifact_inventory"] == [
+        item for item in manifest["artifacts"]
+        if item["path"] != PROVENANCE_PATH
+    ]
+    assert validate_stage_d_attempt(
+        attempt, expected_unit=group.units[0], expected_group=group,
+    ).valid
+
+
+def test_trace_mode_must_match_the_typed_unit(tmp_path: Path) -> None:
+    group = group_fixture(audit=False)
+    writer = StageDArtifactWriter(
+        next_attempt_directory(tmp_path / "mismatch"),
+        unit=group.units[0], group=group,
+    )
+    payload = StageDUnitPayload(
+        l0_scalars=_trace_l0("full"),
+        metric_ready_map=np.zeros((56, 56), dtype=np.float32),
+        fidelity_curves=np.zeros((2, 5, 21), dtype=np.float64),
+    )
+    with pytest.raises(StageDArtifactPolicyError, match="disagrees"):
+        writer.write_payload(payload)
+
+
+def test_failure_transition_uses_the_filtered_fast_payload(tmp_path: Path) -> None:
+    group = group_fixture(audit=False)
+    attempt = next_attempt_directory(tmp_path / "fast-failure")
+    writer = StageDArtifactWriter(attempt, unit=group.units[0], group=group)
+    payload = StageDUnitPayload(
+        l0_scalars=_trace_l0("fast"),
+        metric_ready_map=np.zeros((56, 56), dtype=np.float32),
+        fidelity_curves=np.zeros((2, 5, 21), dtype=np.float64),
+    )
+    writer.write_payload(payload)
+    retained_l0 = json.loads((attempt / RESULT_PATH).read_text(encoding="utf-8"))
+    failure = {
+        "code": "SCIENTIFIC_INVALIDITY", "phase": "fidelity",
+        "source": "stage_d_scientific_execution",
+        "produced": [RESULT_PATH, MAP_PATH, CURVES_PATH], "absent": [],
+    }
+    writer.fail_scientifically(
+        failure=failure, provenance=provenance_for(
+            writer, failure=failure,
+            failure_l0_scalars=retained_l0,
+        ),
+    )
+
+    failure_l0 = json.loads((attempt / "L0/failure.json").read_text())[
+        "l0_scalars"
+    ]
+    assert failure_l0["trace_mode"] == "fast"
+    assert not {
+        "provenance_fragment", "map_execution_records",
+        "nns_contract", "trace",
+    } & set(failure_l0)
 
 
 def test_audit_has_one_consolidated_l2_and_non_audit_rejects_it(tmp_path: Path) -> None:
@@ -393,7 +550,7 @@ def test_non_string_manifest_artifact_path_returns_invalid(tmp_path: Path) -> No
 def test_exact_inventory_rejects_extra_symlink_and_hardlink(tmp_path: Path) -> None:
     attempt, _writer, group = write_complete(tmp_path)
     (attempt / "L3").mkdir()
-    (attempt / "L3" / "forbidden.bin").write_bytes(b"not-display-data")
+    (attempt / "L3" / "forbidden.dat").write_bytes(b"not-display-data")
     verdict = validate_stage_d_attempt(attempt, expected_unit=group.units[0], expected_group=group)
     assert not verdict.valid
     assert any(

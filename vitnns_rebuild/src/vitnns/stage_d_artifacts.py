@@ -27,7 +27,7 @@ from typing import Any
 
 import numpy as np
 
-from .stage_d_plan import StageDImageGroup, StageDUnit
+from .stage_d_plan import NNS_METHOD_ID, StageDImageGroup, StageDUnit
 from .stage_d_provenance import (
     DOCUMENT_TYPE as PROVENANCE_DOCUMENT_TYPE,
     FAILURE_DOCUMENT_TYPE,
@@ -73,6 +73,15 @@ _ATTEMPT_RE = re.compile(r"^attempt-(\d{6})$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _SAFE_ARRAY_KEY_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]*$")
 AUDIT_REPEAT_MAP_KEY = "repeat_clean_metric_ready_map"
+NNS_TRACE_KEY = "nns_trace"
+TRACE_MODES = frozenset({"fast", "full"})
+NNS_CONTRACT_KEYS = frozenset({
+    "method_id", "method_version", "comparison_line", "target_ref",
+    "projection", "sign_semantics",
+})
+NNS_TRACE_KEYS = frozenset({
+    "provenance_fragment", "map_execution_records",
+})
 _EXPECTED_NON_AUDIT = {
     STATUS_FILENAME, MANIFEST_FILENAME, RESULT_PATH, PROVENANCE_PATH, MAP_PATH,
     CURVES_PATH,
@@ -392,6 +401,111 @@ def _audit_arrays(value: Any) -> dict[str, np.ndarray]:
     return dict(sorted(arrays.items()))
 
 
+def _unit_trace_mode(unit: Any) -> str | None:
+    mode = (
+        unit.get("trace_mode")
+        if isinstance(unit, Mapping) and "trace_mode" in unit
+        else getattr(unit, "trace_mode", None)
+    )
+    if mode is not None and mode not in TRACE_MODES:
+        raise StageDArtifactPolicyError(
+            "unit trace_mode must be exactly 'fast' or 'full'"
+        )
+    return mode
+
+
+def _payload_trace_mode(
+    l0_scalars: Mapping[str, Any], unit: Any,
+) -> str | None:
+    unit_mode = _unit_trace_mode(unit)
+    mode = l0_scalars.get("trace_mode")
+    if mode is None:
+        # Attempts written before trace_mode was introduced remain valid.
+        return None
+    if mode not in TRACE_MODES:
+        raise StageDArtifactPolicyError(
+            "payload trace_mode must be exactly 'fast' or 'full'"
+        )
+    if unit_mode is not None and mode != unit_mode:
+        raise StageDArtifactPolicyError(
+            "payload trace_mode disagrees with the unit"
+        )
+    return mode
+
+
+def _apply_trace_policy(
+    l0_scalars: Mapping[str, Any], audit_evidence: Mapping[str, Any] | None,
+    unit: Any,
+) -> tuple[dict[str, Any], Mapping[str, Any] | None]:
+    """Filter fast trace material and fail closed on an incomplete full trace."""
+
+    l0 = _plain(l0_scalars, "l0_scalars")
+    audit = (
+        None if audit_evidence is None
+        else {key: value for key, value in audit_evidence.items()}
+    )
+    mode = _payload_trace_mode(l0, unit)
+    nns = getattr(unit, "method_id", None) == NNS_METHOD_ID
+    if mode == "fast" and nns:
+        l0.pop("nns_contract", None)
+        l0.pop("trace", None)
+        l0.pop("provenance_fragment", None)
+        l0.pop("map_execution_records", None)
+        if audit is not None:
+            repeat_map = audit.get(AUDIT_REPEAT_MAP_KEY)
+            audit = (
+                None if repeat_map is None
+                else {AUDIT_REPEAT_MAP_KEY: repeat_map}
+            )
+    elif mode == "full" and nns:
+        contract = l0.get("nns_contract")
+        if (
+            not isinstance(contract, Mapping)
+            or set(contract) != NNS_CONTRACT_KEYS
+            or any(
+                contract.get(name) != l0.get(name)
+                for name in NNS_CONTRACT_KEYS
+            )
+        ):
+            raise StageDArtifactPolicyError(
+                "full NNS payload requires the canonical l0 nns_contract"
+            )
+        trace = l0.get("trace")
+        if (
+            not isinstance(trace, Mapping)
+            or set(trace) != NNS_TRACE_KEYS
+            or trace.get("provenance_fragment")
+            != l0.get("provenance_fragment")
+            or trace.get("map_execution_records")
+            != l0.get("map_execution_records")
+        ):
+            raise StageDArtifactPolicyError(
+                "full NNS payload requires a bound canonical l0 trace"
+            )
+        if audit is None or NNS_TRACE_KEY not in audit:
+            raise StageDArtifactPolicyError(
+                "full NNS payload requires L2 nns_trace"
+            )
+        trace_array = np.asarray(audit[NNS_TRACE_KEY])
+        if (
+            trace_array.size == 0
+            or trace_array.dtype.kind not in {"b", "i", "u", "f"}
+            or (
+                trace_array.dtype.kind == "f"
+                and not np.isfinite(trace_array).all()
+            )
+        ):
+            raise StageDArtifactPolicyError(
+                "full NNS L2 nns_trace must be finite non-empty numeric data"
+            )
+    elif not nns:
+        l0.pop("nns_contract", None)
+        l0.pop("trace", None)
+        if audit is not None:
+            audit.pop(NNS_TRACE_KEY, None)
+    return l0, audit
+
+
 def _serialize_npy(array: np.ndarray) -> bytes:
     buffer = io.BytesIO()
     np.save(buffer, array, allow_pickle=False)
@@ -645,12 +759,21 @@ class StageDArtifactWriter:
             raise StageDArtifactWriterStateError("payload is already immutable")
         if not isinstance(payload, StageDUnitPayload):
             raise TypeError("payload must be StageDUnitPayload")
-        if payload.audit != self.unit.audit:
+        l0_scalars, audit_evidence = _apply_trace_policy(
+            payload.l0_scalars, payload.audit_evidence, self.unit
+        )
+        if (audit_evidence is not None) != self.unit.audit:
             raise StageDArtifactPolicyError(
                 "audit payload presence must exactly match the typed unit"
             )
+        retained_payload = StageDUnitPayload(
+            l0_scalars=l0_scalars,
+            metric_ready_map=payload.metric_ready_map,
+            fidelity_curves=payload.fidelity_curves,
+            audit_evidence=audit_evidence,
+        )
         values: list[tuple[str, bytes, str, str, Any, Any]] = []
-        result_raw = canonical_json_file_bytes(_plain(payload.l0_scalars))
+        result_raw = canonical_json_file_bytes(l0_scalars)
         values.append((RESULT_PATH, result_raw, "result", "json", "json", None))
         map_raw = _serialize_npy(payload.metric_ready_map)
         values.append((
@@ -662,8 +785,8 @@ class StageDArtifactWriter:
             CURVES_PATH, curves_raw, "fidelity_curves", "npz", "float64",
             [2, 5, 21],
         ))
-        if payload.audit_evidence is not None:
-            arrays = dict(payload.audit_evidence)
+        if audit_evidence is not None:
+            arrays = _audit_arrays(audit_evidence)
             audit_raw = _serialize_npz(arrays)
             values.append((
                 AUDIT_PATH, audit_raw, "audit_evidence", "npz",
@@ -684,7 +807,10 @@ class StageDArtifactWriter:
             )
             self._payload_records.append(record)
             self._maybe_fault(FAULT_AFTER_PAYLOAD)
-        self._payload = payload
+        # Keep the exact normalized payload whose bytes were published.  A
+        # later scientific-failure transition must never reconstruct evidence
+        # from the caller's pre-policy object.
+        self._payload = retained_payload
         return self.artifacts
 
     def write_l0_scalars(self, l0_scalars: Mapping[str, Any]) -> dict[str, Any]:
@@ -1214,6 +1340,49 @@ def _validate_headers(
         errors.append("manifest audit must be boolean")
 
 
+def _validate_persisted_trace_policy(
+    files: Mapping[str, tuple[Path, int]], unit: StageDUnit,
+    errors: list[str],
+) -> None:
+    """Validate trace retention from the bytes that were actually written."""
+
+    result_entry = files.get(RESULT_PATH)
+    if result_entry is None:
+        return
+    try:
+        l0 = _load_canonical_json(result_entry[0].read_bytes(), "result")
+        audit = (
+            _load_npz(files[AUDIT_PATH][0].read_bytes())
+            if AUDIT_PATH in files else None
+        )
+        if l0.get("trace_mode") is None:
+            # Legacy attempt written before trace-mode support.
+            return
+        mode = _payload_trace_mode(l0, unit)
+        nns = unit.method_id == NNS_METHOD_ID
+        trace_fields = {
+            name for name in (
+                "nns_contract", "trace", "provenance_fragment",
+                "map_execution_records",
+            )
+            if name in l0
+        }
+        has_l2_trace = isinstance(audit, Mapping) and NNS_TRACE_KEY in audit
+        if nns and mode == "fast":
+            if trace_fields or has_l2_trace:
+                raise StageDArtifactPolicyError(
+                    "fast NNS payload retained forbidden trace evidence"
+                )
+        elif nns:
+            _apply_trace_policy(l0, audit, unit)
+        elif {"nns_contract", "trace"} & trace_fields or has_l2_trace:
+            raise StageDArtifactPolicyError(
+                "matched payload retained NNS-only trace evidence"
+            )
+    except Exception as error:
+        errors.append(f"trace-mode artifact contract failed: {error}")
+
+
 def validate_stage_d_attempt(
     attempt_dir: str | Path, *,
     expected_unit: StageDUnit | Mapping[str, Any] | None = None,
@@ -1341,6 +1510,8 @@ def validate_stage_d_attempt(
                     f"missing={sorted(expected_files - set(files))}, "
                     f"extra={sorted(set(files) - expected_files)}"
                 )
+            if state == SUCCESS_STATUS and manifest_unit is not None:
+                _validate_persisted_trace_policy(files, manifest_unit, errors)
             if state == SCIENTIFIC_FAILURE_STATUS and FAILURE_PATH in files:
                 try:
                     failure_document = _load_canonical_json(

@@ -778,6 +778,18 @@ class StageDUnit:
     audit_overlay_id: str | None
     canonical_digest: str
 
+    @property
+    def trace_mode(self) -> str:
+        """Expose the runtime retention tier without changing unit identity.
+
+        The five preregistered audit images keep the complete attribution
+        trace.  Ordinary campaign units use the production ``fast`` path and
+        retain only the metric map, fidelity curves, and scalar provenance.
+        Keeping this as a derived property preserves the frozen plan digest.
+        """
+
+        return "full" if self.audit else "fast"
+
     @classmethod
     def create(
         cls, *, sample_id: str, selection_order: int, method_index: int,

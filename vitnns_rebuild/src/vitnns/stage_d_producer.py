@@ -30,7 +30,7 @@ from .stage_d_plan import (
     BLOCK_INDEX, CURVE_FRACTIONS, DIRECTIONS, FIDELITY_SCALE, FINE_CELL_COUNT,
     FROZEN_FIDELITY_CONTEXT_DIGEST, FROZEN_MODEL_CONTEXT_DIGEST,
     FROZEN_PLAN_CONTEXT_DIGEST, FROZEN_TARGET_CONTEXT_DIGEST, HEAD_INDEX,
-    METHOD_IDS, TARGET_ID,
+    METHOD_IDS, NNS_METHOD_ID, TARGET_ID,
     TIE_REPEAT_INDICES, StageDCurvePoint, StageDImageGroup,
     StageDExecutionPlan, StageDMapCoordinate, StageDUnit,
 )
@@ -497,11 +497,14 @@ def _backend_unit(group: StageDImageGroup, unit: StageDUnit) -> _StageDBackendUn
 
 
 class ProductionStageDBackend(ProductionStageCBackend):
-    """Stage D facade reusing Stage C's registered scientific dispatch."""
+    """Canonical Stage D facade over the registered Stage C dispatcher."""
 
     DEFAULT_FIDELITY_SEED_NAMESPACE = STAGE_D_FIDELITY_SEED_NAMESPACE
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(
+        self, *, trace_mode: str | None = None,
+        trace_builder: Callable[..., Any] | None = None, **kwargs: Any,
+    ) -> None:
         requested = kwargs.pop(
             "fidelity_seed_namespace", STAGE_D_FIDELITY_SEED_NAMESPACE
         )
@@ -509,6 +512,14 @@ class ProductionStageDBackend(ProductionStageCBackend):
             raise StageDProducerError(
                 "ProductionStageDBackend requires the frozen Stage D seed namespace"
             )
+        if trace_mode is not None:
+            from .stage_d_engine import validate_trace_mode
+
+            trace_mode = validate_trace_mode(trace_mode)
+        if trace_builder is not None and not callable(trace_builder):
+            raise TypeError("trace_builder must be callable or None")
+        self._stage_d_configured_trace_mode = trace_mode
+        self._stage_d_trace_builder = trace_builder
         super().__init__(
             fidelity_seed_namespace=STAGE_D_FIDELITY_SEED_NAMESPACE, **kwargs
         )
@@ -540,14 +551,17 @@ class ProductionStageDBackend(ProductionStageCBackend):
 
     def run_stage_d_unit(
         self, group: StageDImageGroup, unit: StageDUnit, *, device: str,
-        call_counter: Any,
+        call_counter: Any, trace_mode: str | None = None,
     ) -> StageDBackendPayload:
         active = getattr(self, "_active_stage_d_group", None)
         if active is not None and active.canonical_digest != group.canonical_digest:
             raise StageDProducerError(
                 "requested unit belongs to a different active image group"
             )
-        return self.run(unit, device=device, call_counter=call_counter)
+        return self.run(
+            unit, device=device, call_counter=call_counter,
+            trace_mode=trace_mode,
+        )
 
     def _retained_metric_array(self, result: Any, response: Any) -> np.ndarray:
         if response is None:
@@ -574,8 +588,42 @@ class ProductionStageDBackend(ProductionStageCBackend):
             resources=resources, lifecycle=lifecycle,
         )
 
+    def _ig_execution_summary(self, result: Any) -> dict[str, Any] | None:
+        """Skip attribution-trace serialization for canonical fast units."""
+
+        if getattr(self, "_active_stage_d_trace_mode", None) == "fast":
+            return None
+        return super()._ig_execution_summary(result)
+
+    def _method_result_dict(self, result: Any) -> dict[str, Any]:
+        """Avoid materializing NNS provenance JSON on the fast path."""
+
+        if (
+            getattr(self, "_active_stage_d_trace_mode", None) == "fast"
+            and getattr(result, "method_id", None) == NNS_METHOD_ID
+        ):
+            na = getattr(result, "na", None)
+            comparison_line = getattr(result, "comparison_line", None)
+            sign_semantics = getattr(result, "sign_semantics", None)
+            return {
+                "method_id": result.method_id,
+                "method_version": result.method_version,
+                "comparison_line": getattr(
+                    comparison_line, "value", comparison_line
+                ),
+                "target_ref": result.fidelity_target,
+                "status": "NA" if na is not None else "OK",
+                "na": None if na is None else na.to_dict(),
+                "projection": result.projection,
+                "sign_semantics": getattr(
+                    sign_semantics, "value", sign_semantics
+                ),
+            }
+        return super()._method_result_dict(result)
+
     def run(
-        self, unit: Any, *, device: str, call_counter: Any
+        self, unit: Any, *, device: str, call_counter: Any,
+        trace_mode: str | None = None,
     ) -> StageDBackendPayload:
         if isinstance(unit, StageDUnit):
             group = getattr(self, "_active_stage_d_group", None)
@@ -584,25 +632,45 @@ class ProductionStageDBackend(ProductionStageCBackend):
                     "a StageDUnit may run only inside image_group_scope"
                 )
             unit = self.adapt_unit(group, unit)
+        from .stage_d_engine import apply_trace_policy, resolve_trace_mode
+
+        selected_trace_mode = resolve_trace_mode(
+            unit, trace_mode=trace_mode,
+            configured_mode=self._stage_d_configured_trace_mode,
+        )
+        if hasattr(self, "_active_stage_d_trace_mode"):
+            raise StageDProducerError(
+                "ProductionStageDBackend does not support concurrent trace execution"
+            )
+        self._active_stage_d_trace_mode = selected_trace_mode
         # UnitPayload performs Stage C's 14x14 validation, so invoke the
         # composed dispatcher directly under the same integrity/counter path
         # and rely on this subclass's StageDUnitPayload factory.
         try:
-            return super().run(unit, device=device, call_counter=call_counter)
-        except StageCScientificInvalidity as error:
-            partial = error.partial_evidence
-            if partial is not None:
-                partial = StageDPartialEvidence(
-                    l0_scalars=partial.l0_scalars,
-                    metric_ready_map=partial.metric_ready_map,
-                    fidelity_curves=partial.fidelity_curves,
-                    audit_evidence=partial.audit_evidence,
+            try:
+                payload = super().run(
+                    unit, device=device, call_counter=call_counter
                 )
-            raise StageDScientificFailure(
-                error.failure_code, phase=error.phase,
-                l0_scalars=error.l0_scalars, details=error.details,
-                partial_evidence=partial,
-            ) from error
+            except StageCScientificInvalidity as error:
+                partial = error.partial_evidence
+                if partial is not None:
+                    partial = StageDPartialEvidence(
+                        l0_scalars=partial.l0_scalars,
+                        metric_ready_map=partial.metric_ready_map,
+                        fidelity_curves=partial.fidelity_curves,
+                        audit_evidence=partial.audit_evidence,
+                    )
+                raise StageDScientificFailure(
+                    error.failure_code, phase=error.phase,
+                    l0_scalars=error.l0_scalars, details=error.details,
+                    partial_evidence=partial,
+                ) from error
+            return apply_trace_policy(
+                payload, unit=unit, trace_mode=selected_trace_mode,
+                trace_builder=self._stage_d_trace_builder,
+            )
+        finally:
+            del self._active_stage_d_trace_mode
 
 
 def _context_field(context: Any, name: str) -> Any:
@@ -1057,6 +1125,16 @@ def run_stage_d_execution_unit(
             "resources": disk_resources,
         }
     except StageDScientificFailure as error:
+        from .stage_d_engine import apply_partial_trace_policy
+
+        trace_mode = unit.trace_mode
+        retained_partial = apply_partial_trace_policy(
+            error.partial_evidence, unit=unit, trace_mode=trace_mode
+        )
+        retained_failure_l0 = apply_partial_trace_policy(
+            StageDPartialEvidence(l0_scalars=error.l0_scalars),
+            unit=unit, trace_mode=trace_mode,
+        ).l0_scalars
         failure: dict[str, Any] = {
             "code": error.failure_code, "phase": error.phase,
         }
@@ -1068,15 +1146,13 @@ def run_stage_d_execution_unit(
             normalize_stage_d_scientific_failure,
             stage_d_scientific_failure_artifact,
         )
-        produced_records = _write_partial_evidence(
-            writer, error.partial_evidence, unit
-        )
+        produced_records = _write_partial_evidence(writer, retained_partial, unit)
         produced = [item["path"] for item in produced_records]
         normalized = normalize_stage_d_scientific_failure(
             failure, audit=unit.audit, produced=produced,
         )
         _normalized, failure_record, _raw = stage_d_scientific_failure_artifact(
-            normalized, l0_scalars=error.l0_scalars, audit=unit.audit,
+            normalized, l0_scalars=retained_failure_l0, audit=unit.audit,
             produced=produced,
         )
         resources = _measured_resources(meter.record)
@@ -1087,7 +1163,8 @@ def run_stage_d_execution_unit(
             resources=resources, inventory=[*produced_records, failure_record],
         ))
         manifest = writer.fail_scientifically_partial(
-            failure=normalized, provenance=provenance, l0_scalars=error.l0_scalars,
+            failure=normalized, provenance=provenance,
+            l0_scalars=retained_failure_l0,
         )
         disk_resources = dict(resources)
         disk_resources["l0_l1_payload_bytes"], disk_resources["l2_payload_bytes"] = (

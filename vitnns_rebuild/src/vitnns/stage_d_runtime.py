@@ -3011,6 +3011,105 @@ def _call_backend_factory(
     return factory(**keywords)
 
 
+def _trace_mode_for_unit(unit: Any) -> str:
+    """Return the closed trace policy for one execution unit.
+
+    New unit implementations expose ``trace_mode`` directly.  The D3 plan
+    objects predate that field, so their frozen audit split is the compatibility
+    source: ordinary units are fast and the bounded audit subset is full.
+    """
+
+    mode = (
+        unit.get("trace_mode")
+        if isinstance(unit, Mapping) and "trace_mode" in unit
+        else getattr(unit, "trace_mode", None)
+    )
+    audit = (
+        unit.get("audit")
+        if isinstance(unit, Mapping)
+        else getattr(unit, "audit", None)
+    )
+    if type(audit) is not bool:
+        raise StageDRuntimeIntegrityError(
+            "trace policy requires a boolean unit.audit"
+        )
+    expected = "full" if audit else "fast"
+    if mode is None:
+        mode = expected
+    if mode not in {"fast", "full"}:
+        raise StageDRuntimeIntegrityError(
+            "unit trace_mode must be exactly 'fast' or 'full'"
+        )
+    if mode != expected:
+        raise StageDRuntimeIntegrityError(
+            "unit trace_mode disagrees with unit.audit"
+        )
+    return mode
+
+
+def _accepts_keyword(
+    callable_value: Callable[..., Any], name: str, *, variadic: bool = True,
+) -> bool:
+    try:
+        parameters = inspect.signature(callable_value).parameters
+    except (TypeError, ValueError):
+        return False
+    return name in parameters or (variadic and any(
+        parameter.kind == inspect.Parameter.VAR_KEYWORD
+        for parameter in parameters.values()
+    ))
+
+
+class _TraceModeBackendProxy:
+    """Forward a per-unit trace policy through a legacy unit runner."""
+
+    def __init__(self, backend: Any, trace_mode: str) -> None:
+        self._backend = backend
+        self._trace_mode = trace_mode
+
+    def __getattr__(self, name: str) -> Any:
+        value = getattr(self._backend, name)
+        if name not in {"run_stage_d_unit", "run"} or not callable(value):
+            return value
+        if not _accepts_keyword(value, "trace_mode", variadic=False):
+            return value
+
+        def invoke(*args: Any, **kwargs: Any) -> Any:
+            kwargs["trace_mode"] = self._trace_mode
+            return value(*args, **kwargs)
+
+        return invoke
+
+
+def _call_unit_runner(
+    runner: Callable[..., Any], unit: StageDUnit, **keywords: Any,
+) -> Any:
+    """Invoke a unit runner, forwarding trace policy when it supports it.
+
+    Signature-aware forwarding keeps existing injected D4 runners usable while
+    ensuring the canonical runner receives the per-unit policy explicitly.
+    """
+
+    trace_mode = _trace_mode_for_unit(unit)
+    # A generic **kwargs wrapper may forward unknown keywords to a legacy
+    # runner, so only an explicit parameter proves this boundary owns the new
+    # contract.  Backend proxying below handles that compatibility case.
+    if _accepts_keyword(runner, "trace_mode", variadic=False):
+        keywords["trace_mode"] = trace_mode
+    elif "backend" in keywords:
+        backend = keywords["backend"]
+        backend_runner = getattr(backend, "run_stage_d_unit", None)
+        if not callable(backend_runner):
+            backend_runner = getattr(backend, "run", None)
+        if callable(backend_runner) and _accepts_keyword(
+            backend_runner, "trace_mode", variadic=False
+        ):
+            keywords["backend"] = _TraceModeBackendProxy(
+                backend, trace_mode
+            )
+    return runner(unit, **keywords)
+
+
 def _default_group_runner() -> Callable[..., Any]:
     try:
         from .stage_d_producer import run_stage_d_image_group
@@ -3292,8 +3391,9 @@ def run_stage_d_shard(
                         retry_document = retry_map.get(unit.canonical_digest)
                         try:
                             with _artifact_activity_lock(root, exclusive=False):
-                                raw = selected_unit_runner(
-                                    unit, output_root=root, backend=backend,
+                                raw = _call_unit_runner(
+                                    selected_unit_runner, unit,
+                                    output_root=root, backend=backend,
                                     context=runtime_context, claim=claim,
                                     group=group, plan=typed_plan,
                                     device=device,

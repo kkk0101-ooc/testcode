@@ -36,6 +36,17 @@ PRODUCTION_L0_KEYS = frozenset({
     "perturbations", "target_identity", "clean_tensor_hashes",
     "fidelity_enabled", "stability_enabled",
 })
+TRACE_MODES = frozenset({"fast", "full"})
+NNS_CONTRACT_KEYS = frozenset({
+    "method_id", "method_version", "comparison_line", "target_ref",
+    "projection", "sign_semantics",
+})
+NNS_TRACE_KEYS = frozenset({
+    "provenance_fragment", "map_execution_records",
+})
+_TRACELESS_PRODUCTION_L0_KEYS = (
+    PRODUCTION_L0_KEYS - NNS_TRACE_KEYS
+) | {"trace_mode"}
 CURVE_KEYS = frozenset({
     "status", "method_id", "comparison_line", "target_ref",
     "target_identity_sha256", "scale", "direction", "ranking_kind",
@@ -129,6 +140,79 @@ def _field(unit: Any, name: str) -> Any:
     if isinstance(unit, Mapping):
         return unit.get(name)
     return getattr(unit, name, None)
+
+
+def _trace_view(
+    errors: list[str], l0: Mapping[str, Any], unit: Any, *, nns: bool,
+) -> tuple[str | None, Mapping[str, Any] | None, Any]:
+    """Validate the mode envelope and expose retained full-trace values.
+
+    Payloads produced before the trace-mode contract remain readable.  Once
+    either the unit or payload declares a mode, however, the new closed shape
+    is mandatory and a full NNS payload cannot silently degrade to fast.
+    """
+
+    unit_mode = _field(unit, "trace_mode")
+    payload_mode = l0.get("trace_mode")
+    if payload_mode is None:
+        # ``StageDUnit.trace_mode`` is a derived runtime policy added after
+        # the original artifact schema.  Its presence must not reinterpret an
+        # already-persisted legacy L0 envelope as a malformed new envelope.
+        if set(l0) != PRODUCTION_L0_KEYS:
+            errors.append("production_l0_envelope_invalid")
+        fragment = l0.get("provenance_fragment")
+        return None, fragment if isinstance(fragment, Mapping) else None, l0.get(
+            "map_execution_records"
+        )
+    if unit_mode not in TRACE_MODES:
+        errors.append("unit_trace_mode_invalid")
+    if payload_mode not in TRACE_MODES:
+        errors.append("trace_mode_invalid")
+        return None, None, None
+    if unit_mode is not None and unit_mode != payload_mode:
+        errors.append("trace_mode_unit_mismatch")
+
+    expected = (
+        set(_TRACELESS_PRODUCTION_L0_KEYS)
+        if payload_mode == "fast" and nns
+        else set(PRODUCTION_L0_KEYS) | {"trace_mode"}
+    )
+    if payload_mode == "full" and nns:
+        expected.update({"nns_contract", "trace"})
+    if set(l0) != expected:
+        errors.append("production_l0_envelope_invalid")
+
+    if not nns:
+        fragment = l0.get("provenance_fragment")
+        return payload_mode, (
+            fragment if isinstance(fragment, Mapping) else None
+        ), l0.get("map_execution_records")
+    if payload_mode == "fast":
+        return payload_mode, None, None
+    contract = l0.get("nns_contract")
+    if (
+        not isinstance(contract, Mapping)
+        or set(contract) != NNS_CONTRACT_KEYS
+        or any(contract.get(name) != l0.get(name) for name in NNS_CONTRACT_KEYS)
+    ):
+        errors.append("nns_contract_invalid")
+    trace = l0.get("trace")
+    if not isinstance(trace, Mapping) or set(trace) != NNS_TRACE_KEYS:
+        errors.append("nns_trace_invalid")
+        return payload_mode, None, None
+    fragment = trace.get("provenance_fragment")
+    records = trace.get("map_execution_records")
+    if not isinstance(fragment, Mapping):
+        errors.append("nns_trace_provenance_missing")
+        fragment = None
+    if not isinstance(records, list):
+        errors.append("nns_trace_execution_records_missing")
+        records = None
+    if fragment != l0.get("provenance_fragment") or records != l0.get(
+        "map_execution_records"
+    ):
+        errors.append("nns_trace_binding_invalid")
+    return payload_mode, fragment, records
 
 
 def _number(value: Any) -> bool:
@@ -379,6 +463,7 @@ def _close(left: Any, right: Any, *, atol: float, rtol: float) -> bool:
 
 def _artifact_shapes(
     errors: list[str], metric: Any, curves: Any, audit: Any, *, audit_unit: bool,
+    trace_mode: str | None = None, nns: bool = False,
 ) -> tuple[np.ndarray | None, np.ndarray | None]:
     metric_array = np.asarray(metric) if isinstance(metric, np.ndarray) else None
     curve_array = np.asarray(curves) if isinstance(curves, np.ndarray) else None
@@ -397,6 +482,24 @@ def _artifact_shapes(
                 errors.append("audit_repeat_map_invalid")
     elif audit is not None:
         errors.append("non_audit_evidence_present")
+    nns_trace = audit.get("nns_trace") if isinstance(audit, Mapping) else None
+    if trace_mode == "full" and nns:
+        trace_array = (
+            np.asarray(nns_trace) if isinstance(nns_trace, np.ndarray) else None
+        )
+        if (
+            trace_array is None or trace_array.size == 0
+            or trace_array.dtype.kind not in {"b", "i", "u", "f"}
+            or (
+                trace_array.dtype.kind == "f"
+                and not np.isfinite(trace_array).all()
+            )
+        ):
+            errors.append("nns_l2_trace_missing_or_invalid")
+    elif trace_mode == "fast" and isinstance(audit, Mapping) and (
+        "nns_trace" in audit
+    ):
+        errors.append("fast_nns_l2_trace_present")
     return metric_array, curve_array
 
 
@@ -665,7 +768,11 @@ def _top20_checks(errors: list[str], l0: Mapping[str, Any], records: tuple[dict[
             errors.append(f"top20_value_invalid:{repeat}")
 
 
-def _execution_checks(errors: list[str], l0: Mapping[str, Any], unit: Any) -> None:
+def _execution_checks(
+    errors: list[str], l0: Mapping[str, Any], unit: Any, *,
+    trace_mode: str | None = None, trace_records: Any = None,
+    scientific_fragment: Mapping[str, Any] | None = None,
+) -> None:
     method = _field(unit, "method_id")
     lifecycle = l0.get("lifecycle")
     if not isinstance(lifecycle, Mapping) or set(lifecycle) != {"integrity", "restoration"}:
@@ -712,7 +819,12 @@ def _execution_checks(errors: list[str], l0: Mapping[str, Any], unit: Any) -> No
             )
         ):
             errors.append("lifecycle_restoration_failed")
-    records = l0.get("map_execution_records")
+    if trace_mode == "fast" and method == NNS_METHOD_ID:
+        return
+    records = (
+        l0.get("map_execution_records")
+        if trace_mode is None or method != NNS_METHOD_ID else trace_records
+    )
     expected = [("clean", 0)] + (
         [("repeat_clean", 1)] if _field(unit, "audit") is True else []
     )
@@ -745,10 +857,13 @@ def _execution_checks(errors: list[str], l0: Mapping[str, Any], unit: Any) -> No
         backward_calls = calls.get("backward_calls") if isinstance(calls, Mapping) else None
         if method == NNS_METHOD_ID:
             observed_ig = record.get("ig_result")
+            retained = (
+                l0.get("provenance_fragment")
+                if trace_mode is None else scientific_fragment
+            )
             retained_ig = (
-                l0.get("provenance_fragment", {}).get("ig_result")
-                if isinstance(l0.get("provenance_fragment"), Mapping)
-                else None
+                retained.get("ig_result")
+                if isinstance(retained, Mapping) else None
             )
             observed_shape_valid = (
                 isinstance(observed_ig, Mapping)
@@ -832,10 +947,15 @@ def validate_stage_d_scientific_evidence(
 
     errors: list[str] = []
     audit_unit = _field(unit, "audit") is True
-    metric_array, curve_array = _artifact_shapes(errors, metric, curves, audit, audit_unit=audit_unit)
     if not isinstance(l0, Mapping):
+        metric_array, curve_array = _artifact_shapes(
+            errors, metric, curves, audit, audit_unit=audit_unit
+        )
         return StageDScientificValidation(tuple(errors + ["l0_not_object"]), None)
     if set(l0) == {"endpoint_parity"}:
+        metric_array, curve_array = _artifact_shapes(
+            errors, metric, curves, audit, audit_unit=audit_unit
+        )
         value = l0.get("endpoint_parity")
         if not _number(value) or abs(float(value)) >= endpoint_parity_limit:
             errors.append("synthetic_endpoint_parity_failed")
@@ -844,11 +964,23 @@ def validate_stage_d_scientific_evidence(
             if isinstance(repeat, np.ndarray) and repeat.dtype == np.float32 and repeat.shape == (56, 56) and np.isfinite(repeat).all() and not np.allclose(metric_array, repeat, atol=repeatability_atol, rtol=repeatability_rtol):
                 errors.append("audit_repeatability_failed")
         return StageDScientificValidation(tuple(errors), None)
-    if set(l0) != PRODUCTION_L0_KEYS:
-        return StageDScientificValidation(tuple(errors + ["production_l0_envelope_invalid"]), None)
-
+    recognized_envelope = (
+        set(l0) == PRODUCTION_L0_KEYS
+        or "trace_mode" in l0
+    )
+    if not recognized_envelope:
+        return StageDScientificValidation(
+            tuple(errors + ["production_l0_envelope_invalid"]), None
+        )
     method = _field(unit, "method_id")
     nns = method == NNS_METHOD_ID
+    trace_mode, scientific_fragment, trace_records = _trace_view(
+        errors, l0, unit, nns=nns
+    )
+    metric_array, curve_array = _artifact_shapes(
+        errors, metric, curves, audit, audit_unit=audit_unit,
+        trace_mode=trace_mode, nns=nns,
+    )
     if method not in {NNS_METHOD_ID, MATCHED_METHOD_ID}:
         errors.append("unit_method_invalid")
     expected_projection = "pixel_mass_to_patch_sum" if nns else "patch_mass_to_pixel_uniform"
@@ -878,16 +1010,35 @@ def validate_stage_d_scientific_evidence(
         errors.append("l0_scope_or_identity_invalid")
 
     attempt_provenance = provenance
-    scientific_fragment = l0.get("provenance_fragment")
     target_identity = l0.get("target_identity")
     clean_hashes = l0.get("clean_tensor_hashes")
     target_digest = _identity_sha256(target_identity) if isinstance(target_identity, Mapping) else None
-    if not isinstance(scientific_fragment, Mapping) or not isinstance(target_identity, Mapping) or set(target_identity) != {"comparison_line", "target_ref", "clean_input_sha256", "frozen_target"} or not isinstance(clean_hashes, Mapping) or set(clean_hashes) != {"canonical_rgb_sha256", "normalized_tensor_sha256"} or any(not _sha(clean_hashes.get(name)) for name in ("canonical_rgb_sha256", "normalized_tensor_sha256")):
+    trace_optional = nns and trace_mode == "fast"
+    if (
+        (not trace_optional and not isinstance(scientific_fragment, Mapping))
+        or not isinstance(target_identity, Mapping)
+        or set(target_identity) != {
+            "comparison_line", "target_ref", "clean_input_sha256",
+            "frozen_target",
+        }
+        or not isinstance(clean_hashes, Mapping)
+        or set(clean_hashes) != {
+            "canonical_rgb_sha256", "normalized_tensor_sha256",
+        }
+        or any(
+            not _sha(clean_hashes.get(name))
+            for name in ("canonical_rgb_sha256", "normalized_tensor_sha256")
+        )
+    ):
         errors.append("target_identity_invalid")
     else:
         frozen = target_identity.get("frozen_target")
         candidate = frozen.get("candidate") if isinstance(frozen, Mapping) else None
-        if (target_identity.get("comparison_line") != "value_path" or target_identity.get("target_ref") != _field(unit, "target_id") or target_identity.get("clean_input_sha256") != clean_hashes.get("normalized_tensor_sha256") or frozen != scientific_fragment.get("target") or not _sha(target_identity.get("clean_input_sha256")) or not isinstance(candidate, Mapping) or candidate.get("block_index") != _field(unit, "block_index") or candidate.get("head_index") != _field(unit, "head_index")):
+        fragment_target = (
+            scientific_fragment.get("target")
+            if isinstance(scientific_fragment, Mapping) else None
+        )
+        if (target_identity.get("comparison_line") != "value_path" or target_identity.get("target_ref") != _field(unit, "target_id") or target_identity.get("clean_input_sha256") != clean_hashes.get("normalized_tensor_sha256") or (not trace_optional and frozen != fragment_target) or not _sha(target_identity.get("clean_input_sha256")) or not isinstance(candidate, Mapping) or candidate.get("block_index") != _field(unit, "block_index") or candidate.get("head_index") != _field(unit, "head_index")):
             errors.append("target_identity_binding_invalid")
     if isinstance(scientific_fragment, Mapping):
         _endpoint_checks(errors, scientific_fragment, nns=nns, limit=endpoint_parity_limit)
@@ -895,7 +1046,10 @@ def validate_stage_d_scientific_evidence(
             _ig_checks(errors, scientific_fragment, metric_array)
         else:
             _matched_checks(errors, scientific_fragment, metric_array)
-    _execution_checks(errors, l0, unit)
+    _execution_checks(
+        errors, l0, unit, trace_mode=trace_mode,
+        trace_records=trace_records, scientific_fragment=scientific_fragment,
+    )
 
     repeatability = l0.get("repeatability")
     if audit_unit:

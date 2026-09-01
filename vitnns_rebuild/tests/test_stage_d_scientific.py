@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import copy
 import json
 import math
 from types import SimpleNamespace
@@ -629,6 +630,76 @@ def test_complete_production_envelopes_validate_and_pair_without_values(
     assert set(nns.pair_binding or {}) == PAIR_BINDING_KEYS
     assert "responses" not in (nns.pair_binding or {})
     assert reconcile_stage_d_pair(nns, matched) == ()
+
+
+@pytest.mark.parametrize("derived_mode", ["fast", "full"])
+def test_legacy_l0_remains_valid_when_unit_has_derived_trace_mode(
+    derived_mode: str,
+) -> None:
+    fixture = _production_fixture(NNS_METHOD_ID)
+    fixture[4].trace_mode = derived_mode
+
+    verdict = _validate(fixture)
+
+    assert verdict.valid
+    assert "trace_mode_missing" not in verdict.errors
+
+
+def test_new_payload_trace_mode_must_match_unit_policy() -> None:
+    fixture = _production_fixture(NNS_METHOD_ID)
+    fixture[4].trace_mode = "full"
+    fixture[0]["trace_mode"] = "fast"
+    fixture[0].pop("provenance_fragment")
+    fixture[0].pop("map_execution_records")
+
+    assert "trace_mode_unit_mismatch" in _validate(fixture).errors
+
+
+def _with_trace_mode(fixture, mode: str):
+    l0, _metric, _curves, audit, unit, _provenance = fixture
+    unit.trace_mode = mode
+    l0["trace_mode"] = mode
+    if mode == "fast":
+        l0.pop("provenance_fragment")
+        l0.pop("map_execution_records")
+    else:
+        contract_names = (
+            "method_id", "method_version", "comparison_line",
+            "target_ref", "projection", "sign_semantics",
+        )
+        l0["nns_contract"] = {name: l0[name] for name in contract_names}
+        l0["trace"] = {
+            "provenance_fragment": copy.deepcopy(l0["provenance_fragment"]),
+            "map_execution_records": copy.deepcopy(l0["map_execution_records"]),
+        }
+        assert audit is not None
+        audit["nns_trace"] = np.ones((3, 4, 4), dtype=np.float32)
+    return fixture
+
+
+def test_fast_nns_accepts_only_the_explicitly_omitted_trace_fields() -> None:
+    fixture = _with_trace_mode(_production_fixture(NNS_METHOD_ID), "fast")
+    assert _validate(fixture).valid
+
+    fixture[0].pop("lifecycle")
+    assert "production_l0_envelope_invalid" in _validate(fixture).errors
+
+
+def test_full_nns_requires_and_validates_retained_trace() -> None:
+    fixture = _with_trace_mode(
+        _production_fixture(NNS_METHOD_ID, audit_unit=True), "full"
+    )
+    assert _validate(fixture).valid
+
+    fixture[0].pop("trace")
+    assert "production_l0_envelope_invalid" in _validate(fixture).errors
+
+    fixture = _with_trace_mode(
+        _production_fixture(NNS_METHOD_ID, audit_unit=True), "full"
+    )
+    assert fixture[3] is not None
+    fixture[3].pop("nns_trace")
+    assert "nns_l2_trace_missing_or_invalid" in _validate(fixture).errors
 
 
 def test_production_endpoint_boundary_is_recomputed_not_trusted() -> None:

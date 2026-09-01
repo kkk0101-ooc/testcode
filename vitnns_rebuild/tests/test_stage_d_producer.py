@@ -557,6 +557,51 @@ def test_production_adapter_translates_typed_stage_c_partial_evidence(
     assert (attempt / "L1/metric_ready_map.npy").is_file()
 
 
+def test_fast_scientific_failure_does_not_persist_nns_trace(plan, tmp_path, monkeypatch):
+    group, unit, root, context, claim = _execution_inputs(plan, tmp_path)
+    trace_l0 = {
+        "status": "NA",
+        "provenance_fragment": {"ig_result": {"attempts": [1]}},
+        "map_execution_records": [{"status": "failed"}],
+        "nns_contract": {"stale": True},
+        "trace": {"stale": True},
+    }
+    partial = StageCPartialEvidence(
+        l0_scalars=trace_l0,
+        metric_ready_map=np.ones((56, 56), dtype=np.float32),
+        audit_evidence={"nns_trace": np.ones(1, dtype=np.float32)},
+    )
+
+    def fail_scientifically(_backend, _unit, *, device, call_counter):
+        del device, call_counter
+        raise StageCScientificInvalidity(
+            "ig_conservation_failed", phase="ig_conservation",
+            l0_scalars=trace_l0, partial_evidence=partial,
+        )
+
+    monkeypatch.setattr(ProductionStageCBackend, "run", fail_scientifically)
+    backend = ProductionStageDBackend(sample_loader=lambda *_args: None)
+    backend._active_stage_d_group = group
+    result = run_stage_d_execution_unit(
+        unit, group=group, plan=plan, output_root=root, backend=backend,
+        context=context, claim=claim,
+    )
+
+    assert result["state"] == "scientific_failed"
+    attempt = Path(claim["attempt_path"])
+    result_l0 = json.loads((attempt / "L0/result.json").read_text())
+    failure_l0 = json.loads((attempt / "L0/failure.json").read_text())[
+        "l0_scalars"
+    ]
+    for retained in (result_l0, failure_l0):
+        assert retained["trace_mode"] == "fast"
+        assert not {
+            "provenance_fragment", "map_execution_records",
+            "nns_contract", "trace",
+        } & set(retained)
+    assert not (attempt / "L2/audit_evidence.npz").exists()
+
+
 def test_direct_fake_formal_and_synthetic_contexts_fail_before_backend_writer(plan, tmp_path):
     group, unit, root, issued, claim = _execution_inputs(plan, tmp_path / "base")
     base = {name: getattr(issued, name) for name in (
