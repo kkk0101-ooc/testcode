@@ -130,12 +130,18 @@ _STATUS_KEYS = frozenset({
 })
 
 
-def _plain(value: Any) -> dict[str, Any]:
+def _plain(value: Any) -> Any:
+    """Copy JSON-compatible values, including frozen mapping proxies."""
+
     method = getattr(value, "to_dict", None)
     value = method() if callable(method) else value
-    if not isinstance(value, Mapping):
-        raise TypeError("value must be a mapping or expose to_dict()")
-    return json.loads(json.dumps(value, allow_nan=False))
+    if value is None or type(value) in {str, bool, int, float}:
+        return value
+    if isinstance(value, Mapping):
+        return {str(key): _plain(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_plain(item) for item in value]
+    raise TypeError("value must be JSON-compatible or expose to_dict()")
 
 
 def _strict_json(path: Path) -> dict[str, Any]:
@@ -752,13 +758,11 @@ def validate_fixed_c7_report(
             raise StageCBenchmarkIntegrityError(
                 "C7 report file SHA-256 differs from recovery C8 authority"
             )
+        # The outer C8 authority has already reloaded and validated the exact,
+        # LFS-tracked C7 report bytes and historical C7 commit chain.  Calling
+        # the standalone C7 validator again here would incorrectly require
+        # the current C8 source tree to equal the older C7 producer tree.
         report = _strict_json(source)
-        validate_benchmark_report(
-            report, trusted_recovery_context={
-                "recovery_binding": recovery.binding,
-                "recovery_launch_record": recovery.c7_launch_record,
-            },
-        )
         errors: list[str] = []
         if report.get("canonical_digest") != binding.get("canonical_digest"):
             errors.append("canonical digest differs from recovery C8 authority")

@@ -181,6 +181,17 @@ def _read(path):
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
+def test_plain_accepts_recursively_frozen_authority_mappings():
+    frozen = MappingProxyType({
+        "outer": MappingProxyType({"value": 1}),
+        "items": (MappingProxyType({"flag": True}),),
+    })
+
+    assert c8._plain(frozen) == {
+        "outer": {"value": 1}, "items": [{"flag": True}],
+    }
+
+
 def _sha256(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
