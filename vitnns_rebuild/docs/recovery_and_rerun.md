@@ -164,6 +164,9 @@ SHA-256 `2e718037429f18ec77aa629471beb2e99993d7383375188bab777aba04d5e4d0`.
 The active amendment selects a recovery-v2 identity, but formal use remains
 blocked until a later clean commit updates and validates every machine binding
 and passes Stage A verification.
+The resulting recovery-v2 machine binding and Stage A PASS record are indexed in
+`docs/recovery_v2_stage_a_verification_20260901.md`; that record is preparation
+evidence only and is not a C7 launch authorization.
 
 ## Validation checks
 
