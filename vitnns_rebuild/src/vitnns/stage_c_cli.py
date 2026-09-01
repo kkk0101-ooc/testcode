@@ -17,6 +17,8 @@ from .stage_c_config import DEFAULT_STAGE_C_SCHEMA, load_stage_c_config, strict_
 from .stage_c_provenance import capture_git_state
 from . import stage_c_c8 as _stage_c_c8_runtime
 from .stage_c_benchmark import (
+    DIAGNOSTIC_GATE_FILENAME,
+    REPORT_FILENAME,
     StageCBenchmarkBlockedError,
     StageCBenchmarkIntegrityError,
     capture_benchmark_environment,
@@ -27,6 +29,11 @@ from .stage_c_benchmark import (
     write_benchmark_report,
     write_c7_diagnostic_gate,
     write_c7_launch_authorization,
+)
+from .recovery_c7_launch import (
+    RecoveryC7LaunchError,
+    capture_authorized_c7_source_state,
+    load_recovery_c7_launch_record,
 )
 from .stage_c_plan import (
     DEFAULT_ACCEPTANCE,
@@ -94,8 +101,6 @@ _C9_COMMANDS = frozenset({
     "c9-init", "c9-run-shard", "c9-finalize", "c9-validate",
 })
 _C10_COMMANDS = frozenset({"c10-build", "c10-validate"})
-
-
 class ArgumentError(ValueError):
     """Raised instead of allowing argparse to emit non-JSON errors."""
 
@@ -129,6 +134,16 @@ def _add_c9_plan_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--run-spec", type=Path, required=True)
 
 
+def _add_recovery_c7_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--recovery-c7-launch-record", type=Path,
+        help=(
+            "validated recovery-v2 launch authority; required for the exact "
+            "C7 diagnostic and formal scopes"
+        ),
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = _JSONArgumentParser(
         prog="vitnns-stage-c",
@@ -142,9 +157,10 @@ def build_parser() -> argparse.ArgumentParser:
     for name in ("run-sample", "run-batch"):
         command = commands.add_parser(name)
         _add_plan_arguments(command)
+        _add_recovery_c7_argument(command)
         command.add_argument("--output-root", type=Path, required=True)
         command.add_argument("--device", default="cpu")
-        command.add_argument("--state-dict", type=Path, default=DEFAULT_STATE_DICT)
+        command.add_argument("--state-dict", type=Path)
         command.add_argument(
             "--no-resume", action="store_true",
             help="always allocate a new attempt, preserving every old attempt",
@@ -161,14 +177,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     benchmark = commands.add_parser("benchmark")
     _add_plan_arguments(benchmark)
+    _add_recovery_c7_argument(benchmark)
     benchmark.add_argument("--output-root", type=Path, required=True)
     benchmark.add_argument("--device", default="cpu")
-    benchmark.add_argument("--state-dict", type=Path, default=DEFAULT_STATE_DICT)
+    benchmark.add_argument("--state-dict", type=Path)
     benchmark.add_argument("--c7-diagnostic-gate", type=Path, required=True)
 
     for name in ("validate", "aggregate", "c7-diagnostic-gate", "benchmark-report"):
         command = commands.add_parser(name)
         _add_plan_arguments(command)
+        _add_recovery_c7_argument(command)
         command.add_argument("--output-root", type=Path, required=True)
         if name in {"aggregate", "c7-diagnostic-gate", "benchmark-report"}:
             command.add_argument("--output", type=Path)
@@ -253,7 +271,8 @@ def _write_json(value: Any, stream: TextIO) -> None:
 
 
 def _load_pipeline(
-    args: argparse.Namespace, *, c8: bool = False, c9: bool = False
+    args: argparse.Namespace, *, c8: bool = False, c9: bool = False,
+    recovery_record: Any | None = None,
 ) -> tuple[Any, Any, Any, Any, Any, Any]:
     if c8 and c9:
         raise ValueError("a pipeline cannot be both C8 and C9")
@@ -263,13 +282,18 @@ def _load_pipeline(
         registry_kwargs["registry_path"] = args.registry
     if getattr(args, "data_root", None) is not None:
         registry_kwargs["data_root"] = args.data_root
+    if recovery_record is not None:
+        registry_kwargs["recovery_binding"] = recovery_record.binding
     if c8 or c9:
         # Planning must never decode or hash the 15 holdout images.  The
         # production backend later reads only a UnitSample already present in
         # the exact calibration plan.
         registry_kwargs["verify_live_assets"] = False
     registry = load_stage_c_registry(config, **registry_kwargs)
-    if c8:
+    if c8 or recovery_record is not None:
+        # Recovery C7 is a pre-C8 diagnostic/formal replay.  It must not
+        # consume the repository's historical C8 selection, even when that
+        # file exists at the configured default path.
         selection = None
     elif c9:
         # Formal C9 always consumes the repository-tracked canonical
@@ -573,12 +597,20 @@ def _default_backend_factory(
             "image_path": image_path,
         }
 
+    recovery_binding = getattr(args, "_recovery_binding", None)
+    state_dict_path = (
+        recovery_binding.model_path if recovery_binding is not None
+        else (getattr(args, "state_dict", None) or DEFAULT_STATE_DICT)
+    )
     return ProductionStageCBackend(
-        sample_loader=load_sample, state_dict_path=getattr(
-            args, "state_dict", DEFAULT_STATE_DICT
-        ),
+        sample_loader=load_sample, state_dict_path=state_dict_path,
+        recovery_binding=recovery_binding,
+        recovery_launch_record=getattr(args, "_recovery_launch_record", None),
         config=config, registry=registry, plan=plan, config_path=args.config,
-        code_state=capture_git_state(REPO_ROOT),
+        code_state=(
+            getattr(args, "_recovery_code_state", None)
+            or capture_git_state(REPO_ROOT)
+        ),
     )
 
 
@@ -610,6 +642,158 @@ def _is_exact_c7_diagnostic_plan(plan: Any, config: Any) -> bool:
 def _default_report_path(output_root: Path, suffix: str) -> Path:
     root = Path(output_root)
     return root.with_name(root.name + suffix)
+
+
+def _same_path(left: Path | str, right: Path | str) -> bool:
+    return Path(left).resolve() == Path(right).resolve()
+
+
+def _recovery_c7_report_paths(record: Any) -> tuple[Path, Path]:
+    return (
+        Path(record.reports_root) / DIAGNOSTIC_GATE_FILENAME,
+        Path(record.reports_root) / REPORT_FILENAME,
+    )
+
+
+def _validate_recovery_c7_paths(
+    args: argparse.Namespace, record: Any, *, diagnostic: bool, formal: bool,
+) -> None:
+    """Reject every caller path that disagrees with launch authority."""
+
+    if not _same_path(
+        args.config,
+        REPO_ROOT / record.document["c7_contracts"]["stage_c_config"]["path"],
+    ):
+        raise ArgumentError("--config disagrees with recovery C7 launch record")
+    contract = "diagnostic_run_spec" if diagnostic else "formal_run_spec"
+    if not _same_path(
+        args.run_spec, REPO_ROOT / record.document["c7_contracts"][contract]["path"]
+    ):
+        raise ArgumentError("--run-spec disagrees with recovery C7 launch record")
+    if getattr(args, "registry", None) is not None and not _same_path(
+        args.registry, REPO_ROOT / record.binding.stage_c_input["registry_path"]
+    ):
+        raise ArgumentError("--registry disagrees with recovery C7 launch record")
+    if getattr(args, "data_root", None) is not None and not _same_path(
+        args.data_root, record.data_root
+    ):
+        raise ArgumentError("--data-root disagrees with recovery C7 launch record")
+    if getattr(args, "state_dict", None) is not None and not _same_path(
+        args.state_dict, record.model_path
+    ):
+        raise ArgumentError("--state-dict disagrees with recovery C7 launch record")
+    expected_root = record.diagnostic_root if diagnostic else record.formal_root
+    if not _same_path(args.output_root, expected_root):
+        raise ArgumentError("--output-root disagrees with recovery C7 launch record")
+
+    gate_path, report_path = _recovery_c7_report_paths(record)
+    if args.command == "c7-diagnostic-gate":
+        requested = args.output or gate_path
+        if not _same_path(requested, gate_path):
+            raise ArgumentError(
+                "--output disagrees with recovery C7 diagnostic gate path"
+            )
+        args.output = gate_path
+    elif args.command == "benchmark-report":
+        requested = args.output or report_path
+        if not _same_path(requested, report_path):
+            raise ArgumentError(
+                "--output disagrees with recovery C7 benchmark report path"
+            )
+        args.output = report_path
+        if not _same_path(args.c7_diagnostic_gate, gate_path):
+            raise ArgumentError(
+                "--c7-diagnostic-gate disagrees with recovery C7 launch record"
+            )
+    elif (
+        formal
+        and getattr(args, "c7_diagnostic_gate", None) is not None
+        and not _same_path(args.c7_diagnostic_gate, gate_path)
+    ):
+        raise ArgumentError(
+            "--c7-diagnostic-gate disagrees with recovery C7 launch record"
+        )
+
+
+def _trusted_recovery_context(record: Any) -> dict[str, Any]:
+    return {
+        "recovery_binding": record.binding,
+        "recovery_launch_record": record,
+    }
+
+
+def _prevalidate_recovery_c7_arguments(
+    args: argparse.Namespace, record: Any,
+) -> None:
+    """Validate caller-controlled bindings before loading the pipeline."""
+
+    contracts = record.document["c7_contracts"]
+    if not _same_path(
+        args.config, REPO_ROOT / contracts["stage_c_config"]["path"]
+    ):
+        raise ArgumentError("--config disagrees with recovery C7 launch record")
+    diagnostic_spec = _same_path(
+        args.run_spec, REPO_ROOT / contracts["diagnostic_run_spec"]["path"]
+    )
+    formal_spec = _same_path(
+        args.run_spec, REPO_ROOT / contracts["formal_run_spec"]["path"]
+    )
+    if not (diagnostic_spec or formal_spec):
+        raise ArgumentError("--run-spec disagrees with recovery C7 launch record")
+    if args.command == "c7-diagnostic-gate" and not diagnostic_spec:
+        raise ArgumentError(
+            "c7-diagnostic-gate requires the recovery diagnostic run spec"
+        )
+    if (
+        args.command in {"benchmark", "benchmark-report"}
+        and not formal_spec
+    ):
+        raise ArgumentError(
+            f"{args.command} requires the recovery formal run spec"
+        )
+    if args.command in {"validate", "aggregate"} and not (
+        diagnostic_spec or formal_spec
+    ):
+        raise ArgumentError(
+            f"{args.command} requires a recovery C7 run spec"
+        )
+    if getattr(args, "registry", None) is not None and not _same_path(
+        args.registry, REPO_ROOT / record.binding.stage_c_input["registry_path"]
+    ):
+        raise ArgumentError("--registry disagrees with recovery C7 launch record")
+    if getattr(args, "data_root", None) is not None and not _same_path(
+        args.data_root, record.data_root
+    ):
+        raise ArgumentError("--data-root disagrees with recovery C7 launch record")
+    if getattr(args, "state_dict", None) is not None and not _same_path(
+        args.state_dict, record.model_path
+    ):
+        raise ArgumentError("--state-dict disagrees with recovery C7 launch record")
+    expected_root = (
+        record.diagnostic_root if diagnostic_spec else record.formal_root
+    )
+    if not _same_path(args.output_root, expected_root):
+        raise ArgumentError("--output-root disagrees with recovery C7 launch record")
+    gate_path, report_path = _recovery_c7_report_paths(record)
+    if args.command == "c7-diagnostic-gate":
+        if args.output is not None and not _same_path(args.output, gate_path):
+            raise ArgumentError(
+                "--output disagrees with recovery C7 diagnostic gate path"
+            )
+        args.output = gate_path
+    if args.command == "benchmark-report":
+        if args.output is not None and not _same_path(args.output, report_path):
+            raise ArgumentError(
+                "--output disagrees with recovery C7 benchmark report path"
+            )
+        args.output = report_path
+    supplied_gate = getattr(args, "c7_diagnostic_gate", None)
+    if supplied_gate is not None and formal_spec and not _same_path(
+        supplied_gate, gate_path
+    ):
+        raise ArgumentError(
+            "--c7-diagnostic-gate disagrees with recovery C7 launch record"
+        )
 
 
 def _configure_c7_execution(device: str) -> None:
@@ -701,12 +885,23 @@ def main(
         is_c8_command = args.command in _C8_COMMANDS
         is_c9_command = args.command in _C9_COMMANDS
         is_c10_command = args.command in _C10_COMMANDS
+        recovery_record = None
+        recovery_path = getattr(args, "recovery_c7_launch_record", None)
+        if recovery_path is not None:
+            recovery_record = load_recovery_c7_launch_record(
+                recovery_path, repo_root=REPO_ROOT,
+                require_fresh_roots=False,
+                require_tracked=True,
+            )
+            _prevalidate_recovery_c7_arguments(args, recovery_record)
+            args._recovery_binding = recovery_record.binding
+            args._recovery_launch_record = recovery_record
         if is_c9_command or is_c10_command:
             pipeline = _load_pipeline(args, c9=True)
         elif is_c8_command:
             pipeline = _load_pipeline(args, c8=True)
         else:
-            pipeline = _load_pipeline(args)
+            pipeline = _load_pipeline(args, recovery_record=recovery_record)
         config, registry, _selection, _spec, plan, estimate = pipeline
         if is_c8_command:
             _require_exact_c8_plan(plan, config)
@@ -1010,15 +1205,57 @@ def main(
             return EXIT_SUCCESS if estimate.within_budget else EXIT_PREFLIGHT_BLOCKED
 
         if args.command == "validate":
-            result = validate_stage_c_batch(args.output_root, plan)
+            validation_kwargs: dict[str, Any] = {}
+            if recovery_record is not None:
+                is_c7 = _is_exact_c7_plan(plan, config)
+                is_c7_diagnostic = _is_exact_c7_diagnostic_plan(plan, config)
+                if not (is_c7 or is_c7_diagnostic):
+                    raise ArgumentError(
+                        "recovery C7 validate requires an exact C7 scope"
+                    )
+                _validate_recovery_c7_paths(
+                    args, recovery_record, diagnostic=is_c7_diagnostic,
+                    formal=is_c7,
+                )
+                validation_kwargs = {
+                    "observed_git_state": capture_authorized_c7_source_state(
+                        recovery_record, "report",
+                    ),
+                    "trusted_recovery_context": _trusted_recovery_context(
+                        recovery_record
+                    ),
+                }
+            result = validate_stage_c_batch(
+                args.output_root, plan, **validation_kwargs
+            )
             _write_json(result, sys.stdout)
             if not result.valid:
                 return EXIT_INTEGRITY_FAILURE
             return EXIT_SUCCESS if result.successful else EXIT_TERMINAL_FAILURE
 
         if args.command == "aggregate":
+            aggregate_kwargs: dict[str, Any] = {"output_path": args.output}
+            if recovery_record is not None:
+                is_c7 = _is_exact_c7_plan(plan, config)
+                is_c7_diagnostic = _is_exact_c7_diagnostic_plan(plan, config)
+                if not (is_c7 or is_c7_diagnostic):
+                    raise ArgumentError(
+                        "recovery C7 aggregate requires an exact C7 scope"
+                    )
+                _validate_recovery_c7_paths(
+                    args, recovery_record, diagnostic=is_c7_diagnostic,
+                    formal=is_c7,
+                )
+                aggregate_kwargs.update({
+                    "observed_git_state": capture_authorized_c7_source_state(
+                        recovery_record, "report",
+                    ),
+                    "trusted_recovery_context": _trusted_recovery_context(
+                        recovery_record
+                    ),
+                })
             result = aggregate_stage_c_batch(
-                args.output_root, plan, output_path=args.output
+                args.output_root, plan, **aggregate_kwargs
             )
             _write_json(result, sys.stdout)
             return (
@@ -1027,17 +1264,43 @@ def main(
             )
 
         if args.command == "c7-diagnostic-gate":
+            is_c7_diagnostic = _is_exact_c7_diagnostic_plan(plan, config)
+            if is_c7_diagnostic and recovery_record is None:
+                raise ArgumentError(
+                    "the exact C7 diagnostic requires "
+                    "--recovery-c7-launch-record"
+                )
+            if recovery_record is not None:
+                if not is_c7_diagnostic:
+                    raise ArgumentError(
+                        "recovery C7 diagnostic gate requires the exact "
+                        "checked-in diagnostic scope"
+                    )
+                _validate_recovery_c7_paths(
+                    args, recovery_record, diagnostic=True, formal=False,
+                )
             destination = args.output or _default_report_path(
                 args.output_root, ".c7-diagnostic-gate.json"
             )
+            git_state = (
+                capture_authorized_c7_source_state(
+                    recovery_record, "diagnostic_gate"
+                )
+                if recovery_record is not None
+                else capture_git_state(REPO_ROOT)
+            )
             _configure_c7_execution(args.device)
-            git_state = capture_git_state(REPO_ROOT)
             result = write_c7_diagnostic_gate(
                 destination, args.output_root, plan, config=config,
                 environment=capture_benchmark_environment(args.device),
                 run_spec_path=args.run_spec,
                 run_spec_file_sha256=sha256_file(args.run_spec),
                 observed_git_state=git_state,
+                **({
+                    "trusted_recovery_context": _trusted_recovery_context(
+                        recovery_record
+                    )
+                } if recovery_record is not None else {}),
             )
             _write_json(result, sys.stdout)
             return (
@@ -1047,11 +1310,30 @@ def main(
             )
 
         if args.command == "benchmark-report":
+            is_c7 = _is_exact_c7_plan(plan, config)
+            if is_c7 and recovery_record is None:
+                raise ArgumentError(
+                    "the exact C7 benchmark report requires "
+                    "--recovery-c7-launch-record"
+                )
+            if recovery_record is not None:
+                if not is_c7:
+                    raise ArgumentError(
+                        "recovery C7 benchmark report requires the exact "
+                        "checked-in C7 scope"
+                    )
+                _validate_recovery_c7_paths(
+                    args, recovery_record, diagnostic=False, formal=True,
+                )
             destination = args.output or _default_report_path(
                 args.output_root, ".benchmark-report.json"
             )
+            git_state = (
+                capture_authorized_c7_source_state(recovery_record, "report")
+                if recovery_record is not None
+                else capture_git_state(REPO_ROOT)
+            )
             _configure_c7_execution(args.device)
-            git_state = capture_git_state(REPO_ROOT)
             result = write_benchmark_report(
                 destination, args.output_root, plan, config=config,
                 environment=capture_benchmark_environment(args.device),
@@ -1060,6 +1342,11 @@ def main(
                 recomputed_estimate=estimate,
                 observed_git_state=git_state,
                 c7_diagnostic_gate=args.c7_diagnostic_gate,
+                **({
+                    "trusted_recovery_context": _trusted_recovery_context(
+                        recovery_record
+                    )
+                } if recovery_record is not None else {}),
             )
             _write_json(result, sys.stdout)
             if result.get("status") == "PASS":
@@ -1077,6 +1364,19 @@ def main(
             )
         is_c7 = _is_exact_c7_plan(plan, config)
         is_c7_diagnostic = _is_exact_c7_diagnostic_plan(plan, config)
+        if (is_c7 or is_c7_diagnostic) and recovery_record is None:
+            raise ArgumentError(
+                "the exact C7 diagnostic/formal run requires "
+                "--recovery-c7-launch-record"
+            )
+        if recovery_record is not None:
+            if not (is_c7 or is_c7_diagnostic):
+                raise ArgumentError(
+                    "--recovery-c7-launch-record is restricted to exact C7 scopes"
+                )
+            _validate_recovery_c7_paths(
+                args, recovery_record, diagnostic=is_c7_diagnostic, formal=is_c7,
+            )
         authorization = None
         if is_c7:
             if args.c7_diagnostic_gate is None:
@@ -1091,7 +1391,9 @@ def main(
                     sys.stdout,
                 )
                 return EXIT_PREFLIGHT_BLOCKED
-            git_state = capture_git_state(REPO_ROOT)
+            git_state = capture_authorized_c7_source_state(
+                recovery_record, "formal"
+            )
             authorization = require_c7_launch_gate(
                 args.c7_diagnostic_gate,
                 plan,
@@ -1099,10 +1401,16 @@ def main(
                 output_root=args.output_root,
                 observed_git_state=git_state,
                 run_spec_path=args.run_spec,
+                trusted_recovery_context=_trusted_recovery_context(
+                    recovery_record
+                ),
             )
         elif is_c7_diagnostic:
             require_fresh_c7_output_root(
                 args.output_root, kind="diagnostic"
+            )
+            args._recovery_code_state = capture_authorized_c7_source_state(
+                recovery_record, "pre_diagnostic"
             )
         if not estimate.within_budget:
             _write_json(estimate, sys.stdout)
@@ -1110,7 +1418,13 @@ def main(
         if is_c7 or is_c7_diagnostic:
             _configure_c7_execution(args.device)
         if authorization is not None:
-            write_c7_launch_authorization(args.output_root, authorization)
+            write_c7_launch_authorization(
+                args.output_root, authorization,
+                trusted_recovery_context=_trusted_recovery_context(
+                    recovery_record
+                ),
+            )
+            args._recovery_code_state = git_state
         factory = backend_factory or _default_backend_factory
         backend = _make_backend(
             factory, config=config, registry=registry, plan=plan, args=args
@@ -1125,6 +1439,8 @@ def main(
             "estimate": estimate,
             "caps": caps,
         }
+        if recovery_record is not None:
+            common["observed_git_state"] = args._recovery_code_state
         if args.command == "run-sample":
             result = run_stage_c_sample(plan, args.sample_id, **common)
         else:
@@ -1170,6 +1486,12 @@ def main(
                     "type": type(error).__name__,
                 }
             },
+            sys.stderr,
+        )
+        return EXIT_INTEGRITY_FAILURE
+    except RecoveryC7LaunchError as error:
+        _write_json(
+            {"error": {"message": str(error), "type": type(error).__name__}},
             sys.stderr,
         )
         return EXIT_INTEGRITY_FAILURE

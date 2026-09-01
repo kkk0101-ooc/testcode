@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
-from types import MappingProxyType
+from dataclasses import replace
+from types import MappingProxyType, SimpleNamespace
 
 import pytest
 
@@ -11,10 +13,14 @@ from vitnns.stage_c_fidelity import fidelity_seed
 from vitnns.stage_c_provenance import (
     CANONICAL_RGB_HASH_DOMAIN,
     NORMALIZED_INPUT_HASH_DOMAIN,
+    StageCProvenance,
     StageCProvenanceError,
     build_stage_c_provenance,
     build_unit_identity,
     canonical_sha256,
+    normalize_recovery_model_context,
+    recovery_model_provenance,
+    validate_stage_c_model_binding,
     validate_stage_c_provenance,
 )
 
@@ -25,6 +31,12 @@ TARGET = "fixed_clean_attention_cls_head_direction"
 SHA = "a" * 64
 NORMALIZED_SHA = "b" * 64
 CANONICAL_SHA = "c" * 64
+RECOVERY_STATE_DICT_SHA = "1" * 64
+RECOVERY_TENSOR_SHA = "2" * 64
+RECOVERY_BINDING_SHA = "3" * 64
+RECOVERY_BINDING_CANONICAL = "4" * 64
+RECOVERY_LAUNCH_SHA = "5" * 64
+RECOVERY_LAUNCH_CANONICAL = "6" * 64
 
 
 def _candidate(block: int) -> dict[str, object]:
@@ -36,7 +48,30 @@ def _candidate(block: int) -> dict[str, object]:
     }
 
 
-def valid_document(*, selection_present: bool = False):
+def recovery_model() -> dict[str, object]:
+    return {
+        "name": MODEL_NAME,
+        "state_dict_path": "assets/models/recovery.pth",
+        "state_dict_sha256": RECOVERY_STATE_DICT_SHA,
+        "identity": "RECOVERY_V2_NEW_ARTIFACT_NOT_HISTORICAL_2E718",
+        "canonical_tensor_digest": RECOVERY_TENSOR_SHA,
+        "historical_artifact_recovered": False,
+        "historical_state_dict_sha256": MODEL_SHA256,
+        "recovery_binding_path": "config/recovery_v2_binding.json",
+        "recovery_binding_file_sha256": RECOVERY_BINDING_SHA,
+        "recovery_binding_canonical_digest": RECOVERY_BINDING_CANONICAL,
+        "recovery_launch_record_path": "config/recovery_c7_launch.json",
+        "recovery_launch_record_file_sha256": RECOVERY_LAUNCH_SHA,
+        "recovery_launch_record_canonical_digest": (
+            RECOVERY_LAUNCH_CANONICAL
+        ),
+    }
+
+
+def valid_document(
+    *, selection_present: bool = False, model_record=None,
+    trusted_recovery_context=None, require_trusted_recovery_context=False,
+):
     unit = build_unit_identity(
         sample_id=SAMPLE,
         method_id=METHOD,
@@ -134,7 +169,7 @@ def valid_document(*, selection_present: bool = False):
     record = build_stage_c_provenance(
         unit_identity=unit,
         code={"commit": "d" * 40, "dirty": True},
-        model={
+        model=model_record or {
             "name": MODEL_NAME,
             "state_dict_path": "models/vit.pth",
             "state_dict_sha256": MODEL_SHA256,
@@ -278,6 +313,8 @@ def valid_document(*, selection_present: bool = False):
             "bytes": 7, "kind": "metric_ready", "dtype": "float32",
             "shape": [14, 14], "format": "npy",
         }],
+        trusted_recovery_context=trusted_recovery_context,
+        require_trusted_recovery_context=require_trusted_recovery_context,
     )
     return record
 
@@ -302,6 +339,215 @@ def test_complete_builder_is_json_safe_immutable_and_round_trips():
         provenance.bindings["code"]["dirty"] = False
     payload["bindings"]["code"]["dirty"] = False
     assert provenance.bindings["code"]["dirty"] is True
+
+
+def test_model_binding_accepts_only_exact_historical_shape_without_authority():
+    historical = {
+        "name": MODEL_NAME,
+        "state_dict_path": "models/vit.pth",
+        "state_dict_sha256": MODEL_SHA256,
+    }
+    validate_stage_c_model_binding(
+        historical, require_trusted_recovery_context=True,
+    )
+    with pytest.raises(StageCProvenanceError, match="trusted recovery context"):
+        validate_stage_c_model_binding(recovery_model())
+
+    for value in (
+        {**historical, "identity": "partial-recovery"},
+        {**historical, "unexpected": True},
+        {key: item for key, item in recovery_model().items() if key != "identity"},
+        {**recovery_model(), "unexpected": True},
+    ):
+        with pytest.raises(StageCProvenanceError, match="missing|unknown"):
+            validate_stage_c_model_binding(value)
+
+
+def test_recovery_model_always_requires_real_authority_context():
+    model = recovery_model()
+    with pytest.raises(StageCProvenanceError, match="trusted recovery context"):
+        validate_stage_c_model_binding(model)
+    with pytest.raises(StageCProvenanceError, match="exactly|requires"):
+        validate_stage_c_model_binding(model, trusted_recovery_context=model)
+    historical = {
+        "name": MODEL_NAME, "state_dict_path": "models/vit.pth",
+        "state_dict_sha256": MODEL_SHA256,
+    }
+    with pytest.raises(StageCProvenanceError, match="recovery context"):
+        validate_stage_c_model_binding(
+            historical, trusted_recovery_context=model,
+            require_trusted_recovery_context=True,
+        )
+
+@pytest.mark.parametrize(
+    "field,value,match",
+    [
+        ("historical_artifact_recovered", True, "must be false"),
+        ("historical_state_dict_sha256", "7" * 64, "historical model hash"),
+        ("state_dict_sha256", MODEL_SHA256, "must not alias"),
+        ("identity", "RECOVERY_V2_NEW_ARTIFACT_FORGED", "identity"),
+        ("recovery_binding_path", "../binding.json", "relative POSIX"),
+        ("recovery_launch_record_file_sha256", "not-a-sha", "SHA-256"),
+    ],
+)
+def test_recovery_model_internal_relations_fail_closed(field, value, match):
+    model = recovery_model()
+    model[field] = value
+    with pytest.raises(StageCProvenanceError, match=match):
+        validate_stage_c_model_binding(model)
+
+
+def _recovery_authority(tmp_path, monkeypatch):
+    from vitnns import recovery_c7_launch
+    from vitnns.recovery_c7_launch import RecoveryC7LaunchRecord
+    from vitnns.recovery_v2 import RecoveryV2Binding
+
+    repo = tmp_path / "project"
+    binding_path = repo / "config" / "recovery_v2_binding.json"
+    launch_path = repo / "config" / "recovery_c7_launch.json"
+    binding_schema_path = repo / "config" / "recovery_v2_binding.schema.json"
+    launch_schema_path = repo / "config" / "recovery_c7_launch.schema.json"
+    model_path = repo / "assets" / "models" / "recovery.pth"
+    for path, data in (
+        (binding_path, b"binding bytes\n"),
+        (launch_path, b"launch bytes\n"),
+        (binding_schema_path, b"{}\n"),
+        (launch_schema_path, b"{}\n"),
+        (model_path, b"model bytes\n"),
+    ):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+
+    source_model = {
+        key: value for key, value in recovery_model().items()
+        if not key.startswith("recovery_")
+    }
+    binding_sha = hashlib.sha256(binding_path.read_bytes()).hexdigest()
+    launch_sha = hashlib.sha256(launch_path.read_bytes()).hexdigest()
+    binding = RecoveryV2Binding(
+        path=binding_path,
+        schema_path=binding_schema_path,
+        document={
+            "model": source_model,
+            "canonical_digest": RECOVERY_BINDING_CANONICAL,
+        },
+        model_path=model_path,
+        data_root=repo / "data",
+        devkit_path=repo / "devkit.tar.gz",
+        source_manifest_path=repo / "manifest.csv",
+    )
+    launch = RecoveryC7LaunchRecord(
+        path=launch_path, schema_path=launch_schema_path,
+        document={
+            "canonical_digest": RECOVERY_LAUNCH_CANONICAL,
+            "recovery_binding": {
+                "path": "config/recovery_v2_binding.json",
+                "file_sha256": binding_sha,
+                "canonical_digest": RECOVERY_BINDING_CANONICAL,
+            },
+        },
+        binding=binding, model_path=model_path,
+        data_root=binding.data_root, devkit_path=binding.devkit_path,
+        diagnostic_root=repo / "diagnostic",
+        formal_root=repo / "formal", reports_root=repo / "reports",
+        model_identity=source_model,
+        file_sha256=launch_sha, launch_commit="d" * 40, repo_root=repo,
+    )
+    expected = recovery_model()
+    expected["recovery_binding_file_sha256"] = binding_sha
+    expected["recovery_launch_record_file_sha256"] = launch_sha
+    calls = []
+
+    def reload_launch(path, **kwargs):
+        calls.append((path, kwargs))
+        return launch
+
+    monkeypatch.setattr(
+        recovery_c7_launch, "load_recovery_c7_launch_record", reload_launch,
+    )
+    monkeypatch.setattr(recovery_c7_launch, "REPO_ROOT", repo)
+    return binding, launch, expected, calls
+
+
+def test_recovery_helpers_reload_real_binding_and_launch_authority(
+    tmp_path, monkeypatch,
+):
+    binding, launch, expected, calls = _recovery_authority(
+        tmp_path, monkeypatch,
+    )
+
+    assert recovery_model_provenance(binding, launch) == expected
+    assert normalize_recovery_model_context(launch) == expected
+    assert normalize_recovery_model_context((binding, launch)) == expected
+    assert normalize_recovery_model_context({
+        "recovery_binding": binding, "recovery_launch_record": launch,
+    }) == expected
+    assert calls
+    assert all(call[0] == launch.path for call in calls)
+    assert all(call[1]["require_tracked"] is True for call in calls)
+
+    validate_stage_c_model_binding(expected, trusted_recovery_context=launch)
+
+
+def test_recovery_context_rejects_claims_and_forged_public_objects(
+    tmp_path, monkeypatch,
+):
+    binding, launch, expected, _calls = _recovery_authority(
+        tmp_path, monkeypatch,
+    )
+    for context in (
+        expected,
+        {"binding": binding, "launch_record": launch},
+        SimpleNamespace(binding=binding, launch_record=launch),
+        (SimpleNamespace(**vars(binding)), launch),
+        (binding, SimpleNamespace(**vars(launch))),
+    ):
+        with pytest.raises(StageCProvenanceError, match="exactly|requires"):
+            normalize_recovery_model_context(context)
+
+    forged_launch = replace(launch, file_sha256="7" * 64)
+    with pytest.raises(StageCProvenanceError, match="reloaded authority"):
+        normalize_recovery_model_context((binding, forged_launch))
+
+    other_binding = replace(binding, model_path=binding.model_path.parent / "other")
+    mismatched_launch = replace(launch, binding=other_binding)
+    with pytest.raises(StageCProvenanceError, match="different RecoveryV2Binding"):
+        normalize_recovery_model_context((binding, mismatched_launch))
+
+    launch.path.write_bytes(b"changed after authority load\n")
+    with pytest.raises(StageCProvenanceError, match="SHA-256"):
+        normalize_recovery_model_context((binding, launch))
+
+
+def test_recovery_provenance_requires_authority_at_every_entry_point(
+    tmp_path, monkeypatch,
+):
+    binding, launch, model, _calls = _recovery_authority(tmp_path, monkeypatch)
+    payload = valid_document().to_dict()
+    payload["bindings"]["model"] = model
+    with pytest.raises(StageCProvenanceError, match="trusted recovery context"):
+        validate_stage_c_provenance(payload)
+    with pytest.raises(StageCProvenanceError, match="exactly|requires"):
+        validate_stage_c_provenance(payload, trusted_recovery_context=model)
+    validate_stage_c_provenance(
+        payload, trusted_recovery_context=(binding, launch),
+    )
+
+    record = StageCProvenance(
+        unit_identity=payload["unit_identity"],
+        bindings=payload["bindings"],
+        trusted_recovery_context=launch,
+    )
+    assert record.to_dict()["bindings"]["model"] == model
+
+    built = valid_document(
+        model_record=model,
+        trusted_recovery_context={
+            "recovery_binding": binding,
+            "recovery_launch_record": launch,
+        },
+    )
+    assert built.to_dict()["bindings"]["model"] == model
 
 
 @pytest.mark.parametrize(

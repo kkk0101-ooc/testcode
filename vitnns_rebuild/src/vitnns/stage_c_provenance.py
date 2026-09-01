@@ -14,7 +14,7 @@ import math
 import re
 import subprocess
 from collections.abc import Iterator, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import InitVar, dataclass, field
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any
@@ -113,8 +113,18 @@ class StageCProvenance(Mapping[str, Any]):
     bindings: Mapping[str, Any]
     schema_version: int = STAGE_C_PROVENANCE_SCHEMA_VERSION
     document_type: str = STAGE_C_PROVENANCE_DOCUMENT_TYPE
+    trusted_recovery_context: InitVar[Any | None] = field(
+        default=None, kw_only=True, repr=False,
+    )
+    require_trusted_recovery_context: InitVar[bool] = field(
+        default=False, kw_only=True, repr=False,
+    )
 
-    def __post_init__(self) -> None:
+    def __post_init__(
+        self,
+        trusted_recovery_context: Any | None,
+        require_trusted_recovery_context: bool,
+    ) -> None:
         document = {
             "schema_version": self.schema_version,
             "document_type": self.document_type,
@@ -122,7 +132,11 @@ class StageCProvenance(Mapping[str, Any]):
             "unit_identity_sha256": unit_identity_digest(self.unit_identity),
             "bindings": _thaw(self.bindings),
         }
-        validate_stage_c_provenance(document)
+        validate_stage_c_provenance(
+            document,
+            trusted_recovery_context=trusted_recovery_context,
+            require_trusted_recovery_context=require_trusted_recovery_context,
+        )
         object.__setattr__(self, "unit_identity", _freeze(document["unit_identity"]))
         object.__setattr__(self, "bindings", _freeze(document["bindings"]))
 
@@ -163,6 +177,35 @@ _SHA256 = re.compile(r"[0-9a-f]{64}")
 _COMMIT = re.compile(r"[0-9a-f]{40}")
 _SEMVER = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?")
 _SAMPLE_ID = re.compile(r"ILSVRC2012_val/ILSVRC2012_val_[0-9]{8}\.JPEG")
+
+_HISTORICAL_MODEL_FIELDS = {
+    "name", "state_dict_path", "state_dict_sha256",
+}
+_RECOVERY_MODEL_FIELDS = _HISTORICAL_MODEL_FIELDS | {
+    "identity",
+    "canonical_tensor_digest",
+    "historical_artifact_recovered",
+    "historical_state_dict_sha256",
+    "recovery_binding_path",
+    "recovery_binding_file_sha256",
+    "recovery_binding_canonical_digest",
+    "recovery_launch_record_path",
+    "recovery_launch_record_file_sha256",
+    "recovery_launch_record_canonical_digest",
+}
+_RECOVERY_MODEL_MARKERS = _RECOVERY_MODEL_FIELDS - _HISTORICAL_MODEL_FIELDS
+_RECOVERY_MODEL_IDENTITY_FIELDS = (
+    "name",
+    "state_dict_path",
+    "state_dict_sha256",
+    "identity",
+    "canonical_tensor_digest",
+    "historical_artifact_recovered",
+    "historical_state_dict_sha256",
+)
+_RECOVERY_V2_MODEL_IDENTITY = (
+    "RECOVERY_V2_NEW_ARTIFACT_NOT_HISTORICAL_2E718"
+)
 
 _UNIT_FIELDS = {
     "schema_version", "sample_id", "method_id", "config_id", "block_index",
@@ -455,12 +498,8 @@ def _validate_code(value: Any, observed: Mapping[str, Any] | None) -> None:
             )
 
 
-def _validate_model(value: Any) -> None:
-    model = _exact(
-        value,
-        {"name", "state_dict_path", "state_dict_sha256"},
-        "bindings.model",
-    )
+def _validate_historical_model(value: Any) -> None:
+    model = _exact(value, _HISTORICAL_MODEL_FIELDS, "bindings.model")
     if model["name"] != MODEL_NAME:
         raise StageCProvenanceError("bindings.model.name is not the frozen model")
     _relative_path(model["state_dict_path"], "bindings.model.state_dict_path")
@@ -468,6 +507,289 @@ def _validate_model(value: Any) -> None:
     if model["state_dict_sha256"] != MODEL_SHA256:
         raise StageCProvenanceError(
             "bindings.model.state_dict_sha256 is not the frozen model hash"
+        )
+
+
+def _validate_recovery_model(value: Any) -> Mapping[str, Any]:
+    model = _exact(value, _RECOVERY_MODEL_FIELDS, "bindings.model")
+    if model["name"] != MODEL_NAME:
+        raise StageCProvenanceError("bindings.model.name is not the frozen model")
+    _relative_path(model["state_dict_path"], "bindings.model.state_dict_path")
+    if model["identity"] != _RECOVERY_V2_MODEL_IDENTITY:
+        raise StageCProvenanceError(
+            "bindings.model.identity is not the recovery-v2 model identity "
+            "required by the trusted recovery context"
+        )
+    for field_name in (
+        "state_dict_sha256",
+        "canonical_tensor_digest",
+        "historical_state_dict_sha256",
+        "recovery_binding_file_sha256",
+        "recovery_binding_canonical_digest",
+        "recovery_launch_record_file_sha256",
+        "recovery_launch_record_canonical_digest",
+    ):
+        _sha(model[field_name], f"bindings.model.{field_name}")
+    for field_name in (
+        "recovery_binding_path", "recovery_launch_record_path",
+    ):
+        _relative_path(model[field_name], f"bindings.model.{field_name}")
+    if model["historical_artifact_recovered"] is not False:
+        raise StageCProvenanceError(
+            "bindings.model.historical_artifact_recovered must be false"
+        )
+    if model["historical_state_dict_sha256"] != MODEL_SHA256:
+        raise StageCProvenanceError(
+            "bindings.model.historical_state_dict_sha256 is not the frozen "
+            "historical model hash"
+        )
+    if model["state_dict_sha256"] == MODEL_SHA256:
+        raise StageCProvenanceError(
+            "recovery state_dict_sha256 must not alias the historical model hash"
+        )
+    return model
+
+
+def _sha256_path(path: Path, context: str) -> str:
+    if not path.is_file():
+        raise StageCProvenanceError(f"{context} path is not a readable file")
+    digest = hashlib.sha256()
+    try:
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+    except OSError as error:
+        raise StageCProvenanceError(f"cannot hash {context} path") from error
+    return digest.hexdigest()
+
+
+def _split_recovery_context(
+    value: Any,
+) -> tuple[Any, Any] | None:
+    if isinstance(value, (list, tuple)) and len(value) == 2:
+        return value[0], value[1]
+    if isinstance(value, Mapping):
+        fields = {"recovery_binding", "recovery_launch_record"}
+        if set(value) != fields:
+            raise StageCProvenanceError(
+                "trusted recovery context mapping must contain exactly the "
+                "recovery binding and recovery launch record"
+            )
+        return value["recovery_binding"], value["recovery_launch_record"]
+    return None
+
+
+def _reload_recovery_authority(
+    recovery_binding: Any, recovery_launch_record: Any,
+) -> tuple[Any, Any]:
+    """Reload the two recovery authorities instead of trusting dataclass fields."""
+
+    # These imports are intentionally local: this module remains usable for the
+    # historical three-field contract without importing recovery-only code.
+    from .recovery_c7_launch import (
+        REPO_ROOT as RECOVERY_REPO_ROOT,
+        RecoveryC7LaunchRecord,
+        load_recovery_c7_launch_record,
+    )
+    from .recovery_v2 import RecoveryV2Binding
+
+    if type(recovery_binding) is not RecoveryV2Binding:
+        raise StageCProvenanceError(
+            "trusted recovery context requires a validated RecoveryV2Binding"
+        )
+    if type(recovery_launch_record) is not RecoveryC7LaunchRecord:
+        raise StageCProvenanceError(
+            "trusted recovery context requires a validated "
+            "RecoveryC7LaunchRecord"
+        )
+    if type(recovery_launch_record.binding) is not RecoveryV2Binding:
+        raise StageCProvenanceError(
+            "trusted recovery launch record lacks its RecoveryV2Binding"
+        )
+    if recovery_launch_record.binding != recovery_binding:
+        raise StageCProvenanceError(
+            "trusted recovery launch record is bound to a different "
+            "RecoveryV2Binding"
+        )
+
+    authority_root = RECOVERY_REPO_ROOT.resolve(strict=True)
+    if Path(recovery_launch_record.repo_root).resolve(strict=True) != authority_root:
+        raise StageCProvenanceError(
+            "trusted recovery context is outside the active recovery repository"
+        )
+
+    try:
+        authoritative_launch = load_recovery_c7_launch_record(
+            recovery_launch_record.path,
+            repo_root=authority_root,
+            schema_path=recovery_launch_record.schema_path,
+            require_fresh_roots=False,
+            # Recovery provenance is consumed only after the launch authority
+            # has been committed.  A merely well-shaped public dataclass is not
+            # authority.
+            require_tracked=True,
+        )
+    except Exception as error:
+        raise StageCProvenanceError(
+            "trusted recovery binding and launch record could not be reloaded "
+            "and validated"
+        ) from error
+    if type(authoritative_launch) is not RecoveryC7LaunchRecord:
+        raise StageCProvenanceError(
+            "recovery launch validation did not return trusted authority"
+        )
+    authoritative_binding = authoritative_launch.binding
+    if type(authoritative_binding) is not RecoveryV2Binding:
+        raise StageCProvenanceError(
+            "reloaded recovery launch record lacks its RecoveryV2Binding"
+        )
+    if (
+        recovery_binding != authoritative_binding
+        or recovery_launch_record != authoritative_launch
+    ):
+        raise StageCProvenanceError(
+            "trusted recovery context does not match reloaded authority"
+        )
+    return authoritative_binding, authoritative_launch
+
+
+def _authority_relative_path(path: Any, repo_root: Path, context: str) -> str:
+    try:
+        relative = Path(path).resolve(strict=True).relative_to(repo_root)
+    except (OSError, TypeError, ValueError) as error:
+        raise StageCProvenanceError(
+            f"trusted {context} must be a file under the recovery repository"
+        ) from error
+    return _relative_path(relative.as_posix(), context)
+
+
+def normalize_recovery_model_context(
+    recovery_binding: Any, recovery_launch_record: Any | None = None,
+) -> dict[str, Any]:
+    """Normalize trusted recovery inputs to the closed provenance shape."""
+
+    if recovery_launch_record is None:
+        # A genuine launch record includes its genuine binding; retain that
+        # convenient single-object form without accepting arbitrary objects.
+        from .recovery_c7_launch import RecoveryC7LaunchRecord
+
+        if isinstance(recovery_binding, RecoveryC7LaunchRecord):
+            recovery_launch_record = recovery_binding
+            recovery_binding = recovery_launch_record.binding
+        else:
+            pair = _split_recovery_context(recovery_binding)
+            if pair is None:
+                raise StageCProvenanceError(
+                    "trusted recovery context requires a RecoveryV2Binding and "
+                    "RecoveryC7LaunchRecord"
+                )
+            recovery_binding, recovery_launch_record = pair
+
+    binding, launch = _reload_recovery_authority(
+        recovery_binding, recovery_launch_record,
+    )
+    repo_root = Path(launch.repo_root).resolve(strict=True)
+    binding_path = _authority_relative_path(
+        binding.path, repo_root, "recovery_binding_path",
+    )
+    launch_path = _authority_relative_path(
+        launch.path, repo_root, "recovery_launch_record_path",
+    )
+    binding_file_sha256 = _sha256_path(binding.path, "recovery binding")
+    launch_file_sha256 = _sha256_path(launch.path, "recovery launch record")
+    binding_record = launch.document.get("recovery_binding")
+    if (
+        not isinstance(binding_record, Mapping)
+        or binding_record.get("path") != binding_path
+        or binding_record.get("file_sha256") != binding_file_sha256
+        or binding_record.get("canonical_digest") != binding.canonical_digest
+    ):
+        raise StageCProvenanceError(
+            "reloaded recovery launch record is bound to different binding bytes"
+        )
+    if launch.file_sha256 != launch_file_sha256:
+        raise StageCProvenanceError(
+            "reloaded recovery launch record SHA-256 disagrees with its bytes"
+        )
+
+    model_source = binding.model
+    if not isinstance(model_source, Mapping) or not isinstance(
+        launch.model_identity, Mapping
+    ):
+        raise TypeError(
+            "reloaded recovery authority model identities must be mappings"
+        )
+    model_drift = [
+        field_name for field_name in _RECOVERY_MODEL_IDENTITY_FIELDS
+        if launch.model_identity.get(field_name) != model_source.get(field_name)
+    ]
+    if model_drift:
+        raise StageCProvenanceError(
+            "trusted recovery binding and launch model identities disagree: "
+            f"{model_drift}"
+        )
+
+    result = {
+        **{field_name: model_source.get(field_name)
+           for field_name in _RECOVERY_MODEL_IDENTITY_FIELDS},
+        "recovery_binding_path": binding_path,
+        "recovery_binding_file_sha256": binding_file_sha256,
+        "recovery_binding_canonical_digest": binding.canonical_digest,
+        "recovery_launch_record_path": launch_path,
+        "recovery_launch_record_file_sha256": launch_file_sha256,
+        "recovery_launch_record_canonical_digest": launch.canonical_digest,
+    }
+    _validate_recovery_model(result)
+    return result
+
+
+def recovery_model_provenance(
+    recovery_binding: Any, recovery_launch_record: Any,
+) -> dict[str, Any]:
+    """Build the recovery model block used by Stage C provenance."""
+
+    return normalize_recovery_model_context(
+        recovery_binding, recovery_launch_record,
+    )
+
+
+def validate_stage_c_model_binding(
+    value: Any, *, trusted_recovery_context: Any | None = None,
+    require_trusted_recovery_context: bool = False,
+) -> None:
+    """Validate the historical or recovery Stage C model identity."""
+
+    if type(require_trusted_recovery_context) is not bool:
+        raise TypeError("require_trusted_recovery_context must be a boolean")
+    candidate = value.to_dict() if (
+        not isinstance(value, Mapping) and callable(getattr(value, "to_dict", None))
+    ) else value
+    if not isinstance(candidate, Mapping):
+        raise TypeError("bindings.model must be a mapping")
+    if not (set(candidate) & _RECOVERY_MODEL_MARKERS):
+        _validate_historical_model(candidate)
+        if trusted_recovery_context is not None:
+            raise StageCProvenanceError(
+                "historical model provenance does not match the trusted "
+                "recovery context"
+            )
+        return
+
+    if trusted_recovery_context is None:
+        model = _validate_recovery_model(candidate)
+        raise StageCProvenanceError(
+            "recovery model provenance requires a trusted recovery context"
+        )
+    expected = normalize_recovery_model_context(trusted_recovery_context)
+    model = _validate_recovery_model(candidate)
+    mismatches = [
+        field_name for field_name in sorted(_RECOVERY_MODEL_FIELDS)
+        if model[field_name] != expected[field_name]
+    ]
+    if mismatches:
+        raise StageCProvenanceError(
+            "bindings.model does not match the trusted recovery context: "
+            f"{mismatches}"
         )
 
 
@@ -1485,6 +1807,8 @@ def build_stage_c_provenance(
     failure: Mapping[str, Any] | None, resources: Mapping[str, Any],
     retention: Mapping[str, Any],
     artifact_inventory: Sequence[Mapping[str, Any]],
+    trusted_recovery_context: Any | None = None,
+    require_trusted_recovery_context: bool = False,
 ) -> StageCProvenance:
     """Build a validated document from runner-owned, JSON-safe records."""
 
@@ -1511,13 +1835,19 @@ def build_stage_c_provenance(
         "retention": retention,
         "artifact_inventory": list(artifact_inventory),
     }
-    return StageCProvenance(unit_identity=unit_identity, bindings=bindings)
+    return StageCProvenance(
+        unit_identity=unit_identity, bindings=bindings,
+        trusted_recovery_context=trusted_recovery_context,
+        require_trusted_recovery_context=require_trusted_recovery_context,
+    )
 
 
 def validate_stage_c_provenance(
     value: StageCProvenance | Mapping[str, Any], *,
     expected_unit: Mapping[str, Any] | None = None,
     observed_git_state: Mapping[str, Any] | None = None,
+    trusted_recovery_context: Any | None = None,
+    require_trusted_recovery_context: bool = False,
 ) -> None:
     """Validate structure, hashes, domains, and cross-line relationships."""
 
@@ -1552,7 +1882,11 @@ def validate_stage_c_provenance(
     bindings = _exact(root["bindings"], _BINDING_FIELDS, "bindings")
     _reject_circular_hash_claims(bindings)
     _validate_code(bindings["code"], observed_git_state)
-    _validate_model(bindings["model"])
+    validate_stage_c_model_binding(
+        bindings["model"],
+        trusted_recovery_context=trusted_recovery_context,
+        require_trusted_recovery_context=require_trusted_recovery_context,
+    )
     _validate_input(
         bindings["input"], unit, bindings["status"], bindings["failure"],
         bindings["target"],
@@ -1614,6 +1948,9 @@ __all__ = [
     "canonical_json_bytes",
     "canonical_sha256",
     "capture_git_state",
+    "normalize_recovery_model_context",
+    "recovery_model_provenance",
     "unit_identity_digest",
+    "validate_stage_c_model_binding",
     "validate_stage_c_provenance",
 ]

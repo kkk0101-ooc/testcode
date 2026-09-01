@@ -21,9 +21,11 @@ from vitnns.stage_c_runner import (
     StageCPreflightError,
     StageCRunnerError,
     UnitPayload,
+    UnitRunResult,
     aggregate_stage_c_batch,
     run_execution_unit,
     run_stage_c_batch,
+    run_stage_c_sample,
     validate_stage_c_batch,
 )
 from vitnns.constants import MODEL_NAME, MODEL_SHA256
@@ -638,6 +640,196 @@ def _production_backend_harness(
     return backend, calls
 
 
+def _runner_recovery_authority(monkeypatch, tmp_path):
+    from vitnns import recovery_c7_launch
+    from vitnns.recovery_c7_launch import RecoveryC7LaunchRecord
+    from vitnns.recovery_v2 import load_recovery_v2_binding
+
+    loaded_binding = load_recovery_v2_binding(verify_assets=False)
+    binding_path = tmp_path / "config/recovery_v2_binding.json"
+    binding_path.parent.mkdir(parents=True)
+    binding_path.write_bytes(loaded_binding.path.read_bytes())
+    binding = dataclasses.replace(
+        loaded_binding, path=binding_path,
+        schema_path=tmp_path / "config/recovery_v2_binding.schema.json",
+        model_path=tmp_path / loaded_binding.model["state_dict_path"],
+    )
+    launch_path = tmp_path / "recovery_c7_launch_record.json"
+    launch_path.write_bytes(b"test launch authority\n")
+    launch_sha256 = hashlib.sha256(launch_path.read_bytes()).hexdigest()
+    binding_sha256 = hashlib.sha256(binding.path.read_bytes()).hexdigest()
+    launch = RecoveryC7LaunchRecord(
+        path=launch_path, schema_path=tmp_path / "schema.json",
+        document={
+            "canonical_digest": "f" * 64,
+            "recovery_binding": {
+                "path": binding.path.relative_to(tmp_path).as_posix(),
+                "file_sha256": binding_sha256,
+                "canonical_digest": binding.canonical_digest,
+            },
+        },
+        binding=binding,
+        model_path=binding.model_path, data_root=binding.data_root,
+        devkit_path=binding.devkit_path,
+        diagnostic_root=tmp_path / "diagnostic",
+        formal_root=tmp_path / "formal", reports_root=tmp_path / "reports",
+        model_identity=binding.model,
+        file_sha256=launch_sha256,
+        launch_commit="d" * 40,
+        repo_root=tmp_path,
+    )
+    reloads = []
+
+    def reload_authority(*args, **kwargs):
+        reloads.append((args, kwargs))
+        return launch
+
+    monkeypatch.setattr(
+        recovery_c7_launch, "load_recovery_c7_launch_record",
+        reload_authority,
+    )
+    monkeypatch.setattr(recovery_c7_launch, "REPO_ROOT", tmp_path)
+    return binding, launch, reloads
+
+
+def test_production_backend_recovery_context_drives_loader_and_model_record(
+    monkeypatch, tmp_path,
+):
+    from vitnns.stage_c_provenance import recovery_model_provenance
+
+    binding, launch, reloads = _runner_recovery_authority(monkeypatch, tmp_path)
+    observed = {}
+    model = torch.nn.Identity()
+
+    def loader(**kwargs):
+        observed.update(kwargs)
+        return model
+
+    backend = ProductionStageCBackend(
+        sample_loader=lambda *_args: None, model_loader=loader,
+        recovery_binding=binding, recovery_launch_record=launch,
+    )
+    monkeypatch.setattr(
+        "vitnns.modeling.canonical_preprocess_spec",
+        lambda _model: SimpleNamespace(
+            input_size=(3, 224, 224), resize_shorter_side=248,
+            center_crop=(224, 224), interpolation="bicubic",
+            mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5),
+        ),
+    )
+    monkeypatch.setattr(
+        "vitnns.stage_c_integrity.StrongModelSnapshot.capture",
+        lambda _model: object(),
+    )
+
+    assert backend._model("cpu") is model
+    assert observed == {
+        "device": "cpu", "verify_hash": True,
+        "unfused_attention": True,
+        "state_dict_path": binding.model_path,
+        "recovery_binding": binding,
+    }
+    assert backend._bound_model_record() == recovery_model_provenance(
+        binding, launch
+    )
+    assert reloads
+    assert all(call[1]["require_tracked"] is True for call in reloads)
+
+
+def test_recovery_runner_finalize_validation_and_resume_keep_authority(
+    monkeypatch, tmp_path,
+):
+    from vitnns.stage_c_provenance import recovery_model_provenance
+
+    binding, launch, reloads = _runner_recovery_authority(monkeypatch, tmp_path)
+    context = {
+        "recovery_binding": binding,
+        "recovery_launch_record": launch,
+    }
+
+    class RecoveryToyBackend(ToyBackend):
+        @property
+        def trusted_recovery_context(self):
+            return context
+
+        def _bound_model_record(self):
+            return recovery_model_provenance(binding, launch)
+
+        def build_provenance(self, **kwargs):
+            provenance = super().build_provenance(**kwargs)
+            provenance["bindings"]["model"] = self._bound_model_record()
+            return provenance
+
+    plan = toy_plan()
+    backend = RecoveryToyBackend(plan=plan)
+    output_root = tmp_path / "recovery-run"
+    estimate = passing_estimate(plan)
+    first = run_stage_c_batch(
+        plan, output_root=output_root, backend=backend, estimate=estimate,
+        _allow_unissued_estimate=True,
+    )
+
+    assert first.successful is True
+    assert len(backend.calls) == 1
+    validation = validate_stage_c_batch(
+        output_root, plan, trusted_recovery_context=context,
+    )
+    assert validation.valid is True and validation.successful is True
+    aggregate = aggregate_stage_c_batch(
+        output_root, plan,
+        observed_git_state=None, trusted_recovery_context=context,
+    )
+    assert aggregate["successful"] is True
+    assert aggregate["row_count"] == 1
+    without_context = validate_stage_c_batch(output_root, plan)
+    assert without_context.valid is False
+    assert any(
+        "trusted recovery context" in error
+        for error in without_context.errors
+    )
+
+    second = run_stage_c_batch(
+        plan, output_root=output_root, backend=backend, estimate=estimate,
+        _allow_unissued_estimate=True,
+    )
+    assert second.successful is True
+    assert second.unit_results[0].resumed is True
+    assert len(backend.calls) == 1
+    assert reloads
+
+
+def test_production_backend_rejects_unpaired_or_mismatched_recovery_context(
+    tmp_path,
+):
+    from dataclasses import replace
+    from vitnns.recovery_c7_launch import RecoveryC7LaunchRecord
+    from vitnns.recovery_v2 import load_recovery_v2_binding
+
+    binding = load_recovery_v2_binding(verify_assets=False)
+    with pytest.raises(TypeError, match="provided together"):
+        ProductionStageCBackend(
+            sample_loader=lambda *_args: None, recovery_binding=binding,
+        )
+    launch_path = tmp_path / "recovery_c7_launch_record.json"
+    launch_path.write_text("{}\n", encoding="utf-8")
+    other_binding = replace(binding, path=tmp_path / "other-binding.json")
+    launch = RecoveryC7LaunchRecord(
+        path=launch_path, schema_path=tmp_path / "schema.json",
+        document={"canonical_digest": "f" * 64}, binding=other_binding,
+        model_path=binding.model_path, data_root=binding.data_root,
+        devkit_path=binding.devkit_path,
+        diagnostic_root=tmp_path / "diagnostic",
+        formal_root=tmp_path / "formal", reports_root=tmp_path / "reports",
+        model_identity=binding.model, file_sha256="e" * 64,
+        launch_commit="d" * 40,
+    )
+    with pytest.raises(StageCBackendError, match="not bound"):
+        ProductionStageCBackend(
+            sample_loader=lambda *_args: None, recovery_binding=binding,
+            recovery_launch_record=launch,
+        )
+
+
 def test_normal_unit_run_is_complete_and_hash_valid(tmp_path):
     backend = ToyBackend()
     unit = toy_unit()
@@ -731,6 +923,45 @@ def test_same_unit_key_with_changed_plan_and_preflight_never_resumes(tmp_path):
     validation = validate_stage_c_batch(output_root, first_plan)
     assert validation.valid is True
     assert validation.successful is True
+
+
+@pytest.mark.parametrize("entrypoint", ["sample", "batch"])
+def test_public_runner_uses_explicit_observed_git_state(
+    monkeypatch, tmp_path, entrypoint,
+):
+    unit = toy_unit()
+    plan = ToyPlan((unit,))
+    explicit = {"commit": "e" * 40, "dirty": False}
+    observed = []
+
+    def fake_run_execution_unit(received, **kwargs):
+        observed.append(kwargs["observed_git_state"])
+        return UnitRunResult(
+            received.key.to_dict(), "succeeded",
+            str(tmp_path / "attempt-000001"), False, None,
+        )
+
+    monkeypatch.setattr(
+        "vitnns.stage_c_runner.run_execution_unit", fake_run_execution_unit,
+    )
+    monkeypatch.setattr(
+        "vitnns.stage_c_runner.validate_stage_c_batch",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            orchestration_complete=True, successful=True, valid=True,
+        ),
+    )
+    backend = ToyBackend()
+    kwargs = {
+        "output_root": tmp_path / entrypoint, "backend": backend,
+        "estimate": passing_estimate(plan), "observed_git_state": explicit,
+        "_allow_unissued_estimate": True,
+    }
+    if entrypoint == "sample":
+        run_stage_c_sample(plan, SAMPLE_A, **kwargs)
+    else:
+        run_stage_c_batch(plan, **kwargs)
+
+    assert observed == [explicit]
 
 
 @pytest.mark.parametrize(

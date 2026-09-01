@@ -3,7 +3,10 @@ from __future__ import annotations
 import copy
 import hashlib
 from collections import Counter
+from collections.abc import Mapping
+from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -19,6 +22,8 @@ from vitnns.stage_c_plan import (
     load_run_spec,
     load_stage_c_registry,
 )
+from vitnns.recovery_v2 import load_recovery_v2_binding
+from vitnns.recovery_c7_launch import RecoveryC7LaunchRecord
 
 
 FORMAL_SPEC_PATH = REPO_ROOT / "config/stage_c_c7_run_spec.json"
@@ -69,6 +74,77 @@ IG_METHODS = {
 }
 
 
+def _recovery_model() -> dict[str, Any]:
+    return {
+        "name": MODEL_NAME,
+        "state_dict_path": "assets/models/recovery.pth",
+        "state_dict_sha256": "1" * 64,
+        "identity": "RECOVERY_V2_NEW_ARTIFACT_NOT_HISTORICAL_TEST",
+        "canonical_tensor_digest": "2" * 64,
+        "historical_artifact_recovered": False,
+        "historical_state_dict_sha256": MODEL_SHA256,
+        "recovery_binding_path": "evidence/recovery_binding.json",
+        "recovery_binding_file_sha256": "3" * 64,
+        "recovery_binding_canonical_digest": "4" * 64,
+        "recovery_launch_record_path": "evidence/recovery_launch.json",
+        "recovery_launch_record_file_sha256": "5" * 64,
+        "recovery_launch_record_canonical_digest": "6" * 64,
+    }
+
+
+def _recovery_authority(tmp_path: Path) -> RecoveryC7LaunchRecord:
+    binding = load_recovery_v2_binding()
+    reports = tmp_path / "reports"
+    binding_sha256 = hashlib.sha256(binding.path.read_bytes()).hexdigest()
+    document = {
+        "canonical_digest": "6" * 64,
+        "recovery_binding": {
+            "path": str(binding.path.relative_to(REPO_ROOT)),
+            "file_sha256": binding_sha256,
+            "canonical_digest": binding.canonical_digest,
+        },
+        "c7_contracts": {
+            "diagnostic_run_spec": {
+                "path": str(DIAGNOSTIC_SPEC_PATH.relative_to(REPO_ROOT)),
+            },
+            "formal_run_spec": {
+                "path": str(FORMAL_SPEC_PATH.relative_to(REPO_ROOT)),
+            },
+        },
+    }
+    return RecoveryC7LaunchRecord(
+        # The provenance layer re-opens launch authority.  Individual tests
+        # replace that loader with this exact typed record, while using a real
+        # repository file here keeps its independent path/hash checks active.
+        path=binding.path, schema_path=binding.schema_path,
+        document=document,
+        binding=binding, model_path=binding.model_path,
+        data_root=binding.data_root, devkit_path=binding.devkit_path,
+        diagnostic_root=tmp_path / "diagnostic-source",
+        formal_root=tmp_path / "formal-source", reports_root=reports,
+        model_identity=binding.model,
+        file_sha256=binding_sha256,
+        launch_commit="d" * 40, repo_root=REPO_ROOT,
+    )
+
+
+def _trust_test_authority(
+    monkeypatch: pytest.MonkeyPatch, authority: RecoveryC7LaunchRecord,
+) -> None:
+    monkeypatch.setattr(
+        "vitnns.recovery_c7_launch.load_recovery_c7_launch_record",
+        lambda *_args, **_kwargs: authority,
+    )
+
+
+def _recovery_model_for_authority(
+    authority: RecoveryC7LaunchRecord,
+) -> dict[str, Any]:
+    from vitnns.stage_c_provenance import recovery_model_provenance
+
+    return recovery_model_provenance(authority.binding, authority)
+
+
 @pytest.fixture(scope="module")
 def config():
     return load_stage_c_config()
@@ -76,7 +152,9 @@ def config():
 
 @pytest.fixture(scope="module")
 def registry(config):
-    return load_stage_c_registry(config)
+    return load_stage_c_registry(
+        config, recovery_binding=load_recovery_v2_binding()
+    )
 
 
 @pytest.fixture(scope="module")
@@ -480,12 +558,15 @@ def _map_records(method_id: str) -> list[dict[str, Any]]:
     ]
 
 
-def _shared_provenance(plan_digest: str | None = None) -> dict[str, Any]:
+def _shared_provenance(
+    plan_digest: str | None = None, *, model: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     digest = "a" * 64
     return {
         "code": {"commit": NEW_TEST_COMMIT, "dirty": False},
-        "model": {
+        "model": dict(model) if model is not None else {
             "name": MODEL_NAME,
+            "state_dict_path": "models/vit.pth",
             "state_dict_sha256": MODEL_SHA256,
         },
         "input": {"image_sha256": digest},
@@ -506,7 +587,9 @@ def _shared_provenance(plan_digest: str | None = None) -> dict[str, Any]:
     }
 
 
-def _diagnostic_mapping(plan: Any, wall: float, root: Path) -> dict[str, Any]:
+def _diagnostic_mapping(
+    plan: Any, wall: float, root: Path, *, model: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     record = _projection_record(total_wall=wall)
     record["unit_key"] = plan.units[0].key.to_dict()
     record["attempt_path"] = str(
@@ -516,7 +599,9 @@ def _diagnostic_mapping(plan: Any, wall: float, root: Path) -> dict[str, Any]:
         ).resolve()
     )
     record["map_execution_records"] = _map_records(DIAGNOSTIC_METHOD)
-    record["shared_provenance"] = _shared_provenance(plan.canonical_digest)
+    record["shared_provenance"] = _shared_provenance(
+        plan.canonical_digest, model=model,
+    )
     record["shared_provenance"]["configuration"]["run_spec_sha256"] = (
         benchmark._canonical_digest(plan.run_spec.to_dict())
     )
@@ -561,9 +646,17 @@ def _diagnostic_mapping(plan: Any, wall: float, root: Path) -> dict[str, Any]:
 def _diagnostic_report(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, diagnostic_plan: Any,
     config: Any, *, wall: float, mutate_record=None, environment=None,
+    model: Mapping[str, Any] | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> dict[str, Any]:
-    root = tmp_path / "diagnostic-source"
-    mapping = _diagnostic_mapping(diagnostic_plan, wall, root)
+    authority = benchmark._trusted_recovery_launch_record(
+        trusted_recovery_context
+    )
+    root = (
+        Path(authority.diagnostic_root) if authority is not None
+        else tmp_path / "diagnostic-source"
+    )
+    mapping = _diagnostic_mapping(diagnostic_plan, wall, root, model=model)
     if mutate_record is not None:
         mutate_record(mapping["records"][0])
     monkeypatch.setattr(benchmark, "map_execution_records", lambda *_a, **_k: mapping)
@@ -593,7 +686,11 @@ def _diagnostic_report(
             DIAGNOSTIC_SPEC_PATH.read_bytes()
         ).hexdigest(),
         observed_git_state={"commit": NEW_TEST_COMMIT, "dirty": False},
-        report_path=tmp_path / "diagnostic-gate.json",
+        report_path=(
+            Path(authority.reports_root) / benchmark.DIAGNOSTIC_GATE_FILENAME
+            if authority is not None else tmp_path / "diagnostic-gate.json"
+        ),
+        trusted_recovery_context=trusted_recovery_context,
     )
 
 
@@ -697,6 +794,215 @@ def test_diagnostic_gate_detects_plain_tamper_and_resigned_semantic_forgery(
         benchmark.validate_c7_diagnostic_gate(forged)
 
 
+def test_recovery_diagnostic_gate_requires_matching_trusted_context(
+    monkeypatch, tmp_path, diagnostic_plan, config,
+):
+    context = _recovery_authority(tmp_path)
+    _trust_test_authority(monkeypatch, context)
+    model = _recovery_model_for_authority(context)
+    report = _diagnostic_report(
+        monkeypatch, tmp_path, diagnostic_plan, config, wall=12.5,
+        model=model, trusted_recovery_context=context,
+    )
+
+    assert report["status"] == benchmark.STATUS_PASS
+    assert report["bindings"]["shared_provenance"]["model"] == model
+    benchmark.validate_c7_diagnostic_gate(
+        report, trusted_recovery_context=context,
+    )
+
+    with pytest.raises(
+        benchmark.StageCBenchmarkIntegrityError,
+        match="trusted recovery context",
+    ):
+        benchmark.validate_c7_diagnostic_gate(report)
+
+    drifted = replace(context, file_sha256="7" * 64)
+    with pytest.raises(
+        benchmark.StageCBenchmarkIntegrityError,
+        match="trusted recovery context|reloaded authority",
+    ):
+        benchmark.validate_c7_diagnostic_gate(
+            report, trusted_recovery_context=drifted,
+        )
+
+
+def test_recovery_model_binding_helper_preserves_historical_compatibility():
+    assert benchmark._stage_c_model_binding_errors(
+        {
+            "name": MODEL_NAME,
+            "state_dict_path": "models/vit.pth",
+            "state_dict_sha256": MODEL_SHA256,
+        },
+        trusted_recovery_context=None,
+    ) == []
+
+
+def test_recovery_model_binding_helper_requires_exact_context():
+    model = _recovery_model()
+
+    assert "validated RecoveryC7LaunchRecord" in (
+        benchmark._stage_c_model_binding_errors(
+            model, trusted_recovery_context=model,
+        )[0]
+    )
+    assert "trusted recovery context" in benchmark._stage_c_model_binding_errors(
+        model, trusted_recovery_context=None,
+    )[0]
+
+    assert "validated RecoveryC7LaunchRecord" in (
+        benchmark._stage_c_model_binding_errors(
+            model, trusted_recovery_context={
+                "recovery_binding": {},
+                "recovery_launch_record": {},
+            },
+        )[0]
+    )
+
+
+def test_map_execution_records_passes_typed_recovery_authority_to_batch_validator(
+    monkeypatch, tmp_path, diagnostic_plan,
+):
+    authority = _recovery_authority(tmp_path)
+    observed: dict[str, Any] = {}
+
+    def validate(root, plan, **kwargs):
+        observed.update({"root": root, "plan": plan, **kwargs})
+        return SimpleNamespace(to_dict=lambda: {
+            "schema_version": 1,
+            "document_type": "stage_c_batch_validation",
+            "plan_digest": diagnostic_plan.canonical_digest,
+            "valid": False, "orchestration_complete": False,
+            "successful": False, "rows": [], "errors": [],
+        })
+
+    monkeypatch.setattr("vitnns.stage_c_runner.validate_stage_c_batch", validate)
+    monkeypatch.setattr(benchmark, "_source_controls", lambda *_args: {
+        name: {"document": None, "sha256": None}
+        for name in benchmark._CONTROL_FILENAMES
+    })
+    benchmark.map_execution_records(
+        tmp_path, diagnostic_plan,
+        observed_git_state={"commit": NEW_TEST_COMMIT, "dirty": False},
+        trusted_recovery_context=authority,
+    )
+
+    assert observed["trusted_recovery_context"] is authority
+    assert observed["observed_git_state"] == {
+        "commit": NEW_TEST_COMMIT, "dirty": False,
+    }
+
+
+def test_map_execution_records_rejects_projected_recovery_context(
+    tmp_path, diagnostic_plan,
+):
+    with pytest.raises(
+        benchmark.StageCBenchmarkIntegrityError,
+        match="validated RecoveryC7LaunchRecord",
+    ):
+        benchmark.map_execution_records(
+            tmp_path, diagnostic_plan,
+            trusted_recovery_context=_recovery_model(),
+        )
+
+
+def test_recovery_launch_gate_binds_authorized_gate_and_formal_root(
+    monkeypatch, tmp_path, diagnostic_plan, formal_plan, config,
+):
+    authority = _recovery_authority(tmp_path)
+    _trust_test_authority(monkeypatch, authority)
+    model = _recovery_model_for_authority(authority)
+    gate = _diagnostic_report(
+        monkeypatch, tmp_path, diagnostic_plan, config, wall=1.0,
+        model=model, trusted_recovery_context=authority,
+    )
+    gate_path = authority.reports_root / benchmark.DIAGNOSTIC_GATE_FILENAME
+    benchmark._atomic_write_json(gate_path, gate)
+
+    with pytest.raises(
+        benchmark.StageCBenchmarkIntegrityError,
+        match="diagnostic gate.*RecoveryC7LaunchRecord.*output path",
+    ):
+        benchmark.require_c7_launch_gate(
+            gate, formal_plan, config=config, output_root=authority.formal_root,
+            observed_git_state={"commit": NEW_TEST_COMMIT, "dirty": False},
+            run_spec_path=FORMAL_SPEC_PATH,
+            trusted_recovery_context=authority,
+        )
+
+    copied_gate = tmp_path / "copied-gate.json"
+    benchmark._atomic_write_json(copied_gate, gate)
+    with pytest.raises(
+        benchmark.StageCBenchmarkIntegrityError,
+        match="diagnostic gate path.*RecoveryC7LaunchRecord",
+    ):
+        benchmark.require_c7_launch_gate(
+            copied_gate, formal_plan, config=config,
+            output_root=authority.formal_root,
+            observed_git_state={"commit": NEW_TEST_COMMIT, "dirty": False},
+            run_spec_path=FORMAL_SPEC_PATH,
+            trusted_recovery_context=authority,
+        )
+
+    with pytest.raises(
+        benchmark.StageCBenchmarkIntegrityError,
+        match="formal output root.*RecoveryC7LaunchRecord",
+    ):
+        benchmark.require_c7_launch_gate(
+            gate_path, formal_plan, config=config,
+            output_root=tmp_path / "untrusted-formal",
+            observed_git_state={"commit": NEW_TEST_COMMIT, "dirty": False},
+            run_spec_path=FORMAL_SPEC_PATH,
+            trusted_recovery_context=authority,
+        )
+
+    copied_spec = tmp_path / "copied-formal-spec.json"
+    copied_spec.write_bytes(FORMAL_SPEC_PATH.read_bytes())
+    with pytest.raises(
+        benchmark.StageCBenchmarkIntegrityError,
+        match="formal run-spec path.*RecoveryC7LaunchRecord",
+    ):
+        benchmark.require_c7_launch_gate(
+            gate_path, formal_plan, config=config,
+            output_root=authority.formal_root,
+            observed_git_state={"commit": NEW_TEST_COMMIT, "dirty": False},
+            run_spec_path=copied_spec, trusted_recovery_context=authority,
+        )
+
+
+def test_recovery_diagnostic_writer_binds_authorized_destination_and_root(
+    tmp_path, diagnostic_plan, config,
+):
+    authority = _recovery_authority(tmp_path)
+    common = {
+        "config": config, "environment": H20_ENVIRONMENT,
+        "run_spec_path": DIAGNOSTIC_SPEC_PATH,
+        "run_spec_file_sha256": hashlib.sha256(
+            DIAGNOSTIC_SPEC_PATH.read_bytes()
+        ).hexdigest(),
+        "observed_git_state": {
+            "commit": NEW_TEST_COMMIT, "dirty": False,
+        },
+        "trusted_recovery_context": authority,
+    }
+    with pytest.raises(
+        benchmark.StageCBenchmarkIntegrityError,
+        match="diagnostic gate destination.*RecoveryC7LaunchRecord",
+    ):
+        benchmark.write_c7_diagnostic_gate(
+            tmp_path / "copied-gate.json", authority.diagnostic_root,
+            diagnostic_plan, **common,
+        )
+    with pytest.raises(
+        benchmark.StageCBenchmarkIntegrityError,
+        match="diagnostic output root.*RecoveryC7LaunchRecord",
+    ):
+        benchmark.write_c7_diagnostic_gate(
+            authority.reports_root / benchmark.DIAGNOSTIC_GATE_FILENAME,
+            tmp_path / "untrusted-diagnostic", diagnostic_plan, **common,
+        )
+
+
 def test_fresh_output_root_rejects_old_retry_and_nonempty_paths(tmp_path):
     assert benchmark.require_fresh_c7_output_root(
         tmp_path / "new-formal-root", kind="formal"
@@ -715,9 +1021,12 @@ def test_fresh_output_root_rejects_old_retry_and_nonempty_paths(tmp_path):
         benchmark.require_fresh_c7_output_root(polluted, kind="formal")
 
 
-def _formal_mapping(plan: Any, estimate: Any, root: Path) -> dict[str, Any]:
+def _formal_mapping(
+    plan: Any, estimate: Any, root: Path, *,
+    model: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     records: list[dict[str, Any]] = []
-    shared = _shared_provenance(plan.canonical_digest)
+    shared = _shared_provenance(plan.canonical_digest, model=model)
     shared["configuration"]["run_spec_sha256"] = benchmark._canonical_digest(
         plan.run_spec.to_dict()
     )
@@ -790,28 +1099,49 @@ def _formal_report(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, formal_plan: Any,
     formal_estimate: Any, config: Any, *, mapping=None, source_bytes=4000,
     layout_errors=(),
+    model: Mapping[str, Any] | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> dict[str, Any]:
-    root = tmp_path / "formal-source"
+    authority = benchmark._trusted_recovery_launch_record(
+        trusted_recovery_context
+    )
+    root = (
+        Path(authority.formal_root) if authority is not None
+        else tmp_path / "formal-source"
+    )
     diagnostic_plan = build_execution_plan(
-        config, load_stage_c_registry(config),
+        config, load_stage_c_registry(
+            config, recovery_binding=load_recovery_v2_binding()
+        ),
         load_run_spec(DIAGNOSTIC_SPEC_PATH),
     )
     gate = _diagnostic_report(
-        monkeypatch, tmp_path, diagnostic_plan, config, wall=1.0
+        monkeypatch, tmp_path, diagnostic_plan, config, wall=1.0,
+        model=model, trusted_recovery_context=trusted_recovery_context,
     )
-    gate_path = tmp_path / "diagnostic-gate-for-formal.json"
+    gate_path = (
+        Path(authority.reports_root) / benchmark.DIAGNOSTIC_GATE_FILENAME
+        if authority is not None
+        else tmp_path / "diagnostic-gate-for-formal.json"
+    )
     benchmark._atomic_write_json(gate_path, gate)
     # The diagnostic helper patches report-only readers; restore before the
     # formal helper installs its own source evidence.
     monkeypatch.undo()
+    if authority is not None:
+        _trust_test_authority(monkeypatch, authority)
     authorization = benchmark.require_c7_launch_gate(
         gate_path, formal_plan, config=config, output_root=root,
         observed_git_state={"commit": NEW_TEST_COMMIT, "dirty": False},
         run_spec_path=FORMAL_SPEC_PATH,
+        trusted_recovery_context=trusted_recovery_context,
     )
-    benchmark.write_c7_launch_authorization(root, authorization)
+    benchmark.write_c7_launch_authorization(
+        root, authorization,
+        trusted_recovery_context=trusted_recovery_context,
+    )
     evidence = (
-        _formal_mapping(formal_plan, formal_estimate, root)
+        _formal_mapping(formal_plan, formal_estimate, root, model=model)
         if mapping is None else mapping
     )
     monkeypatch.setattr(
@@ -859,7 +1189,11 @@ def _formal_report(
         recomputed_estimate=formal_estimate,
         observed_git_state={"commit": NEW_TEST_COMMIT, "dirty": False},
         c7_diagnostic_gate=gate_path,
-        report_path=tmp_path / "formal-report.json",
+        report_path=(
+            Path(authority.reports_root) / benchmark.REPORT_FILENAME
+            if authority is not None else tmp_path / "formal-report.json"
+        ),
+        trusted_recovery_context=trusted_recovery_context,
     )
 
 
@@ -892,6 +1226,83 @@ def test_formal_report_uses_status_runner_total_not_backend_only_wall(
     assert report["decision_performed"] is False
     assert report["holdout_accessed"] is False
     benchmark.validate_benchmark_report(report)
+
+
+def test_recovery_context_flows_from_diagnostic_through_formal_report(
+    monkeypatch, tmp_path, formal_plan, formal_estimate, config,
+):
+    context = _recovery_authority(tmp_path)
+    _trust_test_authority(monkeypatch, context)
+    model = _recovery_model_for_authority(context)
+    report = _formal_report(
+        monkeypatch, tmp_path, formal_plan, formal_estimate, config,
+        model=model, trusted_recovery_context=context,
+    )
+
+    assert report["status"] == benchmark.STATUS_PASS
+    formal_model = report["bindings"]["shared_provenance"]["model"]
+    diagnostic_model = report["bindings"]["diagnostic_gate"]["bindings"][
+        "shared_provenance"
+    ]["model"]
+    assert formal_model == diagnostic_model == model
+    benchmark.validate_benchmark_report(
+        report, trusted_recovery_context=context,
+    )
+
+    with pytest.raises(
+        benchmark.StageCBenchmarkIntegrityError, match="trusted recovery context",
+    ):
+        benchmark.validate_benchmark_report(report)
+
+
+def test_recovery_report_writer_binds_authorized_destination_and_roots(
+    tmp_path, formal_plan, formal_estimate, config,
+):
+    authority = _recovery_authority(tmp_path)
+    common = {
+        "config": config,
+        "environment": H20_ENVIRONMENT,
+        "run_spec_path": FORMAL_SPEC_PATH,
+        "run_spec_file_sha256": hashlib.sha256(
+            FORMAL_SPEC_PATH.read_bytes()
+        ).hexdigest(),
+        "recomputed_estimate": formal_estimate,
+        "observed_git_state": {
+            "commit": NEW_TEST_COMMIT, "dirty": False,
+        },
+        "c7_diagnostic_gate": (
+            authority.reports_root / benchmark.DIAGNOSTIC_GATE_FILENAME
+        ),
+        "trusted_recovery_context": authority,
+    }
+
+    with pytest.raises(
+        benchmark.StageCBenchmarkIntegrityError,
+        match="benchmark report destination.*RecoveryC7LaunchRecord",
+    ):
+        benchmark.write_benchmark_report(
+            tmp_path / "copied-report.json", authority.formal_root,
+            formal_plan, **common,
+        )
+
+    with pytest.raises(
+        benchmark.StageCBenchmarkIntegrityError,
+        match="formal output root.*RecoveryC7LaunchRecord",
+    ):
+        benchmark.write_benchmark_report(
+            authority.reports_root / benchmark.REPORT_FILENAME,
+            tmp_path / "untrusted-formal", formal_plan, **common,
+        )
+
+    with pytest.raises(
+        benchmark.StageCBenchmarkIntegrityError,
+        match="diagnostic gate path.*RecoveryC7LaunchRecord",
+    ):
+        benchmark.write_benchmark_report(
+            authority.reports_root / benchmark.REPORT_FILENAME,
+            authority.formal_root, formal_plan,
+            **{**common, "c7_diagnostic_gate": tmp_path / "copied-gate.json"},
+        )
 
 
 def test_formal_report_detects_plain_tamper_and_resigned_semantic_forgery(

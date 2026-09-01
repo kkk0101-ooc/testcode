@@ -1,0 +1,298 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ViT-NNS recovery-v2 C7 launch record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "document_type",
+    "record_id",
+    "status",
+    "launch_record_commit",
+    "launch_schema",
+    "amendment",
+    "recovery_binding",
+    "stage_a",
+    "model",
+    "dependencies",
+    "c7_contracts",
+    "producer_git",
+    "outputs",
+    "scope",
+    "canonical_digest"
+  ],
+  "properties": {
+    "$schema": {"const": "recovery_c7_launch_record.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "vitnns_recovery_v2_c7_launch_record"},
+    "record_id": {"const": "RECOVERY_V2_C7_LAUNCH_20260901"},
+    "status": {"const": "AUTHORIZED_FOR_RECOVERY_C7_ONLY"},
+    "launch_record_commit": {
+      "oneOf": [
+        {"const": "SELF"},
+        {"$ref": "#/$defs/commit"}
+      ]
+    },
+    "launch_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "file_sha256"],
+      "properties": {
+        "path": {"const": "config/recovery_c7_launch_record.schema.json"},
+        "file_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "amendment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "commit", "file_sha256"],
+      "properties": {
+        "id": {"const": "RECOVERY-C7-RERUN-20260901"},
+        "path": {"const": "docs/recovery_protocol_amendment_20260901.md"},
+        "commit": {"const": "4a87e4d9cb71fe9c394bb2fdd5d4e71bbfe8aaed"},
+        "file_sha256": {"const": "07e00c12e689af9180d03338738394374c7c1afbd15a52a9493a23b689b4787a"}
+      }
+    },
+    "recovery_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "binding_id",
+        "status",
+        "path",
+        "file_sha256",
+        "schema_path",
+        "schema_file_sha256",
+        "canonical_digest"
+      ],
+      "properties": {
+        "binding_id": {"type": "string", "minLength": 1},
+        "status": {"type": "string", "minLength": 1},
+        "path": {"$ref": "#/$defs/projectPath"},
+        "file_sha256": {"$ref": "#/$defs/sha256"},
+        "schema_path": {"$ref": "#/$defs/projectPath"},
+        "schema_file_sha256": {"$ref": "#/$defs/sha256"},
+        "canonical_digest": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "stage_a": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "root",
+        "receipt_path",
+        "receipt_file_sha256",
+        "receipt_canonical_digest",
+        "status",
+        "producer_commit",
+        "producer_tree",
+        "artifacts"
+      ],
+      "properties": {
+        "root": {
+          "allOf": [
+            {"$ref": "#/$defs/projectPath"},
+            {"pattern": "^evidence/stage_a/[^/]+$"}
+          ]
+        },
+        "receipt_path": {
+          "allOf": [
+            {"$ref": "#/$defs/projectPath"},
+            {"pattern": "^evidence/stage_a/[^/]+/stage_a_verification\\.json$"}
+          ]
+        },
+        "receipt_file_sha256": {"$ref": "#/$defs/sha256"},
+        "receipt_canonical_digest": {"$ref": "#/$defs/sha256"},
+        "status": {"const": "PASS"},
+        "producer_commit": {"$ref": "#/$defs/commit"},
+        "producer_tree": {"$ref": "#/$defs/gitObject"},
+        "artifacts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["extraction.pt", "provenance.json", "validation.json"],
+          "properties": {
+            "extraction.pt": {"$ref": "#/$defs/artifactBinding"},
+            "provenance.json": {"$ref": "#/$defs/artifactBinding"},
+            "validation.json": {"$ref": "#/$defs/artifactBinding"}
+          }
+        }
+      }
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "identity",
+        "state_dict_path",
+        "state_dict_sha256",
+        "state_dict_bytes",
+        "lfs_oid_sha256",
+        "canonical_tensor_digest",
+        "canonical_tensor_digest_algorithm",
+        "expected_key_count",
+        "expected_parameter_count",
+        "historical_artifact_recovered",
+        "historical_state_dict_sha256"
+      ],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "identity": {"type": "string", "minLength": 1},
+        "state_dict_path": {"$ref": "#/$defs/projectPath"},
+        "state_dict_sha256": {"$ref": "#/$defs/sha256"},
+        "state_dict_bytes": {"type": "integer", "minimum": 1},
+        "lfs_oid_sha256": {"$ref": "#/$defs/sha256"},
+        "canonical_tensor_digest": {"$ref": "#/$defs/sha256"},
+        "canonical_tensor_digest_algorithm": {"type": "string", "minLength": 1},
+        "expected_key_count": {"type": "integer", "minimum": 1},
+        "expected_parameter_count": {"type": "integer", "minimum": 1},
+        "historical_artifact_recovered": {"const": false},
+        "historical_state_dict_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "dependencies": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requirements_lock_path", "requirements_lock_sha256", "requirements_lock_bytes"],
+      "properties": {
+        "requirements_lock_path": {"$ref": "#/$defs/projectPath"},
+        "requirements_lock_sha256": {"$ref": "#/$defs/sha256"},
+        "requirements_lock_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "c7_contracts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage_c_config",
+        "protocol",
+        "acceptance",
+        "diagnostic_run_spec",
+        "formal_run_spec"
+      ],
+      "properties": {
+        "stage_c_config": {"$ref": "#/$defs/fileBinding"},
+        "protocol": {"$ref": "#/$defs/fileBinding"},
+        "acceptance": {"$ref": "#/$defs/fileBinding"},
+        "diagnostic_run_spec": {"$ref": "#/$defs/jsonFileBinding"},
+        "formal_run_spec": {"$ref": "#/$defs/jsonFileBinding"}
+      }
+    },
+    "producer_git": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commit",
+        "tree",
+        "source_subtree_path",
+        "source_subtree_tree",
+        "dirty"
+      ],
+      "properties": {
+        "commit": {"$ref": "#/$defs/commit"},
+        "tree": {"$ref": "#/$defs/gitObject"},
+        "source_subtree_path": {"const": "src/vitnns"},
+        "source_subtree_tree": {"$ref": "#/$defs/gitObject"},
+        "dirty": {"const": false}
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "common_root",
+        "launch_record_path",
+        "diagnostic_root",
+        "formal_root",
+        "reports_root"
+      ],
+      "properties": {
+        "common_root": {"$ref": "#/$defs/projectPath"},
+        "launch_record_path": {"$ref": "#/$defs/projectPath"},
+        "diagnostic_root": {"$ref": "#/$defs/projectPath"},
+        "formal_root": {"$ref": "#/$defs/projectPath"},
+        "reports_root": {"$ref": "#/$defs/projectPath"}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "execution_authorization",
+        "rerun_interpretation",
+        "c7_diagnostic_authorized",
+        "c7_formal_authorized",
+        "stage_c_holdout_access_authorized",
+        "c8_authorized",
+        "c9_authorized",
+        "c10_authorized",
+        "stage_d_d7_authorized",
+        "stage_d_d8_authorized",
+        "stage_d_reserve_access_authorized"
+      ],
+      "properties": {
+        "execution_authorization": {"const": "RECOVERY_C7_DIAGNOSTIC_AND_FORMAL_ONLY"},
+        "rerun_interpretation": {"const": "recovery_replication_not_new_confirmatory"},
+        "c7_diagnostic_authorized": {"const": true},
+        "c7_formal_authorized": {"const": true},
+        "stage_c_holdout_access_authorized": {"const": false},
+        "c8_authorized": {"const": false},
+        "c9_authorized": {"const": false},
+        "c10_authorized": {"const": false},
+        "stage_d_d7_authorized": {"const": false},
+        "stage_d_d8_authorized": {"const": false},
+        "stage_d_reserve_access_authorized": {"const": false}
+      }
+    },
+    "canonical_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "gitObject": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$"
+    },
+    "projectPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"
+    },
+    "fileBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "file_sha256"],
+      "properties": {
+        "path": {"$ref": "#/$defs/projectPath"},
+        "file_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "jsonFileBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "file_sha256", "canonical_sha256"],
+      "properties": {
+        "path": {"$ref": "#/$defs/projectPath"},
+        "file_sha256": {"$ref": "#/$defs/sha256"},
+        "canonical_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "artifactBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "bytes", "file_sha256"],
+      "properties": {
+        "path": {"$ref": "#/$defs/projectPath"},
+        "bytes": {"type": "integer", "minimum": 1},
+        "file_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

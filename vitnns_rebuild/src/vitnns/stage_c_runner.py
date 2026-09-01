@@ -315,7 +315,8 @@ def _run_spec_digest(plan: Any) -> str | None:
 
 
 def _expected_provenance_bindings(
-    *, plan: Any | None, preflight: Mapping[str, Any]
+    *, plan: Any | None, preflight: Mapping[str, Any],
+    backend: Any | None = None,
 ) -> dict[str, Any]:
     """Bind an attempt to the active plan, run spec, and preflight."""
 
@@ -330,10 +331,15 @@ def _expected_provenance_bindings(
         run_spec_digest = _run_spec_digest(plan)
         if run_spec_digest is not None:
             configuration["run_spec_sha256"] = run_spec_digest
-    return {
+    result = {
         "configuration": configuration,
         "resources": {"preflight": preflight_binding},
     }
+    model_record = getattr(backend, "_bound_model_record", None)
+    recovery_context = getattr(backend, "trusted_recovery_context", None)
+    if recovery_context is not None and callable(model_record):
+        result["model"] = model_record()
+    return result
 
 
 def _runtime_git_state(
@@ -475,6 +481,8 @@ class ProductionStageCBackend:
         sample_loader: Callable[[Any, Any], Any],
         model_loader: Callable[..., Any] | None = None,
         state_dict_path: Path | str | None = None,
+        recovery_binding: Any | None = None,
+        recovery_launch_record: Any | None = None,
         provenance_builder: Callable[..., Mapping[str, Any]] | None = None,
         config: Any = None,
         registry: Any = None,
@@ -488,9 +496,37 @@ class ProductionStageCBackend:
             raise TypeError("sample_loader must be callable")
         if model_loader is not None and not callable(model_loader):
             raise TypeError("model_loader must be callable or None")
+        # Recovery execution is authorized only by the paired, validated
+        # machine binding and C7 launch record.
+        if (recovery_binding is None) != (recovery_launch_record is None):
+            raise TypeError(
+                "recovery_binding and recovery_launch_record must be provided together"
+            )
+        if recovery_binding is not None:
+            from .recovery_c7_launch import RecoveryC7LaunchRecord
+            from .recovery_v2 import RecoveryV2Binding
+
+            if not isinstance(recovery_binding, RecoveryV2Binding):
+                raise TypeError(
+                    "recovery_binding must be a RecoveryV2Binding"
+                )
+            if not isinstance(recovery_launch_record, RecoveryC7LaunchRecord):
+                raise TypeError(
+                    "recovery_launch_record must be a RecoveryC7LaunchRecord"
+                )
+            if recovery_launch_record.binding is not recovery_binding and (
+                recovery_launch_record.binding.path != recovery_binding.path
+                or recovery_launch_record.binding.canonical_digest
+                != recovery_binding.canonical_digest
+            ):
+                raise StageCBackendError(
+                    "recovery launch record is not bound to recovery_binding"
+                )
         self.sample_loader = sample_loader
         self.model_loader = model_loader
         self.state_dict_path = None if state_dict_path is None else Path(state_dict_path)
+        self.recovery_binding = recovery_binding
+        self.recovery_launch_record = recovery_launch_record
         self.provenance_builder = provenance_builder
         self.config = config
         self.registry = registry
@@ -525,6 +561,57 @@ class ProductionStageCBackend:
         self._value_targets: dict[tuple[str, str, int, int], Any] = {}
         self._image_scope_lock = threading.Lock()
         self._active_image_scope: tuple[str, str] | None = None
+
+    @property
+    def trusted_recovery_context(self) -> Mapping[str, Any] | None:
+        """Return the two already-validated recovery authorities, if present."""
+
+        if self.recovery_binding is None:
+            return None
+        return {
+            "recovery_binding": self.recovery_binding,
+            "recovery_launch_record": self.recovery_launch_record,
+        }
+
+    def _bound_model_record(self) -> dict[str, Any]:
+        """Return the exact historical or recovery provenance model block."""
+
+        if self.recovery_binding is not None:
+            from .stage_c_provenance import recovery_model_provenance
+
+            return recovery_model_provenance(
+                self.recovery_binding, self.recovery_launch_record
+            )
+        from .constants import MODEL_NAME, MODEL_SHA256, WORKSPACE_ROOT
+
+        return {
+            "name": MODEL_NAME,
+            "state_dict_path": os.path.relpath(
+                (self.state_dict_path or Path("model.pth")).resolve(),
+                WORKSPACE_ROOT,
+            ),
+            "state_dict_sha256": MODEL_SHA256,
+        }
+
+    def _bound_state_dict_path(self) -> Path | None:
+        if self.recovery_binding is None:
+            return self.state_dict_path
+        bound = getattr(self.recovery_binding, "model_path", None)
+        if bound is None and isinstance(self.recovery_binding, Mapping):
+            bound = self.recovery_binding.get("model_path")
+        if bound is None:
+            raise StageCBackendError(
+                "recovery binding does not expose its verified model_path"
+            )
+        bound_path = Path(bound).resolve()
+        if (
+            self.state_dict_path is not None
+            and self.state_dict_path.resolve() != bound_path
+        ):
+            raise StageCBackendError(
+                "state_dict_path differs from the recovery binding model_path"
+            )
+        return bound_path
 
     def release_sample(self, sample_id: str, device: str) -> None:
         """Release every sample-scoped cache entry for one image/device.
@@ -589,8 +676,11 @@ class ProductionStageCBackend:
                 "device": device, "verify_hash": True,
                 "unfused_attention": True,
             }
-            if self.state_dict_path is not None:
-                kwargs["state_dict_path"] = self.state_dict_path
+            state_dict_path = self._bound_state_dict_path()
+            if state_dict_path is not None:
+                kwargs["state_dict_path"] = state_dict_path
+            if self.recovery_binding is not None:
+                kwargs["recovery_binding"] = self.recovery_binding
             self._models[device] = loader(**kwargs)
             from .modeling import canonical_preprocess_spec
 
@@ -1752,7 +1842,7 @@ class ProductionStageCBackend:
             raise StageCBackendError(
                 "default production provenance requires config, registry, and plan"
             )
-        from .constants import MODEL_NAME, MODEL_SHA256, REPO_ROOT, WORKSPACE_ROOT
+        from .constants import REPO_ROOT
         from .io_utils import sha256_file
         from .stage_c_config import DEFAULT_STAGE_C_CONFIG, DEFAULT_STAGE_C_SCHEMA
         from .stage_c_fidelity import fidelity_seed_for_namespace
@@ -1884,14 +1974,7 @@ class ProductionStageCBackend:
                 dict(self.code_state) if self.code_state is not None
                 else capture_git_state(REPO_ROOT)
             ),
-            model={
-                "name": MODEL_NAME,
-                "state_dict_path": os.path.relpath(
-                    (self.state_dict_path or Path("model.pth")).resolve(),
-                    WORKSPACE_ROOT,
-                ),
-                "state_dict_sha256": MODEL_SHA256,
-            },
+            model=self._bound_model_record(),
             input_record={
                 **_mapping(row, "registry row"),
                 "canonical_rgb_sha256": canonical_hash,
@@ -2013,6 +2096,10 @@ class ProductionStageCBackend:
                 ],
             },
             artifact_inventory=artifact_inventory,
+            trusted_recovery_context=self.trusted_recovery_context,
+            require_trusted_recovery_context=(
+                self.trusted_recovery_context is not None
+            ),
         ).to_dict()
 
     def _pre_target_failure_provenance(
@@ -2033,7 +2120,7 @@ class ProductionStageCBackend:
             raise StageCBackendError(
                 "default production failure provenance requires config, registry, and plan"
             )
-        from .constants import MODEL_NAME, MODEL_SHA256, REPO_ROOT, WORKSPACE_ROOT
+        from .constants import REPO_ROOT
         from .io_utils import sha256_file
         from .stage_c_config import DEFAULT_STAGE_C_CONFIG, DEFAULT_STAGE_C_SCHEMA
         from .stage_c_plan import DEFAULT_REGISTRY_SCHEMA, DEFAULT_SELECTION_SCHEMA
@@ -2083,14 +2170,7 @@ class ProductionStageCBackend:
             unit_identity=identity,
             code=(dict(self.code_state) if self.code_state is not None
                   else capture_git_state(REPO_ROOT)),
-            model={
-                "name": MODEL_NAME,
-                "state_dict_path": os.path.relpath(
-                    (self.state_dict_path or Path("model.pth")).resolve(),
-                    WORKSPACE_ROOT,
-                ),
-                "state_dict_sha256": MODEL_SHA256,
-            },
+            model=self._bound_model_record(),
             input_record={
                 **_mapping(row, "registry row"),
                 "canonical_rgb_sha256": None,
@@ -2186,6 +2266,10 @@ class ProductionStageCBackend:
                 ],
             },
             artifact_inventory=artifact_inventory,
+            trusted_recovery_context=self.trusted_recovery_context,
+            require_trusted_recovery_context=(
+                self.trusted_recovery_context is not None
+            ),
         ).to_dict()
 
 
@@ -2589,7 +2673,12 @@ def _prepare_provenance(
         raise TypeError("backend provenance builder must return a mapping")
     from .stage_c_provenance import validate_stage_c_provenance
 
-    validate_stage_c_provenance(provenance, expected_unit=_unit_identity(unit))
+    recovery_context = getattr(backend, "trusted_recovery_context", None)
+    validate_stage_c_provenance(
+        provenance, expected_unit=_unit_identity(unit),
+        trusted_recovery_context=recovery_context,
+        require_trusted_recovery_context=recovery_context is not None,
+    )
     return provenance
 
 
@@ -2602,6 +2691,7 @@ def _existing_resumable_attempt(
     expected_provenance_bindings: Mapping[str, Any],
     observed_git_state: Mapping[str, Any] | None,
     caps: Mapping[str, Any] | None,
+    trusted_recovery_context: Any | None = None,
 ) -> Path | None:
     from .stage_c_artifacts import attempt_directories, validate_execution_unit
 
@@ -2612,6 +2702,7 @@ def _existing_resumable_attempt(
             expected_provenance_bindings=expected_provenance_bindings,
             observed_git_state=observed_git_state, caps=caps,
             require_runner_telemetry=True,
+            trusted_recovery_context=trusted_recovery_context,
         )
         if validation.resumable:
             resumable.append(attempt)
@@ -2648,12 +2739,16 @@ def run_execution_unit(
     active_plan = plan or getattr(backend, "plan", None)
     dynamic_validation = active_plan is not None
     expected_bindings = _expected_provenance_bindings(
-        plan=active_plan if dynamic_validation else None, preflight=preflight
+        plan=active_plan if dynamic_validation else None, preflight=preflight,
+        backend=backend if dynamic_validation else None,
     )
     git_state = _runtime_git_state(
         plan=active_plan if dynamic_validation else None, backend=(
             backend if dynamic_validation else None
         ), observed_git_state=observed_git_state
+    )
+    trusted_recovery_context = getattr(
+        backend, "trusted_recovery_context", None,
     )
     root = _safe_output_path(output_root, allow_missing=True)
     unit_root = _unit_root(root, unit)
@@ -2662,6 +2757,7 @@ def run_execution_unit(
             unit_root, unit,
             expected_provenance_bindings=expected_bindings,
             observed_git_state=git_state, caps=caps,
+            trusted_recovery_context=trusted_recovery_context,
         )
         if existing is not None:
             return UnitRunResult(identity, UNIT_SKIPPED, str(existing), True, None)
@@ -2676,6 +2772,7 @@ def run_execution_unit(
     writer = StageCArtifactWriter(
         attempt, unit_identity=identity, audit=_unit_audit(unit), caps=caps,
         fault_injector=fault_injector,
+        trusted_recovery_context=trusted_recovery_context,
     )
     meter = ResourceMeter(device=device, call_counter=CallCounter())
     timer = PhaseTimer(device=device)
@@ -2732,6 +2829,7 @@ def run_execution_unit(
                 attempt, expected_unit_identity=identity,
                 expected_provenance_bindings=expected_bindings,
                 observed_git_state=git_state, caps=caps,
+                trusted_recovery_context=trusted_recovery_context,
             )
         timer.stop()
         writer.publish_runner_telemetry(
@@ -2744,6 +2842,7 @@ def run_execution_unit(
             expected_provenance_bindings=expected_bindings,
             observed_git_state=git_state, caps=caps,
             require_runner_telemetry=True,
+            trusted_recovery_context=trusted_recovery_context,
         )
         if not validation.resumable:
             return UnitRunResult(
@@ -2789,6 +2888,7 @@ def run_execution_unit(
                         attempt, expected_unit_identity=identity,
                         expected_provenance_bindings=expected_bindings,
                         observed_git_state=git_state, caps=caps,
+                        trusted_recovery_context=trusted_recovery_context,
                     )
             if not timer.stopped:
                 timer.stop()
@@ -2806,6 +2906,7 @@ def run_execution_unit(
                 expected_provenance_bindings=expected_bindings,
                 observed_git_state=git_state, caps=caps,
                 require_runner_telemetry=True,
+                trusted_recovery_context=trusted_recovery_context,
             )
             if (
                 not terminal_validation.valid
@@ -3060,6 +3161,7 @@ def _run_units(
     caps: Mapping[str, Any] | None,
     fault_injector: Callable[[str], Any] | str | Sequence[str] | None,
     allow_unissued_estimate: bool,
+    observed_git_state: Mapping[str, Any] | None = None,
 ) -> BatchRunResult:
     """Shared batch path; preflight is intentionally the first mutation gate."""
 
@@ -3073,7 +3175,12 @@ def _run_units(
     # Attempts and backend calls are permitted only after the immutable batch
     # identity controls are durably published (or exactly revalidated).
     _publish_or_validate_batch_identity_controls(root, plan, preflight)
-    observed_git_state = _runtime_git_state(plan=plan, backend=backend)
+    observed_git_state = _runtime_git_state(
+        plan=plan, backend=backend, observed_git_state=observed_git_state,
+    )
+    trusted_recovery_context = getattr(
+        backend, "trusted_recovery_context", None,
+    )
     results: list[UnitRunResult] = []
     for unit in units:
         results.append(
@@ -3086,7 +3193,8 @@ def _run_units(
         )
     _write_batch_controls(root, plan, preflight, results)
     validation = validate_stage_c_batch(
-        root, plan, observed_git_state=observed_git_state
+        root, plan, observed_git_state=observed_git_state,
+        trusted_recovery_context=trusted_recovery_context,
     )
     orchestration_complete = validation.orchestration_complete
     successful = validation.successful
@@ -3114,6 +3222,7 @@ def run_stage_c_sample(
     resume: bool = True,
     estimate: Any = None,
     caps: Mapping[str, Any] | None = None,
+    observed_git_state: Mapping[str, Any] | None = None,
     fault_injector: Callable[[str], Any] | str | Sequence[str] | None = None,
     _allow_unissued_estimate: bool = False,
 ) -> BatchRunResult:
@@ -3138,6 +3247,7 @@ def run_stage_c_sample(
         resume=resume, estimate=estimate, caps=caps,
         fault_injector=fault_injector,
         allow_unissued_estimate=_allow_unissued_estimate,
+        observed_git_state=observed_git_state,
     )
 
 
@@ -3150,6 +3260,7 @@ def run_stage_c_batch(
     resume: bool = True,
     estimate: Any = None,
     caps: Mapping[str, Any] | None = None,
+    observed_git_state: Mapping[str, Any] | None = None,
     fault_injector: Callable[[str], Any] | str | Sequence[str] | None = None,
     _allow_unissued_estimate: bool = False,
 ) -> BatchRunResult:
@@ -3163,6 +3274,7 @@ def run_stage_c_batch(
         resume=resume, estimate=estimate, caps=caps,
         fault_injector=fault_injector,
         allow_unissued_estimate=_allow_unissued_estimate,
+        observed_git_state=observed_git_state,
     )
 
 
@@ -3192,6 +3304,7 @@ def _classify_attempts(
     expected_provenance_bindings: Mapping[str, Any],
     observed_git_state: Mapping[str, Any] | None,
     caps: Mapping[str, Any] | None,
+    trusted_recovery_context: Any | None = None,
 ) -> tuple[str, str | None, tuple[dict[str, Any], ...], list[str]]:
     from .stage_c_artifacts import attempt_directories, validate_execution_unit
 
@@ -3201,6 +3314,7 @@ def _classify_attempts(
             expected_provenance_bindings=expected_provenance_bindings,
             observed_git_state=observed_git_state, caps=caps,
             require_runner_telemetry=True,
+            trusted_recovery_context=trusted_recovery_context,
         )
         for path in attempt_directories(unit_root)
     )
@@ -3238,6 +3352,7 @@ def _validation_caps(root: Path) -> dict[str, Any]:
 def validate_stage_c_batch(
     output_root: Path | str, plan: Any, *,
     observed_git_state: Mapping[str, Any] | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> BatchValidation:
     """Validate a batch by left-joining disk state to every expected unit."""
 
@@ -3284,6 +3399,7 @@ def validate_stage_c_batch(
             unit, _unit_root(root, unit),
             expected_provenance_bindings=expected_bindings,
             observed_git_state=git_state, caps=effective_caps,
+            trusted_recovery_context=trusted_recovery_context,
         )
         rows.append(
             {
@@ -3472,10 +3588,16 @@ def aggregate_stage_c_batch(
     plan: Any,
     *,
     output_path: Path | str | None = None,
+    observed_git_state: Mapping[str, Any] | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> dict[str, Any]:
     """Emit only validated L0 long rows; no selection or statistics occur."""
 
-    validation = validate_stage_c_batch(output_root, plan)
+    validation = validate_stage_c_batch(
+        output_root, plan,
+        observed_git_state=observed_git_state,
+        trusted_recovery_context=trusted_recovery_context,
+    )
     validation.require_valid()
     rows: list[dict[str, Any]] = []
     for row in validation.rows:

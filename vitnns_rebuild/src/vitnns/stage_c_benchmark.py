@@ -23,7 +23,6 @@ from decimal import Decimal, ROUND_CEILING
 from pathlib import Path, PurePath
 from typing import Any
 
-from .constants import MODEL_NAME, MODEL_SHA256, REPO_ROOT
 from .stage_c_plan import (
     AUDIT_SAMPLE_IDS,
     CLASS_METHOD_IDS,
@@ -310,6 +309,39 @@ def _require_unpolluted_path(path: Path, context: str) -> None:
         raise StageCBenchmarkIntegrityError(
             f"{context} contains a forbidden archive/old-attempt path marker"
         )
+
+
+def _lexical_absolute_path(value: Path | str) -> Path:
+    """Return an absolute path without following any symbolic links."""
+
+    return Path(os.path.abspath(os.fspath(value)))
+
+
+def _path_traverses_symlink(path: Path) -> bool:
+    current = Path(path.anchor)
+    for part in path.parts[1:]:
+        current = current / part
+        if current.is_symlink():
+            return True
+    return False
+
+
+def _require_authorized_recovery_path(
+    value: Path | str, expected: Path | str, context: str,
+) -> Path:
+    """Match a launch-authorized path without accepting symlink aliases."""
+
+    actual = _lexical_absolute_path(value)
+    authorized = _lexical_absolute_path(expected)
+    if actual != authorized:
+        raise StageCBenchmarkIntegrityError(
+            f"{context} disagrees with RecoveryC7LaunchRecord outputs"
+        )
+    if _path_traverses_symlink(actual):
+        raise StageCBenchmarkIntegrityError(
+            f"{context} traverses a symlink"
+        )
+    return actual
 
 
 def _plan_counts(document: Mapping[str, Any]) -> dict[str, int]:
@@ -1079,10 +1111,12 @@ def _failure_rows_by_digest(control: Mapping[str, Any]) -> tuple[dict[str, Any],
 def map_execution_records(
     output_root: Path | str, plan: ExecutionPlan, *,
     observed_git_state: Mapping[str, Any] | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> dict[str, Any]:
     """Map the current runner batch without dropping failed evidence."""
 
     _plain_plan(plan)
+    authority = _trusted_recovery_launch_record(trusted_recovery_context)
     root = Path(output_root).resolve()
     controls = _source_controls(root, _CONTROL_FILENAMES)
     mapping_errors: list[str] = []
@@ -1090,7 +1124,8 @@ def map_execution_records(
         from .stage_c_runner import validate_stage_c_batch
 
         validation = validate_stage_c_batch(
-            root, plan, observed_git_state=observed_git_state
+            root, plan, observed_git_state=observed_git_state,
+            trusted_recovery_context=authority,
         ).to_dict()
         validation_exception = None
     except Exception as error:
@@ -1965,6 +2000,90 @@ def _shared_provenance(
     return first, errors
 
 
+def _trusted_recovery_launch_record(value: Any) -> Any | None:
+    """Extract the validated launch authority; never trust projected JSON."""
+
+    if value is None:
+        return None
+    from .recovery_c7_launch import RecoveryC7LaunchRecord
+    from .recovery_v2 import RecoveryV2Binding
+
+    if isinstance(value, RecoveryC7LaunchRecord):
+        record = value
+        binding = record.binding
+    elif isinstance(value, Mapping) and set(value) == {
+        "recovery_binding", "recovery_launch_record",
+    }:
+        binding = value["recovery_binding"]
+        record = value["recovery_launch_record"]
+    else:
+        raise StageCBenchmarkIntegrityError(
+            "trusted recovery context must be a validated "
+            "RecoveryC7LaunchRecord or its exact validated binding pair"
+        )
+    if not isinstance(record, RecoveryC7LaunchRecord):
+        raise StageCBenchmarkIntegrityError(
+            "trusted recovery context lacks a validated "
+            "RecoveryC7LaunchRecord"
+        )
+    if not isinstance(binding, RecoveryV2Binding) or record.binding is not binding:
+        raise StageCBenchmarkIntegrityError(
+            "trusted recovery context is not the binding owned by its "
+            "RecoveryC7LaunchRecord"
+        )
+    return record
+
+
+def _recovery_gate_path(record: Any) -> Path:
+    return Path(record.reports_root) / DIAGNOSTIC_GATE_FILENAME
+
+
+def _recovery_report_path(record: Any) -> Path:
+    return Path(record.reports_root) / REPORT_FILENAME
+
+
+def _stage_c_model_binding_errors(
+    model: Any, *, trusted_recovery_context: Any | None,
+) -> list[str]:
+    """Validate a historical or context-bound recovery model block."""
+
+    try:
+        from .stage_c_provenance import validate_stage_c_model_binding
+
+        authority = _trusted_recovery_launch_record(trusted_recovery_context)
+
+        validate_stage_c_model_binding(
+            model,
+            trusted_recovery_context=authority,
+            # The provenance helper applies this requirement only to the
+            # recovery extension shape.  Historical three-field bindings keep
+            # their frozen name/hash contract without needing a context.
+            require_trusted_recovery_context=True,
+        )
+    except Exception as error:
+        return [f"shared provenance model binding is invalid: {error}"]
+    return []
+
+
+def _require_stage_c_model_binding(
+    model: Any, *, trusted_recovery_context: Any | None, context: str,
+) -> None:
+    errors = _stage_c_model_binding_errors(
+        model, trusted_recovery_context=trusted_recovery_context,
+    )
+    if errors:
+        raise StageCBenchmarkIntegrityError(f"{context}: {errors[0]}")
+
+
+def _shared_model_from_report(value: Any) -> Any:
+    bindings = value.get("bindings") if isinstance(value, Mapping) else None
+    shared = (
+        bindings.get("shared_provenance")
+        if isinstance(bindings, Mapping) else None
+    )
+    return shared.get("model") if isinstance(shared, Mapping) else None
+
+
 def _frozen_caps(config: Any) -> tuple[dict[str, Any], list[str]]:
     config_value = _config_dict(config)
     budget = config_value.get("budget")
@@ -2279,6 +2398,7 @@ def _normalize_source_inventory(
 
 def _common_existing_evidence_errors(
     value: Mapping[str, Any], *, formal: bool, require_complete: bool,
+    trusted_recovery_context: Any | None = None,
 ) -> list[str]:
     """Validate every retained cross-link for PASS and BLOCKED reports."""
 
@@ -2344,13 +2464,10 @@ def _common_existing_evidence_errors(
             errors.append("shared provenance plan binding is invalid")
         elif configuration.get("run_spec_sha256") != run_spec.get("semantic_sha256"):
             errors.append("shared provenance run-spec binding is invalid")
-        model = shared.get("model")
-        if (
-            not isinstance(model, Mapping)
-            or model.get("state_dict_sha256") != MODEL_SHA256
-            or ("name" in model and model.get("name") != MODEL_NAME)
-        ):
-            errors.append("shared provenance model binding is not frozen")
+        errors.extend(_stage_c_model_binding_errors(
+            shared.get("model"),
+            trusted_recovery_context=trusted_recovery_context,
+        ))
     source_root = bindings.get("source_root")
     if not isinstance(source_root, str) or _polluted_path(source_root):
         errors.append("source root binding is invalid or polluted")
@@ -2460,6 +2577,7 @@ def build_c7_diagnostic_gate(
     run_spec_file_sha256: str | None = None,
     observed_git_state: Mapping[str, Any] | None = None,
     report_path: Path | str | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> dict[str, Any]:
     """Build a self-hashed gate from the exact one-unit diagnostic batch."""
 
@@ -2476,7 +2594,8 @@ def build_c7_diagnostic_gate(
     )
     integrity_errors.extend(run_spec_errors)
     mapped = map_execution_records(
-        root, plan, observed_git_state=observed_git_state
+        root, plan, observed_git_state=observed_git_state,
+        trusted_recovery_context=trusted_recovery_context,
     )
     records = mapped["records"]
     integrity_errors.extend(mapped["mapping_errors"])
@@ -2522,6 +2641,10 @@ def build_c7_diagnostic_gate(
             integrity_errors.append("diagnostic unit is not trusted by batch validation")
     shared, shared_errors = _shared_provenance(records)
     integrity_errors.extend(shared_errors)
+    integrity_errors.extend(_stage_c_model_binding_errors(
+        shared.get("model") if isinstance(shared, Mapping) else None,
+        trusted_recovery_context=trusted_recovery_context,
+    ))
     shared_digest = _canonical_digest(shared) if shared else None
     for record in records:
         if (
@@ -2615,7 +2738,9 @@ def build_c7_diagnostic_gate(
     return document
 
 
-def validate_c7_diagnostic_gate(value: Mapping[str, Any]) -> None:
+def validate_c7_diagnostic_gate(
+    value: Mapping[str, Any], *, trusted_recovery_context: Any | None = None,
+) -> None:
     if not isinstance(value, Mapping):
         raise TypeError("diagnostic gate must be a mapping")
     expected = {
@@ -2628,7 +2753,8 @@ def validate_c7_diagnostic_gate(value: Mapping[str, Any]) -> None:
     }
     _base_report_shape_errors(value, DIAGNOSTIC_DOCUMENT_TYPE, expected)
     common_errors = _common_existing_evidence_errors(
-        value, formal=False, require_complete=value.get("integrity_valid") is True
+        value, formal=False, require_complete=value.get("integrity_valid") is True,
+        trusted_recovery_context=trusted_recovery_context,
     )
     for field in (
         "selection_performed", "bootstrap_performed",
@@ -2755,9 +2881,21 @@ def write_c7_diagnostic_gate(
     config: Any, environment: Mapping[str, Any],
     run_spec_path: Path | str, run_spec_file_sha256: str,
     observed_git_state: Mapping[str, Any],
+    trusted_recovery_context: Any | None = None,
 ) -> dict[str, Any]:
-    destination = Path(output_path).resolve()
-    root = Path(output_root).resolve()
+    authority = _trusted_recovery_launch_record(trusted_recovery_context)
+    if authority is not None:
+        destination = _require_authorized_recovery_path(
+            output_path, _recovery_gate_path(authority),
+            "diagnostic gate destination",
+        )
+        root = _require_authorized_recovery_path(
+            output_root, authority.diagnostic_root,
+            "diagnostic output root",
+        )
+    else:
+        destination = Path(output_path).resolve()
+        root = Path(output_root).resolve()
     if _path_is_within(destination, root):
         raise StageCBenchmarkIntegrityError(
             "diagnostic gate must be external to the measured source root"
@@ -2767,8 +2905,11 @@ def write_c7_diagnostic_gate(
         run_spec_path=run_spec_path,
         run_spec_file_sha256=run_spec_file_sha256,
         observed_git_state=observed_git_state, report_path=destination,
+        trusted_recovery_context=authority,
     )
-    validate_c7_diagnostic_gate(report)
+    validate_c7_diagnostic_gate(
+        report, trusted_recovery_context=authority,
+    )
     _atomic_write_json(destination, report)
     return report
 
@@ -2819,9 +2960,24 @@ def require_c7_launch_gate(
     formal_plan: ExecutionPlan, *, config: Any, output_root: Path | str,
     observed_git_state: Mapping[str, Any],
     run_spec_path: Path | str | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> dict[str, Any]:
     """Validate the diagnostic gate and authorize one fresh formal root."""
 
+    authority = _trusted_recovery_launch_record(trusted_recovery_context)
+    if authority is not None:
+        if isinstance(gate_path_or_mapping, Mapping):
+            raise StageCBenchmarkIntegrityError(
+                "recovery C7 diagnostic gate must be loaded from the "
+                "RecoveryC7LaunchRecord output path"
+            )
+        _require_authorized_recovery_path(
+            gate_path_or_mapping, _recovery_gate_path(authority),
+            "diagnostic gate path",
+        )
+        _require_authorized_recovery_path(
+            output_root, authority.formal_root, "formal output root",
+        )
     scope = validate_c7_execution_plan(formal_plan, config)
     if not scope["valid"]:
         raise StageCBenchmarkIntegrityError(
@@ -2829,7 +2985,9 @@ def require_c7_launch_gate(
             + "; ".join(scope["violations"])
         )
     gate, gate_path, gate_file_sha256 = _load_gate(gate_path_or_mapping)
-    validate_c7_diagnostic_gate(gate)
+    validate_c7_diagnostic_gate(
+        gate, trusted_recovery_context=authority,
+    )
     if gate.get("integrity_valid") is not True:
         raise StageCBenchmarkIntegrityError(
             "diagnostic gate reports invalid source integrity"
@@ -2838,6 +2996,11 @@ def require_c7_launch_gate(
     if not isinstance(binding, Mapping):
         raise StageCBenchmarkIntegrityError("diagnostic gate bindings are missing")
     shared = binding.get("shared_provenance")
+    _require_stage_c_model_binding(
+        shared.get("model") if isinstance(shared, Mapping) else None,
+        trusted_recovery_context=authority,
+        context="diagnostic launch gate",
+    )
     git_errors = _git_binding_errors(observed_git_state, shared if isinstance(shared, Mapping) else None)
     if git_errors:
         raise StageCBenchmarkIntegrityError("; ".join(git_errors))
@@ -2857,6 +3020,19 @@ def require_c7_launch_gate(
         raise StageCBenchmarkIntegrityError(reason or "diagnostic/formal unit mismatch")
     if run_spec_path is None:
         raise StageCBenchmarkIntegrityError("formal run-spec path is required")
+    if authority is not None:
+        contract = authority.document.get("c7_contracts", {}).get(
+            "formal_run_spec", {}
+        )
+        declared = contract.get("path") if isinstance(contract, Mapping) else None
+        if not isinstance(declared, str):
+            raise StageCBenchmarkIntegrityError(
+                "RecoveryC7LaunchRecord lacks formal run-spec authority"
+            )
+        _require_authorized_recovery_path(
+            run_spec_path, Path(authority.repo_root) / declared,
+            "formal run-spec path",
+        )
     path = Path(run_spec_path).resolve()
     _require_unpolluted_path(path, "formal run-spec path")
     if path.is_symlink() or not path.is_file():
@@ -2911,7 +3087,9 @@ def require_c7_launch_gate(
     return result
 
 
-def validate_c7_launch_authorization(value: Mapping[str, Any]) -> None:
+def validate_c7_launch_authorization(
+    value: Mapping[str, Any], *, trusted_recovery_context: Any | None = None,
+) -> None:
     if not isinstance(value, Mapping):
         raise TypeError("launch authorization must be a mapping")
     expected = {
@@ -2962,16 +3140,54 @@ def validate_c7_launch_authorization(value: Mapping[str, Any]) -> None:
             raise StageCBenchmarkIntegrityError(
                 f"launch authorization {key} is invalid or polluted"
             )
+    authority = _trusted_recovery_launch_record(trusted_recovery_context)
+    if authority is not None:
+        gate_path = _require_authorized_recovery_path(
+            value["gate_path"], _recovery_gate_path(authority),
+            "launch authorization diagnostic gate path",
+        )
+        _require_authorized_recovery_path(
+            value["formal_output_root"], authority.formal_root,
+            "launch authorization formal output root",
+        )
+        if not gate_path.is_file():
+            raise StageCBenchmarkIntegrityError(
+                "launch authorization diagnostic gate is missing or unsafe"
+            )
+        if _sha256_file(gate_path) != value["gate_file_sha256"]:
+            raise StageCBenchmarkIntegrityError(
+                "launch authorization diagnostic gate file binding differs"
+            )
+        gate = _strict_json(gate_path)
+        if not isinstance(gate, Mapping):
+            raise StageCBenchmarkIntegrityError(
+                "launch authorization diagnostic gate is not an object"
+            )
+        validate_c7_diagnostic_gate(
+            gate, trusted_recovery_context=authority,
+        )
+        if gate.get("canonical_digest") != value["gate_canonical_digest"]:
+            raise StageCBenchmarkIntegrityError(
+                "launch authorization diagnostic gate digest differs"
+            )
 
 
 def write_c7_launch_authorization(
-    output_root: Path | str, authorization: Mapping[str, Any],
+    output_root: Path | str, authorization: Mapping[str, Any], *,
+    trusted_recovery_context: Any | None = None,
 ) -> dict[str, Any]:
     """Claim a fresh formal root with the validated diagnostic launch proof."""
 
+    authority = _trusted_recovery_launch_record(trusted_recovery_context)
+    if authority is not None:
+        _require_authorized_recovery_path(
+            output_root, authority.formal_root, "formal output root",
+        )
     root = require_fresh_c7_output_root(output_root, kind="formal")
     value = _json_value(authorization, "launch authorization")
-    validate_c7_launch_authorization(value)
+    validate_c7_launch_authorization(
+        value, trusted_recovery_context=authority,
+    )
     if Path(value["formal_output_root"]).resolve() != root:
         raise StageCBenchmarkIntegrityError(
             "launch authorization formal output root binding differs"
@@ -2985,6 +3201,7 @@ def _bind_formal_launch_authorization(
     root: Path, plan: ExecutionPlan, *, diagnostic_gate_path: Path | str | None,
     observed_git_state: Mapping[str, Any] | None,
     run_spec_path: Path | str | None,
+    trusted_recovery_context: Any | None,
 ) -> tuple[dict[str, Any] | None, dict[str, Any] | None, list[str]]:
     errors: list[str] = []
     auth_path = root / LAUNCH_AUTHORIZATION_FILENAME
@@ -2994,7 +3211,10 @@ def _bind_formal_launch_authorization(
         authorization = _strict_json(auth_path)
         if not isinstance(authorization, Mapping):
             raise StageCBenchmarkIntegrityError("authorization is not an object")
-        validate_c7_launch_authorization(authorization)
+        validate_c7_launch_authorization(
+            authorization,
+            trusted_recovery_context=trusted_recovery_context,
+        )
     except Exception as error:
         return None, None, [f"formal launch authorization is invalid: {error}"]
     if diagnostic_gate_path is None:
@@ -3007,7 +3227,9 @@ def _bind_formal_launch_authorization(
         gate = _strict_json(gate_path)
         if not isinstance(gate, Mapping):
             raise StageCBenchmarkIntegrityError("gate is not an object")
-        validate_c7_diagnostic_gate(gate)
+        validate_c7_diagnostic_gate(
+            gate, trusted_recovery_context=trusted_recovery_context,
+        )
     except Exception as error:
         return dict(authorization), None, [f"formal diagnostic gate is invalid: {error}"]
     if gate.get("status") != STATUS_PASS:
@@ -3049,6 +3271,7 @@ def build_benchmark_report(
     observed_git_state: Mapping[str, Any] | None = None,
     c7_diagnostic_gate: Path | str | None = None,
     report_path: Path | str | None = None,
+    trusted_recovery_context: Any | None = None,
     **legacy: Any,
 ) -> dict[str, Any]:
     """Build the formal exact-40-unit C7 PASS/BLOCKED report."""
@@ -3087,13 +3310,17 @@ def build_benchmark_report(
     authorization, diagnostic_gate, launch_errors = _bind_formal_launch_authorization(
         root, plan, diagnostic_gate_path=diagnostic_gate_path,
         observed_git_state=observed_git_state, run_spec_path=run_spec_path,
+        trusted_recovery_context=trusted_recovery_context,
     )
     integrity_errors.extend(launch_errors)
     run_spec_binding, spec_errors = _run_spec_binding(
         plan, run_spec_path, run_spec_file_sha256
     )
     integrity_errors.extend(spec_errors)
-    mapped = map_execution_records(root, plan, observed_git_state=observed_git_state)
+    mapped = map_execution_records(
+        root, plan, observed_git_state=observed_git_state,
+        trusted_recovery_context=trusted_recovery_context,
+    )
     records = mapped["records"]
     controls = {
         **mapped["controls"],
@@ -3128,6 +3355,15 @@ def build_benchmark_report(
         integrity_errors.append("formal report must map exactly 40 unit records")
     shared, shared_errors = _shared_provenance(records)
     integrity_errors.extend(shared_errors)
+    integrity_errors.extend(_stage_c_model_binding_errors(
+        shared.get("model") if isinstance(shared, Mapping) else None,
+        trusted_recovery_context=trusted_recovery_context,
+    ))
+    diagnostic_model = _shared_model_from_report(diagnostic_gate)
+    if shared and diagnostic_model is not None and shared.get("model") != diagnostic_model:
+        integrity_errors.append(
+            "formal shared provenance model differs from diagnostic gate"
+        )
     integrity_errors.extend(_git_binding_errors(observed_git_state, shared))
     environment_errors.extend(_environment_errors(environment))
     for record in records:
@@ -3282,7 +3518,9 @@ def build_benchmark_report(
     return document
 
 
-def _semantic_benchmark_errors(value: Mapping[str, Any]) -> list[str]:
+def _semantic_benchmark_errors(
+    value: Mapping[str, Any], *, trusted_recovery_context: Any | None = None,
+) -> list[str]:
     errors: list[str] = []
     scope = value.get("scope")
     if not isinstance(scope, Mapping) or (
@@ -3406,6 +3644,10 @@ def _semantic_benchmark_errors(value: Mapping[str, Any]) -> list[str]:
                 shared if isinstance(shared, Mapping) else None,
             )
         )
+        errors.extend(_stage_c_model_binding_errors(
+            shared.get("model") if isinstance(shared, Mapping) else None,
+            trusted_recovery_context=trusted_recovery_context,
+        ))
     environment_errors = _environment_errors(value.get("environment"))
     errors.extend(environment_errors)
     projections = value.get("projections")
@@ -3600,7 +3842,9 @@ def _existing_formal_record_errors(value: Mapping[str, Any]) -> list[str]:
     return errors
 
 
-def validate_benchmark_report(value: Mapping[str, Any]) -> None:
+def validate_benchmark_report(
+    value: Mapping[str, Any], *, trusted_recovery_context: Any | None = None,
+) -> None:
     if not isinstance(value, Mapping):
         raise TypeError("benchmark report must be a mapping")
     expected = {
@@ -3613,11 +3857,63 @@ def validate_benchmark_report(value: Mapping[str, Any]) -> None:
     }
     _base_report_shape_errors(value, BENCHMARK_DOCUMENT_TYPE, expected)
     common_errors = _common_existing_evidence_errors(
-        value, formal=True, require_complete=value.get("integrity_valid") is True
+        value, formal=True, require_complete=value.get("integrity_valid") is True,
+        trusted_recovery_context=trusted_recovery_context,
     )
     common_errors.extend(_existing_formal_record_errors(value))
     bindings = value.get("bindings")
     if isinstance(bindings, Mapping):
+        authorization = bindings.get("launch_authorization")
+        if authorization is not None:
+            try:
+                validate_c7_launch_authorization(
+                    authorization,
+                    trusted_recovery_context=trusted_recovery_context,
+                )
+            except Exception as error:
+                common_errors.append(
+                    f"retained launch authorization is invalid: {error}"
+                )
+        diagnostic_gate = bindings.get("diagnostic_gate")
+        if diagnostic_gate is not None:
+            try:
+                validate_c7_diagnostic_gate(
+                    diagnostic_gate,
+                    trusted_recovery_context=trusted_recovery_context,
+                )
+            except Exception as error:
+                common_errors.append(f"retained diagnostic gate is invalid: {error}")
+        if isinstance(authorization, Mapping) and isinstance(diagnostic_gate, Mapping):
+            if (
+                authorization.get("gate_canonical_digest")
+                != diagnostic_gate.get("canonical_digest")
+            ):
+                common_errors.append(
+                    "retained launch authorization diagnostic gate digest differs"
+                )
+            if (
+                authorization.get("gate_file_sha256")
+                != bindings.get("diagnostic_gate_file_sha256")
+            ):
+                common_errors.append(
+                    "retained launch authorization diagnostic gate file binding differs"
+                )
+        if isinstance(diagnostic_gate, Mapping) and (
+            diagnostic_gate.get("status") != STATUS_PASS
+            or diagnostic_gate.get("integrity_valid") is not True
+        ):
+            common_errors.append(
+                "retained diagnostic gate is not an integrity-valid PASS"
+            )
+        if (
+            _shared_model_from_report(value) is not None
+            and _shared_model_from_report(diagnostic_gate) is not None
+            and _shared_model_from_report(value)
+            != _shared_model_from_report(diagnostic_gate)
+        ):
+            common_errors.append(
+                "formal shared provenance model differs from diagnostic gate"
+            )
         estimate = bindings.get("recomputed_estimate")
         estimate_sha = bindings.get("recomputed_estimate_sha256")
         if estimate is not None:
@@ -3648,7 +3944,9 @@ def validate_benchmark_report(value: Mapping[str, Any]) -> None:
             "benchmark semantic validation failed: " + "; ".join(common_errors)
         )
     if value.get("status") == STATUS_PASS:
-        errors = _semantic_benchmark_errors(value)
+        errors = _semantic_benchmark_errors(
+            value, trusted_recovery_context=trusted_recovery_context,
+        )
         if errors:
             raise StageCBenchmarkIntegrityError(
                 "benchmark PASS semantic validation failed: " + "; ".join(errors)
@@ -3662,9 +3960,24 @@ def write_benchmark_report(
     recomputed_estimate: StageCEstimate | Mapping[str, Any],
     observed_git_state: Mapping[str, Any],
     c7_diagnostic_gate: Path | str,
+    trusted_recovery_context: Any | None = None,
 ) -> dict[str, Any]:
-    destination = Path(output_path).resolve()
-    root = Path(output_root).resolve()
+    authority = _trusted_recovery_launch_record(trusted_recovery_context)
+    if authority is not None:
+        destination = _require_authorized_recovery_path(
+            output_path, _recovery_report_path(authority),
+            "benchmark report destination",
+        )
+        root = _require_authorized_recovery_path(
+            output_root, authority.formal_root, "formal output root",
+        )
+        _require_authorized_recovery_path(
+            c7_diagnostic_gate, _recovery_gate_path(authority),
+            "diagnostic gate path",
+        )
+    else:
+        destination = Path(output_path).resolve()
+        root = Path(output_root).resolve()
     if _path_is_within(destination, root):
         raise StageCBenchmarkIntegrityError(
             "benchmark report must be external to the measured source root"
@@ -3676,8 +3989,11 @@ def write_benchmark_report(
         recomputed_estimate=recomputed_estimate,
         observed_git_state=observed_git_state,
         c7_diagnostic_gate=c7_diagnostic_gate, report_path=destination,
+        trusted_recovery_context=authority,
     )
-    validate_benchmark_report(report)
+    validate_benchmark_report(
+        report, trusted_recovery_context=authority,
+    )
     _atomic_write_json(destination, report)
     return report
 

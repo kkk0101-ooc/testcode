@@ -781,6 +781,7 @@ class StageCArtifactWriter:
         l0_l1_cap_bytes: int | None = None,
         l2_cap_bytes: int | None = None,
         fault_injector: Callable[[str], Any] | str | Sequence[str] | None = None,
+        trusted_recovery_context: Any | None = None,
     ) -> None:
         if type(audit) is not bool:
             raise TypeError("audit must be bool")
@@ -806,6 +807,7 @@ class StageCArtifactWriter:
         self._crashed = False
         self._failure: dict[str, Any] | None = None
         self._fault_injector = fault_injector
+        self._trusted_recovery_context = trusted_recovery_context
         self._published_manifest: dict[str, Any] | None = None
 
         self._claim_empty_attempt()
@@ -854,7 +856,8 @@ class StageCArtifactWriter:
         if PROVENANCE_PATH in self._artifact_paths:
             raise ArtifactWriterStateError("provenance is already immutable")
         self._provenance = _normalize_provenance(
-            provenance, self.unit_identity, self.unit_identity_sha256
+            provenance, self.unit_identity, self.unit_identity_sha256,
+            trusted_recovery_context=self._trusted_recovery_context,
         )
 
     def write_l0(
@@ -1282,7 +1285,8 @@ class StageCArtifactWriter:
             return
         if self._provenance is None:
             self._provenance = _normalize_provenance(
-                {}, self.unit_identity, self.unit_identity_sha256
+                {}, self.unit_identity, self.unit_identity_sha256,
+                trusted_recovery_context=self._trusted_recovery_context,
             )
         self._write_payload(
             "L0",
@@ -1487,6 +1491,7 @@ def validate_execution_unit(
     l0_l1_cap_bytes: int | None = None,
     l2_cap_bytes: int | None = None,
     require_runner_telemetry: bool = False,
+    trusted_recovery_context: Any | None = None,
 ) -> ExecutionUnitValidation:
     """Validate an attempt without changing any filesystem state."""
 
@@ -1713,6 +1718,7 @@ def validate_execution_unit(
                 manifest,
                 expected_provenance_bindings,
                 observed_git_state,
+                trusted_recovery_context,
                 errors,
             )
         elif expected_provenance_bindings is not None:
@@ -2346,6 +2352,7 @@ def _validate_provenance(
     manifest: dict[str, Any],
     expected_bindings: Mapping[str, Any] | None,
     observed_git_state: Mapping[str, Any] | None,
+    trusted_recovery_context: Any | None,
     errors: list[str],
 ) -> None:
     required = {
@@ -2448,6 +2455,10 @@ def _validate_provenance(
                     provenance,
                     expected_unit=manifest.get("unit_identity"),
                     observed_git_state=observed_git_state,
+                    trusted_recovery_context=trusted_recovery_context,
+                    require_trusted_recovery_context=(
+                        trusted_recovery_context is not None
+                    ),
                 )
             except Exception as exc:
                 errors.append(f"strict Stage C provenance is invalid: {exc}")
@@ -2484,7 +2495,8 @@ def _first_subset_mismatch(
 
 
 def _normalize_provenance(
-    value: Mapping[str, Any], identity: dict[str, Any], digest: str
+    value: Mapping[str, Any], identity: dict[str, Any], digest: str, *,
+    trusted_recovery_context: Any | None = None,
 ) -> dict[str, Any]:
     if not isinstance(value, Mapping):
         raise TypeError("provenance must be a mapping")
@@ -2523,7 +2535,13 @@ def _normalize_provenance(
             try:
                 from .stage_c_provenance import validate_stage_c_provenance
 
-                validate_stage_c_provenance(candidate, expected_unit=identity)
+                validate_stage_c_provenance(
+                    candidate, expected_unit=identity,
+                    trusted_recovery_context=trusted_recovery_context,
+                    require_trusted_recovery_context=(
+                        trusted_recovery_context is not None
+                    ),
+                )
             except Exception as exc:
                 raise ArtifactPolicyError(
                     f"strict Stage C provenance is invalid: {exc}"

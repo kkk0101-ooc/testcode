@@ -23,6 +23,7 @@ from typing import Any, Iterable, Mapping, Sequence
 
 from .constants import MODEL_SHA256, REPO_ROOT, WORKSPACE_ROOT
 from .io_utils import sha256_file
+from .recovery_v2 import RecoveryV2Binding, load_recovery_v2_binding
 from .stage_c_config import (
     DEFAULT_STAGE_C_CONFIG,
     DEFAULT_STAGE_C_SCHEMA,
@@ -714,19 +715,46 @@ def load_stage_c_registry(
     workspace_root: Path | str = WORKSPACE_ROOT,
     data_root: Path | str | None = None,
     verify_live_assets: bool = False,
+    recovery_binding: RecoveryV2Binding | None = None,
 ) -> RegistrySnapshot:
     """Load the frozen CSV and all config-bound non-image assets strictly.
 
     ``verify_live_assets`` is the only optional validation tier.  Registry,
     metadata, source-manifest, source-metadata and devkit hashes are always
-    checked against the frozen config.
+    checked against the frozen config.  A validated ``recovery_binding``
+    relocates only the devkit and live-image root into the active recovery
+    project; generation-only legacy selection inputs are not reopened.
     """
 
     if not isinstance(config, StageCConfig):
         raise TypeError("config must be a StageCConfig")
+    if recovery_binding is not None and not isinstance(
+        recovery_binding, RecoveryV2Binding
+    ):
+        raise TypeError("recovery_binding must be a RecoveryV2Binding")
     _require_bool(verify_live_assets, "verify_live_assets")
     repo = Path(repo_root).resolve()
     workspace = Path(workspace_root).resolve()
+    if recovery_binding is not None:
+        reloaded_binding = load_recovery_v2_binding(
+            recovery_binding.path, schema_path=recovery_binding.schema_path,
+            repo_root=repo, verify_assets=False,
+        )
+        mismatches = []
+        if recovery_binding.document != reloaded_binding.document:
+            mismatches.append("document")
+        for name in (
+            "path", "schema_path", "model_path", "data_root",
+            "devkit_path", "source_manifest_path",
+        ):
+            if getattr(recovery_binding, name) != getattr(reloaded_binding, name):
+                mismatches.append(name)
+        if mismatches:
+            raise RegistryContractError(
+                "recovery binding disagrees with the binding reloaded from disk: "
+                + ", ".join(mismatches)
+            )
+        recovery_binding = reloaded_binding
     reg_path = Path(registry_path).resolve() if registry_path is not None else _resolved_under(repo, config.registry.path, "registry.path")
     meta_path = Path(metadata_path).resolve() if metadata_path is not None else _resolved_under(repo, config.registry.metadata_path, "registry.metadata_path")
     schema_path = Path(registry_schema_path).resolve()
@@ -748,18 +776,19 @@ def load_stage_c_registry(
         raise RegistryContractError("registry metadata SHA-256 disagrees with config")
     metadata = strict_json_load(meta_path)
     configured_data_root = _validate_registry_metadata(metadata, config)
-    for path_key, hash_key in (
-        ("legacy_list_path", "legacy_list_sha256"),
-        ("legacy_script_path", "legacy_script_sha256"),
-    ):
-        legacy_asset = _resolved_under(
-            workspace, metadata["selection"][path_key],
-            f"registry metadata.selection.{path_key}",
-        )
-        if sha256_file(legacy_asset) != metadata["selection"][hash_key]:
-            raise RegistryContractError(
-                f"registry metadata selection asset hash is stale: {path_key}"
+    if recovery_binding is None:
+        for path_key, hash_key in (
+            ("legacy_list_path", "legacy_list_sha256"),
+            ("legacy_script_path", "legacy_script_sha256"),
+        ):
+            legacy_asset = _resolved_under(
+                workspace, metadata["selection"][path_key],
+                f"registry metadata.selection.{path_key}",
             )
+            if sha256_file(legacy_asset) != metadata["selection"][hash_key]:
+                raise RegistryContractError(
+                    f"registry metadata selection asset hash is stale: {path_key}"
+                )
     source_path = _resolved_under(repo, config.registry.source_manifest_path, "registry.source_manifest_path")
     source_metadata_path = _resolved_under(repo, config.registry.source_manifest_metadata_path, "registry.source_manifest_metadata_path")
     if sha256_file(source_path) != config.registry.source_manifest_sha256:
@@ -785,15 +814,31 @@ def load_stage_c_registry(
         raise RegistryContractError("source manifest synset-order hash is inconsistent")
     source_rows = _read_csv_exact(source_path, SOURCE_MANIFEST_COLUMNS, "Stage C source manifest")
     _validate_registry_rows(rows, config, source_rows)
-    devkit_path = _resolved_under(
-        repo, metadata["official_labels"]["devkit_relative_path"],
-        "registry metadata devkit_relative_path",
+    devkit_path = (
+        recovery_binding.devkit_path
+        if recovery_binding is not None
+        else _resolved_under(
+            repo, metadata["official_labels"]["devkit_relative_path"],
+            "registry metadata devkit_relative_path",
+        )
     )
     if sha256_file(devkit_path) != config.registry.official_devkit_sha256:
         raise RegistryContractError("official devkit SHA-256 disagrees with config")
-    live_root = Path(data_root).resolve() if data_root is not None else _resolved_under(
-        workspace, configured_data_root, "registry metadata runtime data root"
-    )
+    if recovery_binding is not None:
+        bound_data_root = recovery_binding.data_root.resolve()
+        if data_root is not None and Path(data_root).resolve() != bound_data_root:
+            raise RegistryContractError(
+                "data_root disagrees with recovery binding"
+            )
+        live_root = bound_data_root
+    else:
+        live_root = (
+            Path(data_root).resolve() if data_root is not None
+            else _resolved_under(
+                workspace, configured_data_root,
+                "registry metadata runtime data root",
+            )
+        )
     snapshot = RegistrySnapshot(
         schema_version=1, document_type="stage_c_registry_snapshot",
         path=config.registry.path, sha256=config.registry.sha256,

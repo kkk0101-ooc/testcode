@@ -83,6 +83,28 @@ def _install_plan_pipeline(monkeypatch, *, within_budget: bool = True):
     )
 
 
+def _recovery_record(
+    config_path: Path, diagnostic_spec: Path, formal_spec: Path, root: Path,
+):
+    binding = SimpleNamespace(
+        model_path=root / "model.pth", data_root=root / "images",
+        stage_c_input={"registry_path": "manifests/registry.csv"},
+    )
+    reports = root / "reports"
+    return SimpleNamespace(
+        binding=binding, model_path=binding.model_path,
+        data_root=binding.data_root, diagnostic_root=root / "diagnostic",
+        formal_root=root / "formal", reports_root=reports,
+        document={
+            "c7_contracts": {
+                "stage_c_config": {"path": str(config_path)},
+                "diagnostic_run_spec": {"path": str(diagnostic_spec)},
+                "formal_run_spec": {"path": str(formal_spec)},
+            }
+        },
+    )
+
+
 def test_estimate_requires_explicit_config(capsys, tmp_path):
     assert stage_c_cli.main(["estimate", "--run-spec", str(tmp_path / "spec.json")]) == 1
     captured = capsys.readouterr()
@@ -357,6 +379,66 @@ def test_aggregate_integrity_failure_has_exit_four(monkeypatch, capsys, tmp_path
 
 
 @pytest.mark.parametrize(
+    ("command", "operation_name"),
+    [("validate", "validate_stage_c_batch"),
+     ("aggregate", "aggregate_stage_c_batch")],
+)
+def test_recovery_c7_readers_receive_authorized_state_and_trusted_context(
+    monkeypatch, capsys, tmp_path, command, operation_name
+):
+    config = tmp_path / "config.json"
+    diagnostic_spec = tmp_path / "diagnostic.json"
+    formal_spec = tmp_path / "formal.json"
+    for path in (config, diagnostic_spec, formal_spec):
+        path.write_text("{}\n", encoding="utf-8")
+    record = _recovery_record(config, diagnostic_spec, formal_spec, tmp_path / "c7")
+    record_path = tmp_path / "recovery_c7_launch_record.json"
+    pipeline = _install_plan_pipeline(monkeypatch)
+    events = []
+    monkeypatch.setattr(
+        stage_c_cli, "load_recovery_c7_launch_record",
+        lambda *_args, **_kwargs: events.append("launch") or record,
+    )
+    monkeypatch.setattr(stage_c_cli, "_is_exact_c7_plan", lambda *_args: True)
+    clean = {"commit": "f" * 40, "dirty": False}
+    monkeypatch.setattr(
+        stage_c_cli, "capture_authorized_c7_source_state",
+        lambda received, phase: events.append(f"source:{phase}") or clean,
+    )
+    observed = {}
+
+    def operation(root, plan, **kwargs):
+        events.append("operation")
+        observed.update({"root": root, "plan": plan, **kwargs})
+        if command == "validate":
+            return SimpleNamespace(
+                valid=True, successful=True,
+                to_dict=lambda: {"valid": True, "successful": True},
+            )
+        return {"successful": True, "source_levels": ["L0"]}
+
+    monkeypatch.setattr(stage_c_cli, operation_name, operation)
+    argv = [
+        command, "--config", str(config), "--run-spec", str(formal_spec),
+        "--output-root", str(record.formal_root),
+        "--recovery-c7-launch-record", str(record_path),
+    ]
+
+    assert stage_c_cli.main(argv) == stage_c_cli.EXIT_SUCCESS
+    assert events == ["launch", "source:report", "operation"]
+    assert observed["root"] == record.formal_root
+    assert observed["plan"] is pipeline.plan
+    assert observed["observed_git_state"] == clean
+    assert observed["trusted_recovery_context"] == {
+        "recovery_binding": record.binding,
+        "recovery_launch_record": record,
+    }
+    if command == "aggregate":
+        assert observed["output_path"] is None
+    assert capsys.readouterr().err == ""
+
+
+@pytest.mark.parametrize(
     ("command", "writer_name", "suffix"),
     [
         (
@@ -533,7 +615,7 @@ def test_benchmark_integrity_error_has_exit_four(
     }
 
 
-def test_exact_c7_run_requires_gate_before_backend_or_output(
+def test_exact_c7_run_requires_recovery_record_before_backend_or_output(
     monkeypatch, capsys, tmp_path
 ):
     config_path, spec_path = _write_explicit_inputs(tmp_path)
@@ -546,12 +628,16 @@ def test_exact_c7_run_requires_gate_before_backend_or_output(
         "--output-root", str(output_root), "--sample-id", "sample-a",
     ], backend_factory=lambda **_kwargs: pytest.fail("backend constructed"))
 
-    assert code == 2
+    assert code == 1
     assert not output_root.exists()
-    assert "--c7-diagnostic-gate" in _stdout_json(capsys)["blocked_reasons"][0]
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "--recovery-c7-launch-record" in json.loads(
+        captured.err
+    )["error"]["message"]
 
 
-def test_exact_c7_gate_is_checked_before_backend_and_output(
+def test_exact_c7_gate_is_not_checked_without_recovery_record(
     monkeypatch, capsys, tmp_path
 ):
     config_path, spec_path = _write_explicit_inputs(tmp_path)
@@ -579,12 +665,13 @@ def test_exact_c7_gate_is_checked_before_backend_and_output(
         "--c7-diagnostic-gate", str(gate),
     ], backend_factory=lambda **_kwargs: pytest.fail("backend constructed"))
 
-    assert code == 2
-    assert observed["gate"] == gate
-    assert observed["plan"] is pipeline.plan
-    assert observed["output_root"] == output_root
+    assert code == 1
+    assert observed == {}
     assert not output_root.exists()
-    assert "below 720" in _stdout_json(capsys)["blocked_reasons"][0]
+    captured = capsys.readouterr()
+    assert "--recovery-c7-launch-record" in json.loads(
+        captured.err
+    )["error"]["message"]
 
 
 def test_benchmark_command_requires_exact_scope(monkeypatch, capsys, tmp_path):
@@ -647,10 +734,12 @@ def test_benchmark_command_checks_gate_then_dispatches_batch(
         "--c7-diagnostic-gate", str(tmp_path / "gate.json"),
     ], backend_factory=lambda **_kwargs: events.append("backend") or backend)
 
-    assert code == 0
-    assert events == ["gate", "configure:cpu", "authorization", "backend", "run"]
-    assert pipeline.plan is not None
-    assert _stdout_json(capsys)["successful"] is True
+    assert code == 1
+    assert events == []
+    captured = capsys.readouterr()
+    assert "--recovery-c7-launch-record" in json.loads(
+        captured.err
+    )["error"]["message"]
 
 
 def test_c7_configuration_sets_frozen_determinism(monkeypatch):
@@ -708,6 +797,7 @@ def test_exact_diagnostic_run_configures_c7_before_backend(
         stage_c_cli, "_is_exact_c7_diagnostic_plan", lambda *_args: True
     )
     events = []
+    run_kwargs = {}
     monkeypatch.setattr(
         stage_c_cli, "_configure_c7_execution",
         lambda device: events.append(f"configure:{device}"),
@@ -715,7 +805,8 @@ def test_exact_diagnostic_run_configures_c7_before_backend(
     monkeypatch.setattr(
         stage_c_cli, "run_stage_c_sample",
         lambda *_args, **_kwargs: (
-            events.append("run")
+            run_kwargs.update(_kwargs)
+            or events.append("run")
             or SimpleNamespace(
                 successful=True, orchestration_complete=True,
                 to_dict=lambda: {
@@ -731,9 +822,12 @@ def test_exact_diagnostic_run_configures_c7_before_backend(
         "--sample-id", "sample-a", "--device", "cpu", "--no-resume",
     ], backend_factory=lambda **_kwargs: events.append("backend") or object())
 
-    assert code == 0
-    assert events == ["configure:cpu", "backend", "run"]
-    assert _stdout_json(capsys)["successful"] is True
+    assert code == 1
+    assert events == []
+    captured = capsys.readouterr()
+    assert "--recovery-c7-launch-record" in json.loads(
+        captured.err
+    )["error"]["message"]
 
 
 def test_exact_diagnostic_run_requires_fresh_root_before_backend(
@@ -760,8 +854,313 @@ def test_exact_diagnostic_run_requires_fresh_root_before_backend(
         "--sample-id", "sample-a", "--no-resume",
     ], backend_factory=lambda **_kwargs: pytest.fail("backend constructed"))
 
-    assert code == 2
-    assert "not fresh" in _stdout_json(capsys)["blocked_reasons"][0]
+    assert code == 1
+    captured = capsys.readouterr()
+    assert "--recovery-c7-launch-record" in json.loads(
+        captured.err
+    )["error"]["message"]
+
+
+def test_recovery_c7_path_drift_fails_before_pipeline_backend_or_root(
+    monkeypatch, capsys, tmp_path
+):
+    config = tmp_path / "config.json"
+    diagnostic_spec = tmp_path / "diagnostic.json"
+    formal_spec = tmp_path / "formal.json"
+    for path in (config, diagnostic_spec, formal_spec):
+        path.write_text("{}\n", encoding="utf-8")
+    record_path = tmp_path / "recovery_c7_launch_record.json"
+    record = _recovery_record(config, diagnostic_spec, formal_spec, tmp_path / "c7")
+    events = []
+    monkeypatch.setattr(
+        stage_c_cli, "load_recovery_c7_launch_record",
+        lambda *args, **kwargs: events.append(("launch", args, kwargs)) or record,
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "_load_pipeline",
+        lambda *_args, **_kwargs: pytest.fail("pipeline loaded after path drift"),
+    )
+    wrong_root = tmp_path / "wrong"
+
+    code = stage_c_cli.main([
+        "run-sample", "--config", str(config),
+        "--run-spec", str(diagnostic_spec), "--sample-id", "sample-a",
+        "--output-root", str(wrong_root),
+        "--recovery-c7-launch-record", str(record_path),
+    ], backend_factory=lambda **_kwargs: pytest.fail("backend constructed"))
+
+    assert code == stage_c_cli.EXIT_INPUT_ERROR
+    assert not wrong_root.exists()
+    assert events[0][2]["require_fresh_roots"] is False
+    assert "--output-root disagrees" in json.loads(
+        capsys.readouterr().err
+    )["error"]["message"]
+
+
+def test_recovery_c7_pipeline_never_loads_historical_selection(
+    monkeypatch, tmp_path
+):
+    config_path, spec_path = _write_explicit_inputs(tmp_path)
+    binding = object()
+    record = SimpleNamespace(binding=binding)
+    config = object()
+    registry = object()
+    run_spec = object()
+    plan = object()
+    estimate = object()
+    observed = {}
+    monkeypatch.setattr(
+        stage_c_cli, "load_stage_c_config", lambda path: config,
+    )
+
+    def load_registry(loaded, **kwargs):
+        observed["registry"] = (loaded, kwargs)
+        return registry
+
+    monkeypatch.setattr(stage_c_cli, "load_stage_c_registry", load_registry)
+    monkeypatch.setattr(
+        stage_c_cli, "load_stage_c_selection",
+        lambda *_args, **_kwargs: pytest.fail(
+            "recovery C7 loaded historical C8 selection"
+        ),
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "load_run_spec", lambda path: run_spec,
+    )
+
+    def build(loaded_config, loaded_registry, loaded_spec, *, selection):
+        observed["build"] = (
+            loaded_config, loaded_registry, loaded_spec, selection,
+        )
+        return plan
+
+    monkeypatch.setattr(stage_c_cli, "build_execution_plan", build)
+    monkeypatch.setattr(
+        stage_c_cli, "estimate_stage_c_run", lambda *_args: estimate,
+    )
+    args = SimpleNamespace(
+        config=config_path, run_spec=spec_path, registry=None,
+        data_root=None, selection=tmp_path / "historical-selection.json",
+    )
+
+    loaded = stage_c_cli._load_pipeline(args, recovery_record=record)
+
+    assert loaded == (config, registry, None, run_spec, plan, estimate)
+    assert observed["registry"] == (
+        config, {"recovery_binding": binding},
+    )
+    assert observed["build"] == (config, registry, run_spec, None)
+
+
+def test_recovery_c7_diagnostic_validates_before_backend_and_passes_context(
+    monkeypatch, capsys, tmp_path
+):
+    config = tmp_path / "config.json"
+    diagnostic_spec = tmp_path / "diagnostic.json"
+    formal_spec = tmp_path / "formal.json"
+    for path in (config, diagnostic_spec, formal_spec):
+        path.write_text("{}\n", encoding="utf-8")
+    record_path = tmp_path / "recovery_c7_launch_record.json"
+    record = _recovery_record(config, diagnostic_spec, formal_spec, tmp_path / "c7")
+    pipeline = _install_plan_pipeline(monkeypatch)
+    events = []
+    monkeypatch.setattr(
+        stage_c_cli, "load_recovery_c7_launch_record",
+        lambda *args, **kwargs: events.append("launch") or record,
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "_is_exact_c7_diagnostic_plan", lambda *_args: True,
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "require_fresh_c7_output_root",
+        lambda *_args, **_kwargs: events.append("fresh"),
+    )
+    clean = {"commit": "c" * 40, "dirty": False}
+    monkeypatch.setattr(
+        stage_c_cli, "capture_authorized_c7_source_state",
+        lambda received, phase: (
+            events.append(f"source:{phase}") or clean
+        ),
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "_configure_c7_execution",
+        lambda device: events.append(f"configure:{device}"),
+    )
+    observed = {}
+    run_kwargs = {}
+
+    def backend_factory(**kwargs):
+        events.append("backend")
+        observed.update(kwargs)
+        return object()
+
+    monkeypatch.setattr(
+        stage_c_cli, "run_stage_c_sample",
+        lambda *_args, **_kwargs: (
+            run_kwargs.update(_kwargs)
+            or events.append("run")
+            or SimpleNamespace(
+                successful=True, orchestration_complete=True,
+                to_dict=lambda: {"successful": True},
+            )
+        ),
+    )
+    code = stage_c_cli.main([
+        "run-sample", "--config", str(config),
+        "--run-spec", str(diagnostic_spec), "--sample-id", "sample-a",
+        "--output-root", str(record.diagnostic_root),
+        "--recovery-c7-launch-record", str(record_path),
+    ], backend_factory=backend_factory)
+
+    assert code == stage_c_cli.EXIT_SUCCESS
+    assert events == [
+        "launch", "fresh", "source:pre_diagnostic",
+        "configure:cpu", "backend", "run",
+    ]
+    assert pipeline.registry_kwargs["recovery_binding"] is record.binding
+    assert observed["args"]._recovery_binding is record.binding
+    assert observed["args"]._recovery_launch_record is record
+    assert observed["args"]._recovery_code_state == clean
+    assert observed["args"]._recovery_code_state["dirty"] is False
+    assert run_kwargs["observed_git_state"] == clean
+    assert _stdout_json(capsys)["successful"] is True
+
+
+def test_recovery_c7_launch_error_is_integrity_failure(
+    monkeypatch, capsys, tmp_path
+):
+    config_path, spec_path = _write_explicit_inputs(tmp_path)
+    monkeypatch.setattr(
+        stage_c_cli, "load_recovery_c7_launch_record",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            stage_c_cli.RecoveryC7LaunchError("launch record is dirty")
+        ),
+    )
+
+    code = stage_c_cli.main([
+        "run-sample", "--config", str(config_path),
+        "--run-spec", str(spec_path), "--sample-id", "sample-a",
+        "--output-root", str(tmp_path / "absent"),
+        "--recovery-c7-launch-record", str(tmp_path / "record.json"),
+    ])
+
+    assert code == stage_c_cli.EXIT_INTEGRITY_FAILURE
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert json.loads(captured.err)["error"] == {
+        "message": "launch record is dirty",
+        "type": "RecoveryC7LaunchError",
+    }
+
+
+def test_recovery_default_backend_uses_bound_model_and_logical_clean_state(
+    monkeypatch, tmp_path
+):
+    binding = SimpleNamespace(model_path=tmp_path / "recovery-model.pth")
+    launch_record = object()
+    clean = {"commit": "d" * 40, "dirty": False}
+    registry = SimpleNamespace(data_root=str(tmp_path), by_sample_id=lambda: {})
+    args = SimpleNamespace(
+        state_dict=None, config=tmp_path / "stage_c.json",
+        _recovery_binding=binding, _recovery_launch_record=launch_record,
+        _recovery_code_state=clean,
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "capture_git_state",
+        lambda _root: pytest.fail("raw dirty Git state was captured"),
+    )
+    captured = {}
+
+    def backend_class(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(**kwargs)
+
+    monkeypatch.setattr(stage_c_cli, "ProductionStageCBackend", backend_class)
+
+    backend = stage_c_cli._default_backend_factory(
+        config=object(), registry=registry, plan=SimpleNamespace(units=()),
+        args=args,
+    )
+
+    assert backend.state_dict_path == binding.model_path
+    assert backend.recovery_binding is binding
+    assert backend.recovery_launch_record is launch_record
+    assert backend.code_state == clean
+    assert captured["state_dict_path"] == binding.model_path
+
+
+def test_recovery_c7_formal_passes_logical_state_and_trusted_context(
+    monkeypatch, capsys, tmp_path
+):
+    config = tmp_path / "config.json"
+    diagnostic_spec = tmp_path / "diagnostic.json"
+    formal_spec = tmp_path / "formal.json"
+    for path in (config, diagnostic_spec, formal_spec):
+        path.write_text("{}\n", encoding="utf-8")
+    record_path = tmp_path / "recovery_c7_launch_record.json"
+    record = _recovery_record(config, diagnostic_spec, formal_spec, tmp_path / "c7")
+    gate_path = record.reports_root / stage_c_cli.DIAGNOSTIC_GATE_FILENAME
+    _install_plan_pipeline(monkeypatch)
+    clean = {"commit": "e" * 40, "dirty": False}
+    events = []
+    monkeypatch.setattr(
+        stage_c_cli, "load_recovery_c7_launch_record",
+        lambda *args, **kwargs: events.append("launch") or record,
+    )
+    monkeypatch.setattr(stage_c_cli, "_is_exact_c7_plan", lambda *_args: True)
+    monkeypatch.setattr(
+        stage_c_cli, "capture_authorized_c7_source_state",
+        lambda received, phase: events.append(f"source:{phase}") or clean,
+    )
+    trusted = stage_c_cli._trusted_recovery_context(record)
+    observed = {}
+
+    def require_gate(*args, **kwargs):
+        events.append("gate")
+        observed["gate"] = kwargs
+        return {"status": "PASS"}
+
+    def write_authorization(*args, **kwargs):
+        events.append("authorization")
+        observed["authorization"] = kwargs
+
+    monkeypatch.setattr(stage_c_cli, "require_c7_launch_gate", require_gate)
+    monkeypatch.setattr(
+        stage_c_cli, "write_c7_launch_authorization", write_authorization,
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "_configure_c7_execution",
+        lambda device: events.append(f"configure:{device}"),
+    )
+
+    def run_batch(*_args, **kwargs):
+        events.append("run")
+        observed["run"] = kwargs
+        return SimpleNamespace(
+            successful=True, orchestration_complete=True,
+            to_dict=lambda: {"successful": True},
+        )
+
+    monkeypatch.setattr(stage_c_cli, "run_stage_c_batch", run_batch)
+
+    code = stage_c_cli.main([
+        "benchmark", "--config", str(config),
+        "--run-spec", str(formal_spec),
+        "--output-root", str(record.formal_root),
+        "--c7-diagnostic-gate", str(gate_path),
+        "--recovery-c7-launch-record", str(record_path),
+    ], backend_factory=lambda **kwargs: events.append("backend") or object())
+
+    assert code == stage_c_cli.EXIT_SUCCESS
+    assert events == [
+        "launch", "source:formal", "gate", "configure:cpu",
+        "authorization", "backend", "run",
+    ]
+    assert observed["gate"]["observed_git_state"] == clean
+    assert observed["gate"]["trusted_recovery_context"] == trusted
+    assert observed["authorization"]["trusted_recovery_context"] == trusted
+    assert observed["run"]["observed_git_state"] == clean
+    assert _stdout_json(capsys)["successful"] is True
 
 
 def test_default_backend_factory_binds_provenance_and_loader_receives_model(

@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import csv
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
-from vitnns.constants import REPO_ROOT, WORKSPACE_ROOT
+from vitnns import stage_c_plan
+from vitnns.constants import REPO_ROOT
 from vitnns.io_utils import sha256_file
+from vitnns.recovery_v2 import RecoveryV2Binding, load_recovery_v2_binding
 from vitnns.stage_c_config import load_stage_c_config
 from vitnns.stage_c_plan import (
     BudgetExceededError,
@@ -34,6 +37,8 @@ from vitnns.stage_c_plan import (
 CONFIG = load_stage_c_config()
 REGISTRY_PATH = REPO_ROOT / CONFIG.registry.path
 METADATA_PATH = REPO_ROOT / CONFIG.registry.metadata_path
+SOURCE_MANIFEST_PATH = REPO_ROOT / CONFIG.registry.source_manifest_path
+SOURCE_METADATA_PATH = REPO_ROOT / CONFIG.registry.source_manifest_metadata_path
 REGISTRY_SCHEMA = REPO_ROOT / "config/stage_c_registry.schema.json"
 SELECTION_SCHEMA = REPO_ROOT / "config/stage_c_selection.schema.json"
 CLASS_METHODS = (
@@ -52,8 +57,13 @@ PAIR = {"block_index": 0, "head_index": 0}
 
 
 @pytest.fixture(scope="module")
-def registry():
-    return load_stage_c_registry(CONFIG)
+def recovery_binding() -> RecoveryV2Binding:
+    return load_recovery_v2_binding()
+
+
+@pytest.fixture(scope="module")
+def registry(recovery_binding):
+    return load_stage_c_registry(CONFIG, recovery_binding=recovery_binding)
 
 
 def _spec(
@@ -124,7 +134,9 @@ def _selection_document() -> dict:
             "calibration_artifact_manifest_sha256": zero,
         },
         "calibration_sample_ids": [
-            row.sample_id for row in load_stage_c_registry(CONFIG).rows
+            row.sample_id for row in load_stage_c_registry(
+                CONFIG, recovery_binding=load_recovery_v2_binding()
+            ).rows
             if row.role == "calibration"
         ],
         "candidate_records": candidates, "depth_band_winners": refs,
@@ -132,16 +144,20 @@ def _selection_document() -> dict:
     }
 
 
-def test_registry_strict_load_hash_types_and_optional_live_assets(registry):
+def test_registry_strict_load_hash_types_and_optional_live_assets(
+    registry, recovery_binding,
+):
     assert len(registry.rows) == 20
     assert registry.live_assets_verified is False
     assert sum(row.role == "calibration" for row in registry.rows) == 5
     assert sum(row.role == "holdout" for row in registry.rows) == 15
     assert sum(row.audit for row in registry.rows) == 2
     assert all(type(row.size_bytes) is int and type(row.audit) is bool for row in registry.rows)
-    live = load_stage_c_registry(CONFIG, verify_live_assets=True)
+    live = load_stage_c_registry(
+        CONFIG, verify_live_assets=True, recovery_binding=recovery_binding
+    )
     assert live.live_assets_verified is True
-    assert Path(live.data_root).resolve() == (WORKSPACE_ROOT / "49_vit /datas/ILSVRC2012_val").resolve()
+    assert Path(live.data_root).resolve() == recovery_binding.data_root
     assert type(live.to_dict()["rows"][0]["audit"]) is bool
 
 
@@ -171,13 +187,157 @@ def test_registry_rejects_header_lexical_integer_and_config_hash(tmp_path: Path)
         load_stage_c_registry(CONFIG, registry_schema_path=schema)
 
 
-def test_registry_live_asset_tamper_is_optional_and_detected(tmp_path: Path):
-    # Point at a complete-looking but invalid tree.  Loading the registry alone
-    # stays a cheap metadata operation; requested live validation fails closed.
-    snapshot = load_stage_c_registry(CONFIG, data_root=tmp_path, verify_live_assets=False)
+def test_registry_live_asset_tamper_is_optional_and_detected(
+    recovery_binding, monkeypatch,
+):
+    snapshot = load_stage_c_registry(
+        CONFIG, recovery_binding=recovery_binding, verify_live_assets=False
+    )
     assert snapshot.live_assets_verified is False
-    with pytest.raises(RegistryContractError, match="live image"):
-        load_stage_c_registry(CONFIG, data_root=tmp_path, verify_live_assets=True)
+    image_path = recovery_binding.data_root / snapshot.rows[0].relative_path
+    real_sha256_file = sha256_file
+
+    def tampered_live_hash(path):
+        if Path(path).resolve() == image_path.resolve():
+            return "0" * 64
+        return real_sha256_file(path)
+
+    monkeypatch.setattr(stage_c_plan, "sha256_file", tampered_live_hash)
+    with pytest.raises(RegistryContractError, match="live image SHA-256"):
+        load_stage_c_registry(
+            CONFIG, recovery_binding=recovery_binding, verify_live_assets=True
+        )
+
+
+def test_registry_recovery_skips_only_generation_legacy_assets(
+    tmp_path: Path, recovery_binding,
+):
+    with pytest.raises(FileNotFoundError, match="analysis_results_20images"):
+        load_stage_c_registry(CONFIG, workspace_root=tmp_path)
+
+    snapshot = load_stage_c_registry(
+        CONFIG, workspace_root=tmp_path, recovery_binding=recovery_binding
+    )
+    assert len(snapshot.rows) == CONFIG.registry.expected_counts["total"]
+    assert Path(snapshot.data_root) == recovery_binding.data_root
+
+
+def test_registry_recovery_reloads_binding_from_its_bound_files(
+    recovery_binding, monkeypatch,
+):
+    observed = []
+
+    def reload_binding(path, *, schema_path, repo_root, verify_assets):
+        observed.append((path, schema_path, repo_root, verify_assets))
+        return recovery_binding
+
+    monkeypatch.setattr(stage_c_plan, "load_recovery_v2_binding", reload_binding)
+    load_stage_c_registry(CONFIG, recovery_binding=recovery_binding)
+    assert observed == [(
+        recovery_binding.path, recovery_binding.schema_path,
+        REPO_ROOT.resolve(), False,
+    )]
+
+
+def test_registry_recovery_rejects_forged_binding_document(recovery_binding):
+    document = dict(recovery_binding.document)
+    document["canonical_digest"] = "0" * 64
+    forged = replace(recovery_binding, document=document)
+
+    with pytest.raises(RegistryContractError, match="reloaded from disk: document"):
+        load_stage_c_registry(CONFIG, recovery_binding=forged)
+
+
+@pytest.mark.parametrize(
+    "field_name",
+    (
+        "path", "schema_path", "model_path", "data_root",
+        "devkit_path", "source_manifest_path",
+    ),
+)
+def test_registry_recovery_rejects_forged_binding_paths(
+    field_name: str, tmp_path: Path, recovery_binding, monkeypatch,
+):
+    forged = replace(
+        recovery_binding, **{field_name: tmp_path / field_name}
+    )
+    monkeypatch.setattr(
+        stage_c_plan, "load_recovery_v2_binding",
+        lambda *args, **kwargs: recovery_binding,
+    )
+
+    with pytest.raises(RegistryContractError, match=rf"disk: {field_name}"):
+        load_stage_c_registry(CONFIG, recovery_binding=forged)
+
+
+@pytest.mark.parametrize(
+    ("asset_path", "message"),
+    [
+        (REGISTRY_PATH, "registry SHA-256"),
+        (METADATA_PATH, "registry metadata SHA-256"),
+        (SOURCE_MANIFEST_PATH, "source manifest SHA-256"),
+        (SOURCE_METADATA_PATH, "source manifest metadata SHA-256"),
+    ],
+)
+def test_registry_recovery_still_checks_frozen_asset_hashes(
+    asset_path: Path, message: str, recovery_binding, monkeypatch,
+):
+    real_sha256_file = sha256_file
+
+    def drifted_asset_hash(path):
+        if Path(path).resolve() == asset_path.resolve():
+            return "0" * 64
+        return real_sha256_file(path)
+
+    monkeypatch.setattr(stage_c_plan, "sha256_file", drifted_asset_hash)
+    with pytest.raises(RegistryContractError, match=message):
+        load_stage_c_registry(CONFIG, recovery_binding=recovery_binding)
+
+
+def test_registry_recovery_still_checks_source_rows(
+    recovery_binding, monkeypatch,
+):
+    real_read_csv = stage_c_plan._read_csv_exact
+
+    def mismatched_source_row(path, columns, context):
+        rows = real_read_csv(path, columns, context)
+        if Path(path).resolve() == SOURCE_MANIFEST_PATH.resolve():
+            rows[0] = dict(rows[0], size_bytes=str(int(rows[0]["size_bytes"]) + 1))
+        return rows
+
+    monkeypatch.setattr(stage_c_plan, "_read_csv_exact", mismatched_source_row)
+    with pytest.raises(RegistryContractError, match="differs from source manifest"):
+        load_stage_c_registry(CONFIG, recovery_binding=recovery_binding)
+
+
+def test_registry_recovery_uses_bound_devkit_and_requires_bound_data_root(
+    tmp_path: Path, recovery_binding, monkeypatch,
+):
+    observed_devkit_paths = []
+    real_sha256_file = sha256_file
+
+    def drifted_bound_devkit(path):
+        resolved = Path(path).resolve()
+        if resolved == recovery_binding.devkit_path:
+            observed_devkit_paths.append(resolved)
+            return "0" * 64
+        return real_sha256_file(path)
+
+    monkeypatch.setattr(stage_c_plan, "sha256_file", drifted_bound_devkit)
+    with pytest.raises(RegistryContractError, match="official devkit SHA-256"):
+        load_stage_c_registry(CONFIG, recovery_binding=recovery_binding)
+    assert observed_devkit_paths == [recovery_binding.devkit_path]
+
+    monkeypatch.setattr(stage_c_plan, "sha256_file", real_sha256_file)
+    explicit = load_stage_c_registry(
+        CONFIG, data_root=recovery_binding.data_root,
+        recovery_binding=recovery_binding,
+    )
+    assert Path(explicit.data_root) == recovery_binding.data_root
+    with pytest.raises(RegistryContractError, match="data_root.*recovery binding"):
+        load_stage_c_registry(
+            CONFIG, data_root=tmp_path, recovery_binding=recovery_binding
+        )
 
 
 def test_selection_missing_is_explicit_and_required_fails(tmp_path: Path):
