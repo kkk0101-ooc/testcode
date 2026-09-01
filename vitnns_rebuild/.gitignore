@@ -6,13 +6,10 @@ build/
 dist/
 *.egg-info/
 
-# Stage A runtime products; keep compact reports, not raw model/data artifacts.
+# Local runtime products. Long-lived recovery assets and formal evidence are
+# tracked from the repository root via Git LFS.
 outputs/
 artifacts/
-*.pth
-*.pt
-*.npy
-*.npz
 
 # C0 contracts: these small manifests are evidence, not runtime artifacts.
 !manifests/stage_c_flat_val_500/manifest.csv
@@ -27,4 +24,15 @@ artifacts/
 !manifests/stage_d_fidelity_v1/pre_authorization_access_attestation.json
 !manifests/stage_d_fidelity_v1/registry_metadata.json
 !manifests/stage_d_fidelity_v1/manifest.json
+
+!assets/
+!assets/**
+!evidence/
+!evidence/**
+
+# `assets/assemble_imagenet_val.sh` reconstructs this local convenience copy
+# from the four versioned LFS parts.  Keep only the parts in Git/LFS.
+assets/imagenet/ILSVRC2012_img_val.tar
+assets/imagenet/ILSVRC2012_img_val.complete.tar
+assets/imagenet/ILSVRC2012_img_val.parts/*.partial
 

@@ -8,8 +8,9 @@ tree. Stage A deliberately uses one model and one numerical forward path:
 - timm's real `forward` with non-mutating hooks
 - the preprocessing embedded in this checkpoint's timm metadata
 
-The legacy directories are inputs/archives and are never modified here. Large
-models, images, tensors, and runtime outputs are excluded from Git.
+Recovered assets live under `assets/` and large binary files are tracked with
+Git LFS. The legacy `49_vit ` directory has been removed from the active
+checkout; use Git history only for legacy source inspection.
 
 Stage B adds a deliberately narrow, testable method instead of patching the
 legacy scanner.  For a selected block it freezes the attention matrix actually
@@ -20,14 +21,17 @@ does not claim to be full Q/K/V attribution or a class-logit explanation.
 ## Environment
 
 ```bash
-source ~/.bashrc
+cd /data01/home/yeziqi.831/nxtrec_wksp/testcode
+source .conda/etc/profile.d/conda.sh
 conda activate vitnns
-cd '/data00/home/yeziqi.831/testcode/vitnns_rebuild'
+cd vitnns_rebuild
 python -m pip install -e . --no-deps
 ```
 
 Core versions are pinned in `requirements.lock.txt`. The CUDA wheels for torch
 and torchvision come from `https://download.pytorch.org/whl/cu121`.
+This recovered workspace uses the local Conda environment `vitnns`. On a new
+clone, install Git LFS first and run `git lfs pull` before using `assets/`.
 
 ## Dataset manifests
 
@@ -36,7 +40,7 @@ mapping, never directory enumeration order:
 
 ```bash
 vitnns-stage-a manifest \
-  --data-root '../49_vit /datas/imagenet-scanner' \
+  --data-root /path/to/synset-folder-data \
   --output-dir artifacts/imagenet-scanner
 ```
 
@@ -45,10 +49,15 @@ they can only be emitted with explicit null labels:
 
 ```bash
 vitnns-stage-a manifest \
-  --data-root '../49_vit /datas/ILSVRC2012_val' \
-  --devkit /path/to/ILSVRC2012_devkit_t12.tar.gz \
+  --data-root assets/data/ILSVRC2012_val \
+  --devkit assets/imagenet/ILSVRC2012_devkit_t12.tar.gz \
   --output-dir artifacts/imagenet-val-subset
 ```
+
+The recovered Stage C 500-image root is `assets/data/ILSVRC2012_val`.
+It reproduces the tracked Stage C manifest byte-for-byte. See
+`docs/recovery_and_rerun.md` for hashes, the model-candidate boundary, and
+rerun order.
 
 ## Stage A verification
 

@@ -1,10 +1,12 @@
-# Default to ignoring everything; explicitly allow source and Markdown only.
+# Default to ignoring everything; explicitly allow source, contracts, recovery
+# assets, and LFS-managed experiment artifacts.
 *
 !*/
 
 # Versioned code and documentation.
 !.gitignore
 !**/.gitignore
+!.gitattributes
 !*.py
 !**/*.py
 !*.sh
@@ -15,20 +17,34 @@
 !**/*.md
 !requirements*.txt
 !**/requirements*.txt
+!*.json
+!**/*.json
+!*.schema.json
+!**/*.schema.json
+!*.csv
+!**/*.csv
+!*.lock
+!**/*.lock
+!*.yml
+!**/*.yml
 
 # Keep generated caches out even when directories are traversable.
 __pycache__/
 **/__pycache__/
 *.py[cod]
+.cache/
+.micromamba/
+.conda/
+.python/
+.venv/
+**/.pytest_cache/
+**/.coverage
+**/__pycache__/
 
-# Explicitly exclude large datasets, model artifacts, media, and result dumps.
+# Explicitly exclude legacy dumps and non-authoritative generated outputs.
 scan_vit/
 chatlog1/
-# Stage A rebuild is versioned selectively; its own .gitignore excludes outputs.
-!vitnns_rebuild/
-!vitnns_rebuild/**/
-!vitnns_rebuild/pyproject.toml
-!vitnns_rebuild/config/*.json
+论文1/
 **/scan_results/
 **/analysis_results*/
 **/PPT_Images/
@@ -36,9 +52,6 @@ chatlog1/
 **/do_images/
 **/do_imagenet*/
 **/trained_model*/
-**/model/
-**/datas/
-**/data/
 **/figures/
 **/media/
 **/visualize_attention/
@@ -47,16 +60,33 @@ chatlog1/
 **/training_visualizations/
 **/ppt_results*/
 
-# Common heavy/generated file types.
-*.zip
+# Current rebuild is versioned selectively. Large binary assets under
+# vitnns_rebuild/assets and future evidence roots are tracked through Git LFS.
+!vitnns_rebuild/
+!vitnns_rebuild/**/
+!vitnns_rebuild/assets/
+!vitnns_rebuild/assets/**
+!vitnns_rebuild/evidence/
+!vitnns_rebuild/evidence/**
+vitnns_rebuild/outputs/
+vitnns_rebuild/artifacts/
+vitnns_rebuild/assets/imagenet/ILSVRC2012_img_val.tar
+vitnns_rebuild/assets/imagenet/ILSVRC2012_img_val.complete.tar
+vitnns_rebuild/assets/imagenet/ILSVRC2012_img_val.parts/*.partial
+
+# Keep archives and documents that are not explicitly part of assets/evidence
+# out of normal Git by default.
 *.pt
 *.pth
 *.npy
 *.npz
+*.parquet
 *.png
 *.jpg
 *.jpeg
 *.JPEG
+*.tar.gz
+*.zip
 *.gif
 *.webp
 *.bmp
@@ -65,7 +95,5 @@ chatlog1/
 *.pptx
 *.html
 *.log
-*.csv
-*.txt
 !requirements*.txt
 !**/requirements*.txt
