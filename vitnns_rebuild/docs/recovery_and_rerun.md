@@ -282,3 +282,22 @@ C9 in the current historical code path does not expose `--data-root` or
 historical defaults or update the C9/D7 code and contracts to bind the new
 asset paths explicitly. Do not run C9 from the current historical contract with
 the semantic candidate while pretending it is the old `2e718...` artifact.
+
+## Recovery-v2 C7 progress update (2026-09-02)
+
+Recovery-v2 C7 is now `PASS`. The implementation producer is
+`026b622577370c50babbec6d1f26342875665c8e`, the separate clean launch and
+execution commit is `b05307241337eff42757d7ef0638223034da50be`, and the
+complete evidence is sealed by commit
+`064a0b8d96e68d78ac652c3677c307cb8b745630` under
+`evidence/stage_c/c7_recovery_v2_026b622`. The diagnostic gate is `PASS`; the
+formal report is `PASS` with all `40/40` units complete and succeeded. Both
+reports record `holdout_accessed=false`; full hashes and scope are in
+`阶段C-step-by-step.md`.
+
+This is a recovery replication and audit-chain reconstruction. It does not
+recover the historical 15-image confirmatory C10 result and does not make the
+historically exposed holdout unseen again. C8 has not been executed: there is
+no recovery-v2 C8 root, selection, or PASS report. The existing launch record
+is C7-only (`c8_authorized=false`), so C8 requires its own valid handoff and a
+fresh empty evidence root before execution.

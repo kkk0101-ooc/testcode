@@ -1440,3 +1440,14 @@ C10 精确范围：
 
 输出诊断报告和协议草案路径/哈希；不要启动 Stage D，也不要把原论文没有该 gate 当成撤销本轮预注册 gate 的理由。
 ~~~
+
+### 2026-09-02 — recovery-v2 C7 completion record
+
+- status: `PASS`。本记录只确认 recovery-v2 C7 diagnostic 与单图正式 benchmark 完成；其解释是 `recovery replication` / audit-chain reconstruction，不是新的确认性结果。
+- code_and_launch_binding: C7 producer 为 `026b622577370c50babbec6d1f26342875665c8e`；独立 launch commit 为 `b05307241337eff42757d7ef0638223034da50be`。diagnostic、launch gate、formal units 与两份最终报告均记录实际运行于 clean `b053072...`；完整 evidence 随后封存于 commit `064a0b8d96e68d78ac652c3677c307cb8b745630`。
+- evidence_root: `/data01/home/yeziqi.831/nxtrec_wksp/testcode/vitnns_rebuild/evidence/stage_c/c7_recovery_v2_026b622`；其中 source roots 为 `diagnostic/` 与 `formal/`，最终报告位于 `reports/`。未覆盖、拼接或恢复历史 runtime root。
+- diagnostic_gate: `reports/stage_c_c7_diagnostic_gate.json` 为 `PASS`、`exit_class=success`、`integrity_valid=true`；一个预注册 calibration audit NNS unit 完整成功，同步总 wall time `39.850266722991364s < 720s`。报告文件 SHA-256 为 `6c72d235d9e0bdb727918641534963110304b413c3f8536d90dee0f74c19ba5e`，canonical digest 为 `f6721b04365312543e425449c4aee1c0d35155e232bbbbfd25f94d7a3a65fd2a`。
+- formal_benchmark: `reports/stage_c_benchmark_report.json` 为 `PASS`、`exit_class=success`、`integrity_valid=true`。范围严格为同一个 calibration audit 图、全部 7 种方法、12 个显式 Value candidates 和 40 个 execution units；batch validator 为 valid/successful，`40/40` units complete 且 `40/40` succeeded，全部冻结 hard caps 为 `PASS`。报告文件 SHA-256 为 `02565d66b9ef2d51fcd47f5956271cd3d35ba8ce51cec245fd2572180962970f`，canonical digest 为 `4f256c3f677c3da342f00716a1e172f76a2cdb761ad6d2c9fb904decf11d91b7`。
+- model_and_scope: 本次绑定 `RECOVERY_V2_NEW_ARTIFACT_NOT_HISTORICAL_2E718`（state-dict SHA-256 `489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d`，canonical tensor digest `150234d8117a50057f62aa14a97f46bbf1da92b00b386c10c71cc7000c5d51dd`）；两份报告均确认 `holdout_accessed=false`、`selection_performed=false`、`bootstrap_performed=false`、`decision_performed=false`。
+- confirmatory_boundary: 本次 C7 PASS 绝不表示恢复了历史 15 图 confirmatory C10，也不使已历史暴露的 15 张 holdout 重新成为 unseen/confirmatory。后续即使按冻结规则重建 C8-C10，也必须标为 recovery replication；新的 confirmatory claim 需要另行冻结、此前未见的 registry/split。
+- next_task: `C8_RECOVERY_REPLICATION`。C8 尚未执行，尚无 recovery-v2 C8 root、selection 或 PASS report；现有 recovery launch record 明确 `c8_authorized=false`，不能把本次 C7-only authorization 外推到 C8。下一任务只能在满足相应授权与 clean binding 后，从 fresh empty `evidence/` root 完整运行 5 张 calibration、全部 144 candidates 的 C8，不得读取 15 张 holdout，也不得复用历史 selection 代替新 C8 source evidence。
