@@ -27,6 +27,14 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("--state-dict", type=Path, default=DEFAULT_STATE_DICT)
     verify.add_argument("--device", default="cpu")
     verify.add_argument("--compare-legacy-pickle", action="store_true")
+
+    recovery = subparsers.add_parser(
+        "verify-recovery-v2",
+        help="run the isolated recovery-v2 Stage A verification",
+    )
+    recovery.add_argument("--binding", type=Path)
+    recovery.add_argument("--output-dir", type=Path, required=True)
+    recovery.add_argument("--device", default="cuda:0")
     return parser
 
 
@@ -47,6 +55,20 @@ def main(argv: list[str] | None = None) -> int:
         }
         write_json(args.output_dir / "manifest_metadata.json", metadata)
         print(f"wrote {len(rows)} samples to {args.output_dir}")
+        return 0
+
+    if args.command == "verify-recovery-v2":
+        from .recovery_stage_a import run_recovery_v2_stage_a
+        from .recovery_v2 import DEFAULT_BINDING_PATH
+
+        verification = run_recovery_v2_stage_a(
+            repo_root=REPO_ROOT,
+            binding_path=args.binding or DEFAULT_BINDING_PATH,
+            output_dir=args.output_dir,
+            device=args.device,
+        )
+        print("Recovery-v2 Stage A verification: PASS")
+        print(verification["numeric_gates"])
         return 0
 
     rows = build_manifest(args.data_root, require_labels=True)

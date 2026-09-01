@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ViT-NNS recovery-v2 machine binding",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "document_type", "binding_id", "status", "amendment", "active_project", "legacy_project_allowed", "environment", "model", "stage_c_input", "c7_contracts", "scope", "canonical_digest"],
+  "properties": {
+    "$schema": {"const": "recovery_v2_binding.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "vitnns_recovery_v2_machine_binding"},
+    "binding_id": {"const": "RECOVERY_V2_STAGE_A_20260901"},
+    "status": {"const": "BOUND_FOR_STAGE_A_AND_C7_PREPARATION_ONLY"},
+    "amendment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "commit", "sha256"],
+      "properties": {
+        "id": {"const": "RECOVERY-C7-RERUN-20260901"},
+        "path": {"const": "docs/recovery_protocol_amendment_20260901.md"},
+        "commit": {"const": "4a87e4d9cb71fe9c394bb2fdd5d4e71bbfe8aaed"},
+        "sha256": {"const": "07e00c12e689af9180d03338738394374c7c1afbd15a52a9493a23b689b4787a"}
+      }
+    },
+    "active_project": {"const": "vitnns_rebuild"},
+    "legacy_project_allowed": {"const": false},
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["conda_environment_path_from_workspace", "python_version", "torch_version", "torchvision_version", "timm_version", "required_device_type", "requirements_lock_path", "requirements_lock_sha256"],
+      "properties": {
+        "conda_environment_path_from_workspace": {"const": ".conda/envs/vitnns"},
+        "python_version": {"const": "3.10.21"},
+        "torch_version": {"const": "2.2.2+cu121"},
+        "torchvision_version": {"const": "0.17.2+cu121"},
+        "timm_version": {"const": "0.9.16"},
+        "required_device_type": {"const": "cuda"},
+        "requirements_lock_path": {"const": "requirements.lock.txt"},
+        "requirements_lock_sha256": {"const": "81beabd6aba9ede777e973e2ee5f0c60ce2aa88ce55b29d025e95d67ab175984"}
+      }
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "identity", "state_dict_path", "state_dict_sha256", "state_dict_bytes", "lfs_oid_sha256", "canonical_tensor_digest", "canonical_tensor_digest_algorithm", "expected_key_count", "expected_parameter_count", "historical_artifact_recovered", "historical_state_dict_sha256"],
+      "properties": {
+        "name": {"const": "vit_base_patch16_224.augreg2_in21k_ft_in1k"},
+        "identity": {"const": "RECOVERY_V2_NEW_ARTIFACT_NOT_HISTORICAL_2E718"},
+        "state_dict_path": {"const": "assets/models/vit_base_patch16_224_weights.semantic_candidate.pth"},
+        "state_dict_sha256": {"const": "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d"},
+        "state_dict_bytes": {"const": 346329934},
+        "lfs_oid_sha256": {"const": "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d"},
+        "canonical_tensor_digest": {"const": "150234d8117a50057f62aa14a97f46bbf1da92b00b386c10c71cc7000c5d51dd"},
+        "canonical_tensor_digest_algorithm": {"const": "sha256_sorted_key_utf8_plus_torch_dtype_utf8_plus_python_shape_tuple_utf8_plus_cpu_contiguous_native_little_endian_numpy_c_order_bytes_no_delimiters"},
+        "expected_key_count": {"const": 152},
+        "expected_parameter_count": {"const": 86567656},
+        "historical_artifact_recovered": {"const": false},
+        "historical_state_dict_sha256": {"const": "2e718037429f18ec77aa629471beb2e99993d7383375188bab777aba04d5e4d0"}
+      }
+    },
+    "stage_c_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["data_root", "sample_relative_path", "sample_sha256", "sample_wnid", "sample_imagenet1k_index", "official_devkit_path", "official_devkit_sha256", "source_manifest_path", "source_manifest_sha256", "source_manifest_metadata_path", "source_manifest_metadata_sha256", "registry_path", "registry_sha256", "registry_metadata_path", "registry_metadata_sha256"],
+      "properties": {
+        "data_root": {"const": "assets/data/ILSVRC2012_val"},
+        "sample_relative_path": {"const": "ILSVRC2012_val_00009888.JPEG"},
+        "sample_sha256": {"const": "156ee1e37de4ffc4ef8b9b9642aecbda4e258638ea0cc6d0b67515598d6349f6"},
+        "sample_wnid": {"const": "n02113978"},
+        "sample_imagenet1k_index": {"const": 268},
+        "official_devkit_path": {"const": "assets/imagenet/ILSVRC2012_devkit_t12.tar.gz"},
+        "official_devkit_sha256": {"const": "b59243268c0d266621fd587d2018f69e906fb22875aca0e295b48cafaa927953"},
+        "source_manifest_path": {"const": "manifests/stage_c_flat_val_500/manifest.csv"},
+        "source_manifest_sha256": {"const": "042cfd7845b49f8949de13c78bc40c68192179d6fc004bcdbecf55e502c2eb89"},
+        "source_manifest_metadata_path": {"const": "manifests/stage_c_flat_val_500/manifest_metadata.json"},
+        "source_manifest_metadata_sha256": {"const": "9a8df6201fe85c8529e2d307ee09142b3b55960dca059a29882d2e03f933ad5b"},
+        "registry_path": {"const": "manifests/stage_c_sample_registry.csv"},
+        "registry_sha256": {"const": "9a6667bec6a27c715d272382a494f06924db881dca991dc4fac4751dbe7f37f0"},
+        "registry_metadata_path": {"const": "manifests/stage_c_sample_registry_metadata.json"},
+        "registry_metadata_sha256": {"const": "bedb9df9a77807c86da0b898f8d44767c8276f21ab69821965f2b30d7184a4af"}
+      }
+    },
+    "c7_contracts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage_c_config_path", "stage_c_config_sha256", "protocol_path", "protocol_sha256", "acceptance_path", "acceptance_sha256", "diagnostic_run_spec_path", "diagnostic_run_spec_sha256", "diagnostic_run_spec_canonical_sha256", "formal_run_spec_path", "formal_run_spec_sha256", "formal_run_spec_canonical_sha256"],
+      "properties": {
+        "stage_c_config_path": {"const": "config/stage_c.json"},
+        "stage_c_config_sha256": {"const": "0ee57c32b0fcb3116f91fddce5d918c8eb1ae05606c3616b6a2ec9afa9f0e669"},
+        "protocol_path": {"const": "docs/阶段C_protocol.md"},
+        "protocol_sha256": {"const": "ff958a9455ae15307827a9e40fc6d7d03c9baa10bf1fb8b83650a10bd85ff7b8"},
+        "acceptance_path": {"const": "docs/stage_c_acceptance.md"},
+        "acceptance_sha256": {"const": "f4629105d411b32d4f7700caa22d7d6b6c1bf4b8e01f37e4e2ac6ac4851dfafd"},
+        "diagnostic_run_spec_path": {"const": "config/stage_c_c7_diagnostic_run_spec.json"},
+        "diagnostic_run_spec_sha256": {"const": "7966d846ceec1cb372cc1c177e412f87dc67e097e61f5f3f81a1822091b3f7ec"},
+        "diagnostic_run_spec_canonical_sha256": {"const": "5cdaa0ba34b303c5d4ae1071613ff440c2b084fa239a4ddf4168fd6e7898dfec"},
+        "formal_run_spec_path": {"const": "config/stage_c_c7_run_spec.json"},
+        "formal_run_spec_sha256": {"const": "76f7e1ffd6e15b8e79ed856eba90bc930622399681bf32df8dc564abbe323404"},
+        "formal_run_spec_canonical_sha256": {"const": "3078b09f8e956c68a430836443a982eb2894e724426f4e0b798b94c3b817e5e2"}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage_a_verification_authorized", "formal_c7_c8_c9_c10_authorized", "stage_d_d7_d8_authorized", "stage_d_reserve_access_authorized", "rerun_interpretation"],
+      "properties": {
+        "stage_a_verification_authorized": {"const": true},
+        "formal_c7_c8_c9_c10_authorized": {"const": false},
+        "stage_d_d7_d8_authorized": {"const": false},
+        "stage_d_reserve_access_authorized": {"const": false},
+        "rerun_interpretation": {"const": "recovery_replication_not_new_confirmatory"}
+      }
+    },
+    "canonical_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
