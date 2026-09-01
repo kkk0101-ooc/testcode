@@ -206,6 +206,12 @@ def launch_record_digest(document: Mapping[str, Any]) -> str:
     })
 
 
+def _plain_json(value: Any) -> Any:
+    """Return a mutable JSON copy, including for frozen mapping proxies."""
+
+    return json.loads(canonical_json_bytes(value).decode("utf-8"))
+
+
 def _freeze(value: Any) -> Any:
     if isinstance(value, Mapping):
         return MappingProxyType({key: _freeze(child) for key, child in value.items()})
@@ -1087,12 +1093,12 @@ def generate_recovery_c8_launch_record(
         "status": STATUS,
         "launch_record_commit": "SELF",
         "launch_schema": {"path": schema_rel, "file_sha256": schema_sha256},
-        "amendment": copy.deepcopy(source["amendment"]),
-        "recovery_binding": copy.deepcopy(source["recovery_binding"]),
-        "stage_a": copy.deepcopy(source["stage_a"]),
+        "amendment": _plain_json(source["amendment"]),
+        "recovery_binding": _plain_json(source["recovery_binding"]),
+        "stage_a": _plain_json(source["stage_a"]),
         "c7_launch": _c7_launch_record(repo, c7_record),
         "c7_report": c7_report,
-        "model": copy.deepcopy(source["model"]),
+        "model": _plain_json(source["model"]),
         "c8_contracts": contracts,
         "producer_git": producer,
         "outputs": {
