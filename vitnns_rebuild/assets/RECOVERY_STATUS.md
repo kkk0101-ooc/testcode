@@ -1,12 +1,19 @@
 # ViT-NNS recovery status — 2026-09-01
 
+Authoritative recovery overlay:
+[`../docs/recovery_protocol_amendment_20260901.md`](../docs/recovery_protocol_amendment_20260901.md).
+
 ## Authoritative code state
 
 - Repository: `/data01/home/yeziqi.831/nxtrec_wksp/testcode`
 - Active implementation: `vitnns_rebuild` (`49_vit ` is legacy only)
-- Branch/HEAD: `stage-d-d3-pass` / `7697f4a86adfb8490f6b07ab5725e0998d016e65`
+- Recovery asset baseline: `stage-d-d3-pass` /
+  `7697f4a86adfb8490f6b07ab5725e0998d016e65`; amendment parent:
+  `33f814723e03dfca419fbeb90de65e280590ba2f`. The containing amendment
+  commit is authoritative for the current recovery state.
 - Actual implementation progress: Stage D D0-D6 PASS; D7 is next in the historical handoff, but cannot currently start because the sealed C10 root and exact frozen model artifact are absent.
-- Worktree/index: clean after recovery.
+- Worktree/index: the recovery asset baseline was clean; each later execution
+  boundary must independently require and record a clean committed tree.
 
 Reconstructed local refs whose exact commits still existed:
 
@@ -99,8 +106,12 @@ Current Stage D static validation intentionally fails closed with `sealed C10 so
 
 1. If an external backup restores both the exact frozen model artifact and the exact sealed C10 root, re-run read-only validators. If all hashes pass, continue at D7; C8/C9 roots are not needed merely to continue the already-frozen Stage D contract.
 2. If C9 root plus its exact producer object/ref is restored, C10 can be rebuilt/validated first; then retry Stage D validation.
-3. With no external evidence backup (current state), the earliest scientific chain that must be rerun is C7, not C8, C9 or D7. Before running it, create a versioned recovery/protocol amendment because old C7/C9 producer identities and the exact frozen `.pth` identity cannot be reproduced.
-4. Under that new version: freeze the new model artifact identity plus canonical tensor digest, rerun Stage A verification, then run C7 -> C8 -> C9 -> C10. The tracked C8 selection documents what was selected but cannot replace C8's 2,180-unit source evidence.
+3. With no external evidence backup (current state), the active amendment
+   `RECOVERY-C7-RERUN-20260901` makes C7 the earliest recovery-replication
+   point, not C8, C9 or D7. Next, bind its new model artifact identity and
+   canonical tensor digest in the machine contracts, pass Stage A verification,
+   and issue the amendment's separate C7 launch record.
+4. Then run C7 -> C8 -> C9 -> C10. The tracked C8 selection documents what was selected but cannot replace C8's 2,180-unit source evidence. Because the original 15 holdout outcomes are historically known, this rerun reconstructs the audit chain but does not restore unseen confirmatory status.
 5. After the new C10 is sealed, reissue/revalidate the Stage D D0-D6 binding chain against the new identities, then execute D7. Do not launch the 500-image Stage D workload before D7 issues a new execution authorization.
 
 Historical C10 summary must remain labeled historical and not silently upgraded to fresh evidence.

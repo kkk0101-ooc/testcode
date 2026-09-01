@@ -7,9 +7,16 @@ This repository uses `vitnns_rebuild` as the active implementation. The old
 legacy source inspection. Do not run legacy scripts as part of the current
 experiment chain.
 
+The authoritative recovery overlay is
+[`recovery_protocol_amendment_20260901.md`](recovery_protocol_amendment_20260901.md).
+It governs the recovery-v2 model identity, C7--C10 rerun, evidence custody, and
+Stage D rebinding while preserving the historical protocols and records.
+
 ## Current state
 
-- Code HEAD: `7697f4a86adfb8490f6b07ab5725e0998d016e65`.
+- Recovery asset baseline commit: `7697f4a86adfb8490f6b07ab5725e0998d016e65`;
+  amendment parent commit: `33f814723e03dfca419fbeb90de65e280590ba2f`.
+  The containing amendment commit is the current recovery authority.
 - Stage D implementation status: D0-D6 are implemented and tested on
   synthetic fixtures.
 - Stage D formal execution status: not authorized and not started.
@@ -18,8 +25,10 @@ experiment chain.
 
 Current D7 cannot be started from this checkout because D3/D7 validation
 requires the historical sealed C10 root, and that root is absent. Without an
-external backup, the earliest scientifically valid rebuild point is C7 under a
-versioned recovery/protocol amendment.
+external backup, the earliest auditable recovery-replication point is C7 under
+the versioned recovery/protocol amendment. The original 15 holdout outcomes are
+historically known, so rebuilding the same chain does not make them unseen or
+newly confirmatory.
 
 ## Environment
 
@@ -152,8 +161,9 @@ model artifact identity.
 
 The current historical Stage C/C/D contracts still bind the old state-dict
 SHA-256 `2e718037429f18ec77aa629471beb2e99993d7383375188bab777aba04d5e4d0`.
-The recovered candidates can support a new versioned run only after a protocol
-amendment records the new artifact identity and tensor-equivalence evidence.
+The active amendment selects a recovery-v2 identity, but formal use remains
+blocked until a later clean commit updates and validates every machine binding
+and passes Stage A verification.
 
 ## Validation checks
 
@@ -194,12 +204,10 @@ sealed C10 root, validate them first and then continue with D7.
 
 If no external backup exists, follow this order:
 
-1. Write and commit a recovery/protocol amendment. It must explicitly replace
-   the historical model artifact identity with a new model identity and
-   canonical tensor digest. It must also record that the official ImageNet
-   validation tar was recovered, while only the Stage C 500-image subset was
-   extracted before a new Stage D authorization.
-2. Re-run Stage A verification with the newly frozen model artifact.
+1. Use and validate the committed `RECOVERY-C7-RERUN-20260901` amendment.
+2. Bind its recovery-v2 model file and canonical tensor digest in every
+   applicable machine contract, commit that binding, pass Stage A verification,
+   and issue the separate C7 recovery launch record required by the amendment.
 3. Re-run C7 diagnostic and benchmark from a clean commit.
 4. Re-run C8 calibration selection from a fresh empty root.
 5. Re-run C9 pilot from a fresh empty root.
@@ -210,6 +218,10 @@ If no external backup exists, follow this order:
 The tracked `selection/stage_c_selection.json` records the historical selected
 heads, but it does not replace C8's source evidence. Do not skip C8 if the goal
 is to restore the original audit chain.
+
+The rebuilt C10 must apply the frozen calculations for reproducibility but be
+labeled a recovery replication, not a new confirmatory result. A new
+confirmatory claim requires a separately frozen, previously unseen registry.
 
 ## Persisting future formal outputs
 

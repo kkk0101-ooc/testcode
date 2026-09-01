@@ -3,8 +3,9 @@
 > 创建日期：2026-08-25。
 > 文档性质：阶段 D 的路线图、任务状态表、数据访问边界和跨对话追加式交接日志。
 > 当前状态：阶段 A、B 已完成；Stage C/C0–C10 的执行和证据封存已完成，但 Stage C acceptance 为 `BLOCKED`，C10 v1 primary decision 为 `NO_GO_NOVELTY`。D0 首次尝试因模型/推理与非-reserve JPEG decode 保持 `BLOCKED`；独立 model-free/no-JPEG 重试及 D1–D6 准备实现均已 `PASS`。D5/D6 仅在严格 guard 下的 synthetic/tampered fixtures 上验证 sealed-root receipt、统计、决策和 paper-package 合同。Stage D 正式执行仍未授权、未启动。
-> 当前 next task：`D7`。
-> 当前权威交接：最新 Stage D completion record 是 `2026-08-26 17:29 +0800 — D6 completion record`；当前可执行入口是该记录后的 D7 提示词。更早提示词只作审计历史，不再授权执行。
+> Recovery override（2026-09-01）：[`recovery_protocol_amendment_20260901.md`](recovery_protocol_amendment_20260901.md) 是当前权威 overlay。历史 D6 后的 D7 提示词不再授权执行；D7 当前为 `BLOCKED`。必须先完成 recovery-v2 模型机器绑定与 Stage A verification、C7→C8→C9→C10 证据重建及 D0–D6 重新绑定；此前禁止访问 Stage D reserve。
+> 当前 next task：`RECOVERY_V2_MODEL_BINDING_AND_STAGE_A`（只做准备和轻量验证，不执行正式 C7）。
+> 当前权威交接：使用上述 amendment；以下 D0–D6 completion records 和旧 D7 提示词仅作历史审计。
 > 使用规则：每个新对话先读文首状态、第 7 节执行协议、第 9 节最新权威记录和当前提示词，再读提示词列出的章节与上游证据；一次只执行一个 `D_i` 或一个明确编号的 `D8-Sxx` shard。未更新本文、未追加 completion record、未给出下一任务完整提示词的任务，不算完成。
 > 测试原则：只做与当前任务和实际改动直接相关的必要测试，避免无关、重复或低价值测试。每个测试/验证批次开始前一次性说明测试项目、必要性和预计耗时；只有新增高成本测试或扩大影响面时才补充说明。
 
@@ -260,6 +261,9 @@ D10 建议固定生成以下 machine-readable paper data 和数值图；只有 v
 数值图表脚本必须只读 D10 的 machine-readable paper data。不得从 PNG/JPEG 反推数值；不得把 C10 与 Stage D 样本合并后重新统计。
 
 ## 5. D0–D10 总路线与状态
+
+下表保留恢复前的历史工程状态；当前执行门由文首 recovery override
+覆盖，不能仅凭表中 D6 `PASS` 或 D7 `NOT_STARTED` 进入 D7。
 
 任务状态只使用 `NOT_STARTED`、`IN_PROGRESS`、`PASS`、`BLOCKED`。`next_task` 单独记录，不使用 `NEXT` 混入状态。只有代码/文档、必要测试或静态验证、产物验证、completion record 和下一提示词都完成后，任务才能标记 `PASS`；若测试不适用，必须写明 `not_applicable` 及理由。
 

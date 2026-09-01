@@ -57,7 +57,8 @@ vitnns-stage-a manifest \
 The recovered Stage C 500-image root is `assets/data/ILSVRC2012_val`.
 It reproduces the tracked Stage C manifest byte-for-byte. See
 `docs/recovery_and_rerun.md` for hashes, the model-candidate boundary, and
-rerun order.
+rerun order, and `docs/recovery_protocol_amendment_20260901.md` for the active
+recovery-v2 identity, evidence, and authorization rules.
 
 ## Stage A verification
 
@@ -126,6 +127,12 @@ Value-path methods, C5 evaluation primitives, the C6 auditable execution
 pipeline, and the C7 two-stage benchmark gate and report. See
 `docs/阶段C_protocol.md`, `docs/stage_c_acceptance.md`, and the live handoff log
 `docs/阶段C-step-by-step.md`.
+
+Recovery notice: the C7-C10 commands below document historical interfaces;
+their historical `/data00/...` evidence roots are absent and are not valid
+inputs. Do not execute them until the active recovery amendment's new model
+bindings, Stage A verification, launch record, and repository-local
+`evidence/...` paths have been committed and validated.
 
 C6/C7 expose non-interactive `estimate`, `run-sample`, `run-batch`,
 `validate`, `aggregate`, `c7-diagnostic-gate`, and `benchmark-report`
@@ -388,12 +395,10 @@ vitnns-stage-d finalize --output-root /path/to/synthetic-root
 vitnns-stage-d validate --output-root /path/to/sealed-synthetic-root
 ~~~
 
-`init` and `run-shard` remain fail-closed behind an external D7 gate. D4/D5 did
-not provide a formal issuer or run a formal workload; all finalized evidence
-was created only in synthetic test roots. D5 explicitly rejects formal roots
-and keeps package completeness separate from scientific validity. D6 is the
-next task and is authorized only for synthetic aggregation/statistics/paper
-export implementation.
+`init` and `run-shard` remain fail-closed behind an external D7 gate. D0-D6 are
+implemented and synthetic-tested, but the missing historical model artifact
+and sealed C10 root block D7. The active recovery amendment requires a new
+C7-C10 chain and renewed D0-D6 bindings before D7 may be evaluated.
 
 Without later measured profiles, `estimate` remains
 `D7_PROFILE_REQUIRED` / `NOT_EVALUATED`. The preparation artifact always keeps

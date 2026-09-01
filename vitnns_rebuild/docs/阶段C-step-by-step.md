@@ -3,6 +3,7 @@
 > 文档性质：阶段 C 的路线图、任务状态表和跨对话交接日志。  
 > 创建日期：2026-08-21。  
 > 当前状态：阶段 A、阶段 B、阶段 C/C0–C9 已完成；C10 已完整执行但因冻结 Holm 合同不足而验收 `BLOCKED`，且唯一 primary decision 为 `NO_GO_NOVELTY`；Stage D 未启动。
+> Recovery override（2026-09-01）：[`recovery_protocol_amendment_20260901.md`](recovery_protocol_amendment_20260901.md) 是当前权威 overlay。上述 C7–C10 状态和后文 completion records 仅是历史记录；其 runtime roots 已丢失，当前须先完成 recovery-v2 模型机器绑定、Stage A verification 和独立 C7 launch record，再从 C7 重建完整证据链。
 > 使用规则：每个新对话必须先完整阅读本文，只执行一个指定的 `C_i`；该任务未更新本文并写出下一任务提示词时，不算完成。
 
 ## 1. 为什么使用这份文档
