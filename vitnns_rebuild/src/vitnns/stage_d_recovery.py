@@ -21,7 +21,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from .constants import PACKAGE_ROOT as REPO_ROOT
+from .constants import REPO_ROOT
 
 
 class StageDRecoveryError(ValueError):
