@@ -484,6 +484,8 @@ class ProductionStageCBackend:
         recovery_binding: Any | None = None,
         recovery_launch_record: Any | None = None,
         recovery_c8_launch_record: Any | None = None,
+        recovery_c8_salvage_launch_record: Any | None = None,
+        recovery_c8_salvage_repair_launch_record: Any | None = None,
         provenance_builder: Callable[..., Mapping[str, Any]] | None = None,
         config: Any = None,
         registry: Any = None,
@@ -499,7 +501,69 @@ class ProductionStageCBackend:
             raise TypeError("model_loader must be callable or None")
         # Recovery execution is authorized either by the paired C7 authority
         # or by the outer C8 authority that owns that exact historical pair.
-        if recovery_c8_launch_record is not None:
+        if recovery_c8_salvage_repair_launch_record is not None:
+            from .recovery_c8_salvage_repair import (
+                RecoveryC8SalvageRepairLaunchRecord,
+            )
+
+            if (
+                type(recovery_c8_salvage_repair_launch_record)
+                is not RecoveryC8SalvageRepairLaunchRecord
+            ):
+                raise TypeError(
+                    "recovery_c8_salvage_repair_launch_record must be a "
+                    "RecoveryC8SalvageRepairLaunchRecord"
+                )
+            if (
+                recovery_c8_launch_record is not None
+                or recovery_c8_salvage_launch_record is not None
+            ):
+                raise TypeError(
+                    "normal, salvage, and repair C8 authorities are mutually "
+                    "exclusive"
+                )
+            repair_binding = recovery_c8_salvage_repair_launch_record.binding
+            repair_launch = (
+                recovery_c8_salvage_repair_launch_record.c7_launch_record
+            )
+            if recovery_binding is not None and recovery_binding is not repair_binding:
+                raise StageCBackendError(
+                    "recovery_binding differs from the repair authority"
+                )
+            if (
+                recovery_launch_record is not None
+                and recovery_launch_record is not repair_launch
+            ):
+                raise StageCBackendError(
+                    "recovery_launch_record differs from the repair authority"
+                )
+            recovery_binding = repair_binding
+            recovery_launch_record = repair_launch
+        elif recovery_c8_salvage_launch_record is not None:
+            from .recovery_c8_salvage import RecoveryC8SalvageLaunchRecord
+
+            if type(recovery_c8_salvage_launch_record) is not RecoveryC8SalvageLaunchRecord:
+                raise TypeError(
+                    "recovery_c8_salvage_launch_record must be a "
+                    "RecoveryC8SalvageLaunchRecord"
+                )
+            if recovery_c8_launch_record is not None:
+                raise TypeError(
+                    "normal and salvage C8 authorities are mutually exclusive"
+                )
+            salvage_binding = recovery_c8_salvage_launch_record.binding
+            salvage_launch = recovery_c8_salvage_launch_record.c7_launch_record
+            if recovery_binding is not None and recovery_binding is not salvage_binding:
+                raise StageCBackendError(
+                    "recovery_binding differs from the salvage authority"
+                )
+            if recovery_launch_record is not None and recovery_launch_record is not salvage_launch:
+                raise StageCBackendError(
+                    "recovery_launch_record differs from the salvage authority"
+                )
+            recovery_binding = salvage_binding
+            recovery_launch_record = salvage_launch
+        elif recovery_c8_launch_record is not None:
             from .recovery_c8_launch import RecoveryC8LaunchRecord
 
             if type(recovery_c8_launch_record) is not RecoveryC8LaunchRecord:
@@ -552,6 +616,10 @@ class ProductionStageCBackend:
         self.recovery_binding = recovery_binding
         self.recovery_launch_record = recovery_launch_record
         self.recovery_c8_launch_record = recovery_c8_launch_record
+        self.recovery_c8_salvage_launch_record = recovery_c8_salvage_launch_record
+        self.recovery_c8_salvage_repair_launch_record = (
+            recovery_c8_salvage_repair_launch_record
+        )
         self.provenance_builder = provenance_builder
         self.config = config
         self.registry = registry
@@ -593,6 +661,10 @@ class ProductionStageCBackend:
 
         if self.recovery_binding is None:
             return None
+        if self.recovery_c8_salvage_repair_launch_record is not None:
+            return self.recovery_c8_salvage_repair_launch_record
+        if self.recovery_c8_salvage_launch_record is not None:
+            return self.recovery_c8_salvage_launch_record
         if self.recovery_c8_launch_record is not None:
             return self.recovery_c8_launch_record
         return {
@@ -606,6 +678,14 @@ class ProductionStageCBackend:
         if self.recovery_binding is not None:
             from .stage_c_provenance import recovery_model_provenance
 
+            if self.recovery_c8_salvage_repair_launch_record is not None:
+                return recovery_model_provenance(
+                    self.recovery_c8_salvage_repair_launch_record
+                )
+            if self.recovery_c8_salvage_launch_record is not None:
+                return recovery_model_provenance(
+                    self.recovery_c8_salvage_launch_record
+                )
             if self.recovery_c8_launch_record is not None:
                 return recovery_model_provenance(
                     self.recovery_c8_launch_record

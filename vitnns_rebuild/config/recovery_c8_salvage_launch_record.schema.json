@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ViT-NNS recovery-v2 C8 salvage launch authority",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "document_type", "record_id", "status", "launch_record_commit", "launch_schema", "amendment", "base_c8_authority", "source_interrupted_root", "contracts", "model", "producer_git", "outputs", "policy", "scope", "canonical_digest"],
+  "properties": {
+    "$schema": {"const": "recovery_c8_salvage_launch_record.schema.json"},
+    "schema_version": {"const": 2},
+    "document_type": {"const": "vitnns_recovery_v2_c8_salvage_launch_record"},
+    "record_id": {"const": "RECOVERY_V2_C8_SALVAGE_20260902"},
+    "status": {"const": "AUTHORIZED_FOR_RECOVERY_C8_SALVAGE_ONLY"},
+    "launch_record_commit": {"oneOf": [{"const": "SELF"}, {"$ref": "#/$defs/commit"}]},
+    "launch_schema": {"$ref": "#/$defs/fileBinding"},
+    "amendment": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "path", "file_sha256", "containing_commit"],
+      "properties": {
+        "id": {"const": "RECOVERY-C8-SALVAGE-20260902"},
+        "path": {"const": "docs/recovery_c8_salvage_amendment_20260902.md"},
+        "file_sha256": {"$ref": "#/$defs/sha256"},
+        "containing_commit": {"$ref": "#/$defs/commit"}
+      }
+    },
+    "base_c8_authority": {
+      "type": "object", "additionalProperties": false,
+      "required": ["path", "file_sha256", "canonical_digest", "launch_commit", "producer_commit"],
+      "properties": {
+        "path": {"$ref": "#/$defs/path"}, "file_sha256": {"$ref": "#/$defs/sha256"},
+        "canonical_digest": {"$ref": "#/$defs/sha256"}, "launch_commit": {"$ref": "#/$defs/commit"},
+        "producer_commit": {"$ref": "#/$defs/commit"}
+      }
+    },
+    "source_interrupted_root": {
+      "type": "object", "additionalProperties": false,
+      "required": ["formal_root", "evidence_commit", "tree_object", "execution_commit", "plan_digest", "control_sha256"],
+      "properties": {
+        "formal_root": {"$ref": "#/$defs/path"}, "evidence_commit": {"$ref": "#/$defs/commit"},
+        "tree_object": {"$ref": "#/$defs/gitObject"}, "execution_commit": {"$ref": "#/$defs/commit"},
+        "plan_digest": {"$ref": "#/$defs/sha256"},
+        "control_sha256": {
+          "type": "object", "additionalProperties": false,
+          "required": ["execution_plan.json", "preflight.json", "c8_launch_authorization.json", "failure_table.json", "batch_status.json"],
+          "properties": {
+            "execution_plan.json": {"$ref": "#/$defs/sha256"}, "preflight.json": {"$ref": "#/$defs/sha256"},
+            "c8_launch_authorization.json": {"$ref": "#/$defs/sha256"}, "failure_table.json": {"$ref": "#/$defs/sha256"},
+            "batch_status.json": {"$ref": "#/$defs/sha256"}
+          }
+        }
+      }
+    },
+    "contracts": {
+      "type": "object", "additionalProperties": false, "required": ["config", "run_spec"],
+      "properties": {"config": {"$ref": "#/$defs/jsonBinding"}, "run_spec": {"$ref": "#/$defs/jsonBinding"}}
+    },
+    "model": {
+      "type": "object", "additionalProperties": false,
+      "required": ["identity", "state_dict_path", "state_dict_sha256", "canonical_tensor_digest", "historical_artifact_recovered"],
+      "properties": {
+        "identity": {"type": "string", "minLength": 1}, "state_dict_path": {"$ref": "#/$defs/path"},
+        "state_dict_sha256": {"$ref": "#/$defs/sha256"}, "canonical_tensor_digest": {"$ref": "#/$defs/sha256"},
+        "historical_artifact_recovered": {"const": false}
+      }
+    },
+    "producer_git": {"$ref": "#/$defs/gitState"},
+    "outputs": {
+      "type": "object", "additionalProperties": false,
+      "required": ["common_root", "launch_record_path", "gap_root", "reports_root", "selection_root", "logs_root", "post_launch_handoff_paths", "combined_manifest_path", "combined_report_path", "selection_path", "selection_report_path"],
+      "properties": {
+        "common_root": {"$ref": "#/$defs/path"}, "launch_record_path": {"$ref": "#/$defs/path"},
+        "gap_root": {"$ref": "#/$defs/path"}, "reports_root": {"$ref": "#/$defs/path"},
+        "selection_root": {"$ref": "#/$defs/path"}, "logs_root": {"$ref": "#/$defs/path"},
+        "post_launch_handoff_paths": {
+          "type": "array", "minItems": 2, "maxItems": 2,
+          "prefixItems": [
+            {"const": "docs/recovery_and_rerun.md"},
+            {"const": "docs/阶段C-step-by-step.md"}
+          ],
+          "items": false
+        },
+        "combined_manifest_path": {"$ref": "#/$defs/path"},
+        "combined_report_path": {"$ref": "#/$defs/path"}, "selection_path": {"$ref": "#/$defs/path"},
+        "selection_report_path": {"$ref": "#/$defs/path"}
+      }
+    },
+    "policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["expected_unit_count", "source_root_read_only", "source_resume_allowed", "artifact_copy_allowed", "virtual_union", "source_recomputation_required"],
+      "properties": {
+        "expected_unit_count": {"const": 2180}, "source_root_read_only": {"const": true},
+        "source_resume_allowed": {"const": false}, "artifact_copy_allowed": {"const": false},
+        "virtual_union": {"const": true}, "source_recomputation_required": {"const": true}
+      }
+    },
+    "scope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["c8_salvage_authorized", "holdout_access_authorized", "c9_authorized", "c10_authorized", "stage_d_authorized"],
+      "properties": {"c8_salvage_authorized": {"const": true}, "holdout_access_authorized": {"const": false}, "c9_authorized": {"const": false}, "c10_authorized": {"const": false}, "stage_d_authorized": {"const": false}}
+    },
+    "canonical_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "gitObject": {"type": "string", "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$"},
+    "path": {"type": "string", "minLength": 1, "pattern": "^(?!/)(?!.*//)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*\\\\)(?!.*\\/$).+$"},
+    "fileBinding": {"type": "object", "additionalProperties": false, "required": ["path", "file_sha256"], "properties": {"path": {"$ref": "#/$defs/path"}, "file_sha256": {"$ref": "#/$defs/sha256"}}},
+    "jsonBinding": {"type": "object", "additionalProperties": false, "required": ["path", "file_sha256", "canonical_sha256"], "properties": {"path": {"$ref": "#/$defs/path"}, "file_sha256": {"$ref": "#/$defs/sha256"}, "canonical_sha256": {"$ref": "#/$defs/sha256"}}},
+    "gitState": {"type": "object", "additionalProperties": false, "required": ["commit", "tree", "source_subtree_path", "source_subtree_tree", "dirty"], "properties": {"commit": {"$ref": "#/$defs/commit"}, "tree": {"$ref": "#/$defs/gitObject"}, "source_subtree_path": {"const": "src/vitnns"}, "source_subtree_tree": {"$ref": "#/$defs/gitObject"}, "dirty": {"const": false}}}
+  }
+}

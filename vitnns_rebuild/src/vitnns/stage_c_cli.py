@@ -41,6 +41,36 @@ from .recovery_c8_launch import (
     load_recovery_c8_launch_record,
     recovery_provenance_context as recovery_c8_provenance_context,
 )
+from .recovery_c8_salvage import (
+    RecoveryC8SalvageError,
+    capture_authorized_c8_salvage_source_state,
+    load_recovery_c8_salvage_launch_record,
+)
+from .recovery_c8_salvage_repair import (
+    RecoveryC8SalvageRepairError,
+    capture_authorized_c8_salvage_repair_source_state,
+    load_recovery_c8_salvage_repair_launch_record,
+)
+from .stage_c_c8_salvage import (
+    finalize_c8_salvage, initialize_c8_salvage_gap_root,
+    run_c8_salvage_gap_shard, validate_c8_salvage_from_source,
+    validate_c8_salvage_completion_report,
+    write_c8_salvage_completion_report,
+)
+from .stage_c_c8_salvage_selection import (
+    build_c8_salvage_selection, write_c8_salvage_selection_outputs,
+)
+from .stage_c_c8_salvage_repair import (
+    finalize_c8_salvage_repair, initialize_c8_salvage_repair_root,
+    run_c8_salvage_repair_shard, validate_c8_salvage_repair_from_source,
+    validate_c8_salvage_repair_completion_report,
+    write_c8_salvage_repair_completion_report,
+)
+from .stage_c_c8_salvage_repair_selection import (
+    build_c8_salvage_repair_selection,
+    validate_c8_salvage_repair_selection_report,
+    write_c8_salvage_repair_selection_outputs,
+)
 from .stage_c_plan import (
     DEFAULT_ACCEPTANCE,
     DEFAULT_DEPENDENCY_LOCK,
@@ -103,6 +133,16 @@ _TRACKED_STAGE_C_SELECTION = REPO_ROOT / "selection/stage_c_selection.json"
 _C8_COMMANDS = frozenset({
     "c8-init", "c8-run-shard", "c8-finalize", "c8-select",
 })
+_C8_SALVAGE_COMMANDS = frozenset({
+    "c8-salvage-init", "c8-salvage-run-shard",
+    "c8-salvage-finalize", "c8-salvage-validate",
+    "c8-salvage-select", "c8-salvage-complete",
+})
+_C8_SALVAGE_REPAIR_COMMANDS = frozenset({
+    "c8-salvage-repair-init", "c8-salvage-repair-run-shard",
+    "c8-salvage-repair-finalize", "c8-salvage-repair-validate",
+    "c8-salvage-repair-select", "c8-salvage-repair-complete",
+})
 _C9_COMMANDS = frozenset({
     "c9-init", "c9-run-shard", "c9-finalize", "c9-validate",
 })
@@ -154,6 +194,22 @@ def _add_recovery_c8_argument(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--recovery-c8-launch-record", type=Path,
         help="validated recovery-v2 C8-only launch authority",
+    )
+
+
+def _add_c8_salvage_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--salvage-authority", type=Path, required=True,
+        help="validated amendment-authorized recovery C8 salvage authority",
+    )
+
+
+def _add_c8_salvage_repair_argument(
+    parser: argparse.ArgumentParser,
+) -> None:
+    parser.add_argument(
+        "--repair-authority", type=Path, required=True,
+        help="validated amendment-authorized recovery C8 repair authority",
     )
 
 
@@ -241,6 +297,47 @@ def build_parser() -> argparse.ArgumentParser:
     c8_select.add_argument("--mode", choices=("build", "validate"), default="build")
     c8_select.add_argument("--report-output", type=Path, required=True)
     c8_select.add_argument("--selection-output", type=Path)
+
+    for name in (
+        "c8-salvage-init", "c8-salvage-finalize",
+        "c8-salvage-validate", "c8-salvage-select",
+        "c8-salvage-complete",
+    ):
+        command = commands.add_parser(name)
+        _add_c8_plan_arguments(command)
+        _add_c8_salvage_argument(command)
+        if name in {"c8-salvage-select", "c8-salvage-complete"}:
+            command.add_argument(
+                "--mode", choices=("build", "validate"), default="build"
+            )
+    salvage_shard = commands.add_parser("c8-salvage-run-shard")
+    _add_c8_plan_arguments(salvage_shard)
+    _add_c8_salvage_argument(salvage_shard)
+    salvage_shard.add_argument("--device", default="cuda:0")
+    salvage_shard.add_argument("--shard-index", type=int, required=True)
+    salvage_shard.add_argument("--shard-count", type=int, required=True)
+
+    for name in (
+        "c8-salvage-repair-init", "c8-salvage-repair-finalize",
+        "c8-salvage-repair-validate", "c8-salvage-repair-select",
+        "c8-salvage-repair-complete",
+    ):
+        command = commands.add_parser(name)
+        _add_c8_plan_arguments(command)
+        _add_c8_salvage_repair_argument(command)
+        if name in {
+            "c8-salvage-repair-select",
+            "c8-salvage-repair-complete",
+        }:
+            command.add_argument(
+                "--mode", choices=("build", "validate"), default="build"
+            )
+    repair_shard = commands.add_parser("c8-salvage-repair-run-shard")
+    _add_c8_plan_arguments(repair_shard)
+    _add_c8_salvage_repair_argument(repair_shard)
+    repair_shard.add_argument("--device", default="cuda:0")
+    repair_shard.add_argument("--shard-index", type=int, required=True)
+    repair_shard.add_argument("--shard-count", type=int, required=True)
 
     c9_init = commands.add_parser("c9-init")
     _add_c9_plan_arguments(c9_init)
@@ -680,6 +777,12 @@ def _default_backend_factory(
 
     recovery_binding = getattr(args, "_recovery_binding", None)
     recovery_c8_record = getattr(args, "_recovery_c8_launch_record", None)
+    recovery_c8_salvage_record = getattr(
+        args, "_recovery_c8_salvage_launch_record", None
+    )
+    recovery_c8_salvage_repair_record = getattr(
+        args, "_recovery_c8_salvage_repair_launch_record", None
+    )
     state_dict_path = (
         recovery_binding.model_path if recovery_binding is not None
         else (getattr(args, "state_dict", None) or DEFAULT_STATE_DICT)
@@ -689,6 +792,10 @@ def _default_backend_factory(
         recovery_binding=recovery_binding,
         recovery_launch_record=getattr(args, "_recovery_launch_record", None),
         recovery_c8_launch_record=recovery_c8_record,
+        recovery_c8_salvage_launch_record=recovery_c8_salvage_record,
+        recovery_c8_salvage_repair_launch_record=(
+            recovery_c8_salvage_repair_record
+        ),
         config=config, registry=registry, plan=plan, config_path=args.config,
         code_state=(
             getattr(args, "_recovery_code_state", None)
@@ -1027,10 +1134,26 @@ def main(
             return EXIT_SUCCESS if error.code == 0 else EXIT_INPUT_ERROR
 
         is_c8_command = args.command in _C8_COMMANDS
+        is_c8_salvage_command = args.command in _C8_SALVAGE_COMMANDS
+        is_c8_salvage_repair_command = (
+            args.command in _C8_SALVAGE_REPAIR_COMMANDS
+        )
         is_c9_command = args.command in _C9_COMMANDS
         is_c10_command = args.command in _C10_COMMANDS
         recovery_record = None
         recovery_c8_record = None
+        salvage_record = None
+        repair_record = None
+        if is_c8_salvage_command:
+            salvage_record = load_recovery_c8_salvage_launch_record(
+                args.salvage_authority, repo_root=REPO_ROOT,
+                require_tracked=True, require_fresh_outputs=False,
+            )
+        if is_c8_salvage_repair_command:
+            repair_record = load_recovery_c8_salvage_repair_launch_record(
+                args.repair_authority, repo_root=REPO_ROOT,
+                require_tracked=True, require_fresh_outputs=False,
+            )
         recovery_c8_path = getattr(args, "recovery_c8_launch_record", None)
         if is_c8_command and recovery_c8_path is None:
             raise ArgumentError(
@@ -1057,14 +1180,26 @@ def main(
             args._recovery_launch_record = recovery_record
         if is_c9_command or is_c10_command:
             pipeline = _load_pipeline(args, c9=True)
-        elif is_c8_command:
+        elif (
+            is_c8_command or is_c8_salvage_command
+            or is_c8_salvage_repair_command
+        ):
             pipeline = _load_pipeline(
-                args, c8=True, recovery_c8_record=recovery_c8_record,
+                args, c8=True, recovery_c8_record=(
+                    recovery_c8_record if recovery_c8_record is not None
+                    else (
+                        salvage_record if salvage_record is not None
+                        else repair_record
+                    )
+                ),
             )
         else:
             pipeline = _load_pipeline(args, recovery_record=recovery_record)
         config, registry, _selection, _spec, plan, estimate = pipeline
-        if is_c8_command:
+        if (
+            is_c8_command or is_c8_salvage_command
+            or is_c8_salvage_repair_command
+        ):
             _require_exact_c8_plan(plan, config)
         elif is_c9_command or is_c10_command:
             _require_exact_c9_plan(plan, config)
@@ -1088,6 +1223,201 @@ def main(
             return (
                 EXIT_SUCCESS if result.get("status") == "PASS"
                 else EXIT_PREFLIGHT_BLOCKED
+            )
+
+        if is_c8_salvage_repair_command:
+            assert repair_record is not None
+            if args.command == "c8-salvage-repair-init":
+                result = initialize_c8_salvage_repair_root(
+                    repair_record, plan, config,
+                )
+            elif args.command == "c8-salvage-repair-run-shard":
+                runtime_git_state = (
+                    capture_authorized_c8_salvage_repair_source_state(
+                        repair_record, "repair_execution"
+                    )
+                )
+                _configure_c8_execution(args.device)
+                args._recovery_binding = repair_record.binding
+                args._recovery_launch_record = repair_record.c7_launch_record
+                args._recovery_c8_salvage_repair_launch_record = repair_record
+                args._recovery_code_state = runtime_git_state
+                backend = _make_backend(
+                    backend_factory or _default_backend_factory,
+                    config=config, registry=registry, plan=plan, args=args,
+                )
+                units = run_c8_salvage_repair_shard(
+                    repair_record, plan, backend,
+                    shard_index=args.shard_index,
+                    shard_count=args.shard_count, device=args.device,
+                    runtime_git_state=runtime_git_state,
+                )
+                unit_results = [
+                    item.to_dict()
+                    if callable(getattr(item, "to_dict", None)) else item
+                    for item in units
+                ]
+                states = [
+                    item.get("state") if isinstance(item, Mapping) else None
+                    for item in unit_results
+                ]
+                orchestration_complete = bool(states) and all(
+                    state in {"succeeded", "failed"} for state in states
+                )
+                scientific_successful = bool(states) and all(
+                    state == "succeeded" for state in states
+                )
+                result = {
+                    "status": (
+                        "PASS" if orchestration_complete else "BLOCKED"
+                    ),
+                    "orchestration_complete": orchestration_complete,
+                    "scientific_successful": scientific_successful,
+                    "unit_count": len(unit_results),
+                    "unit_results": unit_results,
+                    "holdout_accessed": False,
+                }
+            elif args.command == "c8-salvage-repair-finalize":
+                result = finalize_c8_salvage_repair(
+                    repair_record, plan, config
+                )
+            elif args.command == "c8-salvage-repair-validate":
+                result = validate_c8_salvage_repair_from_source(
+                    repair_record, plan, config
+                )
+            elif args.command == "c8-salvage-repair-complete":
+                result = (
+                    validate_c8_salvage_repair_completion_report(
+                        repair_record, plan, config
+                    )
+                    if args.mode == "validate"
+                    else write_c8_salvage_repair_completion_report(
+                        repair_record, plan, config
+                    )
+                )
+            else:
+                generator = (
+                    capture_authorized_c8_salvage_repair_source_state(
+                        repair_record, "selection_validation"
+                        if args.mode == "validate"
+                        else "selection_generation"
+                    )
+                )
+                if args.mode == "validate":
+                    report = strict_json_load(
+                        repair_record.selection_report_path
+                    )
+                    selection = (
+                        strict_json_load(repair_record.selection_path)
+                        if Path(repair_record.selection_path).exists() else None
+                    )
+                    validate_c8_salvage_repair_selection_report(
+                        repair_record, plan, config, report, selection,
+                        generator_git_state=generator,
+                    )
+                    result = report
+                else:
+                    selection, report = build_c8_salvage_repair_selection(
+                        repair_record, plan, config,
+                        generator_git_state=generator,
+                    )
+                    result = write_c8_salvage_repair_selection_outputs(
+                        repair_record, plan, config, selection, report,
+                        generator_git_state=generator,
+                    )
+            _write_json(result, sys.stdout)
+            return (
+                EXIT_SUCCESS if result.get("status") == "PASS"
+                else EXIT_TERMINAL_FAILURE
+            )
+
+        if is_c8_salvage_command:
+            assert salvage_record is not None
+            if args.command == "c8-salvage-init":
+                result = initialize_c8_salvage_gap_root(
+                    salvage_record, plan, config,
+                )
+            elif args.command == "c8-salvage-run-shard":
+                runtime_git_state = capture_authorized_c8_salvage_source_state(
+                    salvage_record, "gap_execution"
+                )
+                _configure_c8_execution(args.device)
+                args._recovery_binding = salvage_record.binding
+                args._recovery_launch_record = salvage_record.c7_launch_record
+                args._recovery_c8_salvage_launch_record = salvage_record
+                args._recovery_code_state = runtime_git_state
+                backend = _make_backend(
+                    backend_factory or _default_backend_factory,
+                    config=config, registry=registry, plan=plan, args=args,
+                )
+                units = run_c8_salvage_gap_shard(
+                    salvage_record, plan, backend,
+                    shard_index=args.shard_index, shard_count=args.shard_count,
+                    device=args.device, runtime_git_state=runtime_git_state,
+                )
+                result = {
+                    "status": (
+                        "PASS" if all(
+                            item.get("state") == "succeeded" for item in units
+                        ) else "BLOCKED"
+                    ),
+                    "unit_count": len(units), "unit_results": units,
+                    "holdout_accessed": False,
+                }
+            elif args.command == "c8-salvage-finalize":
+                result = finalize_c8_salvage(salvage_record, plan, config)
+            elif args.command == "c8-salvage-validate":
+                result = validate_c8_salvage_from_source(
+                    salvage_record, plan, config,
+                )
+            elif args.command == "c8-salvage-complete":
+                result = (
+                    validate_c8_salvage_completion_report(
+                        salvage_record, plan, config,
+                    )
+                    if args.mode == "validate"
+                    else write_c8_salvage_completion_report(
+                        salvage_record, plan, config,
+                    )
+                )
+            else:
+                if args.mode == "validate":
+                    selection = strict_json_load(salvage_record.selection_path)
+                    report = strict_json_load(
+                        salvage_record.selection_report_path
+                    )
+                    verifier = report.get("verifier_identity")
+                    if not isinstance(verifier, Mapping):
+                        raise RecoveryC8SalvageError(
+                            "salvage selection report lacks verifier identity"
+                        )
+                    generator = {
+                        "commit": verifier.get("commit"),
+                        "dirty": verifier.get("dirty"),
+                    }
+                    from .stage_c_c8_salvage_selection import (
+                        validate_c8_salvage_selection_report,
+                    )
+                    validate_c8_salvage_selection_report(
+                        salvage_record, plan, config, report, selection,
+                        generator_git_state=generator,
+                    )
+                    result = report
+                else:
+                    generator = capture_authorized_c8_salvage_source_state(
+                        salvage_record, "selection_generation"
+                    )
+                    selection, report = build_c8_salvage_selection(
+                        salvage_record, plan, config,
+                        generator_git_state=generator,
+                    )
+                    result = write_c8_salvage_selection_outputs(
+                        salvage_record, selection, report,
+                    )
+            _write_json(result, sys.stdout)
+            return (
+                EXIT_SUCCESS if result.get("status") == "PASS"
+                else EXIT_TERMINAL_FAILURE
             )
 
         if args.command == "c9-init":
@@ -1715,6 +2045,18 @@ def main(
         )
         return EXIT_INTEGRITY_FAILURE
     except RecoveryC8LaunchError as error:
+        _write_json(
+            {"error": {"message": str(error), "type": type(error).__name__}},
+            sys.stderr,
+        )
+        return EXIT_INTEGRITY_FAILURE
+    except RecoveryC8SalvageError as error:
+        _write_json(
+            {"error": {"message": str(error), "type": type(error).__name__}},
+            sys.stderr,
+        )
+        return EXIT_INTEGRITY_FAILURE
+    except RecoveryC8SalvageRepairError as error:
         _write_json(
             {"error": {"message": str(error), "type": type(error).__name__}},
             sys.stderr,

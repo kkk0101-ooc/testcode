@@ -1011,6 +1011,89 @@ def _validate_git_authority(
     return launch_commit
 
 
+def load_historical_recovery_c8_launch_record(
+    path: Path | str, *, repo_root: Path | str = REPO_ROOT,
+    schema_path: Path | str = DEFAULT_SCHEMA_PATH, custody_commit: str,
+) -> RecoveryC8LaunchRecord:
+    """Validate a superseded C8 authority for read-only evidence audit.
+
+    Unlike the live loader, this intentionally does not require current HEAD's
+    source subtree to equal the old producer.  It instead binds the authority
+    and every critical input to the declared historical launch commit and
+    requires that launch to be an ancestor of the immutable custody commit.
+    It grants no execution or output authority.
+    """
+
+    repo = Path(repo_root).resolve(strict=True)
+    top, _prefix = _repository_identity(repo)
+    launch, launch_rel = _project_path(
+        repo, path, "historical C8 launch record", require_exists=True,
+    )
+    schema, schema_rel = _project_path(
+        repo, schema_path, "historical C8 launch schema", require_exists=True,
+    )
+    if schema_rel != SCHEMA_RELATIVE_PATH:
+        raise RecoveryC8LaunchError("Unexpected recovery C8 launch schema path")
+    document = _read_json(launch, "historical recovery C8 launch record")
+    schema_document = _read_json(schema, "historical recovery C8 launch schema")
+    _validate_schema(document, schema_document)
+    _validate_intrinsic_authority(document)
+    if document["canonical_digest"] != launch_record_digest(document):
+        raise RecoveryC8LaunchError("Historical C8 launch digest drifted")
+    if document["launch_schema"] != {
+        "path": schema_rel, "file_sha256": sha256_file(schema),
+    }:
+        raise RecoveryC8LaunchError("Historical C8 schema binding drifted")
+    outputs = document["outputs"]
+    checked, _common, formal, reports, selection = _validate_output_paths(
+        repo, launch, outputs["formal_root"], outputs["reports_root"],
+        outputs["selection_root"], require_fresh_roots=False,
+        launch_must_exist=True,
+    )
+    if outputs["launch_record_path"] != launch_rel:
+        raise RecoveryC8LaunchError("Historical C8 launch path drifted")
+    _validate_lfs_coverage(repo, checked, formal, reports, selection)
+    c7_record = _load_c7_authority(
+        repo, repo / document["c7_launch"]["path"], require_tracked=True,
+    )
+    c7_report = _validate_c7_report(
+        repo, top, repo / document["c7_report"]["path"], c7_record,
+        document["c7_report"],
+    )
+    contracts = _contract_records(
+        repo, c7_record, document["c8_contracts"]["stage_c_config"]["path"],
+        document["c8_contracts"]["run_spec"]["path"],
+    )
+    if canonical_json_bytes(document["c8_contracts"]) != canonical_json_bytes(contracts):
+        raise RecoveryC8LaunchError("Historical C8 contracts drifted")
+    producer = document["producer_git"]
+    producer_commit = producer["commit"]
+    if _run_git(repo, "rev-parse", f"{producer_commit}^{{tree}}") != producer["tree"]:
+        raise RecoveryC8LaunchError("Historical C8 producer tree drifted")
+    launch_commit = document["launch_record_commit"]
+    if launch_commit == "SELF":
+        launch_commit = _run_git(
+            repo, "log", "-n", "1", "--format=%H",
+            custody_commit, "--", f":(top){_top_relative(top, launch)}",
+        )
+    parents = _run_git(repo, "rev-list", "--parents", "-n", "1", launch_commit).split()
+    if parents != [launch_commit, producer_commit]:
+        raise RecoveryC8LaunchError("Historical C8 launch ancestry drifted")
+    _is_ancestor(repo, launch_commit, custody_commit, "Historical C8 custody")
+    launch_top = _top_relative(top, launch)
+    if _run_git(repo, "rev-parse", f"{launch_commit}:{launch_top}") != _run_git(repo, "rev-parse", f"{custody_commit}:{launch_top}"):
+        raise RecoveryC8LaunchError("Historical C8 launch blob drifted at custody")
+    critical = _critical_paths(repo, top, schema, c7_record, c7_report, contracts)
+    for critical_path in critical:
+        top_path = _top_relative(top, critical_path)
+        if _run_git(repo, "rev-parse", f"{producer_commit}:{top_path}") != _run_git(repo, "rev-parse", f"{launch_commit}:{top_path}"):
+            raise RecoveryC8LaunchError("Historical C8 critical input drifted before launch")
+    return _make_record(
+        repo, checked, schema, document, c7_record, formal, reports, selection,
+        launch_commit,
+    )
+
+
 def _make_record(
     repo: Path, launch: Path, schema: Path, document: Mapping[str, Any],
     c7_record: _c7.RecoveryC7LaunchRecord, formal: Path, reports: Path,
@@ -1345,5 +1428,6 @@ __all__ = [
     "capture_authorized_c8_source_state",
     "generate_recovery_c8_launch_record", "launch_record_digest",
     "load_recovery_c8_launch_record", "recovery_provenance_context",
+    "load_historical_recovery_c8_launch_record",
     "validate_recovery_c8_launch_record", "write_recovery_c8_launch_record",
 ]

@@ -6,10 +6,13 @@ build/
 dist/
 *.egg-info/
 
-# Local runtime products. Long-lived recovery assets and formal evidence are
-# tracked from the repository root via Git LFS.
+# Local runtime products. Long-lived recovery assets are tracked from the
+# repository root via Git LFS. Formal evidence roots are retained locally by
+# default; only explicitly force-added small reports/indexes should enter Git.
 outputs/
 artifacts/
+evidence/
+evidence/**
 
 # C0 contracts: these small manifests are evidence, not runtime artifacts.
 !manifests/stage_c_flat_val_500/manifest.csv
@@ -27,8 +30,6 @@ artifacts/
 
 !assets/
 !assets/**
-!evidence/
-!evidence/**
 
 # `assets/assemble_imagenet_val.sh` reconstructs this local convenience copy
 # from the four versioned LFS parts.  Keep only the parts in Git/LFS.

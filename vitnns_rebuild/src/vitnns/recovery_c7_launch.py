@@ -689,14 +689,15 @@ def _validate_stage_a_receipt(
     )
     if actual_tree != source["tree"]:
         raise RecoveryC7LaunchError("Stage A producer tree drifted")
-    tracked_commit = _run_git(
+    sealed_remote_commit = _run_git(
         repo, "rev-parse", "--verify",
-        f"{source['remote_tracking_ref']}^{{commit}}",
+        f"{source['remote_tracking_commit']}^{{commit}}",
     )
-    if tracked_commit != source["remote_tracking_commit"]:
+    if sealed_remote_commit != source["remote_tracking_commit"]:
         raise RecoveryC7LaunchError("Stage A remote-tracking identity drifted")
     _is_ancestor(
-        repo, tracked_commit, source["commit"], "Stage A remote-tracking commit",
+        repo, sealed_remote_commit, source["commit"],
+        "Stage A remote-tracking commit",
     )
     observed = _exact_keys(
         receipt["observed_git_state_before_terminal_seal"], _GIT_STATE_KEYS,

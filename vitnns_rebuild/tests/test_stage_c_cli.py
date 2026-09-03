@@ -1614,6 +1614,43 @@ def test_recovery_c8_backend_receives_outer_and_c7_authorities(
     assert backend.code_state == clean
 
 
+def test_repair_backend_receives_strongest_authority_and_real_code_state(
+    monkeypatch, tmp_path,
+):
+    binding = SimpleNamespace(model_path=tmp_path / "model.pth")
+    c7_record = object()
+    repair_record = SimpleNamespace(
+        binding=binding, c7_launch_record=c7_record,
+    )
+    clean = {"commit": "f" * 40, "dirty": False}
+    args = SimpleNamespace(
+        config=tmp_path / "stage_c.json", state_dict=None,
+        _recovery_binding=binding, _recovery_launch_record=c7_record,
+        _recovery_c8_salvage_repair_launch_record=repair_record,
+        _recovery_code_state=clean,
+    )
+    captured = {}
+    monkeypatch.setattr(
+        stage_c_cli, "ProductionStageCBackend",
+        lambda **kwargs: captured.update(kwargs) or SimpleNamespace(**kwargs),
+    )
+
+    backend = stage_c_cli._default_backend_factory(
+        config=object(),
+        registry=SimpleNamespace(
+            data_root=str(tmp_path), by_sample_id=lambda: {},
+        ),
+        plan=SimpleNamespace(units=()), args=args,
+    )
+
+    assert backend.recovery_binding is binding
+    assert backend.recovery_launch_record is c7_record
+    assert backend.recovery_c8_salvage_repair_launch_record is repair_record
+    assert backend.recovery_c8_launch_record is None
+    assert backend.recovery_c8_salvage_launch_record is None
+    assert backend.code_state == clean
+
+
 def test_c8_init_gates_and_initializes_without_backend(
     monkeypatch, capsys, tmp_path
 ):
@@ -2856,3 +2893,123 @@ def test_c9_post_launch_blocked_error_is_integrity_not_authorization(
             "reasons": ["unit: incomplete"],
         }
     }
+
+
+@pytest.mark.parametrize(
+    ("command", "extra"),
+    [
+        ("c8-salvage-repair-init", ()),
+        (
+            "c8-salvage-repair-run-shard",
+            ("--shard-index", "0", "--shard-count", "1"),
+        ),
+        ("c8-salvage-repair-finalize", ()),
+        ("c8-salvage-repair-validate", ()),
+        ("c8-salvage-repair-select", ("--mode", "validate")),
+        ("c8-salvage-repair-complete", ("--mode", "validate")),
+    ],
+)
+def test_repair_cli_commands_are_explicit_and_authority_scoped(
+    command, extra,
+):
+    parser = stage_c_cli.build_parser()
+    authority = Path("evidence/stage_c/repair/repair_authority.json")
+    args = parser.parse_args([
+        command, "--config", "config/stage_c.json",
+        "--run-spec", "config/stage_c_c8_run_spec.json",
+        "--repair-authority", str(authority), *extra,
+    ])
+
+    assert args.command == command
+    assert args.repair_authority == authority
+    assert not hasattr(args, "salvage_authority")
+    assert not hasattr(args, "recovery_c8_launch_record")
+
+    ordinary = parser.parse_args([
+        "c8-salvage-init", "--config", "config/stage_c.json",
+        "--run-spec", "config/stage_c_c8_run_spec.json",
+        "--salvage-authority", "evidence/stage_c/salvage/authority.json",
+    ])
+    assert not hasattr(ordinary, "repair_authority")
+
+
+def test_repair_run_shard_passes_real_runtime_state_to_backend_and_runtime(
+    monkeypatch, capsys, tmp_path,
+):
+    config_path, spec_path = _write_explicit_inputs(tmp_path)
+    binding = SimpleNamespace(model_path=tmp_path / "model.pth")
+    c7_record = object()
+    authority = SimpleNamespace(
+        binding=binding, c7_launch_record=c7_record,
+    )
+    config = object()
+    registry = object()
+    plan = object()
+    estimate = object()
+    runtime_state = {"commit": "a" * 40, "dirty": False}
+    events = []
+
+    monkeypatch.setattr(
+        stage_c_cli, "load_recovery_c8_salvage_repair_launch_record",
+        lambda path, **kwargs: events.append(("load", path, kwargs))
+        or authority,
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "_load_pipeline",
+        lambda args, **kwargs: events.append(("pipeline", kwargs))
+        or (config, registry, None, object(), plan, estimate),
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "_require_exact_c8_plan", lambda *_args: {},
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "capture_authorized_c8_salvage_repair_source_state",
+        lambda record, phase: events.append(("capture", record, phase))
+        or runtime_state,
+    )
+    monkeypatch.setattr(
+        stage_c_cli, "_configure_c8_execution",
+        lambda device: events.append(("configure", device)),
+    )
+
+    backend = object()
+
+    def backend_factory(**kwargs):
+        args = kwargs["args"]
+        events.append((
+            "backend", args._recovery_code_state,
+            args._recovery_c8_salvage_repair_launch_record,
+        ))
+        return backend
+
+    def run(record, received_plan, received_backend, **kwargs):
+        events.append((
+            "run", record, received_plan, received_backend, kwargs,
+        ))
+        return ({"state": "failed", "failure": {"code": "scientific"}},)
+
+    monkeypatch.setattr(stage_c_cli, "run_c8_salvage_repair_shard", run)
+    authority_path = tmp_path / "repair_authority.json"
+    code = stage_c_cli.main([
+        "c8-salvage-repair-run-shard",
+        "--config", str(config_path), "--run-spec", str(spec_path),
+        "--repair-authority", str(authority_path),
+        "--device", "cpu", "--shard-index", "0",
+        "--shard-count", "1",
+    ], backend_factory=backend_factory)
+
+    assert code == stage_c_cli.EXIT_SUCCESS
+    assert ("pipeline", {"c8": True, "recovery_c8_record": authority}) in events
+    assert ("capture", authority, "repair_execution") in events
+    assert ("backend", runtime_state, authority) in events
+    run_event = next(item for item in events if item[0] == "run")
+    assert run_event[1:4] == (authority, plan, backend)
+    assert run_event[4] == {
+        "shard_index": 0, "shard_count": 1, "device": "cpu",
+        "runtime_git_state": runtime_state,
+    }
+    payload = _stdout_json(capsys)
+    assert payload["status"] == "PASS"
+    assert payload["orchestration_complete"] is True
+    assert payload["scientific_successful"] is False
+    assert payload["holdout_accessed"] is False

@@ -559,13 +559,17 @@ def _trusted_recovery_c8_record(value: Any) -> Any | None:
         from .recovery_c8_launch import (
             RecoveryC8LaunchRecord, load_recovery_c8_launch_record,
         )
+        from .recovery_c8_salvage import (
+            RecoveryC8SalvageLaunchRecord,
+            load_recovery_c8_salvage_launch_record,
+        )
         from .recovery_v2 import RecoveryV2Binding
     except ImportError as error:  # pragma: no cover - rolling integration guard
         raise StageCBenchmarkIntegrityError(
             "recovery C8 launch support is unavailable"
         ) from error
 
-    if isinstance(value, RecoveryC8LaunchRecord):
+    if type(value) in {RecoveryC8LaunchRecord, RecoveryC8SalvageLaunchRecord}:
         record = value
         binding = record.binding
     elif isinstance(value, Mapping) and set(value) == {
@@ -578,7 +582,17 @@ def _trusted_recovery_c8_record(value: Any) -> Any | None:
             "trusted recovery C8 context must be a validated "
             "RecoveryC8LaunchRecord or its exact validated binding pair"
         )
-    if type(record) is not RecoveryC8LaunchRecord:
+    if type(record) is RecoveryC8SalvageLaunchRecord:
+        loader = load_recovery_c8_salvage_launch_record
+        loader_kwargs = {
+            "require_fresh_outputs": False, "require_tracked": True,
+        }
+    elif type(record) is RecoveryC8LaunchRecord:
+        loader = load_recovery_c8_launch_record
+        loader_kwargs = {
+            "require_fresh_roots": False, "require_tracked": True,
+        }
+    else:
         raise StageCBenchmarkIntegrityError(
             "trusted recovery C8 context lacks a validated "
             "RecoveryC8LaunchRecord"
@@ -589,17 +603,58 @@ def _trusted_recovery_c8_record(value: Any) -> Any | None:
         )
     try:
         authority_root = Path(record.repo_root).resolve(strict=True)
-        authoritative = load_recovery_c8_launch_record(
+        authoritative = loader(
             record.path, repo_root=authority_root, schema_path=record.schema_path,
-            require_fresh_roots=False, require_tracked=True,
+            **loader_kwargs,
         )
     except Exception as error:
         raise StageCBenchmarkIntegrityError(
             "trusted recovery C8 launch record could not be reloaded and validated"
         ) from error
-    if type(authoritative) is not RecoveryC8LaunchRecord or authoritative != record:
+    if type(authoritative) is not type(record) or authoritative != record:
         raise StageCBenchmarkIntegrityError(
             "trusted recovery C8 context does not match reloaded authority"
+        )
+    return authoritative
+
+
+def _trusted_recovery_c8_evidence_record(value: Any) -> Any | None:
+    """Reload a C8 authority accepted only for read-only evidence checks.
+
+    A repair authority may validate the historical C7 report and recompute the
+    frozen C8 preflight it explicitly binds.  It is intentionally excluded
+    from ``_trusted_recovery_c8_record`` so it cannot authorize an ordinary C8
+    root, shard, finalize, or selection path.
+    """
+
+    if value is None:
+        return None
+    try:
+        from .recovery_c8_salvage_repair import (
+            RecoveryC8SalvageRepairLaunchRecord,
+            load_recovery_c8_salvage_repair_launch_record,
+        )
+    except ImportError as error:  # pragma: no cover - rolling integration guard
+        raise StageCBenchmarkIntegrityError(
+            "recovery C8 salvage repair support is unavailable"
+        ) from error
+    if type(value) is not RecoveryC8SalvageRepairLaunchRecord:
+        return _trusted_recovery_c8_record(value)
+    try:
+        authority_root = Path(value.repo_root).resolve(strict=True)
+        authoritative = load_recovery_c8_salvage_repair_launch_record(
+            value.path, repo_root=authority_root, schema_path=value.schema_path,
+            require_fresh_outputs=False, require_tracked=True,
+        )
+    except Exception as error:
+        raise StageCBenchmarkIntegrityError(
+            "trusted recovery C8 repair evidence authority could not be "
+            "reloaded and validated"
+        ) from error
+    if type(authoritative) is not type(value) or authoritative != value:
+        raise StageCBenchmarkIntegrityError(
+            "trusted recovery C8 repair evidence context does not match "
+            "reloaded authority"
         )
     return authoritative
 
@@ -617,6 +672,8 @@ def _authority_relative_record(
     record: Any, document: Mapping[str, Any], key: str,
 ) -> dict[str, Any]:
     block = document.get(key)
+    if block is None and hasattr(record, "source_c8_record"):
+        block = record.source_c8_record.document.get(key)
     if not isinstance(block, Mapping):
         raise StageCBenchmarkIntegrityError(
             f"recovery C8 authority lacks {key} binding"
@@ -743,7 +800,7 @@ def validate_fixed_c7_report(
 ) -> dict[str, Any]:
     """Validate the legacy frozen or authority-bound recovery C7 report."""
 
-    recovery = _trusted_recovery_c8_record(trusted_recovery_context)
+    recovery = _trusted_recovery_c8_evidence_record(trusted_recovery_context)
     if recovery is not None:
         source = Path(os.path.abspath(os.fspath(path)))
         expected_source = _recovery_report_path(recovery)
@@ -984,14 +1041,14 @@ def build_c8_measured_preflight(
     plan: ExecutionPlan, config: Any, c7_report: Mapping[str, Any], *,
     trusted_recovery_context: Any | None = None,
 ) -> StageCEstimate:
-    scope = validate_c8_execution_plan(
-        plan, config, trusted_recovery_context=trusted_recovery_context,
+    recovery = _trusted_recovery_c8_evidence_record(
+        trusted_recovery_context
     )
+    scope = validate_c8_execution_plan(plan, config)
     if not scope["valid"]:
         raise StageCBenchmarkIntegrityError(
             "invalid C8 plan: " + "; ".join(scope["violations"])
         )
-    recovery = _trusted_recovery_c8_record(trusted_recovery_context)
     if recovery is None:
         if not _exact_projection(
             c7_report,

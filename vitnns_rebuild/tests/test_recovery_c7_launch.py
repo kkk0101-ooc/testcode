@@ -1268,7 +1268,7 @@ def test_stage_a_receipt_rejects_self_resigned_drift_without_reading_model(
     def stage_a_git(_repo: Path, *arguments: str) -> str:
         if arguments == (
             "rev-parse", "--verify",
-            f"{receipt['source_git_state']['remote_tracking_ref']}^{{commit}}",
+            f"{receipt['source_git_state']['remote_tracking_commit']}^{{commit}}",
         ):
             return receipt["source_git_state"]["remote_tracking_commit"]
         return STAGE_A_TREE
@@ -1278,6 +1278,158 @@ def test_stage_a_receipt_rejects_self_resigned_drift_without_reading_model(
     binding = load_recovery_v2_binding(verify_assets=False)
 
     with pytest.raises(launch.RecoveryC7LaunchError, match=message):
+        launch._validate_stage_a_receipt(
+            repo, repo.parent, receipt_path, binding,
+        )
+
+
+def test_stage_a_receipt_accepts_remote_tracking_fast_forward(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo = launch.REPO_ROOT
+    receipt_path = launch.DEFAULT_STAGE_A_RECEIPT_PATH
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    provenance_path = receipt_path.parent / "provenance.json"
+    validation_path = receipt_path.parent / "validation.json"
+    documents = {
+        receipt_path.resolve(): receipt,
+        provenance_path.resolve(): json.loads(
+            provenance_path.read_text(encoding="utf-8")
+        ),
+        validation_path.resolve(): json.loads(
+            validation_path.read_text(encoding="utf-8")
+        ),
+    }
+    monkeypatch.setattr(
+        launch, "_read_json",
+        lambda path, _context: copy.deepcopy(documents[Path(path).resolve()]),
+    )
+    monkeypatch.setattr(launch, "_regular_single_link_file", lambda *_: None)
+    original_sha256 = launch.sha256_file
+    artifact_hashes = {
+        name: receipt["artifacts"][name]["sha256"]
+        for name in ("extraction.pt", "provenance.json", "validation.json")
+    }
+
+    def cheap_sha256(path: Path) -> str:
+        candidate = Path(path)
+        if candidate.parent == receipt_path.parent and candidate.name in artifact_hashes:
+            return artifact_hashes[candidate.name]
+        return original_sha256(candidate)
+
+    monkeypatch.setattr(launch, "sha256_file", cheap_sha256)
+    monkeypatch.setattr(
+        launch, "_verify_lfs_pointer_at_head", lambda *_args, **_kwargs: ("0" * 64, 1),
+    )
+
+    def stage_a_git(_repo: Path, *arguments: str) -> str:
+        if arguments == (
+            "rev-parse", "--verify",
+            f"{receipt['source_git_state']['remote_tracking_commit']}^{{commit}}",
+        ):
+            return receipt["source_git_state"]["remote_tracking_commit"]
+        if arguments == (
+            "rev-parse", "--verify",
+            f"{receipt['source_git_state']['remote_tracking_ref']}^{{commit}}",
+        ):
+            return "e" * 40
+        if arguments == (
+            "rev-parse", "--verify",
+            f"{receipt['source_git_state']['commit']}^{{tree}}",
+        ):
+            return receipt["source_git_state"]["tree"]
+        return STAGE_A_TREE
+
+    ancestor_checks: list[tuple[str, str, str]] = []
+
+    def track_ancestor(
+        _repo: Path, older: str, newer: str, context: str,
+    ) -> None:
+        ancestor_checks.append((older, newer, context))
+
+    monkeypatch.setattr(launch, "_run_git", stage_a_git)
+    monkeypatch.setattr(launch, "_is_ancestor", track_ancestor)
+    binding = load_recovery_v2_binding(verify_assets=False)
+
+    actual = launch._validate_stage_a_receipt(
+        repo, repo.parent, receipt_path, binding,
+    )
+
+    assert actual["producer_commit"] == receipt["source_git_state"]["commit"]
+    assert (
+        receipt["source_git_state"]["remote_tracking_commit"],
+        receipt["source_git_state"]["commit"],
+        "Stage A remote-tracking commit",
+    ) in ancestor_checks
+
+
+def test_stage_a_receipt_rejects_missing_sealed_remote_baseline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo = launch.REPO_ROOT
+    receipt_path = launch.DEFAULT_STAGE_A_RECEIPT_PATH
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    monkeypatch.setattr(launch, "_regular_single_link_file", lambda *_: None)
+
+    def stage_a_git(_repo: Path, *arguments: str) -> str:
+        if arguments == (
+            "rev-parse", "--verify",
+            f"{receipt['source_git_state']['remote_tracking_commit']}^{{commit}}",
+        ):
+            return "e" * 40
+        if arguments == (
+            "rev-parse", "--verify",
+            f"{receipt['source_git_state']['commit']}^{{tree}}",
+        ):
+            return receipt["source_git_state"]["tree"]
+        return STAGE_A_TREE
+
+    monkeypatch.setattr(launch, "_run_git", stage_a_git)
+    binding = load_recovery_v2_binding(verify_assets=False)
+
+    with pytest.raises(
+        launch.RecoveryC7LaunchError,
+        match="Stage A remote-tracking identity drifted",
+    ):
+        launch._validate_stage_a_receipt(
+            repo, repo.parent, receipt_path, binding,
+        )
+
+
+def test_stage_a_receipt_rejects_sealed_remote_not_source_ancestor(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo = launch.REPO_ROOT
+    receipt_path = launch.DEFAULT_STAGE_A_RECEIPT_PATH
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    monkeypatch.setattr(launch, "_regular_single_link_file", lambda *_: None)
+
+    def stage_a_git(_repo: Path, *arguments: str) -> str:
+        if arguments == (
+            "rev-parse", "--verify",
+            f"{receipt['source_git_state']['remote_tracking_commit']}^{{commit}}",
+        ):
+            return receipt["source_git_state"]["remote_tracking_commit"]
+        if arguments == (
+            "rev-parse", "--verify",
+            f"{receipt['source_git_state']['commit']}^{{tree}}",
+        ):
+            return receipt["source_git_state"]["tree"]
+        return STAGE_A_TREE
+
+    def reject_ancestor(
+        _repo: Path, _older: str, newer: str, context: str,
+    ) -> None:
+        raise launch.RecoveryC7LaunchError(f"{context} is not an ancestor of {newer}")
+
+    monkeypatch.setattr(launch, "_run_git", stage_a_git)
+    monkeypatch.setattr(launch, "_is_ancestor", reject_ancestor)
+    binding = load_recovery_v2_binding(verify_assets=False)
+
+    with pytest.raises(
+        launch.RecoveryC7LaunchError,
+        match="Stage A remote-tracking commit is not an ancestor",
+    ):
         launch._validate_stage_a_receipt(
             repo, repo.parent, receipt_path, binding,
         )

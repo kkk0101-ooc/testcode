@@ -144,7 +144,7 @@ delta_fid(i) = 0.5 * (
 
 每个 audit 图和方法恰运行两次 clean metric-ready map，其中 primary clean run 已在 1,000 个正常 clean maps 内，因此只增加 `5×2×(2-1)=10` 个 repeat-clean map items。两次 map 必须 shape、dtype、coordinate/projection identity 和全部 scientific bindings 相同，并逐元素满足 `allclose(atol=1e-6, rtol=1e-5)`。wall time、CUDA peak allocated/reserved 和 artifact bytes 是排除在 repeatability equality 外的 telemetry；排除 telemetry 不允许忽略任何科学或坐标字段。任一 required comparison 失败即 scientific validity failure。
 
-Audit/L2 不进入 AUC、`delta_fid`、bootstrap、fidelity status 或 primary decision。D2–D10 不生成定性 overlay；若论文需要，Stage F 只能用这些预注册 IDs 建立独立 display-only recipe。
+Audit/L2 不进入 AUC、`delta_fid`、bootstrap、fidelity status 或 primary decision。D2–D10 不生成定性 overlay；若论文需要，Stage F 必须建立独立的仅展示协议。Stage F 可使用两类展示：D1 预注册 audit IDs，以及在任何 Stage D 结果访问前冻结规则、D10 验证后按规则从 500 图中选择的说明性案例。二者都不得进入数值统计或 decision。
 
 ## 7. Exact typed workload
 

@@ -61,13 +61,14 @@ chatlog1/
 **/ppt_results*/
 
 # Current rebuild is versioned selectively. Large binary assets under
-# vitnns_rebuild/assets and future evidence roots are tracked through Git LFS.
+# vitnns_rebuild/assets stay in Git LFS. Formal experiment evidence is retained
+# locally unless a specific small manifest/report is intentionally allowlisted.
 !vitnns_rebuild/
 !vitnns_rebuild/**/
 !vitnns_rebuild/assets/
 !vitnns_rebuild/assets/**
-!vitnns_rebuild/evidence/
-!vitnns_rebuild/evidence/**
+vitnns_rebuild/evidence/
+vitnns_rebuild/evidence/**
 vitnns_rebuild/outputs/
 vitnns_rebuild/artifacts/
 vitnns_rebuild/assets/imagenet/ILSVRC2012_img_val.tar

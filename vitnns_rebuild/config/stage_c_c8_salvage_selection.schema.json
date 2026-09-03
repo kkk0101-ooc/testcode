@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ViT-NNS C8 recovery-salvage selection envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "document_type", "generated_by", "holdout_accessed", "input_bindings", "calibration_sample_ids", "candidate_records", "depth_band_winners", "primary", "failure_records", "canonical_digest"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_c_c8_salvage_selection"},
+    "generated_by": {"type": "string", "minLength": 1},
+    "holdout_accessed": {"const": false},
+    "input_bindings": {"type": "object"},
+    "calibration_sample_ids": {"type": "array", "minItems": 5, "maxItems": 5, "items": {"type": "string"}},
+    "candidate_records": {"type": "array", "minItems": 144, "maxItems": 144, "items": {"type": "object"}},
+    "depth_band_winners": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "object"}},
+    "primary": {"type": "object"},
+    "failure_records": {"type": "array"},
+    "canonical_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

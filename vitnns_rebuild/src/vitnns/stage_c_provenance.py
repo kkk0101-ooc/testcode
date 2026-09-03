@@ -727,6 +727,100 @@ def _reload_recovery_c8_authority(outer_authority: Any) -> tuple[Any, Any]:
     return binding, launch
 
 
+def _reload_recovery_c8_salvage_authority(outer_authority: Any) -> tuple[Any, Any]:
+    """Reload a C8-salvage authority and return its validated C7 pair."""
+
+    try:
+        from .recovery_c8_salvage import (
+            RecoveryC8SalvageLaunchRecord,
+            load_recovery_c8_salvage_launch_record,
+        )
+        from .recovery_c7_launch import RecoveryC7LaunchRecord
+        from .recovery_v2 import RecoveryV2Binding
+    except ImportError as error:  # pragma: no cover - rolling integration guard
+        raise StageCProvenanceError(
+            "recovery C8 salvage authority support is unavailable"
+        ) from error
+    if type(outer_authority) is not RecoveryC8SalvageLaunchRecord:
+        raise StageCProvenanceError(
+            "trusted recovery C8 salvage context requires a validated authority"
+        )
+    try:
+        authoritative = load_recovery_c8_salvage_launch_record(
+            outer_authority.path, repo_root=outer_authority.repo_root,
+            schema_path=outer_authority.schema_path, require_tracked=True,
+            require_fresh_outputs=False,
+        )
+    except Exception as error:
+        raise StageCProvenanceError(
+            "trusted recovery C8 salvage authority could not be reloaded and validated"
+        ) from error
+    if type(authoritative) is not RecoveryC8SalvageLaunchRecord or authoritative != outer_authority:
+        raise StageCProvenanceError(
+            "trusted recovery C8 salvage context differs from its authority bytes"
+        )
+    if (
+        type(authoritative.binding) is not RecoveryV2Binding
+        or type(authoritative.c7_launch_record) is not RecoveryC7LaunchRecord
+    ):
+        raise StageCProvenanceError(
+            "recovery C8 salvage authority lacks its validated recovery chain"
+        )
+    return authoritative.binding, authoritative.c7_launch_record
+
+
+def _reload_recovery_c8_salvage_repair_authority(
+    outer_authority: Any,
+) -> tuple[Any, Any]:
+    """Reload a repair authority and return its validated recovery pair."""
+
+    try:
+        from .recovery_c8_salvage_repair import (
+            RecoveryC8SalvageRepairLaunchRecord,
+            revalidate_recovery_c8_salvage_repair_runtime_record,
+        )
+        from .recovery_c7_launch import RecoveryC7LaunchRecord
+        from .recovery_v2 import RecoveryV2Binding
+    except ImportError as error:  # pragma: no cover - rolling integration guard
+        raise StageCProvenanceError(
+            "recovery C8 salvage repair authority support is unavailable"
+        ) from error
+    if type(outer_authority) is not RecoveryC8SalvageRepairLaunchRecord:
+        raise StageCProvenanceError(
+            "trusted recovery C8 salvage repair context requires a "
+            "validated authority"
+        )
+    try:
+        authoritative = (
+            revalidate_recovery_c8_salvage_repair_runtime_record(
+                outer_authority
+            )
+        )
+    except Exception as error:
+        raise StageCProvenanceError(
+            "trusted recovery C8 salvage repair authority could not be "
+            "reloaded and validated"
+        ) from error
+    if (
+        type(authoritative) is not RecoveryC8SalvageRepairLaunchRecord
+        or authoritative != outer_authority
+    ):
+        raise StageCProvenanceError(
+            "trusted recovery C8 salvage repair context differs from its "
+            "authority bytes"
+        )
+    if (
+        type(authoritative.binding) is not RecoveryV2Binding
+        or type(authoritative.c7_launch_record) is not RecoveryC7LaunchRecord
+        or authoritative.c7_launch_record.binding is not authoritative.binding
+    ):
+        raise StageCProvenanceError(
+            "recovery C8 salvage repair authority lacks its validated "
+            "recovery chain"
+        )
+    return authoritative.binding, authoritative.c7_launch_record
+
+
 def _authority_relative_path(path: Any, repo_root: Path, context: str) -> str:
     try:
         relative = Path(path).resolve(strict=True).relative_to(repo_root)
@@ -740,16 +834,23 @@ def _authority_relative_path(path: Any, repo_root: Path, context: str) -> str:
 def normalize_recovery_model_context(
     recovery_binding: Any, recovery_launch_record: Any | None = None,
 ) -> dict[str, Any]:
-    """Normalize C7 or outer-C8 authority to the closed model shape."""
+    """Normalize C7 or an outer C8 authority to the closed model shape."""
 
     from .recovery_c8_launch import RecoveryC8LaunchRecord
+    from .recovery_c8_salvage import RecoveryC8SalvageLaunchRecord
+    from .recovery_c8_salvage_repair import (
+        RecoveryC8SalvageRepairLaunchRecord,
+    )
 
     if recovery_launch_record is None:
         # A genuine launch record includes its genuine binding; retain that
         # convenient single-object form without accepting arbitrary objects.
         from .recovery_c7_launch import RecoveryC7LaunchRecord
 
-        if type(recovery_binding) is RecoveryC8LaunchRecord:
+        if type(recovery_binding) in {
+            RecoveryC8LaunchRecord, RecoveryC8SalvageLaunchRecord,
+            RecoveryC8SalvageRepairLaunchRecord,
+        }:
             recovery_launch_record = recovery_binding
             recovery_binding = recovery_launch_record.binding
         elif isinstance(recovery_binding, RecoveryC7LaunchRecord):
@@ -764,7 +865,24 @@ def normalize_recovery_model_context(
                 )
             recovery_binding, recovery_launch_record = pair
 
-    if type(recovery_launch_record) is RecoveryC8LaunchRecord:
+    if type(recovery_launch_record) is RecoveryC8SalvageRepairLaunchRecord:
+        if recovery_binding is not recovery_launch_record.binding:
+            raise StageCProvenanceError(
+                "trusted repair context is not the binding owned by its "
+                "authority"
+            )
+        binding, launch = _reload_recovery_c8_salvage_repair_authority(
+            recovery_launch_record
+        )
+    elif type(recovery_launch_record) is RecoveryC8SalvageLaunchRecord:
+        if recovery_binding is not recovery_launch_record.binding:
+            raise StageCProvenanceError(
+                "trusted salvage context is not the binding owned by its authority"
+            )
+        binding, launch = _reload_recovery_c8_salvage_authority(
+            recovery_launch_record
+        )
+    elif type(recovery_launch_record) is RecoveryC8LaunchRecord:
         if recovery_binding is not recovery_launch_record.binding:
             raise StageCProvenanceError(
                 "trusted recovery C8 context is not the binding owned by its "

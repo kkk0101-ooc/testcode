@@ -65,10 +65,11 @@ git lfs install
 git lfs pull
 ```
 
-Before the first push of this recovery commit, authenticate Git with a GitHub
-credential that has write access to `kkk0101-ooc/testcode` **and** enough Git
-LFS storage quota for the approximately 7.4 GB asset set. Then publish the
-current branch and verify both the commit and LFS payloads:
+远程推送不是默认动作。默认情况下，每个 C/D recovery 任务结束时只做本地
+commit，让 Git/LFS objects 保留在本地待推送状态。只有用户明确要求远程推送时，
+才推送 Git refs 和 Git LFS objects。收到推送要求后，先用具备
+`kkk0101-ooc/testcode` 写权限和足够 Git LFS 配额的 GitHub credential 完成认证，
+再发布当前分支并验证 commit 与 LFS payloads：
 
 ```bash
 git push origin stage-d-d3-pass
@@ -86,7 +87,6 @@ The current tracked LFS classes are:
 - `vitnns_rebuild/assets/data/**/*.JPEG`
 - `vitnns_rebuild/assets/imagenet/ILSVRC2012_img_val.parts/part-*`
 - `vitnns_rebuild/assets/imagenet/*.tar.gz`
-- `vitnns_rebuild/evidence/**`
 - `*.pt`, `*.pth`, `*.npy`, `*.npz`, `*.parquet`
 
 ## Assets
@@ -240,10 +240,11 @@ vitnns-stage-c run-sample \
   # remaining frozen arguments from the authorized run specification
 ```
 
-`evidence/**` is covered by Git LFS. After a formal run reaches its sealed
-terminal state, review it, commit it, and run `git push` before deleting the
-local source or moving to the next stage. Keep cache files and temporary
-reassembled archives outside that evidence root.
+正式 evidence roots 默认保留在本机文件系统，不再整体纳入 Git/LFS 推送范围。
+完成 formal run 后，应提交代码、文档、配置、schema、测试和必要的小型索引/报告；
+大型 per-unit artifacts、NPY、完整 formal roots、combined manifests 和中间 execution plans
+只在用户明确要求时另行打包或加入远端存储。不要运行 `git push` 或 `git lfs push`，
+除非用户明确要求远程推送。cache 文件和临时重组 archive 必须放在 evidence root 之外。
 
 ## Useful command skeletons
 
@@ -301,3 +302,57 @@ historically exposed holdout unseen again. C8 has not been executed: there is
 no recovery-v2 C8 root, selection, or PASS report. The existing launch record
 is C7-only (`c8_authorized=false`), so C8 requires its own valid handoff and a
 fresh empty evidence root before execution.
+
+## Recovery-v2 C8 salvage progress update (2026-09-03)
+
+Recovery-v2 C8 is now PASS through the amendment-authorized three-source
+salvage chain in evidence/stage_c/c8_salvage_repair_recovery_v2_de71d55,
+sealed by evidence custody commit
+82825131a598d4fffc22ca761e4d9a30b5d35666 (root Git tree
+74741c1e387c2c83aa6aeb5b90c38d45de53fcee). This supersedes the immediately
+preceding C7 note's “C8 has not been executed” status; that older sentence is
+retained only as a dated historical snapshot.
+
+The canonical PASS object is reports/c8_salvage_repair_combined_report.json
+(file SHA-256 974e9366f240018d6118edc47dfbd623d9690cb407961fcf73437cee07c7898b,
+canonical digest 4e31223f9f4e8113b035d9d8ddeb221bec916278864873180593d106684d4612).
+It binds 1460 original succeeded units, 569 valid terminal units from the
+partial salvage root (568 succeeded plus one retained scientific failure), and
+151 newly run succeeded repair units. The combined manifest covers exactly
+2180 terminal units and has artifact digest
+4a7f1bd35aadfb704196625c709f21c1fd51159dbae8d5b1fb9dae8f95043257.
+The old interrupted and partial roots remain read-only source material and are
+not themselves PASS roots.
+
+The new selection is selection/stage_c_salvage_repair_selection.json (file
+SHA-256 5d26c78bb94278c7f12d7bd88b1a37cfb97352f3d0bde5e1c4e52f8e811c7982,
+canonical digest 6915f7c4383c91ed5fcc465a52d3582eebdb6cd325c7bc2107b03c7996c87620).
+Its frozen winners are (0,9) primary and (4,2), (6,10), (11,2) exploratory.
+The completion reports holdout_accessed=false, and no C9, C10, bootstrap,
+Holm, decision, or Stage D work was started.
+
+To keep remote pushes usable, the pushed branch is intentionally lightweight:
+it stores the C8 salvage code, contracts, tests, amendments, handoff documents,
+and small final report/selection records only. The complete multi-GB C8 roots,
+per-unit artifacts, combined manifest payload, and execution plans remain local
+source material and are preserved in the local backup branch
+`backup/stage-d-d3-pass-full-20260903-before-light-push`.
+
+The next step is a separately authorized recovery-v2 C9. Its authority must
+bind the C8 salvage completion, combined manifest, selection, three source
+inventories and producer identities, combined artifact digest, and custody
+commit; it must reject the old interrupted C8 root as canonical. C10 must later
+trace through this salvage C8 and a new C9 root. Stage D must wait for a newly
+bound salvage C8 -> C9 -> C10 -> renewed D0-D6 chain. None of those downstream
+stages is authorized by the C8 salvage amendment.
+
+## Stage F 展示规划
+
+不依赖未查看 Stage D 结果的论文内容可以与后续 recovery 实验并行推进：
+引言、相关工作、方法、已封存的 C7/C8/C10 事实、限制讨论，以及未来图表占位。
+依赖 Stage D 结果的结果段落和定性案例必须等待对应 evidence 封存与验证。
+
+版本化展示协议为 `docs/stage_f_display_protocol_v1.md`。它必须在 Stage D 结果访问前冻结。
+该协议没有统计决策权限，不改变 C7-C10 recovery，也不改变 Stage D 主实验。
+D10 验证完成后，它允许两类展示集合：固定 D1 审计样本，以及按预注册规则从完整
+500 图队列中选择的说明性案例。这些案例只用于可视化展示，不能改变 primary 结论。
