@@ -91,7 +91,7 @@ def test_stage_bundle_is_pending_before_atomic_terminal_and_rejects_tamper(
         "vitnns.stage_d_recovery._run_git",
         lambda _root, *args: (
             "" if args == ("status", "--porcelain=v1", "--untracked-files=all")
-            else PRODUCER if args == ("rev-parse", "refs/archive/stage-d-recovery-v2-producer^{commit}")
+            else PRODUCER if args == ("rev-parse", "refs/archive/stage-d-recovery-v2-r2-producer^{commit}")
             else PRODUCER if args == ("rev-parse", f"{PRODUCER}^{{commit}}")
             else SOURCE_TREE if args == ("rev-parse", f"{PRODUCER}:src/vitnns")
             else "" if args == ("rev-parse", "--show-prefix")
@@ -103,7 +103,7 @@ def test_stage_bundle_is_pending_before_atomic_terminal_and_rejects_tamper(
         validation_command="synthetic focused command", repo_root=tmp_path,
     )
     assert result["status"] == "PASS"
-    root = tmp_path / "reports/stage_d_recovery_v2_20260904/d0"
+    root = tmp_path / "reports/stage_d_recovery_v2_20260904_r2/d0"
     assert not (root / "status.pending.json").exists()
     assert validate_stage_bundle("D0", repo_root=tmp_path, verify_git_ref=False)["status"] == "PASS"
     status = json.loads((root / "status.json").read_text())
@@ -122,7 +122,7 @@ def test_bundle_rejects_missing_duplicate_and_wrong_direct_upstream(
         "vitnns.stage_d_recovery._run_git",
         lambda _root, *args: (
             "" if args == ("status", "--porcelain=v1", "--untracked-files=all")
-            else PRODUCER if args == ("rev-parse", "refs/archive/stage-d-recovery-v2-producer^{commit}")
+            else PRODUCER if args == ("rev-parse", "refs/archive/stage-d-recovery-v2-r2-producer^{commit}")
             else PRODUCER if args == ("rev-parse", f"{PRODUCER}^{{commit}}")
             else SOURCE_TREE if args == ("rev-parse", f"{PRODUCER}:src/vitnns")
             else "" if args == ("rev-parse", "--show-prefix")
@@ -133,7 +133,7 @@ def test_bundle_rejects_missing_duplicate_and_wrong_direct_upstream(
         "D0", producer_commit=PRODUCER, producer_source_tree=SOURCE_TREE,
         validation_command="focused", repo_root=tmp_path,
     )
-    completion_path = tmp_path / "reports/stage_d_recovery_v2_20260904/d0/completion.json"
+    completion_path = tmp_path / "reports/stage_d_recovery_v2_20260904_r2/d0/completion.json"
     completion = json.loads(completion_path.read_text())
     completion["source_files"].append(copy.deepcopy(completion["source_files"][0]))
     completion["canonical_digest"] = semantic_digest(completion)

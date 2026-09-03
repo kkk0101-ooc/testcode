@@ -32,8 +32,8 @@ RECOVERY_ID = "STAGE_D_PRE_RESERVE_RECOVERY_V2_20260904"
 BINDING_PATH = "config/stage_d_recovery_v2_binding_20260904.json"
 BINDING_SCHEMA_PATH = "config/stage_d_recovery_v2_binding.schema.json"
 RECORD_SCHEMA_PATH = "config/stage_d_recovery_record.schema.json"
-ROOT_PATH = "reports/stage_d_recovery_v2_20260904"
-PRODUCER_REF = "refs/archive/stage-d-recovery-v2-producer"
+ROOT_PATH = "reports/stage_d_recovery_v2_20260904_r2"
+PRODUCER_REF = "refs/archive/stage-d-recovery-v2-r2-producer"
 STAGES = ("D0", "D1", "D2", "D3", "D4", "D5", "D6")
 CLASSIFICATIONS = (
     "CURRENT_VALID_PASS",
@@ -53,7 +53,7 @@ PASS_SCOPES = {
     "D6": "ANALYSIS_IMPLEMENTATION_READINESS_PASS",
 }
 COMPLETION_REFS = {
-    stage: f"refs/archive/stage-d-recovery-v2-{stage.lower()}-completion"
+    stage: f"refs/archive/stage-d-recovery-v2-r2-{stage.lower()}-completion"
     for stage in STAGES
 }
 _PREVIOUS = {
@@ -551,7 +551,7 @@ def _upstream_binding(
 
 def _base_record(stage: str, document_type: str) -> dict[str, Any]:
     return {
-        "$schema": "../../../../config/stage_d_recovery_record.schema.json",
+        "$schema": "../../../config/stage_d_recovery_record.schema.json",
         "schema_version": 1, "document_type": document_type,
         "recovery_id": RECOVERY_ID, "stage": stage,
     }
@@ -614,7 +614,7 @@ def create_stage_bundle(
     source_files = [_source_identity(root, path) for path in _stage_sources(stage)]
     completion = _base_record(stage, "stage_d_recovery_v2_completion")
     completion.update({
-        "record_id": f"STAGE_D_{stage}_RECOVERY_V2_20260904",
+        "record_id": f"STAGE_D_{stage}_RECOVERY_V2_R2_20260904",
         "status": "READY_FOR_TERMINAL_VALIDATION",
         "classification": "PENDING_VALIDATION",
         "pass_scope": PASS_SCOPES[stage],
