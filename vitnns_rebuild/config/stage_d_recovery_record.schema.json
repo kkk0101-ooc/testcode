@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_d_recovery_record.schema.json",
+  "title": "Stage D recovery-v2 D0-D6 record",
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "stage": {"enum": ["D0", "D1", "D2", "D3", "D4", "D5", "D6"]},
+    "access": {
+      "type": "object", "additionalProperties": false,
+      "required": ["reserve_image_exists_checked", "reserve_image_statted", "reserve_image_opened", "reserve_image_hashed", "reserve_image_decoded", "reserve_image_preprocessed", "reserve_image_used_for_inference", "stage_d_outcome_accessed"],
+      "properties": {
+        "reserve_image_exists_checked": {"const": false},
+        "reserve_image_statted": {"const": false},
+        "reserve_image_opened": {"const": false},
+        "reserve_image_hashed": {"const": false},
+        "reserve_image_decoded": {"const": false},
+        "reserve_image_preprocessed": {"const": false},
+        "reserve_image_used_for_inference": {"const": false},
+        "stage_d_outcome_accessed": {"const": false}
+      }
+    },
+    "authorization": {
+      "type": "object", "additionalProperties": false,
+      "required": ["execution_authorization", "analysis_authorization", "reserve_access_authorization", "downstream_authorization"],
+      "properties": {
+        "execution_authorization": {"const": false},
+        "analysis_authorization": {"const": false},
+        "reserve_access_authorization": {"const": false},
+        "downstream_authorization": {"const": false}
+      }
+    },
+    "source": {
+      "type": "object", "additionalProperties": false,
+      "required": ["path", "file_sha256", "canonical_digest"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "file_sha256": {"$ref": "#/$defs/sha256"},
+        "canonical_digest": {"anyOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]}
+      }
+    },
+    "identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["$schema", "schema_version", "document_type", "recovery_id", "stage", "canonical_digest"],
+      "properties": {
+        "$schema": {"const": "../../../../config/stage_d_recovery_record.schema.json"},
+        "schema_version": {"const": 1},
+        "document_type": {"type": "string"},
+        "recovery_id": {"const": "STAGE_D_PRE_RESERVE_RECOVERY_V2_20260904"},
+        "stage": {"$ref": "#/$defs/stage"},
+        "canonical_digest": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["$schema", "schema_version", "document_type", "recovery_id", "stage", "record_id", "status", "classification", "pass_scope", "recovery_binding", "upstream", "source_files", "historical_record_audit", "checks_passed", "access_attestation", "authorization", "git", "canonical_digest"],
+      "properties": {
+        "$schema": {"const": "../../../../config/stage_d_recovery_record.schema.json"},
+        "schema_version": {"const": 1},
+        "document_type": {"const": "stage_d_recovery_v2_completion"},
+        "recovery_id": {"const": "STAGE_D_PRE_RESERVE_RECOVERY_V2_20260904"},
+        "stage": {"$ref": "#/$defs/stage"},
+        "record_id": {"type": "string"},
+        "status": {"const": "READY_FOR_TERMINAL_VALIDATION"},
+        "classification": {"const": "PENDING_VALIDATION"},
+        "pass_scope": {"type": "string"},
+        "recovery_binding": {"type": "object"},
+        "upstream": {"type": "object"},
+        "source_files": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/source"}},
+        "historical_record_audit": {"type": "object"},
+        "checks_passed": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
+        "access_attestation": {"$ref": "#/$defs/access"},
+        "authorization": {"$ref": "#/$defs/authorization"},
+        "git": {"type": "object"},
+        "canonical_digest": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["$schema", "schema_version", "document_type", "recovery_id", "stage", "status", "independent_validation", "source_recomputed", "completion_path", "completion_file_sha256", "completion_canonical_digest", "checks_passed", "validation_commands", "errors", "blocking_reasons", "access_attestation", "authorization", "canonical_digest"],
+      "properties": {
+        "$schema": {"const": "../../../../config/stage_d_recovery_record.schema.json"},
+        "schema_version": {"const": 1},
+        "document_type": {"const": "stage_d_recovery_v2_validation"},
+        "recovery_id": {"const": "STAGE_D_PRE_RESERVE_RECOVERY_V2_20260904"},
+        "stage": {"$ref": "#/$defs/stage"},
+        "status": {"const": "PASS"},
+        "independent_validation": {"const": true},
+        "source_recomputed": {"const": true},
+        "completion_path": {"type": "string"},
+        "completion_file_sha256": {"$ref": "#/$defs/sha256"},
+        "completion_canonical_digest": {"$ref": "#/$defs/sha256"},
+        "checks_passed": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
+        "validation_commands": {"type": "array", "minItems": 1, "items": {"type": "object"}},
+        "errors": {"const": []},
+        "blocking_reasons": {"const": []},
+        "access_attestation": {"$ref": "#/$defs/access"},
+        "authorization": {"$ref": "#/$defs/authorization"},
+        "canonical_digest": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["$schema", "schema_version", "document_type", "recovery_id", "stage", "status", "classification", "pass_scope", "completion_path", "completion_file_sha256", "completion_canonical_digest", "validation_path", "validation_file_sha256", "validation_canonical_digest", "validation_complete_before_terminal", "errors", "blocking_reasons", "access_attestation", "authorization", "downstream_authorized", "next_stage", "completion_ref", "completion_commit", "canonical_digest"],
+      "properties": {
+        "$schema": {"const": "../../../../config/stage_d_recovery_record.schema.json"},
+        "schema_version": {"const": 1},
+        "document_type": {"const": "stage_d_recovery_v2_terminal_status"},
+        "recovery_id": {"const": "STAGE_D_PRE_RESERVE_RECOVERY_V2_20260904"},
+        "stage": {"$ref": "#/$defs/stage"},
+        "status": {"enum": ["PENDING_FINAL_VALIDATION", "PASS"]},
+        "classification": {"const": "CURRENT_VALID_PASS"},
+        "pass_scope": {"type": "string"},
+        "completion_path": {"type": "string"},
+        "completion_file_sha256": {"$ref": "#/$defs/sha256"},
+        "completion_canonical_digest": {"$ref": "#/$defs/sha256"},
+        "validation_path": {"type": "string"},
+        "validation_file_sha256": {"$ref": "#/$defs/sha256"},
+        "validation_canonical_digest": {"$ref": "#/$defs/sha256"},
+        "validation_complete_before_terminal": {"const": true},
+        "errors": {"const": []},
+        "blocking_reasons": {"const": []},
+        "access_attestation": {"$ref": "#/$defs/access"},
+        "authorization": {"$ref": "#/$defs/authorization"},
+        "downstream_authorized": {"const": false},
+        "next_stage": {"type": "string"},
+        "completion_ref": {"type": "string"},
+        "completion_commit": {"const": "SELF"},
+        "canonical_digest": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  ]
+}

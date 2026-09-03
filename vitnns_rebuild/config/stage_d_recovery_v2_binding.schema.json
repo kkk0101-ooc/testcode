@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_d_recovery_v2_binding.schema.json",
+  "title": "Stage D recovery-v2 pre-reserve binding",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema", "schema_version", "document_type", "recovery_id",
+    "status", "recovery_chain", "model", "frozen_scope",
+    "preserved_c10_status", "authorization",
+    "reserve_access_boundary", "historical_supersession",
+    "lightweight_remote_is_complete_evidence_mirror", "canonical_digest"
+  ],
+  "properties": {
+    "$schema": {"const": "stage_d_recovery_v2_binding.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_d_recovery_v2_binding"},
+    "recovery_id": {"const": "STAGE_D_PRE_RESERVE_RECOVERY_V2_20260904"},
+    "status": {"const": "PRE_RESERVE_PREPARATION_ONLY"},
+    "recovery_chain": {"type": "object"},
+    "model": {"type": "object"},
+    "frozen_scope": {"type": "object"},
+    "preserved_c10_status": {"type": "object"},
+    "authorization": {
+      "const": {
+        "execution_authorization": false,
+        "analysis_authorization": false,
+        "reserve_access_authorization": false,
+        "downstream_authorization": false
+      }
+    },
+    "reserve_access_boundary": {
+      "const": {
+        "reserve_image_exists_checked": false,
+        "reserve_image_statted": false,
+        "reserve_image_opened": false,
+        "reserve_image_hashed": false,
+        "reserve_image_decoded": false,
+        "reserve_image_preprocessed": false,
+        "reserve_image_used_for_inference": false,
+        "stage_d_outcome_accessed": false
+      }
+    },
+    "historical_supersession": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "historical_model_sha256", "historical_bindings_are_current",
+        "historical_records_modified", "supersession_mode",
+        "historical_c10_root", "historical_c10_producer"
+      ],
+      "properties": {
+        "historical_model_sha256": {"const": "2e718037429f18ec77aa629471beb2e99993d7383375188bab777aba04d5e4d0"},
+        "historical_bindings_are_current": {"const": false},
+        "historical_records_modified": {"const": false},
+        "supersession_mode": {"const": "VERSIONED_OVERLAY_NOT_IN_PLACE_REWRITE"},
+        "historical_c10_root": {"const": "/data00/home/yeziqi.831/testcode/vitnns_c10_formal_92ad813_20260824"},
+        "historical_c10_producer": {"const": "92ad81342ff22e2710df495a9961a3ab8c015a3a"}
+      }
+    },
+    "lightweight_remote_is_complete_evidence_mirror": {"const": false},
+    "canonical_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
