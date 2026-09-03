@@ -242,7 +242,9 @@ def _strict_json(raw: bytes, context: str) -> dict[str, Any]:
 
 def _exact(value: Any, keys: set[str] | frozenset[str], context: str) -> dict[str, Any]:
     if not isinstance(value, Mapping) or set(value) != set(keys):
-        raise StageDFinalizeIntegrityError(f"{context} fields are missing or unknown")
+        raise StageDFinalizeIntegrityError(
+            f"{context} schema fields are missing or unknown"
+        )
     return _plain(value, context)
 
 
@@ -3185,7 +3187,7 @@ def finalize_stage_d_root(output_root: Path | str, plan: Any, estimate: Any, pre
                     "final path is a forbidden symlink or non-directory"
                 )
             raise StageDFinalizationBlockedError(
-                "final directory has already been claimed and cannot be reused"
+                "final directory already exists and cannot be reused or overwritten"
             )
         prechecked = _checkpoint_control(
             root, typed_plan, typed_estimate, typed_preflight,

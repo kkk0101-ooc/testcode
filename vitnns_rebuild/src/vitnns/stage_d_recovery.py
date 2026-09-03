@@ -581,6 +581,7 @@ def _with_digest(document: dict[str, Any]) -> dict[str, Any]:
 def create_stage_bundle(
     stage: str, *, producer_commit: str, producer_source_tree: str,
     validation_command: str, repo_root: Path | str = REPO_ROOT,
+    producer_ref: str = PRODUCER_REF,
 ) -> Mapping[str, Any]:
     """Write nonterminal records, validate, then atomically issue PASS."""
 
@@ -588,6 +589,8 @@ def create_stage_bundle(
         raise StageDRecoveryError(f"unknown recovery stage: {stage}")
     if _COMMIT.fullmatch(producer_commit) is None or _COMMIT.fullmatch(producer_source_tree) is None:
         raise StageDRecoveryError("producer Git identity is invalid")
+    if re.fullmatch(r"refs/archive/[A-Za-z0-9._/-]+", producer_ref) is None:
+        raise StageDRecoveryError("producer archive ref is invalid")
     root = Path(repo_root)
     if _run_git(root, "status", "--porcelain=v1", "--untracked-files=all"):
         raise StageDRecoveryError("recovery stage must start from a clean worktree")
@@ -596,9 +599,10 @@ def create_stage_bundle(
         upstream_commit = _run_git(
             root, "rev-parse", f"{COMPLETION_REFS[previous]}^{{commit}}"
         )
-        if _run_git(root, "rev-parse", "HEAD") != upstream_commit:
+        head = _run_git(root, "rev-parse", "HEAD")
+        if _run_git(root, "merge-base", upstream_commit, head) != upstream_commit:
             raise StageDRecoveryError(
-                f"{stage} must start exactly at the {previous} completion ref"
+                f"{stage} HEAD must descend from the {previous} completion ref"
             )
         validate_stage_bundle(previous, repo_root=root, verify_git_ref=True)
     paths = _record_paths(stage)
@@ -626,7 +630,7 @@ def create_stage_bundle(
         "authorization": dict(_AUTHORIZATION),
         "git": {
             "producer_commit": producer_commit,
-            "producer_ref": PRODUCER_REF,
+            "producer_ref": producer_ref,
             "producer_source_tree": producer_source_tree,
             "authority_commit": None,
             "authority_requirement": "NOT_APPLICABLE_PREPARATION_ONLY_NO_D7_AUTHORITY",
@@ -780,7 +784,12 @@ def validate_stage_bundle(
         raise StageDRecoveryError(f"{stage} producer identity is invalid")
     if _run_git(root, "rev-parse", f"{producer}^{{commit}}") != producer:
         raise StageDRecoveryError(f"{stage} producer commit is unavailable")
-    if _run_git(root, "rev-parse", f"{PRODUCER_REF}^{{commit}}") != producer:
+    producer_ref = git.get("producer_ref")
+    if (
+        not isinstance(producer_ref, str)
+        or re.fullmatch(r"refs/archive/[A-Za-z0-9._/-]+", producer_ref) is None
+        or _run_git(root, "rev-parse", f"{producer_ref}^{{commit}}") != producer
+    ):
         raise StageDRecoveryError(f"{stage} producer archive ref drifted")
     prefix = _run_git(root, "rev-parse", "--show-prefix")
     observed_source = _run_git(
@@ -871,6 +880,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     create.add_argument("--stage", choices=STAGES, required=True)
     create.add_argument("--producer-commit", required=True)
     create.add_argument("--producer-source-tree", required=True)
+    create.add_argument("--producer-ref", default=PRODUCER_REF)
     create.add_argument("--validation-command", required=True)
     create.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     validate = commands.add_parser("validate-stage")
@@ -884,6 +894,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 args.stage, producer_commit=args.producer_commit,
                 producer_source_tree=args.producer_source_tree,
                 validation_command=args.validation_command, repo_root=args.repo_root,
+                producer_ref=args.producer_ref,
             )
         else:
             result = validate_stage_bundle(

@@ -28,7 +28,11 @@ def _copy_sources(destination: Path) -> None:
     ):
         source = REPO_ROOT / relative
         target = destination / relative
-        if source.is_dir():
+        if relative == "reports":
+            target.mkdir(parents=True, exist_ok=True)
+            for item in source.glob("recovery_c10_*.json"):
+                shutil.copy2(item, target / item.name)
+        elif source.is_dir():
             shutil.copytree(source, target)
         else:
             target.parent.mkdir(parents=True, exist_ok=True)
