@@ -1,6 +1,6 @@
 # Recovery Assets and Rerun Guide
 
-Last updated: 2026-09-01.
+Last updated: 2026-09-03.
 
 This repository uses `vitnns_rebuild` as the active implementation. The old
 `49_vit ` tree has been removed from the active checkout; use Git history for
@@ -20,8 +20,9 @@ Stage D rebinding while preserving the historical protocols and records.
 - Stage D implementation status: D0-D6 are implemented and tested on
   synthetic fixtures.
 - Stage D formal execution status: not authorized and not started.
-- Stage C historical summary remains available in the documents, but the
-  C7/C8/C9/C10 runtime evidence roots are not present.
+- Stage C historical summary remains available in the documents. Recovery-v2
+  C7, salvage C8, and new C9 evidence roots are present locally; recovery-v2
+  C10 has not been executed.
 
 Current D7 cannot be started from this checkout because D3/D7 validation
 requires the historical sealed C10 root, and that root is absent. Without an
@@ -356,3 +357,34 @@ stages is authorized by the C8 salvage amendment.
 该协议没有统计决策权限，不改变 C7-C10 recovery，也不改变 Stage D 主实验。
 D10 验证完成后，它允许两类展示集合：固定 D1 审计样本，以及按预注册规则从完整
 500 图队列中选择的说明性案例。这些案例只用于可视化展示，不能改变 primary 结论。
+
+## Recovery-v2 C9 completion update (2026-09-03)
+
+Recovery-v2 C9 is `PASS` at
+`evidence/stage_c/c9_recovery_v2_0d88fbb/formal`. It is explicitly bound to
+the C8 salvage-repair PASS root, not to the old interrupted C8 root. Before
+the first holdout read, the complete local 2,180-unit three-source C8 union
+was source-recomputed and reproduced its completion, manifest, artifact, and
+selection digests. The lightweight remote branch alone remains insufficient
+for that check; the complete local C8 roots or an equivalent restoration are
+required.
+
+The C9 authority producer is `0d88fbb8b71c604d3dab94db19725e01b7519ae5`
+and its authority-only execution commit is
+`c66e5224e87924253f10a9f5fead006fcc5b5ac7`. The fresh formal run completed
+all 320/320 units and all 15/15 primary holdout images passed the C9 validity
+checks. The final report has file SHA-256
+`ad164a87aa6dedba461e1b19d639d22d955a675d75e0c6e257af4d5846682763`
+and canonical digest
+`959bc874b04b007f487d05734cf5b85b1eaef75bb8c2ff2ded222c7cf9083248`;
+an independent source validation reproduced the exact report bytes. The small
+completion index is `reports/recovery_c9_completion_20260903.json`.
+
+The complete C9 root (2,705 regular files, 225,985,972 bytes) and execution
+logs remain local and are not committed; its ordered whole-root inventory
+canonical digest is
+`6ab8ee024ce7d5bfa3c6a408ec118a9eeac7960d046d7001d8019fb8ab6650c8`.
+C9 performed no bootstrap, Holm
+correction, or decision. C10 is still not authorized; its future authority
+must bind salvage C8 -> this C9. Stage D remains neither authorized nor
+started, and no Stage D reserve image was accessed.

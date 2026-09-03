@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections import Counter
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -10,6 +11,11 @@ from jsonschema import Draft202012Validator
 from vitnns import recovery_c9_launch as recovery
 from vitnns import stage_c_c9 as c9
 from vitnns.stage_c_provenance import canonical_sha256
+from vitnns.recovery_v2 import load_recovery_v2_binding
+from vitnns.stage_c_config import load_stage_c_config
+from vitnns.stage_c_plan import (
+    build_execution_plan, load_run_spec, load_stage_c_registry,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,6 +42,39 @@ def test_salvage_selection_adapter_uses_exact_bound_file() -> None:
         for item in state.depth_band_winners
     ) == recovery.WINNERS
     assert (state.primary.block_index, state.primary.head_index) == recovery.PRIMARY
+
+
+def test_recovery_c9_real_plan_has_exact_method_counts() -> None:
+    binding = load_recovery_v2_binding(verify_assets=False)
+    record = SimpleNamespace(
+        repair_record=SimpleNamespace(
+            selection_path=(
+                recovery.DEFAULT_C8_ROOT
+                / "selection/stage_c_salvage_repair_selection.json"
+            )
+        ),
+        repo_root=ROOT,
+    )
+    config = load_stage_c_config()
+    selection = recovery.load_salvage_selection_state(record)
+    registry = load_stage_c_registry(
+        config, recovery_binding=binding, verify_live_assets=False,
+    )
+    plan = build_execution_plan(
+        config, registry,
+        load_run_spec(ROOT / "config/stage_c_c9_run_spec.json"),
+        selection=selection,
+    )
+
+    result = c9.validate_c9_execution_plan(plan, config)
+    counts = Counter(unit.key.method_id for unit in plan.units)
+
+    assert result["valid"] is True
+    assert len(plan.units) == 320
+    assert counts == Counter({
+        **{method: 80 for method in c9.VALUE_METHOD_IDS},
+        **{method: 20 for method in c9.CLASS_METHOD_IDS},
+    })
 
 
 def test_recovery_handoff_rejects_resigned_digest_tamper() -> None:

@@ -2,8 +2,8 @@
 
 > 文档性质：阶段 C 的路线图、任务状态表和跨对话交接日志。  
 > 创建日期：2026-08-21。  
-> 当前状态：阶段 A、阶段 B、阶段 C/C0–C9 已完成；C10 已完整执行但因冻结 Holm 合同不足而验收 `BLOCKED`，且唯一 primary decision 为 `NO_GO_NOVELTY`；Stage D 未启动。
-> Recovery override（2026-09-01）：[`recovery_protocol_amendment_20260901.md`](recovery_protocol_amendment_20260901.md) 是当前权威 overlay。上述 C7–C10 状态和后文 completion records 仅是历史记录；其 runtime roots 已丢失，当前须先完成 recovery-v2 模型机器绑定、Stage A verification 和独立 C7 launch record，再从 C7 重建完整证据链。
+> 当前状态：阶段 A、阶段 B、历史阶段 C/C0–C9 已完成；历史 C10 因冻结 Holm 合同不足而验收 `BLOCKED`，且唯一 primary decision 为 `NO_GO_NOVELTY`；recovery-v2 已重建到新 C9 `PASS`；Stage D 未启动。
+> Recovery override（2026-09-01）：[`recovery_protocol_amendment_20260901.md`](recovery_protocol_amendment_20260901.md) 是当前权威 overlay。历史 C7–C10 completion records 仍是历史记录；当前 recovery-v2 的 canonical 下游链为 salvage C8 -> new C9，C10 尚未执行且必须另行授权。
 > 使用规则：每个新对话必须先完整阅读本文，只执行一个指定的 `C_i`；该任务未更新本文并写出下一任务提示词时，不算完成。
 
 ## 1. 为什么使用这份文档
@@ -1478,3 +1478,17 @@ C9 authority 必须拒绝旧 interrupted root 作为 canonical C8 root。四 win
 C9 的 20 图顺序、三种 Value 方法、四种 global 方法、320 units、target/baseline、IG schedule、seed、扰动、fidelity、retention 和 resource caps 全部保持冻结；使用 fresh repository evidence root，禁止复用、拼接或覆盖历史 C9 root。C9 不执行 C10 bootstrap/Holm/decision，不启动 Stage D。C9 completion 必须绑定 salvage C8；随后 C10 必须绑定 salvage C8 -> new C9，Stage D 必须等待 salvage C8 -> new C9 -> new C10 -> renewed D0-D6。
 
 实现时先新增 source-recomputing C8-salvage handoff validator、C9 authority schema/record 和 focused tests，并在 clean producer commit 后创建 authority-only 直接子提交；不得用当前 C8 repair authority 直接授权 C9。C9 正式 root 必须 fresh，运行前复验 2180-unit combined chain 和四 winners；运行后依次执行 C9 finalize、独立 validate、文档更新、本地 commit、Git LFS 状态检查，并按用户授权 push。任一绑定、provenance、coverage 或 frozen contract 漂移都必须在首次 holdout access 前 fail closed。
+
+### 2026-09-03 — recovery-v2 C9 completion record
+
+- status: `PASS`。本记录是 recovery replication / audit-chain reconstruction，不把历史已暴露的 15 张 holdout 重新解释为 unseen confirmatory evidence。
+- code_and_authority: C9 producer `0d88fbb8b71c604d3dab94db19725e01b7519ae5`；authority-only launch/execution commit `c66e5224e87924253f10a9f5fead006fcc5b5ac7`。此前基于 `e5d695e1...` 的首份 authority 在 formal root 创建前因 C9 plan validator 仍只接受历史 selection file SHA 而 fail closed；旧 root 未创建、未读取 holdout。修复后使用新 producer、新 authority 和 fresh root，未覆盖或拼接旧 C9。
+- c8_pre_holdout_gate: 首次读取 holdout 前，完整本机 C8 salvage root 已 source-recompute，精确得到 2180 terminal records：original succeeded 1460、prior partial terminal 569（568 succeeded + 1 valid scientific failure）、fresh repair succeeded 151；0 active claims/pending/incomplete/missing/tampered。completion digest `4e31223f...`、combined manifest digest `52ea4e8c...`、artifact digest `4a7f1bd3...`、selection digest `6915f7c4...` 与 selection-report digest `b0a1c557...` 全部匹配。
+- root_and_report: formal root `evidence/stage_c/c9_recovery_v2_0d88fbb/formal`；report `evidence/stage_c/c9_recovery_v2_0d88fbb/formal/c9_evidence_report.json`，file SHA-256 `ad164a87aa6dedba461e1b19d639d22d955a675d75e0c6e257af4d5846682763`，canonical digest `959bc874b04b007f487d05734cf5b85b1eaef75bb8c2ff2ded222c7cf9083248`。
+- execution: 20 images in frozen order、5 calibration + 15 holdout、四 winners `(0,9)`, `(4,2)`, `(6,10)`, `(11,2)` 与 primary `(0,9)` 均未变；7 shards 完成 `46/46/46/46/46/45/45` units，最终 `320/320 succeeded`、0 failure、0 claims、0 errors。primary holdout validity 为 `15/15`。
+- validation_and_budget: `c9-finalize` PASS；独立 `c9-validate` 重新扫描 C8/C9 source evidence，输出与正式 report byte-identical。post-C9 budget `PASS`，canonical digest `53fc5fc4e47a966b5a767463df2f9a096463f34e2eb3f03bda0a84692df475c5`，10 项 frozen hard caps 全部 PASS。
+- model_and_provenance: 绑定 recovery-v2 model file/LFS OID `489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d` 和 canonical tensor digest `150234d8117a50057f62aa14a97f46bbf1da92b00b386c10c71cc7000c5d51dd`，没有回落或冒充历史 `2e718...` artifact。C9 attempts 记录真实 execution commit `c66e5224...`。
+- custody: 完整 C9 root 共 2705 regular files、225985972 bytes，有序 whole-root inventory canonical digest `6ab8ee024ce7d5bfa3c6a408ec118a9eeac7960d046d7001d8019fb8ab6650c8`；该 root 连同 NPY、per-unit evidence、execution plan 与 logs 仅保留本机，不纳入轻量 Git 提交。版本库只保存代码、schema、authority、测试、文档和 `reports/recovery_c9_completion_20260903.json` 小型索引。轻量远端分支仍不含完整 C8 roots；任何 C10 source validation 仍依赖本机完整 roots 或恢复。
+- boundaries: holdout 在所有 preconditions PASS 后首次读取；`selection_performed=false`、`bootstrap_performed=false`、`holm_performed=false`、`decision_performed=false`。未运行 C10，未启动或授权 Stage D，未访问 Stage D reserve images。
+- downstream_handoff: 下一步仅可新建 C10 authority，显式绑定 salvage C8 completion/manifest/artifact/selection identities -> new C9 authority/report/whole-root inventory；C10 必须保留 recovery replication 解释并按冻结统计合同 fail closed。Stage D 仍须等待 salvage C8 -> new C9 -> new C10 -> renewed D0-D6 全链重绑。
+- next_task: `C10_RECOVERY_V2_BOUND_TO_SALVAGE_C8_AND_NEW_C9`；本记录不授权或执行 C10。
