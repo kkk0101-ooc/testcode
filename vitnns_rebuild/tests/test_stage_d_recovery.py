@@ -23,7 +23,7 @@ SOURCE_TREE = "b963edb24f3a4a007b6cae66775bf916039c2328"
 
 def _copy_sources(destination: Path) -> None:
     for relative in (
-        "config", "docs", "manifests", "reports", "src",
+        "config", "docs", "manifests", "reports", "src", "tests",
         "requirements.lock.txt",
     ):
         source = REPO_ROOT / relative
@@ -86,7 +86,9 @@ def test_stage_bundle_is_pending_before_atomic_terminal_and_rejects_tamper(
     monkeypatch.setattr(
         "vitnns.stage_d_recovery._run_git",
         lambda _root, *args: (
-            PRODUCER if args == ("rev-parse", f"{PRODUCER}^{{commit}}")
+            "" if args == ("status", "--porcelain=v1", "--untracked-files=all")
+            else PRODUCER if args == ("rev-parse", "refs/archive/stage-d-recovery-v2-producer^{commit}")
+            else PRODUCER if args == ("rev-parse", f"{PRODUCER}^{{commit}}")
             else SOURCE_TREE if args == ("rev-parse", f"{PRODUCER}:src/vitnns")
             else "" if args == ("rev-parse", "--show-prefix")
             else (_ for _ in ()).throw(AssertionError(args))
@@ -115,7 +117,9 @@ def test_bundle_rejects_missing_duplicate_and_wrong_direct_upstream(
     monkeypatch.setattr(
         "vitnns.stage_d_recovery._run_git",
         lambda _root, *args: (
-            PRODUCER if args == ("rev-parse", f"{PRODUCER}^{{commit}}")
+            "" if args == ("status", "--porcelain=v1", "--untracked-files=all")
+            else PRODUCER if args == ("rev-parse", "refs/archive/stage-d-recovery-v2-producer^{commit}")
+            else PRODUCER if args == ("rev-parse", f"{PRODUCER}^{{commit}}")
             else SOURCE_TREE if args == ("rev-parse", f"{PRODUCER}:src/vitnns")
             else "" if args == ("rev-parse", "--show-prefix")
             else (_ for _ in ()).throw(AssertionError(args))

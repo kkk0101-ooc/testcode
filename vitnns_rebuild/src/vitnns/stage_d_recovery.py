@@ -589,6 +589,18 @@ def create_stage_bundle(
     if _COMMIT.fullmatch(producer_commit) is None or _COMMIT.fullmatch(producer_source_tree) is None:
         raise StageDRecoveryError("producer Git identity is invalid")
     root = Path(repo_root)
+    if _run_git(root, "status", "--porcelain=v1", "--untracked-files=all"):
+        raise StageDRecoveryError("recovery stage must start from a clean worktree")
+    previous = _PREVIOUS[stage]
+    if previous != "C10":
+        upstream_commit = _run_git(
+            root, "rev-parse", f"{COMPLETION_REFS[previous]}^{{commit}}"
+        )
+        if _run_git(root, "rev-parse", "HEAD") != upstream_commit:
+            raise StageDRecoveryError(
+                f"{stage} must start exactly at the {previous} completion ref"
+            )
+        validate_stage_bundle(previous, repo_root=root, verify_git_ref=True)
     paths = _record_paths(stage)
     for relative in paths.values():
         if (root / relative).exists() or (root / relative).is_symlink():
@@ -768,6 +780,8 @@ def validate_stage_bundle(
         raise StageDRecoveryError(f"{stage} producer identity is invalid")
     if _run_git(root, "rev-parse", f"{producer}^{{commit}}") != producer:
         raise StageDRecoveryError(f"{stage} producer commit is unavailable")
+    if _run_git(root, "rev-parse", f"{PRODUCER_REF}^{{commit}}") != producer:
+        raise StageDRecoveryError(f"{stage} producer archive ref drifted")
     prefix = _run_git(root, "rev-parse", "--show-prefix")
     observed_source = _run_git(
         root, "rev-parse", f"{producer}:{prefix}src/vitnns"
@@ -822,15 +836,24 @@ def validate_stage_bundle(
         raise StageDRecoveryError(f"{stage} pending status remains beside terminal PASS")
     if verify_git_ref:
         observed = _run_git(root, "rev-parse", f"{COMPLETION_REFS[stage]}^{{commit}}")
-        head = _run_git(root, "rev-parse", "HEAD")
-        if observed != head:
-            raise StageDRecoveryError(f"{stage} completion ref is not current HEAD")
         changed = _run_git(root, "diff", "--name-only", f"{observed}^", observed)
         allowed_prefix = f"vitnns_rebuild/{ROOT_PATH}/{stage.lower()}/"
         if not changed or any(
             not line.startswith(allowed_prefix) for line in changed.splitlines()
         ):
             raise StageDRecoveryError(f"{stage} completion commit is not stage-record-only")
+        tracked_blob = _run_git(
+            root, "rev-parse", f"{observed}:{prefix}{status_path}"
+        )
+        terminal_payload = _read_regular(root, status_path)
+        blob_payload = (
+            f"blob {len(terminal_payload)}\0".encode("ascii")
+            + terminal_payload
+        )
+        if tracked_blob != hashlib.sha1(blob_payload).hexdigest():
+            raise StageDRecoveryError(
+                f"{stage} completion ref does not contain the terminal record"
+            )
     return {
         "stage": stage, "status": expected_status,
         "pass_scope": PASS_SCOPES[stage],
