@@ -111,6 +111,9 @@ C8_REPORT_FILE_SHA256 = "d921d95ebe756e8cec859faea96578f8b3da766e9049e0440f57048
 C8_REPORT_CANONICAL_DIGEST = "9eb0df50be93320d7d6279852441c5bc103eaef146b394ff8d128cc64d2c9a6c"
 C8_SELECTION_FILE_SHA256 = "5dff9b5aec77cab22b157b9bf2b5d63b2252b7e50ebe728250206d655a142254"
 C8_SELECTION_CANONICAL_DIGEST = "6615acb46a97b1a7f34402bbe07d1de542ff12c7f82f321eb00160a3168eae48"
+RECOVERY_C8_SELECTION_FILE_SHA256 = (
+    "5d26c78bb94278c7f12d7bd88b1a37cfb97352f3d0bde5e1c4e52f8e811c7982"
+)
 C8_EXECUTION_PLAN_SHA256 = "ece22206df300d4099c888d9ce83be83bbf926eaf4d5003059694912881f0892"
 C8_RUN_SPEC_SHA256 = "42f22bb4992dd560382acd48a5e5ec2fe47b0345835e9201636943fb22e7e30b"
 C8_PREFLIGHT_SHA256 = "175d5c9c8461dd5b082792a57ffb7f627c62f2c540114b8789039ebc334b7a2b"
@@ -462,7 +465,9 @@ def validate_c9_execution_plan(plan: ExecutionPlan, config: Any) -> dict[str, An
     ) if isinstance(primary, Mapping) else None
     if (
         selection.get("status") != "present"
-        or selection.get("sha256") != C8_SELECTION_FILE_SHA256
+        or selection.get("sha256") not in {
+            C8_SELECTION_FILE_SHA256, RECOVERY_C8_SELECTION_FILE_SHA256,
+        }
         or observed_winners != list(C9_WINNERS)
         or observed_primary != C9_PRIMARY
     ):
