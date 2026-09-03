@@ -639,6 +639,7 @@ def write_recovery_c9_launch_record(**kwargs: Any) -> Path:
 def load_recovery_c9_launch_record(
     path: Path | str, *, repo_root: Path | str = REPO_ROOT,
     require_tracked: bool = True, full_c8_validation: bool = False,
+    validate_runtime: bool = True,
 ) -> RecoveryC9LaunchRecord:
     repo = Path(repo_root).resolve(strict=True)
     launch = _path(repo, path, "C9 authority")
@@ -683,7 +684,7 @@ def load_recovery_c9_launch_record(
         model_path, repair.binding, repair.c7_launch_record, launch_commit,
         producer["commit"], sha256_file(launch), repo,
     )
-    if require_tracked:
+    if require_tracked and validate_runtime:
         _validate_runtime(result)
     observed = _validate_salvage_payload(
         result, full_source=full_c8_validation, include_authority=False,

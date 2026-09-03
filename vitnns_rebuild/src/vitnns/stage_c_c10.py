@@ -68,7 +68,7 @@ OUTPUT_FILES = (
 )
 MANIFEST_FILENAME = "manifest.json"
 STATUS_FILENAME = "status.json"
-C10_PRODUCER_ARCHIVE_REF = "archive/c10-aggregation-producer"
+C10_PRODUCER_ARCHIVE_REF = "archive/c10-recovery-v2-producer"
 C10_CODE_SURFACE = "src/vitnns"
 _GIT_OID = re.compile(r"[0-9a-f]{40}\Z")
 _STAGE_D_CAP_KEYS = (
@@ -1344,6 +1344,7 @@ def _build_documents(
     snapshot: Any, config: Any, plan: Any, rows: Sequence[Mapping[str, Any]],
     winner_samples: Mapping[tuple[int, int], Sequence[Mapping[str, Any]]],
     *, code: Mapping[str, Any], c9_root: Path, output_root: Path,
+    recovery_authority: Any | None = None,
 ) -> dict[str, Any]:
     expected_sample_ids = _scope_sample_ids(plan)
     summary_document, core_bootstrap = _summary_document(
@@ -1413,18 +1414,40 @@ def _build_documents(
             "root_inventory_digest": snapshot.bindings["root_inventory_digest"],
         },
         c9_bindings=_plain(snapshot.bindings), c9_hash_audit=_plain(snapshot.hash_audit),
-        c9_producer_archive_attestation={
-            "ref": "archive/c9-execution-d8190b1",
-            "commit": snapshot.bindings["producer_commit"],
-            "verified_before_c10_start_in_detached_clean_worktree": True,
-            "native_c9_validate_status": "PASS",
+        c9_recovery_authority_attestation={
+            "producer_commit": snapshot.bindings["producer_commit"],
+            "authority_execution_commit": snapshot.bindings[
+                "authority_execution_commit"
+            ],
+            "authority_path": snapshot.bindings["recovery_authority_path"],
+            "authority_file_sha256": snapshot.bindings[
+                "recovery_authority_file_sha256"
+            ],
+            "authority_canonical_digest": snapshot.bindings[
+                "recovery_authority_canonical_digest"
+            ],
+            "source_recomputed_for_c10": True,
         },
+        c10_launch_authority=(
+            None if recovery_authority is None else {
+                "path": recovery_authority.path.relative_to(
+                    recovery_authority.repo_root
+                ).as_posix(),
+                "file_sha256": recovery_authority.file_sha256,
+                "canonical_digest": recovery_authority.canonical_digest,
+                "launch_commit": recovery_authority.launch_commit,
+                "producer_commit": recovery_authority.producer_commit,
+            }
+        ),
         execution_plan_canonical_digest=plan.canonical_digest,
         frozen_input_hashes={
             "config_sha256": sha256_file(REPO_ROOT / "config/stage_c.json"),
             "protocol_sha256": sha256_file(protocol_path),
             "acceptance_sha256": sha256_file(REPO_ROOT / "docs/stage_c_acceptance.md"),
-            "selection_sha256": sha256_file(REPO_ROOT / "selection/stage_c_selection.json"),
+            "selection_sha256": sha256_file(
+                REPO_ROOT / "evidence/stage_c/c8_salvage_repair_recovery_v2_de71d55"
+                / "selection/stage_c_salvage_repair_selection.json"
+            ),
             "run_spec_sha256": sha256_file(REPO_ROOT / "config/stage_c_c9_run_spec.json"),
         },
         source_levels_used=["L0", "L1"], l2_used=False, l3_used=False,
@@ -1439,6 +1462,8 @@ def _build_documents(
     )
     report = _document(
         "stage_c_c10_acceptance_report", status=acceptance, complete=True,
+        build_complete=True, integrity_valid=True,
+        acceptance_status=acceptance,
         primary_decision=primary_decision, blocking_reasons=blockers,
         c9_status="PASS", c9_execution_units=320,
         c9_primary_holdout_valid=15, per_sample_row_count=len(rows),
@@ -1446,6 +1471,23 @@ def _build_documents(
         primary_config=[0, 9], exploratory_configs=[list(item) for item in EXPLORATORY],
         bootstrap_performed=True, holm_performed=False,
         decision_performed=True, downstream_authorized=False, stage_d_started=False,
+        scientific_components={
+            "validity": validity["status"],
+            "effect_fidelity": effect["status"],
+            "clean_joint_spatial": spatial["joint_spatial_status"],
+            "translation_stability": spatial["stability"][
+                "translate_right_down_4"
+            ]["status"],
+            "center_crop_resize_stability": spatial["stability"][
+                "center_crop_216_resize_224"
+            ]["status"],
+            "gaussian_stability": spatial["stability"][
+                "gaussian_rgb_std_0_01"
+            ]["status"],
+            "overall_spatial": spatial["status"],
+            "cost": cost["status"],
+            "holm": holm["status"],
+        },
         claims={
             "equivalence_claimed": False, "universal_imagenet_superiority_claimed": False,
             "upsampled_map_claimed_as_native_pixel_evidence": False,
@@ -1740,7 +1782,7 @@ def _status_document(report: Mapping[str, Any], manifest_sha256: str) -> dict[st
 
 def _assemble_c10(
     c9_root: Path | str, output_root: Path | str, plan: Any, config: Any,
-    *, code: Mapping[str, Any],
+    *, code: Mapping[str, Any], recovery_authority: Any | None = None,
 ) -> tuple[dict[str, bytes], dict[str, Any]]:
     from .stage_c_c10_source import load_c9_snapshot
     from .stage_c_c9 import validate_c9_execution_plan
@@ -1803,6 +1845,7 @@ def _assemble_c10(
     documents = _build_documents(
         snapshot, config, plan, rows, winner_samples, code=code,
         c9_root=c9_path, output_root=output_path,
+        recovery_authority=recovery_authority,
     )
     payloads: dict[str, bytes] = {
         "per_sample.csv": csv_bytes,
@@ -1815,6 +1858,7 @@ def _assemble_c10(
 
 def build_c10_output_root(
     c9_root: Path | str, output_root: Path | str, plan: Any, config: Any, *,
+    recovery_authority: Any | None = None,
     observed_git_state: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build and seal a fresh C10 root from immutable C9 evidence."""
@@ -1824,10 +1868,18 @@ def build_c10_output_root(
         raise StageC10IntegrityError("supplied C10 Git state differs from live state")
     if live.get("dirty") is not False:
         raise StageC10BlockedError("formal C10 build requires a clean Git worktree")
+    from .recovery_c10_launch import RecoveryC10LaunchRecord
+    if type(recovery_authority) is not RecoveryC10LaunchRecord:
+        raise StageC10BlockedError("validated recovery C10 authority is required")
+    if Path(c9_root).resolve() != recovery_authority.c9_record.output_root:
+        raise StageC10IntegrityError("C10 authority C9 root binding drifted")
+    if Path(output_root).resolve() != recovery_authority.output_root:
+        raise StageC10IntegrityError("C10 authority output-root binding drifted")
     root = _safe_fresh_root(output_root)
-    code = _resolve_c10_producer_attestation(live.get("commit"))
+    code = _resolve_c10_producer_attestation(recovery_authority.producer_commit)
     payloads, report = _assemble_c10(
-        c9_root, root, plan, config, code=code
+        c9_root, root, plan, config, code=code,
+        recovery_authority=recovery_authority,
     )
     if capture_git_state(REPO_ROOT) != live:
         raise StageC10IntegrityError(
@@ -1847,7 +1899,9 @@ def build_c10_output_root(
         raise StageC10IntegrityError(
             "C10 Git state changed while the output root was being sealed"
         )
-    validated = validate_c10_output_root(c9_root, root, plan, config)
+    validated = validate_c10_output_root(
+        c9_root, root, plan, config, recovery_authority=recovery_authority
+    )
     if capture_git_state(REPO_ROOT) != live:
         raise StageC10IntegrityError(
             "C10 Git state changed during post-build validation"
@@ -1873,10 +1927,18 @@ def _safe_existing_output_root(value: Path | str) -> Path:
 
 def validate_c10_output_root(
     c9_root: Path | str, output_root: Path | str, plan: Any, config: Any,
+    *, recovery_authority: Any | None = None,
 ) -> dict[str, Any]:
     """Read-only, source-recomputing validation of a sealed C10 root."""
 
     root = _safe_existing_output_root(output_root)
+    from .recovery_c10_launch import RecoveryC10LaunchRecord
+    if type(recovery_authority) is not RecoveryC10LaunchRecord:
+        raise StageC10IntegrityError("validated recovery C10 authority is required")
+    if Path(c9_root).resolve() != recovery_authority.c9_record.output_root:
+        raise StageC10IntegrityError("C10 authority C9 root binding drifted")
+    if root != recovery_authority.output_root:
+        raise StageC10IntegrityError("C10 authority output-root binding drifted")
     expected_names = {*OUTPUT_FILES, MANIFEST_FILENAME, STATUS_FILENAME}
     actual_payloads = _safe_read_output_directory(root, expected_names)
     manifest = _strict_json_bytes(actual_payloads[MANIFEST_FILENAME], MANIFEST_FILENAME)
@@ -1916,7 +1978,8 @@ def validate_c10_output_root(
             "C10 producer code does not match the independent archive attestation"
         )
     recomputed, report = _assemble_c10(
-        c9_root, root, plan, config, code=trusted_code
+        c9_root, root, plan, config, code=trusted_code,
+        recovery_authority=recovery_authority,
     )
     if recomputed != {name: actual_payloads[name] for name in OUTPUT_FILES}:
         raise StageC10IntegrityError("C10 output differs from source recomputation")
@@ -1947,11 +2010,14 @@ def _assert_frozen_c10_config(config: Any) -> None:
         "registry_sha256": REPO_ROOT / config.registry.path,
         "registry_metadata_sha256": REPO_ROOT / config.registry.metadata_path,
         "stage_a_manifest_sha256": REPO_ROOT / config.registry.source_manifest_path,
-        "selection_file_sha256": REPO_ROOT / "selection/stage_c_selection.json",
+        "selection_file_sha256": (
+            REPO_ROOT / "evidence/stage_c/c8_salvage_repair_recovery_v2_de71d55"
+            / "selection/stage_c_salvage_repair_selection.json"
+        ),
     }
     expected = {
         **FROZEN_INPUT_SHA256,
-        "selection_file_sha256": "5dff9b5aec77cab22b157b9bf2b5d63b2252b7e50ebe728250206d655a142254",
+        "selection_file_sha256": "5d26c78bb94278c7f12d7bd88b1a37cfb97352f3d0bde5e1c4e52f8e811c7982",
     }
     drifted = [
         name for name, path in frozen_paths.items()

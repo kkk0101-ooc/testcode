@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "document_type", "record_id", "status", "amendment", "producer_git", "launch_record_commit", "upstream", "model", "contracts", "outputs", "scope", "canonical_digest"],
+  "properties": {
+    "$schema": {"const": "recovery_c10_launch_record.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "vitnns_recovery_c10_launch_record"},
+    "record_id": {"const": "RECOVERY_C10_SALVAGE_C8_NEW_C9_20260903"},
+    "status": {"const": "AUTHORIZED_FOR_RECOVERY_C10_ONLY"},
+    "amendment": {"$ref": "#/$defs/amendment"},
+    "producer_git": {"$ref": "#/$defs/producer"},
+    "launch_record_commit": {"type": "string", "pattern": "^(SELF|[0-9a-f]{40})$"},
+    "upstream": {"type": "object", "additionalProperties": false, "required": ["c8_salvage", "c9"], "properties": {"c8_salvage": {"type": "object"}, "c9": {"type": "object"}}},
+    "model": {"type": "object"},
+    "contracts": {"type": "object", "minProperties": 7},
+    "outputs": {"type": "object", "additionalProperties": false, "required": ["formal_root"], "properties": {"formal_root": {"type": "string", "pattern": "^evidence/stage_c/c10_recovery_v2_[a-z0-9_-]+/formal$"}}},
+    "scope": {"type": "object", "additionalProperties": false, "required": ["c10_aggregation_authorized", "source_recompute_required", "bootstrap_authorized", "decision_authorized", "holm_authorized", "holm_status_required", "stage_d_execution_authorized", "stage_d_analysis_authorized", "stage_d_reserve_access_authorized"], "properties": {"c10_aggregation_authorized": {"const": true}, "source_recompute_required": {"const": true}, "bootstrap_authorized": {"const": true}, "decision_authorized": {"const": true}, "holm_authorized": {"const": false}, "holm_status_required": {"const": "HOLM_BLOCKED_UNDERSPECIFIED"}, "stage_d_execution_authorized": {"const": false}, "stage_d_analysis_authorized": {"const": false}, "stage_d_reserve_access_authorized": {"const": false}}},
+    "canonical_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "amendment": {"type": "object", "additionalProperties": false, "required": ["id", "path", "file_sha256", "containing_commit"], "properties": {"id": {"const": "RECOVERY-C10-SALVAGE-C8-NEW-C9-20260903"}, "path": {"type": "string"}, "file_sha256": {"$ref": "#/$defs/sha256"}, "containing_commit": {"$ref": "#/$defs/commit"}}},
+    "producer": {"type": "object", "additionalProperties": false, "required": ["commit", "tree", "source_subtree_path", "source_subtree_tree", "dirty"], "properties": {"commit": {"$ref": "#/$defs/commit"}, "tree": {"$ref": "#/$defs/commit"}, "source_subtree_path": {"const": "src/vitnns"}, "source_subtree_tree": {"$ref": "#/$defs/commit"}, "dirty": {"const": false}}}
+  }
+}

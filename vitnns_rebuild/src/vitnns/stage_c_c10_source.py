@@ -29,30 +29,36 @@ from .stage_c_plan import ExecutionPlan, StageCEstimate
 from .stage_c_provenance import canonical_sha256
 
 
-C9_PRODUCER_COMMIT = "d8190b130d00d3b19fe7a586103a3a9cdb55e43d"
-C9_PRODUCER_TREE = "e8b990c5de23ebb359fcf16ca0fd176868421d53"
-C9_REPORT_FILE_SHA256 = "64334bc0901b23dab56e6902264579a5fab72ee0bf2123573b64512053599e59"
-C9_REPORT_CANONICAL_DIGEST = "753883975d26ee8133b55ea03aaba34d2b90a8c14b646c7cf15b3be1db6b534b"
-C9_EXECUTION_PLAN_FILE_SHA256 = "f52b5a60ccccb8df0e3e4f0e118f95c512ae57568e63f0e07c42af4672bfa843"
-C9_EXECUTION_PLAN_CANONICAL_DIGEST = "f0a4f0c1218b44c818d54e4584597bc0e1427d4fbf9b405b32a7b642121de592"
+C9_PRODUCER_COMMIT = "0d88fbb8b71c604d3dab94db19725e01b7519ae5"
+C9_PRODUCER_TREE = "5ca1ee721420f114fbd2b74d5f71294f69a34610"
+C9_EXECUTION_COMMIT = "c66e5224e87924253f10a9f5fead006fcc5b5ac7"
+C9_EXECUTION_TREE = "83da3061d0540a12df29907f2eb6d214104b329a"
+C9_SOURCE_SUBTREE_TREE = "82b4481e73be6ae36366aa71ce178077d12e38c8"
+C9_AUTHORITY_PATH = "config/recovery_c9_launch_record_retry_20260903.json"
+C9_AUTHORITY_RECORD_FILE_SHA256 = "8e466718d2efa1205bcce2906442fa2ff1efac6b957f6f8693f269c66771a9cc"
+C9_AUTHORITY_RECORD_CANONICAL_DIGEST = "d2b24e8566e63ead545d81c1574b608e20aae41b1b151657af858706f78b12f3"
+C9_REPORT_FILE_SHA256 = "ad164a87aa6dedba461e1b19d639d22d955a675d75e0c6e257af4d5846682763"
+C9_REPORT_CANONICAL_DIGEST = "959bc874b04b007f487d05734cf5b85b1eaef75bb8c2ff2ded222c7cf9083248"
+C9_EXECUTION_PLAN_FILE_SHA256 = "d96c9ca227dbec2aebb72942eb69bdae507639ab043161ce096e3d15643cc38c"
+C9_EXECUTION_PLAN_CANONICAL_DIGEST = "d1c0a75b22f82f580f6a2ddbc73f399159d3ca95fc6ce42518dc8382922d1eb1"
 C9_RUN_SPEC_FILE_SHA256 = "6f36f2e1064c0377e337f88fefe7e5184f1fe24ac58e03f85ca9262bfd62f74f"
 C9_RUN_SPEC_CANONICAL_DIGEST = "935a7e006e6a88dc7cd583b967fd02a057029942ad7e1087195a5deaee4456b8"
 C9_CONFIG_FILE_SHA256 = "0ee57c32b0fcb3116f91fddce5d918c8eb1ae05606c3616b6a2ec9afa9f0e669"
 C9_CONFIG_CANONICAL_DIGEST = "a0a9312f607d80e134c32c35b1cf120c65af9ba8d3f48e28026291ed20afab30"
-C9_PREFLIGHT_FILE_SHA256 = "7bf49bec4775c634890b523e008baae4780492c1c005bf295c4b06bb1508ab5a"
-C9_PREFLIGHT_CANONICAL_DIGEST = "fe66ae20feb0e1a2bbf605122233d2192b6216cba9bdf46f49605dc834eeca9f"
-C9_AUTHORIZATION_FILE_SHA256 = "d037795f8c90f3c2c767d7058d2e576d6be24e613ff2c936d9b9bde129883a36"
-C9_AUTHORIZATION_CANONICAL_DIGEST = "1b09ed010e6e9b43298271e26c03e7a9fd84e82208a439a0ffba53146d1c8d8e"
-C9_FAILURE_TABLE_FILE_SHA256 = "bacbde75f1a5d0c12c0a1273fc7e14fff65c802422731b016eda0ea201dda3cf"
-C9_BATCH_STATUS_FILE_SHA256 = "804b62c60608d6a28676f84ef9b03b16c456a789d28f021affa7cd2cad10bfce"
-C9_C8_HANDOFF_CANONICAL_DIGEST = "6eadccbaea1cecd7f242e031d0a1b54a2231b54d7ff780ee4c0365d6e8537a3c"
-C9_POST_RUN_BUDGET_CANONICAL_DIGEST = "07ca5bbb956f8f70ce0e423c084b50281d9b5332b31b080ff840a4fa24997f9c"
-C9_STATUS_INDEX_DIGEST = "9c6ebd341ff166d24509c679b1a9fd7a05896b9438ad8a5d5857b3f9ef2900f6"
-C9_MANIFEST_INDEX_DIGEST = "c375f9c7347d793e1f54e783eb0b8dd025035e398f8b00fa7c03f22e750079cb"
-C9_ARTIFACT_INVENTORY_DIGEST = "ec9cdb587dbed42eb69d455d41c1f9b20c4d3f81ba33a787b9d1cb3e2523a5d1"
-C9_ROOT_INVENTORY_DIGEST = "37fa9720165d8c6990b7db7f3946df1617e48ec5c50b79dd684d657e8fd87ad0"
+C9_PREFLIGHT_FILE_SHA256 = "299b6318ce9c04c5ccd4b233e27a57fb1c8ca3d6c1790043dbbf4d6e3e2c44db"
+C9_PREFLIGHT_CANONICAL_DIGEST = "b1c258eceae20e0c9023df607ee28e4234a5e327660329bc92c0ea6b9714f8ec"
+C9_AUTHORIZATION_FILE_SHA256 = "42450719c3474ff24098542ef09e46c4daf2cded9a3d44b899ad531942be7102"
+C9_AUTHORIZATION_CANONICAL_DIGEST = "f6aa3e3af953277945a522a9bddec4d3b795309274ff83a0c85d39b4506ca55a"
+C9_FAILURE_TABLE_FILE_SHA256 = "335c04b031ecc19d5af4c39b5593b348efa8d4aef33b9ef007c860b53a7b4c22"
+C9_BATCH_STATUS_FILE_SHA256 = "cb14a44c91f0f1d059ace82a99ef391e29924b65f36ee7c457efd2c7092d936a"
+C9_C8_HANDOFF_CANONICAL_DIGEST = "14f96a9693fd11acc482da6dc658676fcdf0788afda4d009e3da2b345dfbc638"
+C9_POST_RUN_BUDGET_CANONICAL_DIGEST = "53fc5fc4e47a966b5a767463df2f9a096463f34e2eb3f03bda0a84692df475c5"
+C9_STATUS_INDEX_DIGEST = "031e25cfd57cf439c9e8615e4dbd1c0b7f7b43e2e599af3d5236b67f85d8363b"
+C9_MANIFEST_INDEX_DIGEST = "9700a232cbf45ec45f98078330e218aa6e6674a1387da5e11e6ad05cba0ec94f"
+C9_ARTIFACT_INVENTORY_DIGEST = "17c71f0c692ad52fe09c4dd2011307e56b17026ca341e2dc708d488e4b5449e4"
+C9_ROOT_INVENTORY_DIGEST = "6ab8ee024ce7d5bfa3c6a408ec118a9eeac7960d046d7001d8019fb8ab6650c8"
 C9_ROOT_FILE_COUNT = 2_705
-C9_ROOT_TOTAL_BYTES = 225_628_646
+C9_ROOT_TOTAL_BYTES = 225_985_972
 C9_ARTIFACT_COUNT = 2_056
 C9_L0_COUNT = 640
 C9_L1_COUNT = 1_280
@@ -97,7 +103,7 @@ _ALLOWED_ROOT_ENTRIES = frozenset({
     ".c9-artifact-activity.lock",
 })
 _EXPECTED_CODE = MappingProxyType({
-    "commit": C9_PRODUCER_COMMIT, "dirty": False,
+    "commit": C9_EXECUTION_COMMIT, "dirty": False,
 })
 _L1_CLEAN_PATH = "L1/clean.npy"
 
@@ -448,22 +454,51 @@ def load_c9_snapshot(
         raise TypeError("plan must be an ExecutionPlan")
     if not hasattr(config, "to_dict"):
         raise TypeError("config must be a loaded StageCConfig")
-    # This verifies the local archival attestation without requiring the live
-    # C10 checkout to impersonate the historical C9 producer checkout.
+    # Validate the tracked recovery authority without requiring the live C10
+    # checkout to impersonate the sealed C9 execution checkout.
     try:
         import subprocess
-        commit = subprocess.run(
-            ["git", "rev-parse", "archive/c9-execution-d8190b1^{commit}"],
-            cwd=_c9.REPO_ROOT, check=True, capture_output=True, text=True,
-        ).stdout.strip()
-        tree = subprocess.run(
+        producer_tree = subprocess.run(
             ["git", "rev-parse", f"{C9_PRODUCER_COMMIT}^{{tree}}"],
             cwd=_c9.REPO_ROOT, check=True, capture_output=True, text=True,
         ).stdout.strip()
+        execution_tree = subprocess.run(
+            ["git", "rev-parse", f"{C9_EXECUTION_COMMIT}^{{tree}}"],
+            cwd=_c9.REPO_ROOT, check=True, capture_output=True, text=True,
+        ).stdout.strip()
+        prefix = subprocess.run(
+            ["git", "rev-parse", "--show-prefix"], cwd=_c9.REPO_ROOT,
+            check=True, capture_output=True, text=True,
+        ).stdout.strip()
+        producer_source_tree = subprocess.run(
+            ["git", "rev-parse", f"{C9_PRODUCER_COMMIT}:{prefix}src/vitnns"],
+            cwd=_c9.REPO_ROOT, check=True, capture_output=True, text=True,
+        ).stdout.strip()
     except Exception as error:
-        _fail(f"C9 producer archive attestation cannot be verified: {error}", error)
-    if commit != C9_PRODUCER_COMMIT or tree != C9_PRODUCER_TREE:
-        _fail("C9 producer archive ref or tree drifted")
+        _fail(f"C9 recovery commit attestation cannot be verified: {error}", error)
+    if (
+        producer_tree != C9_PRODUCER_TREE
+        or execution_tree != C9_EXECUTION_TREE
+        or producer_source_tree != C9_SOURCE_SUBTREE_TREE
+    ):
+        _fail("C9 recovery producer, execution, or source tree drifted")
+    try:
+        from .recovery_c9_launch import load_recovery_c9_launch_record
+        recovery_authority = load_recovery_c9_launch_record(
+            _c9.REPO_ROOT / C9_AUTHORITY_PATH, repo_root=_c9.REPO_ROOT,
+            require_tracked=True, full_c8_validation=False,
+            validate_runtime=False,
+        )
+    except Exception as error:
+        _fail(f"C9 recovery authority cannot be validated: {error}", error)
+    if (
+        recovery_authority.file_sha256 != C9_AUTHORITY_RECORD_FILE_SHA256
+        or recovery_authority.canonical_digest
+        != C9_AUTHORITY_RECORD_CANONICAL_DIGEST
+        or recovery_authority.producer_commit != C9_PRODUCER_COMMIT
+        or recovery_authority.launch_commit != C9_EXECUTION_COMMIT
+    ):
+        _fail("C9 recovery authority identity drifted")
     root = _safe_root(c9_root)
     hash_audit, _root_inventory = _frozen_hash_audit(root)
     estimate, authorization, checkpoint_rows = _validate_controls(
@@ -540,6 +575,7 @@ def load_c9_snapshot(
                 expected_provenance_bindings=expected_bindings,
                 observed_git_state=dict(_EXPECTED_CODE), caps=caps,
                 require_runner_telemetry=True,
+                trusted_recovery_context=recovery_authority.repair_record,
             )
         except Exception as error:
             _fail(f"C9 unit {digest} validation raised: {error}", error)
@@ -679,6 +715,12 @@ def load_c9_snapshot(
     bindings = {
         **_plain(report["bindings"]),
         "producer_commit": C9_PRODUCER_COMMIT,
+        "authority_execution_commit": C9_EXECUTION_COMMIT,
+        "recovery_authority_path": C9_AUTHORITY_PATH,
+        "recovery_authority_file_sha256": C9_AUTHORITY_RECORD_FILE_SHA256,
+        "recovery_authority_canonical_digest": (
+            C9_AUTHORITY_RECORD_CANONICAL_DIGEST
+        ),
         "report_file_sha256": C9_REPORT_FILE_SHA256,
         "report_canonical_digest": C9_REPORT_CANONICAL_DIGEST,
         "status_index_digest": C9_STATUS_INDEX_DIGEST,
@@ -716,7 +758,10 @@ load_c9_source = load_c9_snapshot
 
 
 __all__ = [
-    "C9Snapshot", "C9_PRODUCER_COMMIT", "C9_PRODUCER_TREE", "C9_REPORT_FILE_SHA256",
+    "C9Snapshot", "C9_PRODUCER_COMMIT", "C9_PRODUCER_TREE",
+    "C9_EXECUTION_COMMIT", "C9_EXECUTION_TREE", "C9_SOURCE_SUBTREE_TREE",
+    "C9_AUTHORITY_PATH", "C9_AUTHORITY_RECORD_FILE_SHA256",
+    "C9_AUTHORITY_RECORD_CANONICAL_DIGEST", "C9_REPORT_FILE_SHA256",
     "C9_REPORT_CANONICAL_DIGEST", "C9_EXECUTION_PLAN_FILE_SHA256",
     "C9_EXECUTION_PLAN_CANONICAL_DIGEST", "C9_RUN_SPEC_FILE_SHA256",
     "C9_RUN_SPEC_CANONICAL_DIGEST", "C9_PREFLIGHT_FILE_SHA256",

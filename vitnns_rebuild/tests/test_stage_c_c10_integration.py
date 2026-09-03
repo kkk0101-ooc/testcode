@@ -13,6 +13,7 @@ from vitnns import stage_c_c10 as c10
 from vitnns import stage_c_c10_source as source
 from vitnns import stage_c_c10_table as table
 from vitnns import stage_c_cli
+from vitnns.recovery_c10_launch import RecoveryC10LaunchRecord
 from vitnns.stage_c_config import load_stage_c_config
 from vitnns.stage_c_plan import (
     build_execution_plan, load_run_spec, load_stage_c_registry,
@@ -33,6 +34,15 @@ CODE_ATTESTATION = {
     "source_tree": GIT_TREE,
 }
 RUN_SPEC = ROOT / "config/stage_c_c9_run_spec.json"
+
+
+def _recovery_authority(output_root, c9_root):
+    return RecoveryC10LaunchRecord(
+        path=ROOT / "config/recovery_c10_launch_record_20260903.json",
+        document={}, c9_record=SimpleNamespace(output_root=Path(c9_root).resolve()),
+        output_root=Path(output_root).resolve(), producer_commit=GIT_COMMIT,
+        launch_commit="f" * 40, file_sha256="e" * 64, repo_root=ROOT,
+    )
 
 
 def _plan_unit(*, digest: str = SHA) -> dict:
@@ -328,7 +338,10 @@ def test_tiny_sealed_output_validates_by_source_recomputation(
         c10, "_resolve_c10_producer_attestation", lambda *_args: CODE_ATTESTATION
     )
 
-    assert c10.validate_c10_output_root("unused-c9", root, object(), object()) == report
+    authority = _recovery_authority(root, "unused-c9")
+    assert c10.validate_c10_output_root(
+        "unused-c9", root, object(), object(), recovery_authority=authority
+    ) == report
 
 
 @pytest.mark.parametrize("mutation", ["payload", "manifest", "status", "extra", "missing"])
@@ -362,7 +375,10 @@ def test_output_validation_rejects_tamper_and_file_set_drift(
         (root / "summaries.json").unlink()
 
     with pytest.raises(c10.StageC10IntegrityError):
-        c10.validate_c10_output_root("unused-c9", root, object(), object())
+        c10.validate_c10_output_root(
+            "unused-c9", root, object(), object(),
+            recovery_authority=_recovery_authority(root, "unused-c9"),
+        )
 
 
 def test_build_requires_clean_git_and_does_not_create_a_root(
@@ -392,7 +408,9 @@ def test_build_requires_a_fresh_root_before_assembly(tmp_path, monkeypatch):
 
     with pytest.raises(c10.StageC10BlockedError, match="must not already exist"):
         c10.build_c10_output_root(
-            "c9", output, object(), object(), observed_git_state=clean
+            "c9", output, object(), object(),
+            recovery_authority=_recovery_authority(output, "c9"),
+            observed_git_state=clean
         )
 
 
@@ -411,7 +429,9 @@ def test_clean_build_seals_a_new_root_and_immediately_revalidates(
     )
 
     result = c10.build_c10_output_root(
-        "c9", output, object(), object(), observed_git_state=clean
+        "c9", output, object(), object(),
+        recovery_authority=_recovery_authority(output, "c9"),
+        observed_git_state=clean
     )
 
     assert result == report
@@ -450,7 +470,10 @@ def test_output_validation_rejects_resigned_status_safety_tamper(
     status_path.write_bytes(c10._json_bytes(status))
 
     with pytest.raises(c10.StageC10IntegrityError, match="status/manifest"):
-        c10.validate_c10_output_root("unused-c9", root, object(), object())
+        c10.validate_c10_output_root(
+            "unused-c9", root, object(), object(),
+            recovery_authority=_recovery_authority(root, "unused-c9"),
+        )
 
 
 def test_output_validation_rejects_self_asserted_producer_commit(
@@ -467,7 +490,10 @@ def test_output_validation_rejects_self_asserted_producer_commit(
     )
 
     with pytest.raises(c10.StageC10IntegrityError, match="independent archive"):
-        c10.validate_c10_output_root("unused-c9", root, object(), object())
+        c10.validate_c10_output_root(
+            "unused-c9", root, object(), object(),
+            recovery_authority=_recovery_authority(root, "unused-c9"),
+        )
 
 
 def test_build_rejects_git_state_change_before_creating_root(
@@ -488,7 +514,9 @@ def test_build_rejects_git_state_change_before_creating_root(
 
     with pytest.raises(c10.StageC10IntegrityError, match="during assembly"):
         c10.build_c10_output_root(
-            "c9", output, object(), object(), observed_git_state=clean
+            "c9", output, object(), object(),
+            recovery_authority=_recovery_authority(output, "c9"),
+            observed_git_state=clean
         )
     assert not output.exists()
 
@@ -510,6 +538,7 @@ def test_c10_cli_rejects_execution_and_selection_overrides(command, forbidden):
         command,
         "--config", "stage_c.json",
         "--run-spec", "stage_c_c9_run_spec.json",
+        "--recovery-c10-launch-record", "recovery-c10.json",
         "--c9-root", "sealed-c9",
         "--output-root", "c10",
         *forbidden,
@@ -524,6 +553,7 @@ def test_c10_cli_surface_contains_only_frozen_inputs_and_roots():
         "c10-validate",
         "--config", "stage_c.json",
         "--run-spec", "stage_c_c9_run_spec.json",
+        "--recovery-c10-launch-record", "recovery-c10.json",
         "--c9-root", "sealed-c9",
         "--output-root", "c10",
     ])
@@ -532,6 +562,7 @@ def test_c10_cli_surface_contains_only_frozen_inputs_and_roots():
         "command": "c10-validate",
         "config": Path("stage_c.json"),
         "run_spec": Path("stage_c_c9_run_spec.json"),
+        "recovery_c10_launch_record": Path("recovery-c10.json"),
         "c9_root": Path("sealed-c9"),
         "output_root": Path("c10"),
     }
@@ -564,7 +595,14 @@ def test_holm_blocker_preserves_primary_decision_and_forbids_stage_d(
     monkeypatch.setattr(c10, "evaluate_effect", lambda _summary: {"status": "PASS_EFFECT"})
     monkeypatch.setattr(
         c10, "evaluate_spatial",
-        lambda _rows, _summaries: {"status": "PASS_SPATIAL", "stability": {}},
+        lambda _rows, _summaries: {
+            "status": "PASS_SPATIAL",
+            "joint_spatial_status": "PASS_JOINT_SPATIAL",
+            "stability": {
+                name: {"status": "PASS_STABILITY"}
+                for name in c10.STABILITY_PERTURBATIONS
+            },
+        },
     )
     monkeypatch.setattr(c10, "_evaluate_validity", lambda *_a: {"status": "PASS_VALIDITY"})
     monkeypatch.setattr(c10, "_evaluate_cost", lambda _report: {"status": "PASS_COST"})
@@ -587,6 +625,10 @@ def test_holm_blocker_preserves_primary_decision_and_forbids_stage_d(
             "report_file_sha256": "1" * 64,
             "root_inventory_digest": "2" * 64,
             "producer_commit": GIT_COMMIT,
+            "authority_execution_commit": "3" * 40,
+            "recovery_authority_path": "config/recovery-c9.json",
+            "recovery_authority_file_sha256": "4" * 64,
+            "recovery_authority_canonical_digest": "5" * 64,
         }, hash_audit={}
     )
     config = SimpleNamespace(

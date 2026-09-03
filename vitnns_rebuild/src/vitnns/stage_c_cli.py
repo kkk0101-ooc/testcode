@@ -55,6 +55,9 @@ from .recovery_c9_launch import (
     RecoveryC9LaunchError, load_recovery_c9_launch_record,
     load_salvage_selection_state,
 )
+from .recovery_c10_launch import (
+    RecoveryC10LaunchError, load_recovery_c10_launch_record,
+)
 from .stage_c_c8_salvage import (
     finalize_c8_salvage, initialize_c8_salvage_gap_root,
     run_c8_salvage_gap_shard, validate_c8_salvage_from_source,
@@ -185,6 +188,17 @@ def _add_c9_plan_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--recovery-c9-launch-record", type=Path,
         help="validated recovery-v2 C9 authority bound to salvage C8",
+    )
+
+
+def _add_c10_plan_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add recovery C10 inputs without execution or selection overrides."""
+
+    parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument("--run-spec", type=Path, required=True)
+    parser.add_argument(
+        "--recovery-c10-launch-record", type=Path, required=True,
+        help="validated recovery-v2 C10-only launch authority",
     )
 
 
@@ -374,7 +388,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     for name in ("c10-build", "c10-validate"):
         command = commands.add_parser(name)
-        _add_c9_plan_arguments(command)
+        _add_c10_plan_arguments(command)
         command.add_argument("--c9-root", type=Path, required=True)
         command.add_argument("--output-root", type=Path, required=True)
     return parser
@@ -1158,6 +1172,7 @@ def main(
         salvage_record = None
         repair_record = None
         recovery_c9_record = None
+        recovery_c10_record = None
         if is_c8_salvage_command:
             salvage_record = load_recovery_c8_salvage_launch_record(
                 args.salvage_authority, repo_root=REPO_ROOT,
@@ -1204,6 +1219,12 @@ def main(
                 recovery_c9_record.repair_record
             )
             args._recovery_code_state = capture_git_state(REPO_ROOT)
+        if is_c10_command:
+            recovery_c10_record = load_recovery_c10_launch_record(
+                args.recovery_c10_launch_record, repo_root=REPO_ROOT,
+                require_tracked=True, validate_runtime=True,
+            )
+            recovery_c9_record = recovery_c10_record.c9_record
         if is_c9_command or is_c10_command:
             pipeline = _load_pipeline(
                 args, c9=True, recovery_c9_record=recovery_c9_record,
@@ -1245,7 +1266,8 @@ def main(
                 git_state = capture_git_state(REPO_ROOT)
                 kwargs["observed_git_state"] = git_state
             result = operation(
-                args.c9_root, args.output_root, plan, config, **kwargs
+                args.c9_root, args.output_root, plan, config,
+                recovery_authority=recovery_c10_record, **kwargs
             )
             _write_json(result, sys.stdout)
             return (
@@ -2105,6 +2127,12 @@ def main(
         )
         return EXIT_INTEGRITY_FAILURE
     except RecoveryC9LaunchError as error:
+        _write_json(
+            {"error": {"message": str(error), "type": type(error).__name__}},
+            sys.stderr,
+        )
+        return EXIT_INTEGRITY_FAILURE
+    except RecoveryC10LaunchError as error:
         _write_json(
             {"error": {"message": str(error), "type": type(error).__name__}},
             sys.stderr,
