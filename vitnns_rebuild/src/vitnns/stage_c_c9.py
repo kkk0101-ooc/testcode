@@ -667,6 +667,18 @@ def _validate_c8_source_evidence(
 
 
 def _validate_handoff_document(value: Mapping[str, Any]) -> None:
+    if isinstance(value, Mapping) and value.get("document_type") == (
+        "stage_c_c8_salvage_repair_to_c9_handoff"
+    ):
+        from .recovery_c9_launch import validate_recovery_handoff_document
+
+        try:
+            validate_recovery_handoff_document(value)
+        except Exception as error:
+            raise StageCBenchmarkIntegrityError(
+                f"recovery C8 handoff is invalid: {error}"
+            ) from error
+        return
     if not isinstance(value, Mapping) or set(value) != _HANDOFF_KEYS:
         raise StageCBenchmarkIntegrityError("C8 handoff fields drifted")
     if value.get("canonical_digest") != _self_digest(value):
@@ -897,16 +909,34 @@ def build_c9_measured_preflight(
             "invalid C9 plan: " + "; ".join(scope["violations"])
         )
     _validate_handoff_document(c8_handoff)
+    projected_c9_hours = c8_handoff["c9_projected_h20_gpu_hours"]
+    projected_combined_hours = c8_handoff["c8_c9_projected_h20_gpu_hours"]
+    projected_stage_d_bytes = c8_handoff.get(
+        "stage_d_projected_artifact_bytes", STAGE_D_PROJECTED_ARTIFACT_BYTES
+    )
+    projected_stage_d_hours = c8_handoff.get(
+        "stage_d_projected_h20_gpu_hours", STAGE_D_PROJECTED_H20_GPU_HOURS
+    )
+    projected_stage_d_per_image = c8_handoff.get(
+        "stage_d_projected_h20_gpu_hours_per_image",
+        STAGE_D_PROJECTED_H20_GPU_HOURS_PER_IMAGE,
+    )
+    slowest = c8_handoff.get(
+        "measured_slowest_unit_seconds", C8_SLOWEST_UNIT_SECONDS
+    )
+    peak = c8_handoff.get(
+        "measured_peak_reserved_bytes_per_unit", C8_PEAK_RESERVED_BYTES
+    )
     if (
         c8_handoff["c8_c9_projected_artifact_bytes"]
         > FROZEN_CAPS["stage_c_c8_c9_total_artifact_bytes_max"]
-        or c8_handoff["c8_c9_projected_h20_gpu_hours"]
+        or projected_combined_hours
         > FROZEN_CAPS["stage_c_c8_c9_h20_gpu_hours_max"]
-        or STAGE_D_PROJECTED_ARTIFACT_BYTES
+        or projected_stage_d_bytes
         > FROZEN_CAPS["stage_d_500_total_artifact_bytes_max"]
-        or STAGE_D_PROJECTED_H20_GPU_HOURS
+        or projected_stage_d_hours
         > FROZEN_CAPS["stage_d_500_h20_gpu_hours_max"]
-        or STAGE_D_PROJECTED_H20_GPU_HOURS_PER_IMAGE
+        or projected_stage_d_per_image
         > FROZEN_CAPS["stage_d_h20_gpu_hours_per_image_max"]
     ):
         raise StageCBenchmarkBlockedError(
@@ -914,15 +944,15 @@ def build_c9_measured_preflight(
         )
     estimate = estimate_stage_c_run(
         config, plan,
-        measured_slowest_unit_seconds=C8_SLOWEST_UNIT_SECONDS,
-        measured_peak_reserved_bytes_per_unit=C8_PEAK_RESERVED_BYTES,
+        measured_slowest_unit_seconds=slowest,
+        measured_peak_reserved_bytes_per_unit=peak,
     )
     if (
         dict(estimate.counts) != C9_EXPECTED_COUNTS
         or estimate.compute.get("projected_h20_gpu_hours")
-        != C9_PROJECTED_H20_GPU_HOURS
+        != projected_c9_hours
         or estimate.compute.get("measured_peak_reserved_bytes_per_unit")
-        != C8_PEAK_RESERVED_BYTES
+        != peak
         or estimate.storage.get("estimated_all_regular_file_bytes")
         > C9_PROJECTED_ARTIFACT_BYTES
     ):
@@ -949,6 +979,14 @@ def _validate_c9_preflight(
             raise StageCBenchmarkIntegrityError(
                 f"C9 preflight is not freshly issuer-authenticated: {error}"
             ) from error
+    slowest = estimate.compute.get("measured_slowest_unit_seconds")
+    peak = estimate.compute.get("measured_peak_reserved_bytes_per_unit")
+    projected = estimate.compute.get("projected_h20_gpu_hours")
+    expected_projected = (
+        None if not isinstance(slowest, (int, float)) or isinstance(slowest, bool)
+        else slowest * C9_EXECUTION_UNITS
+        * FROZEN_CAPS["projection_safety_factor"] / 3600.0
+    )
     if (
         estimate.plan_digest != plan.canonical_digest
         or dict(estimate.counts) != C9_EXPECTED_COUNTS
@@ -958,12 +996,11 @@ def _validate_c9_preflight(
         or dict(estimate.caps.get("test_overrides", {})) != {}
         or estimate.caps.get("config_mutated") is not False
         or tuple(estimate.caps.get("unmeasured_caps", ())) != ()
-        or estimate.compute.get("measured_slowest_unit_seconds")
-        != C8_SLOWEST_UNIT_SECONDS
-        or estimate.compute.get("measured_peak_reserved_bytes_per_unit")
-        != C8_PEAK_RESERVED_BYTES
-        or estimate.compute.get("projected_h20_gpu_hours")
-        != C9_PROJECTED_H20_GPU_HOURS
+        or not isinstance(slowest, (int, float)) or isinstance(slowest, bool)
+        or slowest <= 0
+        or type(peak) is not int or peak <= 0
+        or projected != expected_projected
+        or peak > FROZEN_CAPS["cuda_peak_reserved_bytes_per_execution_unit_max"]
         or estimate.compute.get("maximum_forward_calls_per_execution_unit")
         > FROZEN_CAPS["forward_calls_per_execution_unit_max"]
         or estimate.compute.get("maximum_backward_calls_per_execution_unit")
@@ -978,23 +1015,8 @@ def _validate_c9_preflight(
         raise StageCBenchmarkIntegrityError(
             "C9 preflight is not the exact measured frozen-cap estimate"
         )
-    # The C8 report's measured projection is the cumulative/Stage-D budget
-    # authority; a C9-only estimate cannot establish these three totals.
-    if (
-        C8_C9_PROJECTED_ARTIFACT_BYTES
-        > FROZEN_CAPS["stage_c_c8_c9_total_artifact_bytes_max"]
-        or STAGE_D_PROJECTED_ARTIFACT_BYTES
-        > FROZEN_CAPS["stage_d_500_total_artifact_bytes_max"]
-        or C8_C9_PROJECTED_H20_GPU_HOURS
-        > FROZEN_CAPS["stage_c_c8_c9_h20_gpu_hours_max"]
-        or STAGE_D_PROJECTED_H20_GPU_HOURS
-        > FROZEN_CAPS["stage_d_500_h20_gpu_hours_max"]
-        or STAGE_D_PROJECTED_H20_GPU_HOURS_PER_IMAGE
-        > FROZEN_CAPS["stage_d_h20_gpu_hours_per_image_max"]
-    ):
-        raise StageCBenchmarkIntegrityError(
-            "C9 preflight cumulative/Stage-D frozen-cap projection failed"
-        )
+    # Cumulative and Stage-D projections belong to the bound C8 handoff and
+    # are checked by build/validation of the launch authorization.
 
 
 def _require_live_git_state(
@@ -1057,6 +1079,30 @@ def validate_c9_launch_authorization(
     _validate_handoff_document(handoff)
     if value.get("c8_handoff_sha256") != handoff["canonical_digest"]:
         raise StageCBenchmarkIntegrityError("C9 authorization handoff digest drifted")
+    if handoff.get("document_type") == (
+        "stage_c_c8_salvage_repair_to_c9_handoff"
+    ):
+        projected = {
+            "stage_c_c8_c9_total_artifact_bytes_max": handoff[
+                "c8_c9_projected_artifact_bytes"
+            ],
+            "stage_c_c8_c9_h20_gpu_hours_max": handoff[
+                "c8_c9_projected_h20_gpu_hours"
+            ],
+            "stage_d_500_total_artifact_bytes_max": handoff[
+                "stage_d_projected_artifact_bytes"
+            ],
+            "stage_d_500_h20_gpu_hours_max": handoff[
+                "stage_d_projected_h20_gpu_hours"
+            ],
+            "stage_d_h20_gpu_hours_per_image_max": handoff[
+                "stage_d_projected_h20_gpu_hours_per_image"
+            ],
+        }
+        if any(projected[key] > FROZEN_CAPS[key] for key in projected):
+            raise StageCBenchmarkIntegrityError(
+                "recovery C9 handoff exceeds a frozen hard cap"
+            )
     code = value.get("code")
     if (
         not isinstance(code, Mapping) or set(code) != {"commit", "dirty"}
@@ -1116,6 +1162,54 @@ def build_c9_launch_authorization(
         supplied=observed_git_state, repo_root=repo_root
     )
     _validate_commit_lineage(repo_root=repo_root, current_commit=code["commit"])
+    root = _require_fresh_root(output_root)
+    authorization: dict[str, Any] = {
+        "schema_version": 1,
+        "document_type": "stage_c_c9_launch_authorization",
+        "status": "PASS", "holdout_accessed": False,
+        "selection_performed": False, "bootstrap_performed": False,
+        "holm_performed": False, "decision_performed": False,
+        "c8_handoff": handoff,
+        "c8_handoff_sha256": handoff["canonical_digest"],
+        "c9_execution_plan_sha256": plan.canonical_digest,
+        "c9_run_spec_sha256": canonical_sha256(plan.run_spec.to_dict()),
+        "c9_preflight_sha256": estimate.canonical_digest,
+        "c9_output_root": str(root), "code": code,
+    }
+    authorization["canonical_digest"] = _self_digest(authorization)
+    validate_c9_launch_authorization(
+        authorization, plan=plan, estimate=estimate, output_root=root
+    )
+    return authorization, estimate
+
+
+def build_recovery_c9_launch_authorization(
+    plan: ExecutionPlan, config: Any, *, recovery_record: Any,
+    output_root: Path | str,
+    observed_git_state: Mapping[str, Any] | None = None,
+    repo_root: Path | str | None = None,
+) -> tuple[dict[str, Any], StageCEstimate]:
+    from .recovery_c9_launch import (
+        RecoveryC9LaunchRecord, build_runtime_handoff,
+    )
+
+    if type(recovery_record) is not RecoveryC9LaunchRecord:
+        raise StageCBenchmarkIntegrityError(
+            "validated recovery C9 launch record required"
+        )
+    if Path(output_root).absolute() != recovery_record.output_root:
+        raise StageCBenchmarkIntegrityError(
+            "C9 output root differs from recovery authority"
+        )
+    handoff = build_runtime_handoff(recovery_record, full_source=True)
+    estimate = build_c9_measured_preflight(plan, config, handoff)
+    code = _require_live_git_state(
+        supplied=observed_git_state, repo_root=repo_root
+    )
+    if code["commit"] != recovery_record.launch_commit:
+        raise StageCBenchmarkIntegrityError(
+            "recovery C9 execution must start at the authority-only commit"
+        )
     root = _require_fresh_root(output_root)
     authorization: dict[str, Any] = {
         "schema_version": 1,
@@ -1442,6 +1536,15 @@ def _revalidate_handoff_from_authorization(
     source_evidence_out: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     _validate_handoff_document(handoff)
+    if handoff.get("document_type") == (
+        "stage_c_c8_salvage_repair_to_c9_handoff"
+    ):
+        from .recovery_c9_launch import validate_recovery_c8_handoff
+
+        return validate_recovery_c8_handoff(
+            handoff, full_source=measure_source_tree,
+            evidence_out=source_evidence_out,
+        )
     observed = _build_c8_handoff(
         c8_root=handoff["c8_root"],
         c8_report_path=handoff["c8_report_path"],
@@ -1453,6 +1556,21 @@ def _revalidate_handoff_from_authorization(
     if observed != dict(handoff):
         raise StageCBenchmarkIntegrityError("persisted C8 handoff has drifted")
     return observed
+
+
+def _recovery_runtime_context(authorization: Mapping[str, Any]) -> Any | None:
+    handoff = authorization.get("c8_handoff", {})
+    if not isinstance(handoff, Mapping) or handoff.get("document_type") != (
+        "stage_c_c8_salvage_repair_to_c9_handoff"
+    ):
+        return None
+    from .recovery_c9_launch import load_recovery_c9_launch_record
+
+    authority = handoff["recovery_c9_authority"]
+    return load_recovery_c9_launch_record(
+        REPO_ROOT / authority["path"], require_tracked=True,
+        full_c8_validation=False,
+    ).repair_record
 
 
 def initialize_c9_output_root(
@@ -1474,7 +1592,20 @@ def initialize_c9_output_root(
         authorization["code"], supplied=observed_git_state,
         repo_root=repo_root,
     )
-    _validate_commit_lineage(repo_root=repo_root, current_commit=live["commit"])
+    if authorization["c8_handoff"].get("document_type") == (
+        "stage_c_c8_salvage_repair_to_c9_handoff"
+    ):
+        from .recovery_c9_launch import load_recovery_c9_launch_record
+
+        authority_path = authorization["c8_handoff"][
+            "recovery_c9_authority"
+        ]["path"]
+        load_recovery_c9_launch_record(
+            Path(repo_root or REPO_ROOT) / authority_path,
+            repo_root=repo_root or REPO_ROOT, require_tracked=True,
+        )
+    else:
+        _validate_commit_lineage(repo_root=repo_root, current_commit=live["commit"])
     # Resolve freshness before the comparatively expensive C8 source-tree
     # measurement.  This is still read-only and occurs before mkdir/writes.
     root = _require_fresh_root(output_root)
@@ -1530,7 +1661,10 @@ def load_c9_initialized_state(
     live = _require_live_git_state(
         authorization["code"], supplied=observed_git_state, repo_root=repo_root
     )
-    _validate_commit_lineage(repo_root=repo_root, current_commit=live["commit"])
+    if authorization["c8_handoff"].get("document_type") != (
+        "stage_c_c8_salvage_repair_to_c9_handoff"
+    ):
+        _validate_commit_lineage(repo_root=repo_root, current_commit=live["commit"])
     _revalidate_handoff_from_authorization(
         authorization["c8_handoff"], repo_root=repo_root,
         measure_source_tree=False,
@@ -1777,6 +1911,9 @@ def run_c9_shard(
                     unit, error, claim_token=token, caps=effective_caps,
                     root=root, plan=plan, estimate=estimate,
                     observed_git_state=live,
+                    trusted_recovery_context=getattr(
+                        backend, "trusted_recovery_context", None
+                    ),
                 )
                 try:
                     _publish_checkpoint(
@@ -1797,6 +1934,9 @@ def run_c9_shard(
                     unit, error, claim_token=token, caps=effective_caps,
                     root=root, plan=plan, estimate=estimate,
                     observed_git_state=live,
+                    trusted_recovery_context=getattr(
+                        backend, "trusted_recovery_context", None
+                    ),
                 )
                 _publish_checkpoint(
                     root, plan, row, caps=effective_caps, claim_token=token,
@@ -1816,6 +1956,9 @@ def run_c9_shard(
                 unit, result, claim_token=token, caps=effective_caps,
                 root=root, plan=plan, estimate=estimate,
                 observed_git_state=live,
+                trusted_recovery_context=getattr(
+                    backend, "trusted_recovery_context", None
+                ),
             )
             _publish_checkpoint(
                 root, plan, row, caps=effective_caps, claim_token=token,
@@ -1837,6 +1980,7 @@ def _scan_rows(
     root: Path, plan: ExecutionPlan, estimate: StageCEstimate, *,
     observed_git_state: Mapping[str, Any],
     claim_tokens: Mapping[str, str | None] | None = None,
+    trusted_recovery_context: Any | None = None,
 ) -> tuple[list[dict[str, Any]], list[str]]:
     from .stage_c_artifacts import attempt_directories, validate_execution_unit
 
@@ -1882,6 +2026,7 @@ def _scan_rows(
                 expected_provenance_bindings=expected_bindings,
                 observed_git_state=observed_git_state, caps=caps,
                 require_runner_telemetry=True,
+                trusted_recovery_context=trusted_recovery_context,
             )
             l0_l1_bytes = checked.l0_l1_bytes
             l2_bytes = checked.l2_bytes
@@ -1914,7 +2059,7 @@ def _scan_rows(
 
 def _read_success_evidence(
     row: Mapping[str, Any], *, unit: Any, observed_git_state: Mapping[str, Any],
-    caps: Mapping[str, Any],
+    caps: Mapping[str, Any], trusted_recovery_context: Any | None = None,
 ) -> dict[str, Any]:
     from .stage_c_artifacts import validate_execution_unit
 
@@ -1926,6 +2071,7 @@ def _read_success_evidence(
         attempt, expected_unit_identity=unit.key.to_dict(),
         observed_git_state=observed_git_state, caps=caps,
         require_runner_telemetry=True,
+        trusted_recovery_context=trusted_recovery_context,
     )
     if not checked.resumable:
         raise StageCBenchmarkIntegrityError(
@@ -2190,6 +2336,7 @@ def _shared_errors_by_sample(errors: Sequence[str]) -> dict[str, list[str]]:
 def _primary_holdout_validity(
     rows: Sequence[Mapping[str, Any]], plan: ExecutionPlan, root: Path,
     observed_git_state: Mapping[str, Any], caps: Mapping[str, Any],
+    trusted_recovery_context: Any | None = None,
 ) -> tuple[list[str], list[dict[str, Any]], list[dict[str, Any]], list[str]]:
     """Validate, but never aggregate, primary evidence for all 15 holdouts."""
 
@@ -2207,6 +2354,7 @@ def _primary_holdout_validity(
         try:
             record = _read_success_evidence(
                 row, unit=unit, observed_git_state=observed_git_state, caps=caps
+                , trusted_recovery_context=trusted_recovery_context
             )
             record["plan_index"] = index
             successful_evidence[unit.key.canonical_digest] = record
@@ -2402,10 +2550,17 @@ def _build_post_c9_budget(
         raise StageCBenchmarkIntegrityError(
             "post-C9 budget C8 source root is invalid"
         )
-    c8_control_bytes = sum(
-        _safe_regular(c8_root / name, f"C8 budget control {name}").stat().st_size
-        for name in C8_CONTROL_FILE_SHA256
-    )
+    control_paths = c8_evidence.get("control_file_paths")
+    if isinstance(control_paths, list):
+        c8_control_bytes = sum(
+            _safe_regular(Path(name), "C8 salvage budget control").stat().st_size
+            for name in control_paths
+        )
+    else:
+        c8_control_bytes = sum(
+            _safe_regular(c8_root / name, f"C8 budget control {name}").stat().st_size
+            for name in C8_CONTROL_FILE_SHA256
+        )
     c8_tree_bytes = c8_evidence.get("bindings", {}).get(
         "source_tree_total_bytes"
     )
@@ -3041,6 +3196,9 @@ def finalize_c9_output_root(
         rows, errors = _scan_rows(
             root, plan, estimate, observed_git_state=authorization["code"],
             claim_tokens=tokens,
+            trusted_recovery_context=(
+                _recovery_runtime_context(authorization)
+            ),
         )
         errors = [*current_status["validation_errors"], *errors]
         errors.extend(_validate_closed_layout(root, plan, require_all_units=True))
@@ -3059,6 +3217,9 @@ def finalize_c9_output_root(
             _primary_holdout_validity(
                 rows, plan, root, authorization["code"],
                 dict(estimate.caps["effective"]),
+                trusted_recovery_context=_recovery_runtime_context(
+                    authorization
+                ),
             )
         )
         errors.extend(shared_errors)
@@ -3171,6 +3332,7 @@ def validate_c9_output_root(
             row["unit_key"]["canonical_digest"]: row["claim_token"]
             for row in checkpoint_rows
         },
+        trusted_recovery_context=_recovery_runtime_context(authorization),
     )
     validation_errors = [*scan_errors]
     validation_errors.extend(
@@ -3180,6 +3342,7 @@ def validate_c9_output_root(
         _primary_holdout_validity(
             rows, plan, root, authorization["code"],
             dict(estimate.caps["effective"]),
+            trusted_recovery_context=_recovery_runtime_context(authorization),
         )
     )
     validation_errors.extend(shared_errors)

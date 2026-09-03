@@ -645,6 +645,9 @@ def _trusted_recovery_c8_evidence_record(value: Any) -> Any | None:
         authoritative = load_recovery_c8_salvage_repair_launch_record(
             value.path, repo_root=authority_root, schema_path=value.schema_path,
             require_fresh_outputs=False, require_tracked=True,
+            archived_custody_commit=value.archived_custody_commit,
+            expected_launch_commit=value.expected_launch_commit,
+            verify_archived_custody=value.verify_archived_custody,
         )
     except Exception as error:
         raise StageCBenchmarkIntegrityError(

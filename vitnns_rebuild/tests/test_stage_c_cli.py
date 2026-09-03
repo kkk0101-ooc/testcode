@@ -2362,6 +2362,58 @@ def _c9_argv(
     ]
 
 
+def test_recovery_c9_pipeline_uses_salvage_selection_and_binding(
+    monkeypatch, tmp_path,
+):
+    config_path, spec_path = _write_explicit_inputs(tmp_path)
+    binding = object()
+    authority = SimpleNamespace(binding=binding)
+    config = object()
+    registry = object()
+    selection = object()
+    run_spec = object()
+    plan = object()
+    estimate = object()
+    observed = {}
+    monkeypatch.setattr(stage_c_cli, "load_stage_c_config", lambda _path: config)
+
+    def load_registry(value, **kwargs):
+        observed["registry"] = (value, kwargs)
+        return registry
+
+    monkeypatch.setattr(stage_c_cli, "load_stage_c_registry", load_registry)
+    def load_selection(value):
+        observed["authority"] = value
+        return selection
+
+    monkeypatch.setattr(
+        stage_c_cli, "load_salvage_selection_state", load_selection,
+    )
+    monkeypatch.setattr(stage_c_cli, "load_run_spec", lambda _path: run_spec)
+
+    def build(value, loaded_registry, spec, *, selection):
+        observed["build"] = (value, loaded_registry, spec, selection)
+        return plan
+
+    monkeypatch.setattr(stage_c_cli, "build_execution_plan", build)
+    monkeypatch.setattr(stage_c_cli, "estimate_stage_c_run", lambda *_: estimate)
+    args = SimpleNamespace(
+        config=config_path, run_spec=spec_path, registry=None, data_root=None,
+        selection=None,
+    )
+
+    loaded = stage_c_cli._load_pipeline(
+        args, c9=True, recovery_c9_record=authority,
+    )
+
+    assert loaded == (config, registry, selection, run_spec, plan, estimate)
+    assert observed["registry"] == (
+        config, {"recovery_binding": binding, "verify_live_assets": False},
+    )
+    assert observed["authority"] is authority
+    assert observed["build"] == (config, registry, run_spec, selection)
+
+
 def test_c9_pipeline_requires_tracked_selection_and_never_verifies_live_assets(
     monkeypatch, capsys, tmp_path
 ):

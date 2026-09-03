@@ -423,6 +423,9 @@ class RecoveryC8SalvageRepairLaunchRecord:
     launch_commit: str
     file_sha256: str
     repo_root: Path = REPO_ROOT
+    archived_custody_commit: str | None = None
+    expected_launch_commit: str | None = None
+    verify_archived_custody: bool = True
 
     @property
     def canonical_digest(self) -> str:
@@ -787,11 +790,22 @@ def _head_identity(repo: Path) -> dict[str, Any]:
 
 
 def _resolve_launch(
-    repo: Path, launch: Path, declared: str, producer_commit: str,
+    repo: Path, launch: Path, declared: str, producer_commit: str, *,
+    expected_launch_commit: str | None = None,
 ) -> str:
     launch_top = _top_relative(repo, launch)
     launch_commit = declared
-    if launch_commit == "SELF":
+    if expected_launch_commit is not None:
+        if _COMMIT_RE.fullmatch(expected_launch_commit) is None:
+            raise RecoveryC8SalvageRepairError(
+                "expected repair launch commit is invalid"
+            )
+        if launch_commit not in {"SELF", expected_launch_commit}:
+            raise RecoveryC8SalvageRepairError(
+                "repair launch record disagrees with expected launch commit"
+            )
+        launch_commit = expected_launch_commit
+    elif launch_commit == "SELF":
         launch_commit = _git(
             repo, "log", "-n", "1", "--format=%H", "HEAD", "--",
             f":(top){launch_top}",
@@ -815,8 +829,37 @@ def _resolve_launch(
 def _validate_runtime(
     repo: Path, *, launch_commit: str, producer: Mapping[str, Any],
     evidence_roots: tuple[str, ...], check_worktree: bool,
+    archived_custody_commit: str | None = None,
 ) -> dict[str, Any]:
     identity = _head_identity(repo)
+    if archived_custody_commit is not None:
+        if _COMMIT_RE.fullmatch(archived_custody_commit) is None:
+            raise RecoveryC8SalvageRepairError(
+                "repair archive custody commit is invalid"
+            )
+        try:
+            _git(repo, "merge-base", "--is-ancestor", launch_commit,
+                 archived_custody_commit)
+        except RecoveryC8SalvageRepairError as error:
+            raise RecoveryC8SalvageRepairError(
+                "repair archive custody does not descend from launch"
+            ) from error
+        dirt = _worktree_dirty_paths(repo) if check_worktree else []
+        escaped = [path for path in dirt if not _under(path, evidence_roots)]
+        if escaped:
+            raise RecoveryC8SalvageRepairError(
+                "worktree dirt escapes archived repair evidence roots: "
+                + escaped[0]
+            )
+        identity = {
+            "commit": launch_commit,
+            "tree": _git(repo, "rev-parse", f"{launch_commit}^{{tree}}"),
+            "source_subtree_path": SOURCE_SUBTREE_PATH,
+            "source_subtree_tree": producer["source_subtree_tree"],
+            "dirty": False, "evidence_worktree_dirty": bool(dirt),
+            "authorization_launch_commit": launch_commit,
+        }
+        return identity
     try:
         _git(
             repo, "merge-base", "--is-ancestor", launch_commit,
@@ -1024,6 +1067,9 @@ def load_recovery_c8_salvage_repair_launch_record(
     path: Path | str, *, repo_root: Path | str = REPO_ROOT,
     schema_path: Path | str = DEFAULT_SCHEMA_PATH, require_tracked: bool = True,
     require_fresh_outputs: bool = False,
+    archived_custody_commit: str | None = None,
+    expected_launch_commit: str | None = None,
+    verify_archived_custody: bool = True,
 ) -> RecoveryC8SalvageRepairLaunchRecord:
     repo = Path(repo_root).resolve(strict=True)
     launch = _project_path(repo, path, "repair launch record", exists=True)
@@ -1143,10 +1189,15 @@ def load_recovery_c8_salvage_repair_launch_record(
     if require_tracked:
         launch_commit = _resolve_launch(
             repo, launch, launch_commit, producer["commit"],
+            expected_launch_commit=expected_launch_commit,
         )
+        if archived_custody_commit is not None and verify_archived_custody:
+            common_root = repo / document["outputs"]["common_root"]
+            _require_custody_clean(repo, common_root, archived_custody_commit)
         _validate_runtime(
             repo, launch_commit=launch_commit, producer=producer,
             evidence_roots=roots, check_worktree=True,
+            archived_custody_commit=archived_custody_commit,
         )
     elif (
         launch_commit != "SELF"
@@ -1172,7 +1223,9 @@ def load_recovery_c8_salvage_repair_launch_record(
         selection_report_path=repo / document["outputs"]["selection_report_path"],
         model_path=original.model_path, data_root=original.data_root,
         launch_commit=launch_commit, file_sha256=sha256_file(launch),
-        repo_root=repo,
+        repo_root=repo, archived_custody_commit=archived_custody_commit,
+        expected_launch_commit=expected_launch_commit,
+        verify_archived_custody=verify_archived_custody,
     )
 
 
@@ -1261,6 +1314,7 @@ def revalidate_recovery_c8_salvage_repair_runtime_record(
         )
     launch_commit = _resolve_launch(
         repo, launch, document["launch_record_commit"], producer["commit"],
+        expected_launch_commit=record.expected_launch_commit,
     )
     if launch_commit != record.launch_commit:
         raise RecoveryC8SalvageRepairError(
@@ -1269,6 +1323,7 @@ def revalidate_recovery_c8_salvage_repair_runtime_record(
     _validate_runtime(
         repo, launch_commit=launch_commit, producer=producer,
         evidence_roots=roots, check_worktree=True,
+        archived_custody_commit=record.archived_custody_commit,
     )
     return record
 
@@ -1293,6 +1348,7 @@ def capture_c8_salvage_repair_verifier_identity(
             record.repo_root, launch_commit=authoritative.launch_commit,
             producer=authoritative.document["producer_git"],
             evidence_roots=roots, check_worktree=True,
+            archived_custody_commit=record.archived_custody_commit,
         )
     except RecoveryC8SalvageRepairError as error:
         raise RecoveryC8SalvageRepairError(f"repair {phase}: {error}") from error

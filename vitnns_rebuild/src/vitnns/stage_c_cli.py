@@ -51,6 +51,10 @@ from .recovery_c8_salvage_repair import (
     capture_authorized_c8_salvage_repair_source_state,
     load_recovery_c8_salvage_repair_launch_record,
 )
+from .recovery_c9_launch import (
+    RecoveryC9LaunchError, load_recovery_c9_launch_record,
+    load_salvage_selection_state,
+)
 from .stage_c_c8_salvage import (
     finalize_c8_salvage, initialize_c8_salvage_gap_root,
     run_c8_salvage_gap_shard, validate_c8_salvage_from_source,
@@ -93,7 +97,7 @@ from .stage_c_c8 import (
     validate_fixed_c7_report,
 )
 from .stage_c_c9 import (
-    build_c9_launch_authorization,
+    build_c9_launch_authorization, build_recovery_c9_launch_authorization,
     finalize_c9_output_root,
     initialize_c9_output_root,
     load_c9_initialized_state,
@@ -178,6 +182,10 @@ def _add_c9_plan_arguments(parser: argparse.ArgumentParser) -> None:
 
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--run-spec", type=Path, required=True)
+    parser.add_argument(
+        "--recovery-c9-launch-record", type=Path,
+        help="validated recovery-v2 C9 authority bound to salvage C8",
+    )
 
 
 def _add_recovery_c7_argument(parser: argparse.ArgumentParser) -> None:
@@ -342,9 +350,9 @@ def build_parser() -> argparse.ArgumentParser:
     c9_init = commands.add_parser("c9-init")
     _add_c9_plan_arguments(c9_init)
     c9_init.add_argument("--output-root", type=Path, required=True)
-    c9_init.add_argument("--c8-root", type=Path, required=True)
-    c9_init.add_argument("--c8-report", type=Path, required=True)
-    c9_init.add_argument("--c8-recovery-selection", type=Path, required=True)
+    c9_init.add_argument("--c8-root", type=Path)
+    c9_init.add_argument("--c8-report", type=Path)
+    c9_init.add_argument("--c8-recovery-selection", type=Path)
 
     c9_shard = commands.add_parser("c9-run-shard")
     _add_c9_plan_arguments(c9_shard)
@@ -387,6 +395,7 @@ def _write_json(value: Any, stream: TextIO) -> None:
 def _load_pipeline(
     args: argparse.Namespace, *, c8: bool = False, c9: bool = False,
     recovery_record: Any | None = None, recovery_c8_record: Any | None = None,
+    recovery_c9_record: Any | None = None,
 ) -> tuple[Any, Any, Any, Any, Any, Any]:
     if c8 and c9:
         raise ValueError("a pipeline cannot be both C8 and C9")
@@ -396,7 +405,9 @@ def _load_pipeline(
         registry_kwargs["registry_path"] = args.registry
     if getattr(args, "data_root", None) is not None:
         registry_kwargs["data_root"] = args.data_root
-    recovery_authority = recovery_c8_record or recovery_record
+    recovery_authority = (
+        recovery_c9_record or recovery_c8_record or recovery_record
+    )
     if recovery_authority is not None:
         registry_kwargs["recovery_binding"] = recovery_authority.binding
     if c8 or c9:
@@ -410,6 +421,8 @@ def _load_pipeline(
         # consume the repository's historical C8 selection, even when that
         # file exists at the configured default path.
         selection = None
+    elif c9 and recovery_c9_record is not None:
+        selection = load_salvage_selection_state(recovery_c9_record)
     elif c9:
         # Formal C9 always consumes the repository-tracked canonical
         # selection.  Its parser deliberately has no --selection escape hatch.
@@ -1144,6 +1157,7 @@ def main(
         recovery_c8_record = None
         salvage_record = None
         repair_record = None
+        recovery_c9_record = None
         if is_c8_salvage_command:
             salvage_record = load_recovery_c8_salvage_launch_record(
                 args.salvage_authority, repo_root=REPO_ROOT,
@@ -1178,8 +1192,22 @@ def main(
             _prevalidate_recovery_c7_arguments(args, recovery_record)
             args._recovery_binding = recovery_record.binding
             args._recovery_launch_record = recovery_record
+        recovery_c9_path = getattr(args, "recovery_c9_launch_record", None)
+        if is_c9_command and recovery_c9_path is not None:
+            recovery_c9_record = load_recovery_c9_launch_record(
+                recovery_c9_path, repo_root=REPO_ROOT, require_tracked=True,
+                full_c8_validation=False,
+            )
+            args._recovery_binding = recovery_c9_record.binding
+            args._recovery_launch_record = recovery_c9_record.c7_launch_record
+            args._recovery_c8_salvage_repair_launch_record = (
+                recovery_c9_record.repair_record
+            )
+            args._recovery_code_state = capture_git_state(REPO_ROOT)
         if is_c9_command or is_c10_command:
-            pipeline = _load_pipeline(args, c9=True)
+            pipeline = _load_pipeline(
+                args, c9=True, recovery_c9_record=recovery_c9_record,
+            )
         elif (
             is_c8_command or is_c8_salvage_command
             or is_c8_salvage_repair_command
@@ -1423,13 +1451,27 @@ def main(
         if args.command == "c9-init":
             git_state = capture_git_state(REPO_ROOT)
             _require_clean_c9_git(git_state)
-            authorization, measured = build_c9_launch_authorization(
-                plan, config, c8_root=args.c8_root,
-                c8_report_path=args.c8_report,
-                recovery_selection_path=args.c8_recovery_selection,
-                output_root=args.output_root,
-                observed_git_state=git_state, repo_root=REPO_ROOT,
-            )
+            if recovery_c9_record is not None:
+                authorization, measured = build_recovery_c9_launch_authorization(
+                    plan, config, recovery_record=recovery_c9_record,
+                    output_root=args.output_root, observed_git_state=git_state,
+                    repo_root=REPO_ROOT,
+                )
+            else:
+                if any(value is None for value in (
+                    args.c8_root, args.c8_report, args.c8_recovery_selection,
+                )):
+                    raise ArgumentError(
+                        "historical C9 init requires --c8-root, --c8-report, "
+                        "and --c8-recovery-selection"
+                    )
+                authorization, measured = build_c9_launch_authorization(
+                    plan, config, c8_root=args.c8_root,
+                    c8_report_path=args.c8_report,
+                    recovery_selection_path=args.c8_recovery_selection,
+                    output_root=args.output_root,
+                    observed_git_state=git_state, repo_root=REPO_ROOT,
+                )
             root = initialize_c9_output_root(
                 args.output_root, plan, measured, authorization, config=config,
                 observed_git_state=git_state, repo_root=REPO_ROOT,
@@ -2057,6 +2099,12 @@ def main(
         )
         return EXIT_INTEGRITY_FAILURE
     except RecoveryC8SalvageRepairError as error:
+        _write_json(
+            {"error": {"message": str(error), "type": type(error).__name__}},
+            sys.stderr,
+        )
+        return EXIT_INTEGRITY_FAILURE
+    except RecoveryC9LaunchError as error:
         _write_json(
             {"error": {"message": str(error), "type": type(error).__name__}},
             sys.stderr,

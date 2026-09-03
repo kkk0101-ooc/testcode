@@ -126,6 +126,9 @@ def _authority(record: Any) -> RecoveryC8SalvageRepairLaunchRecord:
     checked = load_recovery_c8_salvage_repair_launch_record(
         record.path, repo_root=record.repo_root, schema_path=record.schema_path,
         require_tracked=True, require_fresh_outputs=False,
+        archived_custody_commit=record.archived_custody_commit,
+        expected_launch_commit=record.expected_launch_commit,
+        verify_archived_custody=record.verify_archived_custody,
     )
     if checked != record:
         raise RecoveryC8SalvageRepairError(
@@ -227,10 +230,21 @@ def _validate_verifier(authority: Any, raw: Any) -> dict[str, Any]:
         or _git(repo, "rev-parse", f"{commit}^{{tree}}") != value["tree"]
         or _git(repo, "rev-parse", f"{commit}:{subtree}")
         != value["source_subtree_tree"]
-        or _git(repo, "rev-parse", f"HEAD:{subtree}")
-        != value["source_subtree_tree"]
     ):
         raise RecoveryC8SalvageRepairError("repair verifier Git identity drifted")
+    if authority.archived_custody_commit is not None:
+        try:
+            _git(repo, "merge-base", "--is-ancestor", commit,
+                 authority.archived_custody_commit)
+        except RecoveryC8SalvageRepairError as error:
+            raise RecoveryC8SalvageRepairError(
+                "repair verifier is not in the archived custody history"
+            ) from error
+        return value
+    if _git(repo, "rev-parse", f"HEAD:{subtree}") != value["source_subtree_tree"]:
+        raise RecoveryC8SalvageRepairError(
+            "repair verifier Git identity drifted"
+        )
     try:
         _git(repo, "merge-base", "--is-ancestor", commit, "HEAD")
     except RecoveryC8SalvageRepairError as error:

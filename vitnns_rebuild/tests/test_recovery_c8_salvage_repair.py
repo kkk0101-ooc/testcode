@@ -174,6 +174,39 @@ def test_repair_launch_is_exact_direct_parent_and_launch_only(tmp_path: Path) ->
         )
 
 
+def test_repair_archived_custody_resolves_explicit_launch_and_descendant(
+    tmp_path: Path,
+) -> None:
+    case = _runtime_repository(tmp_path)
+    evidence = case["repo"] / case["roots"][0]
+    evidence.mkdir(parents=True)
+    (evidence / "status.json").write_text("{}\n", encoding="utf-8")
+    custody_commit = _commit(case["repo"], "archive evidence custody")
+
+    assert repair._resolve_launch(
+        case["repo"], case["launch"], "SELF",
+        case["producer"]["commit"],
+        expected_launch_commit=case["launch_commit"],
+    ) == case["launch_commit"]
+    identity = repair._validate_runtime(
+        case["repo"], launch_commit=case["launch_commit"],
+        producer=case["producer"], evidence_roots=case["roots"],
+        check_worktree=True, archived_custody_commit=custody_commit,
+    )
+    assert identity["commit"] == case["launch_commit"]
+    assert identity["authorization_launch_commit"] == case["launch_commit"]
+
+    with pytest.raises(
+        repair.RecoveryC8SalvageRepairError, match="does not descend",
+    ):
+        repair._validate_runtime(
+            case["repo"], launch_commit=custody_commit,
+            producer=case["producer"], evidence_roots=case["roots"],
+            check_worktree=True,
+            archived_custody_commit=case["launch_commit"],
+        )
+
+
 def test_repair_runtime_accepts_evidence_only_descendant_with_real_head(
     tmp_path: Path,
 ) -> None:
@@ -308,7 +341,9 @@ def test_hot_runtime_revalidation_does_not_rehash_historical_sources(
 
     monkeypatch.setattr(repair, "_git", git)
     monkeypatch.setattr(repair, "_top_relative", lambda *_args: "src/vitnns")
-    monkeypatch.setattr(repair, "_resolve_launch", lambda *_args: "4" * 40)
+    monkeypatch.setattr(
+        repair, "_resolve_launch", lambda *_args, **_kwargs: "4" * 40,
+    )
     monkeypatch.setattr(repair, "_validate_runtime", lambda *_args, **_kwargs: {})
     monkeypatch.setattr(
         repair, "_tree_inventory",
@@ -368,6 +403,9 @@ def test_c8_read_only_boundary_reloads_typed_repair_authority_but_launch_rejects
     assert calls == [((record.path,), {
         "repo_root": tmp_path, "schema_path": record.schema_path,
         "require_fresh_outputs": False, "require_tracked": True,
+            "archived_custody_commit": None,
+            "expected_launch_commit": None,
+            "verify_archived_custody": True,
     })]
     with pytest.raises(
         c8.StageCBenchmarkIntegrityError,
