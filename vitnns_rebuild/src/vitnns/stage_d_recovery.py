@@ -32,8 +32,8 @@ RECOVERY_ID = "STAGE_D_PRE_RESERVE_RECOVERY_V2_20260904"
 BINDING_PATH = "config/stage_d_recovery_v2_binding_20260904.json"
 BINDING_SCHEMA_PATH = "config/stage_d_recovery_v2_binding.schema.json"
 RECORD_SCHEMA_PATH = "config/stage_d_recovery_record.schema.json"
-ROOT_PATH = "reports/stage_d_recovery_v2_20260904_r2"
-PRODUCER_REF = "refs/archive/stage-d-recovery-v2-r2-producer"
+ROOT_PATH = "reports/stage_d_recovery_v2_20260904_r3"
+PRODUCER_REF = "refs/archive/stage-d-recovery-v2-r3-producer"
 STAGES = ("D0", "D1", "D2", "D3", "D4", "D5", "D6")
 CLASSIFICATIONS = (
     "CURRENT_VALID_PASS",
@@ -53,7 +53,7 @@ PASS_SCOPES = {
     "D6": "ANALYSIS_IMPLEMENTATION_READINESS_PASS",
 }
 COMPLETION_REFS = {
-    stage: f"refs/archive/stage-d-recovery-v2-r2-{stage.lower()}-completion"
+    stage: f"refs/archive/stage-d-recovery-v2-r3-{stage.lower()}-completion"
     for stage in STAGES
 }
 _PREVIOUS = {
@@ -438,7 +438,11 @@ def _source_identity(repo_root: Path | str, relative: str) -> dict[str, Any]:
 
 
 def _stage_sources(stage: str) -> tuple[str, ...]:
-    common = (BINDING_PATH, BINDING_SCHEMA_PATH, RECORD_SCHEMA_PATH)
+    common = (
+        BINDING_PATH, BINDING_SCHEMA_PATH, RECORD_SCHEMA_PATH,
+        "src/vitnns/stage_d_recovery.py",
+        "tests/test_stage_d_recovery.py",
+    )
     values = {
         "D0": (
             "docs/recovery_stage_d_d0_d6_amendment_20260904.md",
@@ -475,27 +479,54 @@ def _stage_sources(stage: str) -> tuple[str, ...]:
             "src/vitnns/stage_d_config.py", "src/vitnns/stage_d_manifest.py",
             "src/vitnns/stage_d_plan.py", "src/vitnns/stage_d_authorization.py",
             "src/vitnns/stage_d_cli.py",
+            "pyproject.toml",
             "tests/d3_guard/sitecustomize.py",
             "tests/test_stage_d_config.py", "tests/test_stage_d_manifest.py",
             "tests/test_stage_d_plan.py", "tests/test_stage_d_authorization.py",
+            "tests/test_stage_d_cli.py",
+            "tests/test_stage_d_protocol_contract.py",
+            "tests/test_stage_d_registry_contract.py",
+            "tests/test_stage_d_scope_contract.py",
         ),
         "D4": (
+            "src/vitnns/fidelity_seed.py",
+            "src/vitnns/stage_c_fidelity.py",
+            "src/vitnns/stage_c_runner.py",
+            "src/vitnns/stage_c_value_path.py",
+            "src/vitnns/stage_d_engine.py",
+            "src/vitnns/stage_d_cli.py",
             "src/vitnns/stage_d_runtime.py", "src/vitnns/stage_d_producer.py",
             "src/vitnns/stage_d_artifacts.py", "src/vitnns/stage_d_provenance.py",
             "requirements.lock.txt",
             "tests/d4_guard/sitecustomize.py",
             "tests/test_stage_d_runtime.py", "tests/test_stage_d_producer.py",
             "tests/test_stage_d_artifacts.py", "tests/test_stage_d_provenance.py",
+            "tests/test_stage_d_guard.py", "tests/test_stage_d_runner.py",
+            "tests/test_stage_d_canonical_backend.py",
+            "tests/test_stage_d_cli.py", "tests/test_stage_c_runner.py",
+            "tests/test_stage_d_registry_contract.py",
+            "tests/test_stage_d_scope_contract.py",
         ),
         "D5": (
+            "src/vitnns/stage_d_cli.py",
+            "src/vitnns/stage_d_runtime.py",
+            "src/vitnns/stage_d_artifacts.py",
+            "src/vitnns/stage_d_provenance.py",
             "src/vitnns/stage_d_finalize.py", "src/vitnns/stage_d_scientific.py",
             "config/stage_d_analysis_package.schema.json",
             "tests/d5_guard/sitecustomize.py",
+            "tests/test_stage_d_d5_guard.py",
             "tests/test_stage_d_finalize.py",
             "tests/test_stage_d_finalize_schema.py",
             "tests/test_stage_d_scientific.py",
+            "tests/test_stage_d_cli.py",
+            "tests/test_stage_d_registry_contract.py",
+            "tests/test_stage_d_scope_contract.py",
         ),
         "D6": (
+            "src/vitnns/stage_d_cli.py",
+            "src/vitnns/stage_d_finalize.py",
+            "src/vitnns/stage_d_scientific.py",
             "src/vitnns/stage_d_analysis.py",
             "src/vitnns/stage_d_analysis_input.py",
             "src/vitnns/stage_d_paper.py",
@@ -503,6 +534,8 @@ def _stage_sources(stage: str) -> tuple[str, ...]:
             "tests/d6_guard/sitecustomize.py",
             "tests/test_stage_d_analysis.py",
             "tests/test_stage_d_d6_guard.py",
+            "tests/test_stage_d_cli.py",
+            "tests/test_stage_d_finalize.py",
         ),
     }
     return common + values[stage]
@@ -614,7 +647,7 @@ def create_stage_bundle(
     source_files = [_source_identity(root, path) for path in _stage_sources(stage)]
     completion = _base_record(stage, "stage_d_recovery_v2_completion")
     completion.update({
-        "record_id": f"STAGE_D_{stage}_RECOVERY_V2_R2_20260904",
+        "record_id": f"STAGE_D_{stage}_RECOVERY_V2_R3_20260904",
         "status": "READY_FOR_TERMINAL_VALIDATION",
         "classification": "PENDING_VALIDATION",
         "pass_scope": PASS_SCOPES[stage],

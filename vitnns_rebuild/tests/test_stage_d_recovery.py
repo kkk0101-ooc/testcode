@@ -14,6 +14,7 @@ from vitnns.stage_d_recovery import (
     canonical_file_bytes, create_stage_bundle, load_recovery_binding,
     semantic_digest, strict_json_bytes, validate_stage_bundle,
 )
+import vitnns.stage_d_recovery as recovery_module
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -91,7 +92,7 @@ def test_stage_bundle_is_pending_before_atomic_terminal_and_rejects_tamper(
         "vitnns.stage_d_recovery._run_git",
         lambda _root, *args: (
             "" if args == ("status", "--porcelain=v1", "--untracked-files=all")
-            else PRODUCER if args == ("rev-parse", "refs/archive/stage-d-recovery-v2-r2-producer^{commit}")
+            else PRODUCER if args == ("rev-parse", "refs/archive/stage-d-recovery-v2-r3-producer^{commit}")
             else PRODUCER if args == ("rev-parse", f"{PRODUCER}^{{commit}}")
             else SOURCE_TREE if args == ("rev-parse", f"{PRODUCER}:src/vitnns")
             else "" if args == ("rev-parse", "--show-prefix")
@@ -103,7 +104,7 @@ def test_stage_bundle_is_pending_before_atomic_terminal_and_rejects_tamper(
         validation_command="synthetic focused command", repo_root=tmp_path,
     )
     assert result["status"] == "PASS"
-    root = tmp_path / "reports/stage_d_recovery_v2_20260904_r2/d0"
+    root = tmp_path / "reports/stage_d_recovery_v2_20260904_r3/d0"
     assert not (root / "status.pending.json").exists()
     assert validate_stage_bundle("D0", repo_root=tmp_path, verify_git_ref=False)["status"] == "PASS"
     status = json.loads((root / "status.json").read_text())
@@ -122,7 +123,7 @@ def test_bundle_rejects_missing_duplicate_and_wrong_direct_upstream(
         "vitnns.stage_d_recovery._run_git",
         lambda _root, *args: (
             "" if args == ("status", "--porcelain=v1", "--untracked-files=all")
-            else PRODUCER if args == ("rev-parse", "refs/archive/stage-d-recovery-v2-r2-producer^{commit}")
+            else PRODUCER if args == ("rev-parse", "refs/archive/stage-d-recovery-v2-r3-producer^{commit}")
             else PRODUCER if args == ("rev-parse", f"{PRODUCER}^{{commit}}")
             else SOURCE_TREE if args == ("rev-parse", f"{PRODUCER}:src/vitnns")
             else "" if args == ("rev-parse", "--show-prefix")
@@ -133,7 +134,7 @@ def test_bundle_rejects_missing_duplicate_and_wrong_direct_upstream(
         "D0", producer_commit=PRODUCER, producer_source_tree=SOURCE_TREE,
         validation_command="focused", repo_root=tmp_path,
     )
-    completion_path = tmp_path / "reports/stage_d_recovery_v2_20260904_r2/d0/completion.json"
+    completion_path = tmp_path / "reports/stage_d_recovery_v2_20260904_r3/d0/completion.json"
     completion = json.loads(completion_path.read_text())
     completion["source_files"].append(copy.deepcopy(completion["source_files"][0]))
     completion["canonical_digest"] = semantic_digest(completion)
@@ -148,3 +149,37 @@ def test_production_tree_has_no_d7_authority_or_reserve_path_operation() -> None
     assert "reserve_image_exists_checked" in source
     assert "reserve_image_statted" in source
     assert "stage_d_outcome_accessed" in source
+
+
+def test_stage_source_inventories_cover_cli_shared_code_and_tests() -> None:
+    required = {
+        "D3": {
+            "src/vitnns/stage_d_config.py", "src/vitnns/stage_d_manifest.py",
+            "src/vitnns/stage_d_plan.py", "src/vitnns/stage_d_authorization.py",
+            "src/vitnns/stage_d_cli.py", "tests/test_stage_d_cli.py",
+        },
+        "D4": {
+            "src/vitnns/stage_d_engine.py", "src/vitnns/stage_d_runtime.py",
+            "src/vitnns/stage_d_producer.py", "src/vitnns/stage_d_artifacts.py",
+            "src/vitnns/stage_d_provenance.py", "src/vitnns/stage_d_cli.py",
+            "src/vitnns/stage_c_fidelity.py", "src/vitnns/stage_c_runner.py",
+            "src/vitnns/stage_c_value_path.py", "tests/test_stage_d_runtime.py",
+            "tests/test_stage_d_canonical_backend.py",
+        },
+        "D5": {
+            "src/vitnns/stage_d_finalize.py", "src/vitnns/stage_d_scientific.py",
+            "src/vitnns/stage_d_cli.py", "src/vitnns/stage_d_runtime.py",
+            "tests/test_stage_d_finalize.py",
+            "tests/test_stage_d_finalize_schema.py",
+            "tests/test_stage_d_scientific.py",
+        },
+        "D6": {
+            "src/vitnns/stage_d_analysis.py",
+            "src/vitnns/stage_d_analysis_input.py",
+            "src/vitnns/stage_d_paper.py", "src/vitnns/stage_d_finalize.py",
+            "src/vitnns/stage_d_scientific.py", "src/vitnns/stage_d_cli.py",
+            "tests/test_stage_d_analysis.py", "tests/test_stage_d_finalize.py",
+        },
+    }
+    for stage, expected in required.items():
+        assert expected <= set(recovery_module._stage_sources(stage))
