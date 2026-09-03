@@ -1,6 +1,6 @@
 # Recovery Assets and Rerun Guide
 
-Last updated: 2026-09-03.
+Last updated: 2026-09-04.
 
 This repository uses `vitnns_rebuild` as the active implementation. The old
 `49_vit ` tree has been removed from the active checkout; use Git history for
@@ -17,20 +17,20 @@ Stage D rebinding while preserving the historical protocols and records.
 - Recovery asset baseline commit: `7697f4a86adfb8490f6b07ab5725e0998d016e65`;
   amendment parent commit: `33f814723e03dfca419fbeb90de65e280590ba2f`.
   The containing amendment commit is the current recovery authority.
-- Stage D implementation status: D0-D6 are implemented and tested on
-  synthetic fixtures.
+- Stage D recovery status: D0-D6 have current recovery-v2 R2 pre-reserve
+  records. D0-D2 are formal preparation PASS; D3 is control-plane readiness;
+  D4-D6 are implementation/readiness PASS based on metadata/synthetic fixtures.
 - Stage D formal execution status: not authorized and not started.
 - Stage C historical summary remains available in the documents. Recovery-v2
   C7, salvage C8, new C9, and new C10 evidence roots are present locally. C10
   build/integrity validation completed; acceptance is `BLOCKED` and its
   primary scientific decision is `NO_GO_NOVELTY`.
 
-Current D7 cannot be started from this checkout because the existing D0-D6
-machine-readable bindings still name the historical sealed C10 root and model.
-They must be renewed against the completed recovery-v2 C10 and model before D7
-can consider a separate execution authorization. The original 15 holdout
-outcomes are historically known, so the rebuilt chain does not make them unseen
-or newly confirmatory.
+The historical Stage D machine-readable files still name historical C10 and
+`2e718...` identities and remain immutable audit evidence. The versioned overlay
+`config/stage_d_recovery_v2_binding_20260904.json` and corrected R2 D0-D6
+records supersede those launch identities without rewriting the scientific
+contract. D7 has not run and no execution authorization has been issued.
 
 ## Environment
 
@@ -434,3 +434,21 @@ the historical C10 and `2e718...` model, so renewed D0-D6 versioned bindings
 are required before D7 or any reserve access. This C10 record does not modify
 Stage D scientific rules, authorize Stage D execution/analysis, start Stage D,
 or access/stat/hash/decode/preprocess/infer any Stage D reserve image.
+
+## Recovery-v2 Stage D D0-D6 completion update (2026-09-04)
+
+The corrected current records are under
+`reports/stage_d_recovery_v2_20260904_r2/`. They bind canonical salvage C8 ->
+recovery C9 -> recovery C10 and model `489bfa...` / tensor digest `150234d8...`.
+D0-D2 are preparation PASS; D3-D6 are readiness PASS, with D5/D6 explicitly
+not real evidence validation or analysis.
+
+The systematic inventory is `false_pass_audit.json`; the informational future-D7
+handoff is `d6_to_future_d7_handoff.json`. The initial recovery record set is
+retained as invalid because its `$schema` URI was wrong; it was not overwritten
+or described as tamper. The remote branch stores lightweight records, not the
+complete C8/C9/C10 evidence roots.
+
+D7-D10 remain unstarted. No execution, analysis or reserve-access authority was
+issued. No registry-referenced reserve image path was checked for existence,
+statted, opened, hashed, decoded, preprocessed or used for inference.

@@ -2,10 +2,10 @@
 
 > 创建日期：2026-08-25。
 > 文档性质：阶段 D 的路线图、任务状态表、数据访问边界和跨对话追加式交接日志。
-> 当前状态：历史 Stage C/C0–C10 曾完成并封存，但 Stage C acceptance 为 `BLOCKED`，C10 v1 primary decision 为 `NO_GO_NOVELTY`。recovery-v2 已完成模型绑定、Stage A verification、C7 和 C8 salvage replication；C9/C10 尚未在 recovery-v2 链上重建。D0 首次尝试因模型/推理与非-reserve JPEG decode 保持 `BLOCKED`；独立 model-free/no-JPEG 重试及 D1–D6 准备实现均已 `PASS`。D5/D6 仅在严格 guard 下的 synthetic/tampered fixtures 上验证 sealed-root receipt、统计、决策和 paper-package 合同。Stage D 正式执行仍未授权、未启动。
-> Recovery override（2026-09-01）：[`recovery_protocol_amendment_20260901.md`](recovery_protocol_amendment_20260901.md) 是当前权威 overlay。历史 D6 后的 D7 提示词不再授权执行；D7 当前为 `BLOCKED`。必须先完成 recovery-v2 C9→C10 证据重建及 D0–D6 recovery rebind；此前禁止访问 Stage D reserve。
-> 当前 next task：`C9_RECOVERY_V2_BOUND_TO_SALVAGE_C8`（Stage C recovery replication；不执行 C10 或 Stage D）。
-> 当前权威交接：使用上述 amendment；以下 D0–D6 completion records 和旧 D7 提示词仅作历史审计。
+> 当前状态：recovery-v2 已完成 canonical salvage C8、recovery C9、recovery C10，以及严格串行的 D0→D6 pre-reserve rebinding。D0–D2 是 current formal preparation PASS；D3 是 control-plane readiness PASS；D4–D6 是 implementation/readiness PASS。D5 不是正式 500-image evidence validation，D6 不是正式分析或科学结果。Stage D execution/analysis/reserve authorization 均未签发，D7–D10 均未启动。
+> Recovery override（2026-09-04）：[`recovery_stage_d_d0_d6_amendment_20260904.md`](recovery_stage_d_d0_d6_amendment_20260904.md) 与 `config/stage_d_recovery_v2_binding_20260904.json` 是当前 pre-reserve identity overlay；历史 D0–D2 PASS 仅为 stale history，历史 D3–D6 PASS 仅为 synthetic/implementation evidence。
+> 当前 next task：`FUTURE_D7_INDEPENDENT_GATE_NOT_AUTHORIZED`。本轮没有签发 D7 execution authorization；未来 D7 必须另行验证 non-reserve smoke、budget、Git、model、plan、shard count 和 fresh root。
+> 当前权威交接：[`recovery_stage_d_d0_d6_handoff_20260904.md`](recovery_stage_d_d0_d6_handoff_20260904.md)；总 false-PASS audit 为 `reports/stage_d_recovery_v2_20260904_r2/false_pass_audit.json`。以下旧 completion records 和 D7 提示词保留作历史审计，不构成当前授权。
 > 使用规则：每个新对话先读文首状态、第 7 节执行协议、第 9 节最新权威记录和当前提示词，再读提示词列出的章节与上游证据；一次只执行一个 `D_i` 或一个明确编号的 `D8-Sxx` shard。未更新本文、未追加 completion record、未给出下一任务完整提示词的任务，不算完成。
 > 测试原则：只做与当前任务和实际改动直接相关的必要测试，避免无关、重复或低价值测试。每个测试/验证批次开始前一次性说明测试项目、必要性和预计耗时；只有新增高成本测试或扩大影响面时才补充说明。
 
@@ -1354,3 +1354,15 @@ D6只有在 aggregation/statistics/truth-table/paper-package synthetic验收全�
 ```
 
 其中 `D0–D7` 必须在不访问 Stage D outcome 的条件下完成。`D8` 只生产原始 evidence，不做聚合。`D9` 只封存和验证。只有 `D10` 可以生成唯一正式 Stage D 科学决策与论文结果图表。
+
+### 2026-09-04 — recovery-v2 R2 D0-D6 pre-reserve completion record
+
+- status: D0-D2 `FORMAL_PREPARATION_PASS`; D3 `CONTROL_PLANE_READINESS_PASS`; D4 `PRODUCER_IMPLEMENTATION_READINESS_PASS`; D5 `VALIDATION_IMPLEMENTATION_READINESS_PASS`; D6 `ANALYSIS_IMPLEMENTATION_READINESS_PASS`. None is a Stage D execution, analysis or scientific PASS.
+- provenance: C8 custody `82825131...` -> C9 producer/authority `0d88fbb...` / `c66e5224...` -> C10 producer/authority/completion `3cf2945...` / `0d0eab0...` / `f1dc44d...` -> R2 producer `da913e2b...` -> D0 `967102eb...` -> D1 `5f96cb7e...` -> D2 `c65e613e...` -> D3 `b7bed30a...` -> D4 `03ba0d3c...` -> D5 `32211220...` -> D6 `3898c97a...`.
+- records: current records are `reports/stage_d_recovery_v2_20260904_r2/d0` through `d6`, each with nonterminal completion/validation material followed by an atomically issued `status.json`.
+- false-PASS audit: original D0-D2 are `HISTORICAL_PASS_STALE_BINDING`; original D3-D6 are `SYNTHETIC_OR_IMPLEMENTATION_ONLY_PASS`. The early D0 draft was premature and remains corrected to BLOCKED. Recovery R1 D0-D6 are retained as `INVALID_OR_TAMPERED` because their `$schema` URI resolved one directory above `config`; this was an implementation error, not tamper or forgery. R2 supersedes them without overwrite.
+- integrity: no forgery, source tamper, cross-root splice, duplicate selected attempt, missing selected attempt or current self-signed PASS without source recomputation was found.
+- scope: unchanged fidelity-only `n=500`, primary `(0,9)`, two frozen methods, `fine_4x4_cell_delta_fid`, image statistical unit, 10,000 paired-median bootstrap, `run_stability=false`, no secondary inference and no pooling with C10 `n=15`.
+- C10: acceptance remains `BLOCKED`, decision `NO_GO_NOVELTY`, effect `PASS_EFFECT`, translation/crop `FAIL_STABILITY`, overall spatial `FAIL_SPATIAL`, Holm `HOLM_BLOCKED_UNDERSPECIFIED`.
+- access and authority: D7/D8/D9/D10 not started; execution/analysis/reserve authorization false; no reserve image path existence check, stat, open, hash, decode, preprocess or inference occurred.
+- next task: future D7 is an independent gate and is not authorized by this record.
