@@ -17,7 +17,7 @@ Stage D rebinding while preserving the historical protocols and records.
 - Recovery asset baseline commit: `7697f4a86adfb8490f6b07ab5725e0998d016e65`;
   amendment parent commit: `33f814723e03dfca419fbeb90de65e280590ba2f`.
   The containing amendment commit is the current recovery authority.
-- Stage D recovery status: D0-D6 have current recovery-v2 R2 pre-reserve
+- Stage D recovery status: D0-D6 have current recovery-v2 R3 pre-reserve
   records. D0-D2 are formal preparation PASS; D3 is control-plane readiness;
   D4-D6 are implementation/readiness PASS based on metadata/synthetic fixtures.
 - Stage D formal execution status: not authorized and not started.
@@ -28,7 +28,7 @@ Stage D rebinding while preserving the historical protocols and records.
 
 The historical Stage D machine-readable files still name historical C10 and
 `2e718...` identities and remain immutable audit evidence. The versioned overlay
-`config/stage_d_recovery_v2_binding_20260904.json` and corrected R2 D0-D6
+`config/stage_d_recovery_v2_binding_20260904.json` and corrected R3 D0-D6
 records supersede those launch identities without rewriting the scientific
 contract. D7 has not run and no execution authorization has been issued.
 
@@ -438,16 +438,16 @@ or access/stat/hash/decode/preprocess/infer any Stage D reserve image.
 ## Recovery-v2 Stage D D0-D6 completion update (2026-09-04)
 
 The corrected current records are under
-`reports/stage_d_recovery_v2_20260904_r2/`. They bind canonical salvage C8 ->
+`reports/stage_d_recovery_v2_20260904_r3/`. They bind canonical salvage C8 ->
 recovery C9 -> recovery C10 and model `489bfa...` / tensor digest `150234d8...`.
 D0-D2 are preparation PASS; D3-D6 are readiness PASS, with D5/D6 explicitly
 not real evidence validation or analysis.
 
 The systematic inventory is `false_pass_audit.json`; the informational future-D7
-handoff is `d6_to_future_d7_handoff.json`. The initial recovery record set is
-retained as invalid because its `$schema` URI was wrong; it was not overwritten
-or described as tamper. The remote branch stores lightweight records, not the
-complete C8/C9/C10 evidence roots.
+handoff is `d6_to_future_d7_handoff.json`. R1 is retained for its wrong schema
+URI and R2 for incomplete source coverage; neither was overwritten or described
+as tamper. The remote branch stores lightweight records, not complete C8/C9/C10
+evidence roots.
 
 D7-D10 remain unstarted. No execution, analysis or reserve-access authority was
 issued. No registry-referenced reserve image path was checked for existence,

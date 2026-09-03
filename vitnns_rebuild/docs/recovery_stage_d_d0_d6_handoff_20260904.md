@@ -1,24 +1,25 @@
 # Stage D recovery-v2 D0-D6 completion and future D7 handoff
 
-D0-D6 pre-reserve rebinding is complete in the corrected R2 record root
-`reports/stage_d_recovery_v2_20260904_r2`. D0-D2 are current formal preparation
+D0-D6 pre-reserve rebinding is complete in the corrected R3 record root
+`reports/stage_d_recovery_v2_20260904_r3`. D0-D2 are current formal preparation
 PASS; D3 is control-plane readiness PASS; D4-D6 are implementation/readiness
 PASS based only on metadata and synthetic fixtures. D5 is not validation of real
 Stage D 500-image evidence, and D6 is not completed analysis or a scientific PASS.
 
 The chain is canonical salvage C8 `82825131...` -> recovery C9
 `0d88fbb...` / `c66e5224...` -> recovery C10 `3cf2945...` / `0d0eab0...` /
-`f1dc44d...` -> R2 producer `da913e2b...` -> D0 `967102eb...` -> D1
-`5f96cb7e...` -> D2 `c65e613e...` -> D3 `b7bed30a...` -> D4 `03ba0d3c...`
--> D5 `32211220...` -> D6 `3898c97a...`. The model is `489bfa...` with
+`f1dc44d...` -> R3 producer `753b0f5f...` -> D0 `3ac7bfac...` -> D1
+`ad77134e...` -> D2 `87ca4b24...` -> D3 `8440d0f7...` -> D4 `6b208405...`
+-> D5 `1f4d4ec1...` -> D6 `586634ee...`. The model is `489bfa...` with
 canonical tensor digest `150234d8...`, never the historical `2e718...` artifact.
 
 Historical D0-D2 PASS records remain valid historical preparation evidence but
 are stale for recovery-v2. Historical D3-D6 PASS records remain synthetic-only.
 The first recovery record set is retained and classified invalid because its
 `$schema` URI resolved one directory above `config/`; no file was overwritten.
-The corrected R2 records resolve the schema from their own directories and were
-freshly generated and validated. The total audit found no forgery, source tamper,
+R2 corrected the schema URI but its stage inventories omitted some shared CLI/code/test
+files, so it is also retained as invalid. The corrected R3 records resolve the
+schema and bind complete stage source inventories. The total audit found no forgery, source tamper,
 cross-root splice, duplicate selected attempt, or current self-signed PASS without
 source recomputation.
 
