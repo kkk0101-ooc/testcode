@@ -25,6 +25,20 @@ def test_recovery_c10_schema_is_closed_and_scope_is_narrow() -> None:
     assert scope["stage_d_reserve_access_authorized"]["const"] is False
 
 
+def test_checked_in_recovery_c10_authority_is_canonical_and_narrow() -> None:
+    path = ROOT / "config/recovery_c10_launch_record_20260903.json"
+    value = json.loads(path.read_text(encoding="utf-8"))
+    recovery._validate_document(value)
+    Draft202012Validator(
+        json.loads(recovery.DEFAULT_SCHEMA_PATH.read_text(encoding="utf-8"))
+    ).validate(value)
+    assert value["upstream"]["c8_salvage"] == recovery._c8_binding()
+    assert value["upstream"]["c9"] == recovery._c9_binding()
+    assert value["scope"]["stage_d_execution_authorized"] is False
+    assert value["scope"]["stage_d_analysis_authorized"] is False
+    assert value["scope"]["stage_d_reserve_access_authorized"] is False
+
+
 def test_recovery_c10_upstream_rejects_historical_c9_alias() -> None:
     value = {
         "$schema": recovery.DEFAULT_SCHEMA_PATH.name,

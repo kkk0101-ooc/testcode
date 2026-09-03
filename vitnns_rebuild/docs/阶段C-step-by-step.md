@@ -2,8 +2,8 @@
 
 > 文档性质：阶段 C 的路线图、任务状态表和跨对话交接日志。  
 > 创建日期：2026-08-21。  
-> 当前状态：阶段 A、阶段 B、历史阶段 C/C0–C9 已完成；历史 C10 因冻结 Holm 合同不足而验收 `BLOCKED`，且唯一 primary decision 为 `NO_GO_NOVELTY`；recovery-v2 已重建到新 C9 `PASS`；Stage D 未启动。
-> Recovery override（2026-09-01）：[`recovery_protocol_amendment_20260901.md`](recovery_protocol_amendment_20260901.md) 是当前权威 overlay。历史 C7–C10 completion records 仍是历史记录；当前 recovery-v2 的 canonical 下游链为 salvage C8 -> new C9，C10 尚未执行且必须另行授权。
+> 当前状态：阶段 A、阶段 B、历史阶段 C/C0–C9 已完成；recovery-v2 已重建到新 C10：build complete、integrity valid，因冻结 Holm 合同不足验收 `BLOCKED`，唯一 primary decision 为 `NO_GO_NOVELTY`；Stage D 未启动。
+> Recovery override（2026-09-01）：[`recovery_protocol_amendment_20260901.md`](recovery_protocol_amendment_20260901.md) 是当前权威 overlay。历史 C7–C10 completion records 仍是历史记录；当前 recovery-v2 canonical chain 为 salvage C8 -> new C9 -> new C10。Stage D 仍须 renewed D0-D6 -> D7，尚未授权。
 > 使用规则：每个新对话必须先完整阅读本文，只执行一个指定的 `C_i`；该任务未更新本文并写出下一任务提示词时，不算完成。
 
 ## 1. 为什么使用这份文档
@@ -1492,3 +1492,15 @@ C9 的 20 图顺序、三种 Value 方法、四种 global 方法、320 units、t
 - boundaries: holdout 在所有 preconditions PASS 后首次读取；`selection_performed=false`、`bootstrap_performed=false`、`holm_performed=false`、`decision_performed=false`。未运行 C10，未启动或授权 Stage D，未访问 Stage D reserve images。
 - downstream_handoff: 下一步仅可新建 C10 authority，显式绑定 salvage C8 completion/manifest/artifact/selection identities -> new C9 authority/report/whole-root inventory；C10 必须保留 recovery replication 解释并按冻结统计合同 fail closed。Stage D 仍须等待 salvage C8 -> new C9 -> new C10 -> renewed D0-D6 全链重绑。
 - next_task: `C10_RECOVERY_V2_BOUND_TO_SALVAGE_C8_AND_NEW_C9`；本记录不授权或执行 C10。
+
+### 2026-09-03 — recovery-v2 C10 completion record
+
+- status: processing/build `COMPLETE`，integrity validation `PASS`，Stage C acceptance `BLOCKED`，唯一 primary scientific decision `NO_GO_NOVELTY`。这是历史已暴露 15 图的 recovery replication，不是新的 unseen confirmatory finding。
+- code_and_authority: clean C10 producer `3cf2945db958b8918de32e601d8ec7bb2f1d09ba`，本地只读 ref `refs/archive/c10-recovery-v2-producer`；只包含 C10 launch authority 的直接子提交 `0d0eab00b25db4382959f9d7b9bb836d37b33d3b`。authority `config/recovery_c10_launch_record_20260903.json` file SHA-256 `6ae86aaab4303d9bc2a8b674778f6df45295c6d08e287f3440b751adcdc678ea`，canonical digest `ae36b1f1834cf7a8a67d56c0d0336cf2b92250af4d0ccbbedd14346eddf1808d`。authority 只授权 C10 aggregation/source validation/bootstrap/decision，明确不授权 Holm、Stage D execution/analysis 或 reserve access。
+- source_gate: C8 三来源 2180-unit source reaudit `PASS`（2179 succeeded + 1 valid terminal scientific failure）；C9 320/320 source recomputation `PASS`，无 claims/pending/incomplete/missing/tampered/duplicate attempt，primary holdout 15/15 valid。C9 report、plan、preflight、authority、status/manifest/artifact indexes 和 whole-root inventory 全部匹配。
+- provenance_chain: canonical C8 salvage `evidence/stage_c/c8_salvage_repair_recovery_v2_de71d55`（custody `82825131...`）-> C9 `evidence/stage_c/c9_recovery_v2_0d88fbb/formal`（producer `0d88fbb...`，authority/execution `c66e5224...`）-> C10 `evidence/stage_c/c10_recovery_v2_3cf2945/formal`。旧 interrupted C8、历史 C9 producer `d8190...` 和历史 model `2e718...` 均不是输入。recovery-v2 model file SHA-256 `489bfa2f...` 与 canonical tensor digest `150234d8...` 已独立重算。
+- formal_output: 12 regular files、524798470 bytes，ordered whole-root inventory canonical digest `b63a32ab2110081aae0a0b033d6a79f6798f611b20f3e6b0a3e769b5ff9b5627`。report file SHA-256 `373cdb6761ab0efe5e78bf18ff9257c90cf2c7d36bfed68595cb9cf35c65adff`、canonical digest `efc4e880793166fdf2e7869396cc0d0df9699e27c53071aa83c83ddce472e849`；decision file SHA-256 `81ec8d1801428ec0e72c6342a5247ced7fb5f4d4c4c3690cd326bb5e313c1d7f`、canonical digest `d46a8e8a8c0d226ee07cc950ee9e6634818340a2e53e3b8aed81073c0fcb6e05`；provenance file SHA-256 `44815cb25d561eb29be7b80dae2a155fc060e9da10bfb0545e05390f37ad4da8`。
+- frozen_results: validity `PASS_VALIDITY`；primary fine-4x4 effect/fidelity `PASS_EFFECT`（median 1.7534972022995547、positive 15/15、10,000次 image-cluster paired-median bootstrap CI [1.3317595184568727, 3.3813212483296478]）；clean joint spatial `PASS_JOINT_SPATIAL`（15/15）；translation `FAIL_STABILITY`；center-crop/resize `FAIL_STABILITY`；Gaussian `PASS_STABILITY`；overall spatial `FAIL_SPATIAL`；cost `PASS_COST`。`PASS_EFFECT` 不是 overall PASS，不能覆盖 translation/crop hard-gate failure。
+- holm_and_acceptance: `HOLM_BLOCKED_UNDERSPECIFIED`，Holm 未运行，raw/adjusted p-values 为空；primary decision 与 acceptance blocker 分离，因此 decision 为 `NO_GO_NOVELTY` 而 acceptance 为 `BLOCKED`，downstream authorization=false。
+- stage_d_handoff: 仅重申既有 fidelity-only prospective scope：primary `(0,9)`、NNS vs matched patch baseline、endpoint `fine_4x4_cell_delta_fid`、新 n=500 cohort、`run_stability=false`、无新的 spatial/stability endpoint。C10 translation/crop failure 必须在 Study Design/Results/Limitations 披露；C10 n=15 与 Stage D n=500 禁止 pool。Stage D 在无 secondary inference 时未来可报告 `NOT_APPLICABLE_NO_SECONDARY_INFERENCE`，但不修复 C10 Holm blocker。现有 Stage D config 仍绑定历史 C10/`2e718...`，必须先做 renewed D0-D6 versioned rebinding，再经 D7 才可能授权。
+- custody_and_access: 完整 C10 root、301224-row CSV、bootstrap payload、summaries 和完整 manifests 仅保留本机，不纳入 Git/LFS；轻量 completion/validation/inventory/handoff 索引进入版本库。未重跑 C9 inference；C10 未读 JPEG、未加载模型推理、未使用 GPU；Stage D 未授权、未启动，未访问、stat、hash、解码、预处理或推理任何 reserve image。

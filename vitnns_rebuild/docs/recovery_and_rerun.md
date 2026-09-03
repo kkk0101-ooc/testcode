@@ -21,15 +21,16 @@ Stage D rebinding while preserving the historical protocols and records.
   synthetic fixtures.
 - Stage D formal execution status: not authorized and not started.
 - Stage C historical summary remains available in the documents. Recovery-v2
-  C7, salvage C8, and new C9 evidence roots are present locally; recovery-v2
-  C10 has not been executed.
+  C7, salvage C8, new C9, and new C10 evidence roots are present locally. C10
+  build/integrity validation completed; acceptance is `BLOCKED` and its
+  primary scientific decision is `NO_GO_NOVELTY`.
 
-Current D7 cannot be started from this checkout because D3/D7 validation
-requires the historical sealed C10 root, and that root is absent. Without an
-external backup, the earliest auditable recovery-replication point is C7 under
-the versioned recovery/protocol amendment. The original 15 holdout outcomes are
-historically known, so rebuilding the same chain does not make them unseen or
-newly confirmatory.
+Current D7 cannot be started from this checkout because the existing D0-D6
+machine-readable bindings still name the historical sealed C10 root and model.
+They must be renewed against the completed recovery-v2 C10 and model before D7
+can consider a separate execution authorization. The original 15 holdout
+outcomes are historically known, so the rebuilt chain does not make them unseen
+or newly confirmatory.
 
 ## Environment
 
@@ -384,7 +385,52 @@ The complete C9 root (2,705 regular files, 225,985,972 bytes) and execution
 logs remain local and are not committed; its ordered whole-root inventory
 canonical digest is
 `6ab8ee024ce7d5bfa3c6a408ec118a9eeac7960d046d7001d8019fb8ab6650c8`.
-C9 performed no bootstrap, Holm
-correction, or decision. C10 is still not authorized; its future authority
-must bind salvage C8 -> this C9. Stage D remains neither authorized nor
-started, and no Stage D reserve image was accessed.
+C9 performed no bootstrap, Holm correction, or decision. The following C10
+completion update supersedes this dated C9 handoff's statement that C10 still
+needed authorization. Stage D remains neither authorized nor started, and no
+Stage D reserve image was accessed.
+
+## Recovery-v2 C10 completion update (2026-09-03)
+
+Recovery-v2 C10 was built and independently source-validated at
+`evidence/stage_c/c10_recovery_v2_3cf2945/formal`. Processing is complete and
+integrity is valid, but Stage C acceptance is `BLOCKED` because the frozen
+Holm contract remains `HOLM_BLOCKED_UNDERSPECIFIED`; no raw or adjusted
+p-values were invented and Holm was not run. The unique primary scientific
+decision is independently `NO_GO_NOVELTY`.
+
+The source chain is the canonical salvage C8 root -> recovery C9 producer
+`0d88fbb...` / authority-execution `c66e5224...` -> C10 producer `3cf2945...` /
+authority `0d0eab0...`. C9 source recomputation retained 320/320 succeeded
+units, no claims/pending/incomplete/missing/tampered or duplicate attempts,
+and 15/15 valid primary holdout images. The recovery-v2 model independently
+reproduced file SHA-256 `489bfa2f...` and tensor digest `150234d8...`; the old
+`d8190...` C9 producer and `2e718...` model are not inputs.
+
+Frozen outcomes are: validity `PASS_VALIDITY`; effect/fidelity `PASS_EFFECT`
+(median 1.7534972022995547, 15/15 positive, 95% paired image-bootstrap CI
+[1.3317595184568727, 3.3813212483296478]); clean joint spatial
+`PASS_JOINT_SPATIAL`; translation and center-crop/resize each
+`FAIL_STABILITY`; Gaussian `PASS_STABILITY`; overall spatial `FAIL_SPATIAL`;
+cost `PASS_COST`. `PASS_EFFECT` is only one component and does not override
+the two stability hard-gate failures. The 10,000-resample bootstrap ran with
+image as the cluster; calibration n=5, holdout n=15, and descriptive all-20
+remain separate.
+
+The complete 12-file C10 root is 524,798,470 bytes and remains local only; its
+ordered whole-root inventory digest is
+`b63a32ab2110081aae0a0b033d6a79f6798f611b20f3e6b0a3e769b5ff9b5627`.
+The lightweight completion, validation, whole-root inventory, and downstream
+handoff indexes are under `reports/`; the lightweight remote branch is not a
+complete C8/C9/C10 evidence mirror.
+
+The audited future Stage D scope remains fidelity-only and prospective: one
+primary `(0,9)`, NNS versus the matched patch baseline, endpoint
+`fine_4x4_cell_delta_fid`, a separate n=500 cohort, and
+`run_stability=false`. C10 n=15 and Stage D n=500 must not be pooled. C10
+translation/crop failures remain mandatory Study Design, Results, and
+Limitations disclosures. Existing Stage D machine-readable files still bind
+the historical C10 and `2e718...` model, so renewed D0-D6 versioned bindings
+are required before D7 or any reserve access. This C10 record does not modify
+Stage D scientific rules, authorize Stage D execution/analysis, start Stage D,
+or access/stat/hash/decode/preprocess/infer any Stage D reserve image.
