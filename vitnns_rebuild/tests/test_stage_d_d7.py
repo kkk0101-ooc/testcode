@@ -203,6 +203,7 @@ def test_authorization_validation_rejects_tamper_when_present() -> None:
     document = json.loads(path.read_text(encoding="utf-8"))
     checked = validate_execution_authorization(
         document, repo_root=REPO_ROOT, require_authority_ref=False,
+        require_fresh_root=False,
     )
     assert isinstance(checked, _D7ValidatedExecutionContext)
     assert checked.formal is True
@@ -246,10 +247,31 @@ def test_d8_0_rebind_authorization_is_source_recomputed_when_present() -> None:
         document["canonical_digest"]
     )
     estimate, preflight = controls_from_authorization(document, repo_root=REPO_ROOT)
-    assert estimate.canonical_digest == document["base_authorization"].get(
-        "estimate_digest", estimate.canonical_digest,
-    )
+    base = json.loads((REPO_ROOT / AUTHORIZATION_PATH).read_text(encoding="utf-8"))
+    assert estimate.canonical_digest == base["budget"]["estimate"]["canonical_digest"]
     assert preflight.analysis_authorization == "NOT_EVALUATED"
+
+
+def test_d8_0_rebind_gate_binds_replacement_formal_root_when_present() -> None:
+    path = REPO_ROOT / d7_module.D8_0_REBIND_AUTHORIZATION_PATH
+    if not path.exists():
+        pytest.skip("D8.0 rebind authorization is intentionally absent before rebind")
+    document = json.loads(path.read_text(encoding="utf-8"))
+    pipeline = load_recovery_pipeline(repo_root=REPO_ROOT)
+    estimate, preflight = controls_from_authorization(document, repo_root=REPO_ROOT)
+    gate = d7_module.D7ExecutionGate(repo_root=REPO_ROOT)
+    checked = gate.validate_execution_context(
+        document, operation="initialize-access",
+        output_root=REPO_ROOT / D8_0_REBIND_FORMAL_ROOT,
+        plan=pipeline.plan, estimate=estimate, preflight=preflight,
+    )
+    assert checked.formal_root == D8_0_REBIND_FORMAL_ROOT
+    with pytest.raises(StageDD7Error, match="output root binding"):
+        gate.validate_execution_context(
+            document, operation="initialize-access",
+            output_root=REPO_ROOT / FORMAL_ROOT,
+            plan=pipeline.plan, estimate=estimate, preflight=preflight,
+        )
 
 
 def test_production_backend_factory_is_lazy_before_d8_access(
