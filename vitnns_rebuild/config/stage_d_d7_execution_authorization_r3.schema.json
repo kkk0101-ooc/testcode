@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_d_d7_execution_authorization_r3.schema.json",
+  "title": "Stage D D7 R3 recovery-v2 execution authorization",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "document_type", "d7_id", "status", "authorization_scope", "execution_authorization", "analysis_authorization", "reserve_access_boundary", "stage_d_execution_started", "authority_commit", "authority_ref", "producer", "formal_root", "formal_root_fresh_at_issuance", "plan", "budget", "sharding", "smoke", "code_binding", "dependency_binding", "model_binding", "model_verification", "source_bindings", "pre_authorization_attestation", "access_attestation", "c10_status_preserved", "prohibitions", "canonical_digest"],
+  "properties": {
+    "$schema": {"const": "stage_d_d7_execution_authorization_r3.schema.json"},
+    "schema_version": {"const": 1}, "document_type": {"const": "stage_d_d7_execution_authorization"},
+    "d7_id": {"const": "STAGE_D_RECOVERY_V2_D7_R3_20260904"}, "status": {"const": "PASS"},
+    "authorization_scope": {"const": "D7_RECOVERY_V2_FIDELITY_ONLY"}, "execution_authorization": {"const": "AUTHORIZED_STAGE_D_FIDELITY_SCOPE"},
+    "analysis_authorization": {"const": "NOT_EVALUATED"}, "reserve_access_boundary": {"const": "DEFERRED_TO_D8_0_AFTER_REVALIDATION"}, "stage_d_execution_started": {"const": false},
+    "authority_commit": {"const": "SELF"}, "authority_ref": {"const": "refs/archive/stage-d-fidelity-v1-d7-r3-authority"},
+    "producer": {"type": "object"}, "formal_root": {"const": "evidence/stage_d/d8_recovery_v2_20260904/formal"}, "formal_root_fresh_at_issuance": {"const": true},
+    "plan": {"type": "object"}, "budget": {"type": "object"}, "sharding": {"type": "object"},
+    "smoke": {"type": "object", "additionalProperties": false, "required": ["path", "canonical_digest", "formal", "image_groups", "execution_units", "real_d4_d5_d6_api_chain"], "properties": {"path": {"const": "reports/stage_d_d7_recovery_v2_20260904_r3/full_chain_smoke_receipt.json"}, "canonical_digest": {"$ref": "#/$defs/sha256"}, "formal": {"const": false}, "image_groups": {"const": 500}, "execution_units": {"const": 1000}, "real_d4_d5_d6_api_chain": {"const": true}}},
+    "code_binding": {"type": "object"}, "dependency_binding": {"type": "object"}, "model_binding": {"type": "object"}, "model_verification": {"type": "object"}, "source_bindings": {"type": "object"}, "pre_authorization_attestation": {"type": "object"}, "access_attestation": {"type": "object"}, "c10_status_preserved": {"type": "object"}, "prohibitions": {"type": "object"},
+    "canonical_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

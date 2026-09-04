@@ -20,16 +20,16 @@ Stage D rebinding while preserving the historical protocols and records.
 - Stage D recovery status: D0-D6 have current recovery-v2 R3 pre-reserve
   records. D0-D2 are formal preparation PASS; D3 is control-plane readiness;
   D4-D6 are implementation/readiness PASS based on metadata/synthetic fixtures.
-- Stage D D7 recovery-v2 gate is complete under
-  [`recovery_stage_d_d7_amendment_20260904.md`](recovery_stage_d_d7_amendment_20260904.md).
-  The non-reserve synthetic smoke and independent 1,000-unit budget passed.
-  Corrected producer `e337f8ca...` and authority `fe9a7f29...` are sealed;
-  execution remains unstarted and analysis authorization remains unissued.
+- The prior Stage D D7 terminal is `UNSUPPORTED_PASS`: its smoke did not call
+  the real D5/D6 finalize/analysis/paper implementations. D7-R3 correction is
+  active under
+  [`recovery_stage_d_d7_r3_correction_20260904.md`](recovery_stage_d_d7_r3_correction_20260904.md).
+  Its fresh 500-group/1,000-unit synthetic full-chain smoke and independent
+  budget pass; producer freeze and replacement authority remain pending.
   The initial pre-execution authority `0036dd8d...` is superseded after a strict
   guard found an unnecessary historical calibration-JPEG `lstat` in its generic
   model loader; no Stage D reserve was accessed and no D8 root was created.
-  The current handoff is
-  [`recovery_stage_d_d7_handoff_20260904.md`](recovery_stage_d_d7_handoff_20260904.md).
+  The prior handoff is historical and does not authorize D8.
 - Stage C historical summary remains available in the documents. Recovery-v2
   C7, salvage C8, new C9, and new C10 evidence roots are present locally. C10
   build/integrity validation completed; acceptance is `BLOCKED` and its

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_d_d7_full_chain_smoke.schema.json",
+  "title": "Stage D D7 R3 real-API synthetic full-chain smoke",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "document_type", "d7_id", "status", "formal", "input_kind", "root", "plan_digest", "counts", "real_api_chain", "diagnostic_semantics", "root_inventory", "access_attestation", "authority", "canonical_digest"],
+  "properties": {
+    "$schema": {"const": "../../config/stage_d_d7_full_chain_smoke.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_d_d7_full_chain_smoke_receipt"},
+    "d7_id": {"const": "STAGE_D_RECOVERY_V2_D7_R3_20260904"},
+    "status": {"const": "PASS"},
+    "formal": {"const": false},
+    "input_kind": {"const": "COMPLETE_500_GROUP_DETERMINISTIC_SYNTHETIC_FIXTURE"},
+    "root": {"type": "string", "minLength": 1},
+    "plan_digest": {"$ref": "#/$defs/sha256"},
+    "counts": {"type": "object", "additionalProperties": false, "required": ["image_groups", "execution_units", "terminal_groups", "terminal_units", "cache_releases", "analysis_coordinates"], "properties": {"image_groups": {"const": 500}, "execution_units": {"const": 1000}, "terminal_groups": {"const": 500}, "terminal_units": {"const": 1000}, "cache_releases": {"const": 500}, "analysis_coordinates": {"const": 500}}},
+    "real_api_chain": {"type": "object", "minProperties": 9, "additionalProperties": {"const": "PASS"}},
+    "diagnostic_semantics": {"type": "object", "additionalProperties": false, "required": ["checkpoint_durability_batching_used", "attempt_and_final_package_source_recomputed", "synthetic_scientific_decision_is_not_a_formal_result", "excluded_from_d8_d9_d10"], "properties": {"checkpoint_durability_batching_used": {"const": true}, "attempt_and_final_package_source_recomputed": {"const": true}, "synthetic_scientific_decision_is_not_a_formal_result": {"const": true}, "excluded_from_d8_d9_d10": {"const": true}}},
+    "root_inventory": {"type": "object", "additionalProperties": false, "required": ["file_count", "total_bytes", "canonical_digest"], "properties": {"file_count": {"type": "integer", "minimum": 1}, "total_bytes": {"type": "integer", "minimum": 1}, "canonical_digest": {"$ref": "#/$defs/sha256"}}},
+    "access_attestation": {"type": "object", "minProperties": 9, "additionalProperties": {"const": false}},
+    "authority": {"type": "object", "additionalProperties": false, "required": ["execution_authorization", "analysis_authorization", "stage_d_execution_started"], "properties": {"execution_authorization": {"const": "NOT_ISSUED"}, "analysis_authorization": {"const": "NOT_EVALUATED"}, "stage_d_execution_started": {"const": false}}},
+    "canonical_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

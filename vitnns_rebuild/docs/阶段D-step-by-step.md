@@ -2,11 +2,11 @@
 
 > 创建日期：2026-08-25。
 > 文档性质：阶段 D 的路线图、任务状态表、数据访问边界和跨对话追加式交接日志。
-> 当前状态：recovery-v2 已完成 canonical salvage C8、recovery C9、recovery C10、D0→D6 pre-reserve rebinding，以及 D7 execution-authorization gate。D7 是 pre-launch gate PASS，不是 execution、analysis 或 scientific PASS。D8–D10 均未启动，analysis authorization 未签发，reserve access 仍未发生。
+> 当前状态：recovery-v2 已完成 canonical salvage C8、recovery C9、recovery C10 和 D0→D6。D7 false-PASS audit 判定旧 D7 terminal 为 `UNSUPPORTED_PASS`：其 422-item smoke 没有实际调用 D5/D6 full chain。D7-R3 已在 fresh synthetic root 完成真实 500-group/1,000-unit D4→D5→D6 链，现等待 producer freeze 与新 authority；D8–D10 均未启动，reserve access 仍未发生。
 > Recovery override（2026-09-04）：[`recovery_stage_d_d0_d6_amendment_20260904.md`](recovery_stage_d_d0_d6_amendment_20260904.md) 与 `config/stage_d_recovery_v2_binding_20260904.json` 是当前 pre-reserve identity overlay；历史 D0–D2 PASS 仅为 stale history，历史 D3–D6 PASS 仅为 synthetic/implementation evidence。
-> 当前 next task：`FUTURE_D8_0_REVALIDATE_AND_INITIALIZE_ONLY`。corrected producer `e337f8ca...`，authority-only direct child `fe9a7f29...`；D8 formal root 尚不存在。D8.0 必须先独立复验全部绑定再创建 root，且不得运行 unit。
+> 当前 next task：完成 D7-R3 producer freeze、authority-only commit 与 terminal validation；在此之前不得进入 D8.0。
 > D7 勘误：首个 pre-execution authority `0036dd8d...` 因 strict guard 发现通用 model loader 会对历史 Stage A calibration JPEG 做不必要的 `lstat` 而被 supersede；它未访问 Stage D reserve、未运行 inference、未创建 D8 root，不得用于 launch。D7-v2 producer/authority `e337f8ca...` / `fe9a7f29...` 已重新签发并通过 strict guard。
-> 当前权威交接：[`recovery_stage_d_d7_handoff_20260904.md`](recovery_stage_d_d7_handoff_20260904.md) 和 `reports/stage_d_d7_recovery_v2_20260904/d7_to_future_d8_handoff.json`；D0-D6 总 false-PASS audit 仍为 `reports/stage_d_recovery_v2_20260904_r3/false_pass_audit.json`。
+> 当前权威修复：[`recovery_stage_d_d7_r3_correction_20260904.md`](recovery_stage_d_d7_r3_correction_20260904.md)；旧 D7 handoff 只作历史审计，D0-D6 总 false-PASS audit 仍为 `reports/stage_d_recovery_v2_20260904_r3/false_pass_audit.json`。
 > 使用规则：每个新对话先读文首状态、第 7 节执行协议、第 9 节最新权威记录和当前提示词，再读提示词列出的章节与上游证据；一次只执行一个 `D_i` 或一个明确编号的 `D8-Sxx` shard。未更新本文、未追加 completion record、未给出下一任务完整提示词的任务，不算完成。
 > 测试原则：只做与当前任务和实际改动直接相关的必要测试，避免无关、重复或低价值测试。每个测试/验证批次开始前一次性说明测试项目、必要性和预计耗时；只有新增高成本测试或扩大影响面时才补充说明。
 

@@ -10,9 +10,11 @@ import pytest
 
 from vitnns.stage_d_d7 import (
     AUTHORIZATION_PATH, BUDGET_PATH, DEFAULT_SHARD_COUNT, FORMAL_ROOT,
+    FULL_CHAIN_RECEIPT_PATH,
     StageDD7Error, _D7ValidatedExecutionContext, build_d7_budget,
     build_execution_authorization, load_d7_budget, load_recovery_pipeline,
     run_synthetic_smoke, validate_execution_authorization, validate_smoke,
+    validate_full_chain_synthetic_smoke,
 )
 from vitnns import stage_d_d7 as d7_module
 from vitnns.stage_d_plan import (
@@ -66,6 +68,33 @@ def test_fresh_synthetic_smoke_is_422_items_and_source_recomputed(tmp_path: Path
             repo_root=REPO_ROOT, output_root=tmp_path / "diagnostic",
             receipt_path=receipt_path,
         )
+
+
+def test_r3_full_chain_smoke_calls_real_d4_d5_d6_apis() -> None:
+    receipt = validate_full_chain_synthetic_smoke(repo_root=REPO_ROOT)
+    assert receipt["status"] == "PASS"
+    assert receipt["counts"] == {
+        "image_groups": 500, "execution_units": 1000,
+        "terminal_groups": 500, "terminal_units": 1000,
+        "cache_releases": 500, "analysis_coordinates": 500,
+    }
+    assert set(receipt["real_api_chain"].values()) == {"PASS"}
+    assert receipt["diagnostic_semantics"][
+        "synthetic_scientific_decision_is_not_a_formal_result"
+    ] is True
+    assert set(receipt["access_attestation"].values()) == {False}
+    assert (REPO_ROOT / FULL_CHAIN_RECEIPT_PATH).is_file()
+
+
+def test_r3_paths_do_not_reuse_prior_terminal_or_authority() -> None:
+    assert d7_module.D7_ID.endswith("_R3_20260904")
+    assert d7_module.AUTHORIZATION_PATH.endswith("_r3.json")
+    assert d7_module.COMPLETION_ROOT.endswith("_20260904_r3")
+    assert d7_module.FULL_CHAIN_RECEIPT_PATH.startswith(
+        d7_module.COMPLETION_ROOT + "/"
+    )
+    assert d7_module.PRODUCER_REF.endswith("d7-r3-producer")
+    assert d7_module.AUTHORITY_REF.endswith("d7-r3-authority")
 
 
 def test_final_budget_uses_1000_unit_plan_and_passes_all_caps() -> None:

@@ -1452,7 +1452,9 @@ def main(
         if args.command in _D7_COMMANDS:
             d7 = importlib.import_module(".stage_d_d7", __package__)
             if args.command == "smoke":
-                document = d7.run_synthetic_smoke(repo_root=args.repo_root)
+                document = d7.run_full_chain_synthetic_smoke(
+                    repo_root=args.repo_root
+                )
             elif args.command == "budget":
                 document = d7.write_d7_budget(repo_root=args.repo_root)
             else:
