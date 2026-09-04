@@ -2,9 +2,9 @@
 
 > 创建日期：2026-08-25。
 > 文档性质：阶段 D 的路线图、任务状态表、数据访问边界和跨对话追加式交接日志。
-> 当前状态：recovery-v2 已完成 canonical salvage C8、recovery C9、recovery C10 和 D0→D6。D7 false-PASS audit 判定旧 D7 terminal 为 `UNSUPPORTED_PASS`；D7-R3 只修复了 D4→D5→D6 full-chain smoke，仍缺少 D8.0 durable access initializer，因此不是 current gate。D7-R4 已完成 synthetic D8.0 initializer、producer freeze、authority-only commit 和独立验证，是 current pre-launch gate PASS，不是 execution、analysis 或 scientific PASS。D8.0 首次 root 因 bound data root 缺少第 0 张 reserve JPEG 而 `SUBTASK_BLOCKED` 并保留；随后从本地 ImageNet tar 物化并验证 500/500 reserve JPEG，通过 D8.0 fresh-root rebind authorization，在 `evidence/stage_d/d8_recovery_v2_20260904/formal_r2` 完成 D8.0 `SUBTASK_PASS`。D8 父任务仍为 `IN_PROGRESS`；D8 shards、D9、D10 均未启动，analysis authorization 仍为 `NOT_EVALUATED`。
+> 当前状态：recovery-v2 已完成 canonical salvage C8、recovery C9、recovery C10 和 D0→D6。D7 false-PASS audit 判定旧 D7 terminal 为 `UNSUPPORTED_PASS`；D7-R4 是 current pre-launch gate PASS。D8.0 首次 root 因缺少第 0 张 reserve JPEG 而 `SUBTASK_BLOCKED` 并保留；fresh-root rebind 后 `formal_r2` 完成 D8.0 `SUBTASK_PASS`。D8-S00 已在 `formal_r2` 完成 63/63 image groups、126/126 units，全部 succeeded，receipt 已独立复验；D8-S01–S07、D9、D10 均未启动，父 D8 仍为 `IN_PROGRESS`，analysis authorization 仍为 `NOT_EVALUATED`。S00 后的 continuation preflight 暴露 runtime access-lifecycle checkpoint binding 缺陷；在完成 D8-S01 continuation 修复/授权前不得启动 S01 units。
 > Recovery override（2026-09-04）：[`recovery_stage_d_d0_d6_amendment_20260904.md`](recovery_stage_d_d0_d6_amendment_20260904.md) 与 `config/stage_d_recovery_v2_binding_20260904.json` 是当前 pre-reserve identity overlay；历史 D0–D2 PASS 仅为 stale history，历史 D3–D6 PASS 仅为 synthetic/implementation evidence。
-> 当前 next task：`D8-S00`。只能在 `evidence/stage_d/d8_recovery_v2_20260904/formal_r2` 的 `RUNNABLE` access gate 上运行 shard 0；不得运行 D8-S01、D9、D10、aggregate、finalize、analysis 或 paper export。
+> 当前 next task：`D8-S01_CONTINUATION_FIX_AND_RUN`。只能修复 generation 380 continuation gate、重新冻结必要 producer/authority 后运行 shard 1；不得重跑 D8-S00，不得运行 D8-S02 或后续 shard，不得进入 D9/D10、aggregate、finalize、analysis 或 paper export。
 > D7 勘误：首个 pre-execution authority `0036dd8d...` 因 strict guard 发现通用 model loader 会对历史 Stage A calibration JPEG 做不必要的 `lstat` 而被 supersede；它未访问 Stage D reserve、未运行 inference、未创建 D8 root，不得用于 launch。D7-v2 producer/authority `e337f8ca...` / `fe9a7f29...` 已重新签发并通过 strict guard。
 > 当前权威交接：[`recovery_stage_d_d7_r4_handoff_20260904.md`](recovery_stage_d_d7_r4_handoff_20260904.md) 和 `reports/stage_d_d7_recovery_v2_20260904_r4/d7_to_future_d8_handoff.json`；旧 D7/R3 handoff 只作历史审计。
 > 使用规则：每个新对话先读文首状态、第 7 节执行协议、第 9 节最新权威记录和当前提示词，再读提示词列出的章节与上游证据；一次只执行一个 `D_i` 或一个明确编号的 `D8-Sxx` shard。未更新本文、未追加 completion record、未给出下一任务完整提示词的任务，不算完成。
@@ -35,6 +35,7 @@ flowchart LR
     D9 --> D10[统计决策与论文包]
     D10 --> F[Stage F 定性展示]
 ```
+
 
 
 ## 2. 不可改写的上游事实
@@ -217,7 +218,7 @@ D10 建议固定生成以下 machine-readable paper data 和数值图；只有 v
 | D5 | PASS | 实现 finalize 与 source-recomputing validation | synthetic/tampered fixtures only | package/QC 状态 | D4 PASS |
 | D6 | PASS | 实现 aggregation、statistics、decision、paper export | synthetic fixtures only | synthetic decision only | D5 PASS |
 | D7 | PASS | 真实已知样本 smoke、预算、冻结 producer 并签发授权 | Stage C 已知 calibration/audit；禁止 reserve 图像 | `AUTHORIZED_STAGE_D_FIDELITY_SCOPE` 或 BLOCKED | D6 PASS |
-| D8 | IN_PROGRESS（D8.0 `SUBTASK_PASS`，D8-S00 next） | 初始化并逐 shard 运行 500 图/1,000 units | 首次允许 reserve 图像、模型和原始结果 | unit terminal state；禁止科学汇总 | D7 PASS |
+| D8 | IN_PROGRESS（D8.0、D8-S00 `SUBTASK_PASS`；D8-S01 continuation fix next） | 初始化并逐 shard 运行 500 图/1,000 units | 首次允许 reserve 图像、模型和原始结果 | unit terminal state；禁止科学汇总 | D7 PASS |
 | D9 | NOT_STARTED | 封存并独立验证 formal evidence | D8 root；CPU-only；禁止 JPEG/模型 | evidence/QC/validity readiness | D8 `PASS` 且所有 frozen shards terminal |
 | D10 | NOT_STARTED | 唯一正式统计决策与 paper artifact package | sealed D9 root、C10 reports；CPU-only | Stage D fidelity-scope decision | D9 authorizes analysis |
 
@@ -1479,4 +1480,84 @@ D8.0 只能创建 fresh formal root、durable `ACCESS_STARTED` lifecycle、appen
 
 完成与交接：
 追加 D8-S00 completion record；报告 formal root、shard index/count、counts、resource summary、receipt/ledger digests、unit execution true for shard 0 only、D9/D10 not started、analysis authorization still `NOT_EVALUATED`、C10 status unchanged、测试/验证、commit/ref/hash 和 push/local/tracking/remote SHA 核验。
+```
+
+### 2026-09-04 22:56 +0800 — D8-S00 completion record
+
+- parent_status: `IN_PROGRESS`
+- subtask_status: `SUBTASK_PASS`
+- objective_completed: D8-S00 executed exactly the 63 image groups with `selection_order % 8 == 0` in `formal_r2`. All 126 ordered NNS-then-matched units reached terminal `succeeded` state in their first attempt. No other shard was executed.
+- authority_and_scope: D7-R4 base authorization canonical `2c649deda654ac1a040d8919a973467ff6d520e5279a778bfef785c8ef072f8f` and D8.0 rebind authorization canonical `3479f9457aa924fe189591e836e38bb1a65cce8543e3a879477025782659afc9` were source-recomputed before launch. This is execution-completeness evidence for shard 0 only, not an analysis, validity, effect, cost or scientific PASS.
+- git_sha_before: `c3a3ed18dfc0a92bd9e3b8dfb4060cf7aa0931b0`; branch `stage-d-d3-pass`; local HEAD, tracking ref and remote branch matched and the tracked worktree/index were clean before the run.
+- git_sha_producer: `4c4dd4af010afdc72e26f10cb8e6519e2448cf40` (`refs/archive/stage-d-fidelity-v1-d8-0-rebind-r1-producer`), with base D7 producer `d7c88df66f3e55ec31ad4c6ea34a3002ca6d1a4d`. No production code changed during S00.
+- git_sha_postprocessor: none
+- git_sha_completion: SELF
+- tree_clean_at_boundaries: tracked baseline clean before formal execution; the formal root and materialized assets remain ignored local evidence. The only tracked additions are S00 control/receipt/completion records and this append-only coordinator update. Final clean/push state is reported after commit.
+- upstream_commits_and_refs: D7-R4 producer/authority `d7c88df66f3e55ec31ad4c6ea34a3002ca6d1a4d` / `61214b808b75cf804763078479d1b96f7418db32`; D8.0 rebind producer/authority `4c4dd4af010afdc72e26f10cb8e6519e2448cf40` / `fb27b2526d55861489c19069b3a5665cede757e3`; D8.0 completion `c3a3ed18dfc0a92bd9e3b8dfb4060cf7aa0931b0`.
+- files_added_or_changed: `reports/stage_d_d8_recovery_v2_20260904_r4/d8_s00_shard_control.json`; `reports/stage_d_d8_recovery_v2_20260904_r4/d8_s00_shard_receipt.json`; `reports/stage_d_d8_recovery_v2_20260904_r4/d8_s00_completion.json`; this document. Ignored `formal_r2` gained exactly the S00 attempt evidence and checkpoint transitions.
+- frozen_inputs_and_sha256: D8.0 completion canonical `6bd9569f502a22a5785db4c92ac48cf33e7780c8a39487d6de59ab01f995664f`; D7 budget canonical `fa4be660c611bd03fb6bd5602f09a25e920e53c323e11264e95cc7aa90b9f06b`; access lifecycle/journal/live-assets digests `56b3f3cdb3a72bd72bdaa3f93f15cdb1043f362691a1b24089382862b935cf50` / `293f46d8a1421607a547171b3ed78be21aebab4461c00762fdba4fa68d50ddc8` / `489aa2a9a16e4f84046df8ebdf910a5adf04d9525a1aa901915fe778c6ad1d40`.
+- config_plan_and_canonical_digests: plan `5a40051ac17a7bfd6663640b1d2478c69d45eea07d3182653b90d2c7ca760443`; shard mapping `789452ad2ed264c75a2abfe6f9e8d2659e3ca0c057c9a81f4b4a643ec7f59385`; execution context `77cd650163499cc4527eb92467284f505e125ab0c3765ca04c2312d5a06359f1`; S00 receipt canonical `9b4a9b1edb6b69d96db6893dbe051c2a8f6ae3795d4b634b12bd0485555b2827`; S00 completion canonical `e2125ecf983a5c75244e762c0837902b3914279607ca04bd2f2dc00685804d91`.
+- data_access_statement: The authorized worker decoded and processed only shard-0 reserve images and generated the registered raw L0/L1 execution evidence. Coordinator monitoring and validation read only runtime/checkpoint/status/manifest/inventory/resource controls; no AUC, `delta_fid`, prediction, ranking or effect summary was inspected.
+- artifacts_and_absolute_paths: formal root `/data01/home/yeziqi.831/nxtrec_wksp/testcode/vitnns_rebuild/evidence/stage_d/d8_recovery_v2_20260904/formal_r2`; retained initial blocked root `/data01/home/yeziqi.831/nxtrec_wksp/testcode/vitnns_rebuild/evidence/stage_d/d8_recovery_v2_20260904/formal`; tracked S00 records under `/data01/home/yeziqi.831/nxtrec_wksp/testcode/vitnns_rebuild/reports/stage_d_d8_recovery_v2_20260904_r4/`.
+- status_manifest_inventory_hashes: shard control file SHA-256 `978bab1ead0114ffac6e656e22436b1029faa2a844108d62adb3d25f0a719c64`; receipt file SHA-256/canonical `93dd91beb47afa5a788a5ef66821459779c72c1a8fed1992b5700d238e75a942` / `9b4a9b1edb6b69d96db6893dbe051c2a8f6ae3795d4b634b12bd0485555b2827`; ordered attempt binding digest `07bc62bb735779e3059fd459e239f30573cac5686310ec9a31dc6af808a243a4`.
+- formal_root: `evidence/stage_d/d8_recovery_v2_20260904/formal_r2`
+- shard_index/shard_count: `0/8`
+- expected_image_groups/units/work_items: `63 / 126 / 26,586` (`126` maps, `1,260` curves, `26,460` curve points)
+- claimed/terminal/succeeded/failed: image groups `63/63`; units `126/126/126/0`; scientific failures `0`; retry-pending `0`; blocked `0`.
+- attempt_ids: all 126 units retain exactly `attempt-000001`; no retry attempt was created.
+- resource_summary_without_effect_metrics: elapsed unit-seconds `938.4717592821107`; forward calls `31,374`; backward calls `4,032`; L0/L1 bytes `12,173,652`; L2 bytes `0`; control/provenance bytes `2,699,297`; max per-unit CUDA reserved bytes `1,444,937,728`.
+- shard_receipt_sha256/canonical_digest: `93dd91beb47afa5a788a5ef66821459779c72c1a8fed1992b5700d238e75a942` / `9b4a9b1edb6b69d96db6893dbe051c2a8f6ae3795d4b634b12bd0485555b2827`
+- shard_ledger_before/after_canonical_digest: generation 0 `0e91369655142c38b18142ded5d5532aa6df3f1d9acb3e8c3972667855a95e2e` (`pending`) → generation 380 `e828172d11a27a255a98d2b443c1a3ecc3c468cc2ff9ace5509a3367eb4332c4` (`completed`).
+- expected_vs_observed_counts: shard 0 `63/63` groups and `126/126` units terminal; 126 attempts; shards 1–7 remain exactly `pending`; parent campaign is not complete.
+- tests_reused_from_prior_commit: D7-R4 and D8.0 focused evidence was reused only after current source recomputation; no previous execution result was reused.
+- test_plan_announced_before_execution: 39-item Git/authority/digest/access/ledger preflight; exactly one formal S00 GPU workload; control-only receipt and ledger source recomputation; no unrelated full suite, finalization, aggregation or analysis.
+- tests_executed_this_task: preflight PASS `39` checks; formal CLI `run-shard --shard-index 0 --device cuda:0` exit `0` with empty stderr; receipt/checkpoint/access/attempt read-only source recomputation PASS `21` checks; JSON canonical/self-digest checks and `git diff --check` included in final static validation. A post-terminal idempotent CLI probe failed closed before backend construction with `access lifecycle binding drifted`; checkpoint bytes and attempt count did not change.
+- tests_not_run_and_reason: no full non-GPU suite because no producer code changed; no extra GPU tests because S00 itself was the authorized formal workload; no D8-S01+, D9/D10, finalize, aggregate, analysis or paper export.
+- acceptance_results: S00 receipt binds the exact modulo-8 coordinate set, NNS-then-matched unit order, 126 terminal first attempts, resource controls, and checkpoint transition. No active lease or claim remains.
+- package_complete: not_applicable; the D8 campaign still has seven pending shards.
+- scientific_validity: not_evaluated
+- analysis_authorized: false
+- budget_results: per-unit launch caps remained unbreached; completed-campaign cost gate was not evaluated.
+- paper_data_or_figures_generated: none
+- deviations_or_protocol_amendments: The worker used one process on physical GPU 0 (`CUDA_VISIBLE_DEVICES=0`, CLI `cuda:0`). Although eight GPUs were available, the frozen runtime permits only one active shard lease and one active group claim; adding concurrent workers would fail closed, and changing that producer after launch would invalidate authority. No protocol amendment was made.
+- failures_and_retries_retained: no formal unit failure or retry. The post-terminal continuation probe failure is retained as coordinator evidence; it created no attempt and made no checkpoint change. The initial blocked root remains retained and was not reused, deleted or rewritten.
+- known_limitations_and_claim_boundaries: S00 proves only shard-0 execution completeness. It does not authorize or establish whole-campaign completeness, scientific validity, effect, actual completed-campaign cost, D9/D10, analysis or paper claims. Current runtime continuation incorrectly compares the D8.0 lifecycle's immutable initial-checkpoint binding with the mutated generation-380 checkpoint; D8-S01 units must not start until this is minimally fixed and reauthorized. C10 remains `BLOCKED / NO_GO_NOVELTY / FAIL_SPATIAL / HOLM_BLOCKED_UNDERSPECIFIED`.
+- next_task_authorized: true for `D8-S01` continuation diagnosis/fix and reauthorization only; shard-1 unit launch remains false until that gate passes.
+- authorization_issued_this_task: false
+- execution_authorization_observed_valid: true for D8-S00
+- shard_continuation_authorized: false
+- retry_authorization_digest: none
+- remaining_shards: summary only: `D8-S01` through `D8-S07`; authoritative ledger has shard 0 `completed` and shards 1–7 `pending`.
+- effect_summary_accessed: false
+- next_task: `D8-S01`
+
+#### 下一对话完整提示词
+
+```text
+你在 /data01/home/yeziqi.831/nxtrec_wksp/testcode/vitnns_rebuild 工作。当前有效项目是 vitnns_rebuild。
+
+本次唯一任务：只处理并执行 Stage D 的 D8-S01。先最小修复并重新授权 S00 后的 continuation access-gate binding，再在同一 formal_r2 root 只运行 shard 1。不得重跑 D8-S00，不得运行 D8-S02 或任何后续 shard，不得进入 D9/D10，不得 finalize、aggregate、生成 analysis/paper result 或签发 analysis authorization。
+
+开始条件：
+1. 当前 branch 必须是 stage-d-d3-pass，worktree/index clean；local HEAD、tracking ref、remote ref 必须等于上一轮最终报告的 D8-S00 completion commit。
+2. 复核 D7-R4 producer/authority `d7c88df66f3e55ec31ad4c6ea34a3002ca6d1a4d` / `61214b808b75cf804763078479d1b96f7418db32`，base authorization canonical `2c649deda654ac1a040d8919a973467ff6d520e5279a778bfef785c8ef072f8f`，budget canonical `fa4be660c611bd03fb6bd5602f09a25e920e53c323e11264e95cc7aa90b9f06b`。
+3. 复核 D8.0 rebind producer/authority `4c4dd4af010afdc72e26f10cb8e6519e2448cf40` / `fb27b2526d55861489c19069b3a5665cede757e3`，authorization canonical `3479f9457aa924fe189591e836e38bb1a65cce8543e3a879477025782659afc9`。
+4. 验证 D8-S00 completion canonical `e2125ecf983a5c75244e762c0837902b3914279607ca04bd2f2dc00685804d91`、receipt file/canonical `93dd91beb47afa5a788a5ef66821459779c72c1a8fed1992b5700d238e75a942` / `9b4a9b1edb6b69d96db6893dbe051c2a8f6ae3795d4b634b12bd0485555b2827`、ledger after digest `e828172d11a27a255a98d2b443c1a3ecc3c468cc2ff9ace5509a3367eb4332c4`。要求 shard 0 completed、shard 1–7 pending、无 active lease/claim。
+5. 初始 blocked root formal 必须继续保留，不得重用、删除或重写。
+
+必读材料：本文文首、§7、§8.1、最新 D8-S00 record；D8-S00 control/receipt/completion JSON；D8.0 completion/rebind authorization；D7-R4 authorization/handoff；Stage D protocol/acceptance；stage_d_runtime.py、stage_d_d7.py、stage_d_cli.py 及 focused tests。
+
+必须完成：
+1. 先复现并定位 continuation blocker：D8.0 lifecycle 永久绑定 generation-0 checkpoint，但当前 run-shard validator错误要求它等于 generation-380 current checkpoint。复现必须在 backend/model/unit 构造前 fail closed，并证明不改变 checkpoint/attempt。
+2. 做最小 control-plane 修复，使 access validation继续验证 lifecycle绑定的初始 checkpoint identity，同时当前 mutable checkpoint由 runtime独立完整验证；不得放宽 journal/live-assets/root/authorization/plan检查，不得读取 effect。补 focused tests覆盖 D8.0 pristine验证、S00完成后的S01 continuation、tamper和backend-before-gate。
+3. 因生产代码变化，冻结新的 continuation producer ref和 authority-only commit；authority必须显式绑定现有 formal_r2、S00 receipt/ledger after digest、原D7/D8.0 authority及未变 scientific scope。先在新 authority 下只读验证 existing root。
+4. 只有 continuation gate PASS 后才运行 shard 1：selection_order % 8 == 1，共63 groups/126 units；同图NNS后matched。一块GPU一个进程，若要多GPU并行必须先实现、测试并授权同一shard多worker lease，不能直接起多个现有CLI进程。
+5. 保留全部attempt/failure/resource records；不得按AUC、delta、prediction等科学值决定retry或early stop。生成并验证S01 receipt和ledger transition。
+6. 父D8保持IN_PROGRESS；若S01 terminal且仍有pending shards，下一任务只能是D8-S02。
+
+明确禁止：不得重跑S00；不得运行S02+；不得D9/D10/finalize/aggregate；不得读取effect summary或生成paper artifacts；保持 analysis_authorization=NOT_EVALUATED；不得修改D0-D7科学范围或C10历史状态。
+
+测试计划：测试前说明 continuation bug focused tests、authority/root source-recompute、S01 preflight、正式GPU shard和receipt验证的最小清单与预计耗时；不跑无关全量suite。任何tamper、authorization drift、unsafe root或ambiguous state必须BLOCKED并保留证据。
+
+完成与交接：追加D8-S01 completion record，报告新producer/authority refs与digests、formal root、counts、attempts、resource summary、receipt/ledger digests、S00未重跑、S02+及D9/D10未启动、analysis authorization仍NOT_EVALUATED、C10不变、测试、commit和push核验。最后commit并用 SSH_AUTH_SOCK="$(cat /tmp/trae_ssh_auth_sock)" git push origin stage-d-d3-pass。
 ```
