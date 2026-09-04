@@ -17,7 +17,7 @@
     "reserve_access_boundary": {"const": "DEFERRED_TO_D8_0_AFTER_REVALIDATION"},
     "stage_d_execution_started": {"const": false},
     "authority_commit": {"const": "SELF"},
-    "authority_ref": {"const": "refs/archive/stage-d-fidelity-v1-d7-authority"},
+    "authority_ref": {"const": "refs/archive/stage-d-fidelity-v1-d7-v2-authority"},
     "producer": {"$ref": "#/$defs/producer"},
     "formal_root": {"const": "evidence/stage_d/d8_recovery_v2_20260904/formal"},
     "formal_root_fresh_at_issuance": {"const": true},
@@ -36,5 +36,5 @@
     "prohibitions": {"type": "object", "additionalProperties": false, "required": ["d8_initialized", "d9_started", "d10_started", "formal_aggregation_authorized", "c10_stage_d_pooling_allowed"], "properties": {"d8_initialized": {"const": false}, "d9_started": {"const": false}, "d10_started": {"const": false}, "formal_aggregation_authorized": {"const": false}, "c10_stage_d_pooling_allowed": {"const": false}}},
     "canonical_digest": {"$ref": "#/$defs/sha256"}
   },
-  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "producer": {"type": "object", "additionalProperties": false, "required": ["commit", "tree", "clean", "ref"], "properties": {"commit": {"$ref": "#/$defs/commit"}, "tree": {"$ref": "#/$defs/commit"}, "clean": {"const": true}, "ref": {"const": "refs/archive/stage-d-fidelity-v1-producer"}}}, "code": {"type": "object", "additionalProperties": false, "required": ["commit", "tree", "clean"], "properties": {"commit": {"$ref": "#/$defs/commit"}, "tree": {"$ref": "#/$defs/commit"}, "clean": {"const": true}}}}
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "producer": {"type": "object", "additionalProperties": false, "required": ["commit", "tree", "clean", "ref"], "properties": {"commit": {"$ref": "#/$defs/commit"}, "tree": {"$ref": "#/$defs/commit"}, "clean": {"const": true}, "ref": {"const": "refs/archive/stage-d-fidelity-v1-d7-v2-producer"}}}, "code": {"type": "object", "additionalProperties": false, "required": ["commit", "tree", "clean"], "properties": {"commit": {"$ref": "#/$defs/commit"}, "tree": {"$ref": "#/$defs/commit"}, "clean": {"const": true}}}}
 }

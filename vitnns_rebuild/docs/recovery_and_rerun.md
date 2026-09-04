@@ -24,6 +24,9 @@ Stage D rebinding while preserving the historical protocols and records.
   [`recovery_stage_d_d7_amendment_20260904.md`](recovery_stage_d_d7_amendment_20260904.md).
   The non-reserve synthetic smoke and independent 1,000-unit budget have passed;
   execution remains unstarted and analysis authorization remains unissued.
+  The initial pre-execution authority `0036dd8d...` is superseded after a strict
+  guard found an unnecessary historical calibration-JPEG `lstat` in its generic
+  model loader; no Stage D reserve was accessed and no D8 root was created.
 - Stage C historical summary remains available in the documents. Recovery-v2
   C7, salvage C8, new C9, and new C10 evidence roots are present locally. C10
   build/integrity validation completed; acceptance is `BLOCKED` and its

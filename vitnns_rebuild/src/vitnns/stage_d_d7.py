@@ -52,16 +52,19 @@ AUTHORIZATION_DOCUMENT_TYPE = "stage_d_d7_execution_authorization"
 COMPLETION_DOCUMENT_TYPE = "stage_d_d7_completion"
 EXECUTION_AUTHORIZATION = "AUTHORIZED_STAGE_D_FIDELITY_SCOPE"
 ANALYSIS_AUTHORIZATION = "NOT_EVALUATED"
-PRODUCER_REF = "refs/archive/stage-d-fidelity-v1-producer"
-AUTHORITY_REF = "refs/archive/stage-d-fidelity-v1-d7-authority"
-COMPLETION_REF = "refs/archive/stage-d-fidelity-v1-d7-completion"
+PRODUCER_REF = "refs/archive/stage-d-fidelity-v1-d7-v2-producer"
+AUTHORITY_REF = "refs/archive/stage-d-fidelity-v1-d7-v2-authority"
+COMPLETION_REF = "refs/archive/stage-d-fidelity-v1-d7-v2-completion"
 VALIDATION_PATH = "reports/stage_d_d7_recovery_v2_20260904/validation.json"
 STATUS_PATH = "reports/stage_d_d7_recovery_v2_20260904/status.json"
 HANDOFF_PATH = "reports/stage_d_d7_recovery_v2_20260904/d7_to_future_d8_handoff.json"
 SMOKE_ROOT = "evidence/stage_d/d7_recovery_v2_20260904/synthetic_smoke"
 SMOKE_RECEIPT_PATH = "reports/stage_d_d7_recovery_v2_20260904/smoke_receipt.json"
 BUDGET_PATH = "config/stage_d_d7_budget_20260904.json"
-AUTHORIZATION_PATH = "config/stage_d_d7_execution_authorization_20260904.json"
+HISTORICAL_AUTHORIZATION_PATH = (
+    "config/stage_d_d7_execution_authorization_20260904.json"
+)
+AUTHORIZATION_PATH = "config/stage_d_d7_execution_authorization_20260904_v2.json"
 COMPLETION_ROOT = "reports/stage_d_d7_recovery_v2_20260904"
 FORMAL_ROOT = "evidence/stage_d/d8_recovery_v2_20260904/formal"
 C9_REPORT_PATH = "evidence/stage_c/c9_recovery_v2_0d88fbb/formal/c9_evidence_report.json"
@@ -865,29 +868,66 @@ def load_d7_budget(*, repo_root: Path | str = REPO_ROOT) -> tuple[Mapping[str, A
 
 
 def verify_recovery_model(*, repo_root: Path | str = REPO_ROOT) -> Mapping[str, Any]:
-    from .recovery_v2 import (
-        load_recovery_v2_binding, verify_recovery_v2_lfs_identity,
-        verify_recovery_v2_state_dict,
-    )
+    import torch
+
+    from .recovery_v2 import canonical_state_dict_tensor_digest
 
     repo = Path(repo_root).resolve()
-    binding = load_recovery_v2_binding(
-        repo / "config/recovery_v2_binding.json",
-        schema_path=repo / "config/recovery_v2_binding.schema.json",
-        repo_root=repo, verify_assets=False,
-    )
-    lfs = verify_recovery_v2_lfs_identity(binding, repo_root=repo)
-    tensors = verify_recovery_v2_state_dict(binding)
+    recovery, _file_sha, _canonical = load_recovery_binding(repo)
+    model = recovery["model"]
+    path = repo / model["path"]
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(path, flags)
+    try:
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode) or before.st_nlink != 1:
+            raise StageDD7Error("recovery-v2 model must be a single-link regular file")
+        with os.fdopen(descriptor, "rb", closefd=False) as handle:
+            digest = hashlib.sha256()
+            for block in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(block)
+            handle.seek(0)
+            state = torch.load(handle, map_location="cpu", weights_only=True)
+        after = os.fstat(descriptor)
+        identity = lambda item: (
+            item.st_dev, item.st_ino, item.st_size, item.st_mtime_ns, item.st_ctime_ns
+        )
+        if identity(before) != identity(after):
+            raise StageDD7Error("recovery-v2 model changed during verification")
+    finally:
+        os.close(descriptor)
+    tensor_digest = canonical_state_dict_tensor_digest(state)
+    parameter_count = sum(int(value.numel()) for value in state.values())
+    top = Path(_git(repo, "rev-parse", "--show-toplevel"))
+    relative = path.relative_to(top).as_posix()
+    matches = [
+        line.strip() for line in _git(repo, "lfs", "ls-files", "-l").splitlines()
+        if line.strip().endswith(" " + relative)
+    ]
+    if len(matches) != 1:
+        raise StageDD7Error("recovery-v2 model has no unique LFS identity")
+    fields = matches[0].split(maxsplit=2)
+    if len(fields) != 3 or fields[2] != relative:
+        raise StageDD7Error("recovery-v2 model LFS path binding drifted")
+    # Hydration is established by the stable 346 MB no-follow read and the
+    # exact content digest above.  Git LFS marker spelling differs by client
+    # version and is therefore not used as a second hydration oracle.
+    tensors = {
+        "state_dict_sha256": digest.hexdigest(),
+        "canonical_tensor_digest": tensor_digest, "key_count": len(state),
+        "parameter_count": parameter_count,
+    }
     if (
         tensors["state_dict_sha256"] != RECOVERY_MODEL_SHA256
         or tensors["canonical_tensor_digest"] != RECOVERY_MODEL_TENSOR_DIGEST
-        or lfs.get("oid_sha256") != RECOVERY_MODEL_SHA256
+        or fields[0] != RECOVERY_MODEL_SHA256
+        or tensors["key_count"] != 152
+        or tensors["parameter_count"] != 86_567_656
     ):
         raise StageDD7Error("recovery-v2 model identity verification failed")
     return {
-        "identity": binding.model["identity"],
-        "path": str(binding.model_path.relative_to(repo)),
-        **tensors, "lfs_oid_sha256": lfs["oid_sha256"],
+        "identity": model["identity"], "path": model["path"],
+        **tensors, "lfs_oid_sha256": fields[0],
     }
 
 
@@ -1433,6 +1473,7 @@ def write_d7_terminal_records(
 
 __all__ = [
     "ANALYSIS_AUTHORIZATION", "AUTHORIZATION_PATH", "AUTHORITY_REF",
+    "HISTORICAL_AUTHORIZATION_PATH",
     "BUDGET_PATH", "COMPLETION_REF", "D7ExecutionGate", "D7_ID",
     "DEFAULT_SHARD_COUNT", "EXECUTION_AUTHORIZATION", "FORMAL_ROOT",
     "PRODUCER_REF", "SMOKE_RECEIPT_PATH", "SMOKE_ROOT",

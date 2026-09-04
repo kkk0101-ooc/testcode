@@ -34,3 +34,10 @@ spatial `FAIL_SPATIAL`, and `HOLM_BLOCKED_UNDERSPECIFIED`.
 No Stage D reserve path may be checked for existence, statted, opened, hashed,
 decoded, preprocessed or inferred during D7. D8, D9 and D10 are not started by
 this amendment.
+
+Pre-execution correction: the first authority commit `0036dd8d...` was generated
+before a strict D7 guard demonstrated that its model verifier reused a generic
+loader which `lstat`ed a historical Stage A calibration JPEG. No Stage D
+reserve, inference or D8 root was involved, but that authority is retained as
+superseded and must never launch D8. D7-v2 uses a model-only file descriptor,
+LFS and tensor verifier and a fresh producer/authority ref pair.
