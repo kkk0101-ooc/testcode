@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_d_d7_smoke.schema.json",
+  "title": "Stage D D7 non-formal synthetic smoke receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "document_type", "d7_id", "status", "formal", "input_kind", "root", "plan_digest", "counts", "chain", "root_inventory", "access_attestation", "authority", "canonical_digest"],
+  "properties": {
+    "$schema": {"const": "../../config/stage_d_d7_smoke.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_d_d7_synthetic_smoke_receipt"},
+    "d7_id": {"const": "STAGE_D_RECOVERY_V2_D7_20260904"},
+    "status": {"const": "PASS"},
+    "formal": {"const": false},
+    "input_kind": {"const": "DETERMINISTIC_SYNTHETIC_ARRAYS"},
+    "root": {"type": "string", "minLength": 1},
+    "plan_digest": {"$ref": "#/$defs/sha256"},
+    "counts": {"type": "object", "additionalProperties": false, "required": ["sample_count", "unit_count", "map_count", "curve_count", "curve_point_count", "logical_work_item_count"], "properties": {"sample_count": {"const": 1}, "unit_count": {"const": 2}, "map_count": {"const": 2}, "curve_count": {"const": 20}, "curve_point_count": {"const": 420}, "logical_work_item_count": {"const": 422}}},
+    "chain": {"type": "object", "additionalProperties": false, "required": ["producer", "artifact", "finalize", "source_validate", "aggregate", "paper_export", "cache_release"], "properties": {"producer": {"const": "PASS"}, "artifact": {"const": "PASS"}, "finalize": {"const": "PASS"}, "source_validate": {"const": "PASS"}, "aggregate": {"const": "PASS"}, "paper_export": {"const": "PASS"}, "cache_release": {"const": "PASS"}}},
+    "root_inventory": {"type": "object", "additionalProperties": false, "required": ["file_count", "total_bytes", "canonical_digest"], "properties": {"file_count": {"type": "integer", "minimum": 1}, "total_bytes": {"type": "integer", "minimum": 1}, "canonical_digest": {"$ref": "#/$defs/sha256"}}},
+    "access_attestation": {"type": "object", "minProperties": 9, "additionalProperties": {"const": false}},
+    "authority": {"type": "object", "additionalProperties": false, "required": ["execution_authorization", "analysis_authorization", "stage_d_execution_started"], "properties": {"execution_authorization": {"const": "NOT_ISSUED"}, "analysis_authorization": {"const": "NOT_EVALUATED"}, "stage_d_execution_started": {"const": false}}},
+    "canonical_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

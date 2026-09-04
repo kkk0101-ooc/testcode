@@ -4,7 +4,7 @@
 > 文档性质：阶段 D 的路线图、任务状态表、数据访问边界和跨对话追加式交接日志。
 > 当前状态：recovery-v2 已完成 canonical salvage C8、recovery C9、recovery C10，以及严格串行的 D0→D6 pre-reserve rebinding。D0–D2 是 current formal preparation PASS；D3 是 control-plane readiness PASS；D4–D6 是 implementation/readiness PASS。D5 不是正式 500-image evidence validation，D6 不是正式分析或科学结果。Stage D execution/analysis/reserve authorization 均未签发，D7–D10 均未启动。
 > Recovery override（2026-09-04）：[`recovery_stage_d_d0_d6_amendment_20260904.md`](recovery_stage_d_d0_d6_amendment_20260904.md) 与 `config/stage_d_recovery_v2_binding_20260904.json` 是当前 pre-reserve identity overlay；历史 D0–D2 PASS 仅为 stale history，历史 D3–D6 PASS 仅为 synthetic/implementation evidence。
-> 当前 next task：`FUTURE_D7_INDEPENDENT_GATE_NOT_AUTHORIZED`。本轮没有签发 D7 execution authorization；未来 D7 必须另行验证 non-reserve smoke、budget、Git、model、plan、shard count 和 fresh root。
+> 当前 next task：D7 recovery-v2 gate 正在严格按 `smoke → budget → producer/ref → authorize` 执行。当前 smoke 与 budget 已通过，但 producer/ref 尚未正式冻结，因此 execution authorization 尚未签发；D8 仍未初始化。
 > 当前权威交接：[`recovery_stage_d_d0_d6_handoff_20260904.md`](recovery_stage_d_d0_d6_handoff_20260904.md)；总 false-PASS audit 为 `reports/stage_d_recovery_v2_20260904_r3/false_pass_audit.json`。以下旧 completion records 和 D7 提示词保留作历史审计，不构成当前授权。
 > 使用规则：每个新对话先读文首状态、第 7 节执行协议、第 9 节最新权威记录和当前提示词，再读提示词列出的章节与上游证据；一次只执行一个 `D_i` 或一个明确编号的 `D8-Sxx` shard。未更新本文、未追加 completion record、未给出下一任务完整提示词的任务，不算完成。
 > 测试原则：只做与当前任务和实际改动直接相关的必要测试，避免无关、重复或低价值测试。每个测试/验证批次开始前一次性说明测试项目、必要性和预计耗时；只有新增高成本测试或扩大影响面时才补充说明。

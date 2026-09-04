@@ -1786,6 +1786,10 @@ _PROFILE_KEYS = tuple(
 )
 PROFILE_SOURCE_STATUS = "SYNTHETIC_OR_PRE_D7_METADATA_PROFILE_NOT_AUTHORITY"
 UNVALIDATED_PROFILE_STATUS = "UNVALIDATED_PROJECTED_FOR_D7"
+D7_PROFILE_SOURCE_STATUS = (
+    "D7_VALIDATED_CONSERVATIVE_RECOVERY_V2_H20_TELEMETRY"
+)
+D7_VALIDATED_PROFILE_STATUS = "D7_VALIDATED_CONSERVATIVE_PROFILE"
 
 
 @dataclass(frozen=True, slots=True)
@@ -1818,9 +1822,11 @@ class StageDResourceProfile:
             raise StageDPlanError(
                 "primary profile L2 must be zero; audit profile owns five-image L2"
             )
-        if self.source_status != PROFILE_SOURCE_STATUS:
+        if self.source_status not in (
+            PROFILE_SOURCE_STATUS, D7_PROFILE_SOURCE_STATUS,
+        ):
             raise StageDPlanError(
-                "D3 accepts only non-authoritative synthetic/pre-D7 profiles"
+                "resource profile source status is not a permitted D3/D7 value"
             )
         payload = self._payload()
         expected = canonical_sha256(payload)
@@ -1939,6 +1945,7 @@ class StageDEstimate:
         _require_sha256(self.plan_digest, "estimate.plan_digest")
         if self.profile_status not in (
             "D7_PROFILE_REQUIRED", UNVALIDATED_PROFILE_STATUS,
+            D7_VALIDATED_PROFILE_STATUS,
         ):
             raise StageDPlanError("estimate profile_status is invalid")
         if self.budget_status not in ("NOT_EVALUATED", "PASS", "BLOCKED_NO_LAUNCH"):
@@ -2140,8 +2147,22 @@ def _estimate_projection(
         "PASS" if not launch_violations and not campaign_violations
         else "BLOCKED_NO_LAUNCH"
     )
-    # These remain non-authoritative D3 projections.  D7 must replace them with
-    # validated conservative smoke profiles before any launch authorization.
+    source_statuses = {item.source_status for item in profiles}
+    if source_statuses == {D7_PROFILE_SOURCE_STATUS}:
+        projection["profile_authority"] = D7_VALIDATED_PROFILE_STATUS
+        projection["attempt_scope"] = (
+            "FROZEN_CONSERVATIVE_ONE_PLANNED_ATTEMPT_WITH_D7_SAFETY_FACTORS"
+        )
+        return (
+            projection, launch_violations, campaign_violations,
+            D7_VALIDATED_PROFILE_STATUS, budget_status,
+        )
+    if source_statuses != {PROFILE_SOURCE_STATUS}:
+        raise StageDPlanError(
+            "resource profiles cannot mix D3 and D7 source authorities"
+        )
+    # These remain non-authoritative D3 projections.  D7 replaces them with
+    # validated conservative recovery-v2 telemetry before launch authority.
     return (
         projection, launch_violations, campaign_violations,
         UNVALIDATED_PROFILE_STATUS,
@@ -2237,10 +2258,27 @@ class StageDPreflight:
             raise StageDPlanError("Stage D preflight identity is invalid")
         _require_sha256(self.plan_digest, "preflight.plan_digest")
         _require_sha256(self.estimate_digest, "preflight.estimate_digest")
-        if self.status not in ("PROFILE_REQUIRED", "READY_FOR_D7", "BLOCKED_NO_LAUNCH"):
+        if self.status not in (
+            "PROFILE_REQUIRED", "READY_FOR_D7",
+            "READY_FOR_D7_AUTHORIZATION", "BLOCKED_NO_LAUNCH",
+        ):
             raise StageDPlanError("preflight status is invalid")
-        if self.execution_authorization != "NOT_ISSUED" or self.analysis_authorization != "NOT_EVALUATED" or self.d7_final is not False:
-            raise StageDPlanError("D3 preflight cannot issue execution/analysis authority or be D7-final")
+        if (
+            self.execution_authorization != "NOT_ISSUED"
+            or self.analysis_authorization != "NOT_EVALUATED"
+            or type(self.d7_final) is not bool
+        ):
+            raise StageDPlanError(
+                "preflight cannot issue execution/analysis authority"
+            )
+        if (
+            self.status == "READY_FOR_D7_AUTHORIZATION"
+            and self.d7_final is not True
+        ) or (
+            self.status in {"PROFILE_REQUIRED", "READY_FOR_D7"}
+            and self.d7_final is not False
+        ):
+            raise StageDPlanError("preflight D7-final/status binding drifted")
         if not isinstance(self.violations, tuple) or any(not isinstance(item, str) for item in self.violations):
             raise StageDPlanError("preflight violations must be an immutable string tuple")
         _require_sha256(self.canonical_digest, "preflight.canonical_digest")
@@ -2291,15 +2329,20 @@ def preflight_stage_d(
         typed = validate_stage_d_estimate(config_or_estimate)
     else:
         typed = estimate_stage_d_run(config_or_estimate, plan, profiles)
-    status = {
-        "NOT_EVALUATED": "PROFILE_REQUIRED",
-        "PASS": "READY_FOR_D7",
-        "BLOCKED_NO_LAUNCH": "BLOCKED_NO_LAUNCH",
-    }[typed.budget_status]
+    d7_final = typed.profile_status == D7_VALIDATED_PROFILE_STATUS
+    status = (
+        "READY_FOR_D7_AUTHORIZATION"
+        if d7_final and typed.budget_status == "PASS"
+        else "BLOCKED_NO_LAUNCH"
+        if typed.budget_status == "BLOCKED_NO_LAUNCH"
+        else "PROFILE_REQUIRED"
+        if typed.budget_status == "NOT_EVALUATED"
+        else "READY_FOR_D7"
+    )
     violations = typed.launch_violations + typed.completed_gate_violations
     result = StageDPreflight(
         1, PREFLIGHT_DOCUMENT_TYPE, typed.plan_digest, typed.canonical_digest,
-        status, "NOT_ISSUED", "NOT_EVALUATED", False, violations,
+        status, "NOT_ISSUED", "NOT_EVALUATED", d7_final, violations,
         "0" * 64, _PLAN_ISSUER,
     )
     object.__setattr__(result, "canonical_digest", canonical_sha256(result._payload()))
@@ -2312,7 +2355,10 @@ def validate_stage_d_preflight(preflight: Any) -> StageDPreflight:
         return StageDPreflight.from_dict(_coerce_mapping(preflight, "preflight"))
     if preflight.status == "PROFILE_REQUIRED" and preflight.violations:
         raise StageDPlanError("profile-required preflight cannot invent violations")
-    if preflight.status in ("PROFILE_REQUIRED", "READY_FOR_D7") and preflight.violations:
+    if preflight.status in (
+        "PROFILE_REQUIRED", "READY_FOR_D7",
+        "READY_FOR_D7_AUTHORIZATION",
+    ) and preflight.violations:
         raise StageDPlanError("non-blocked preflight cannot contain violations")
     if preflight.status == "BLOCKED_NO_LAUNCH" and not preflight.violations:
         raise StageDPlanError("blocked preflight requires a violation")
@@ -2348,6 +2394,7 @@ __all__ = [
     "LOGICAL_WORK_ITEM_COUNT", "MAP_WORK_ITEM_COUNT",
     "MATCHED_METHOD_ID", "METHOD_IDS", "NNS_METHOD_ID",
     "PRIMARY_CLEAN_MAP_COUNT", "PROFILE_SOURCE_STATUS",
+    "D7_PROFILE_SOURCE_STATUS", "D7_VALIDATED_PROFILE_STATUS",
     "PROFILE_UNIT_KINDS",
     "SHARD_ASSIGNMENT_FORMULA",
     "SHARD_COUNT_STATUS", "STATISTICAL_N", "StageDBudgetError",

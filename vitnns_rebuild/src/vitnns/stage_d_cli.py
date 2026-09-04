@@ -65,6 +65,7 @@ _D5_FINALIZATION_COMMANDS = frozenset({"finalize", "validate"})
 _D6_ANALYSIS_COMMANDS = frozenset({
     "aggregate", "build-paper-package", "validate-paper-package",
 })
+_D7_COMMANDS = frozenset({"smoke", "budget", "authorize-execution"})
 
 _SHARD_SUMMARY_KEYS = frozenset({
     "schema_version", "document_type", "shard_id", "shard_count",
@@ -348,6 +349,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="independently validate a closed synthetic D6 paper package",
     )
     _add_analysis_arguments(validate_paper, operation="validate-paper-package")
+
+    smoke = commands.add_parser(
+        "smoke", help="run the isolated non-reserve D7 synthetic smoke",
+    )
+    smoke.add_argument("--repo-root", type=Path, default=REPO_ROOT)
+
+    budget = commands.add_parser(
+        "budget", help="recompute the D7 final budget from sealed telemetry",
+    )
+    budget.add_argument("--repo-root", type=Path, default=REPO_ROOT)
+
+    authorize = commands.add_parser(
+        "authorize-execution",
+        help="write D7 execution authority at a clean frozen producer",
+    )
+    authorize.add_argument("--repo-root", type=Path, default=REPO_ROOT)
+    authorize.add_argument("--shard-count", type=_nonnegative_int, default=8)
     return parser
 
 
@@ -985,6 +1003,13 @@ def _runtime_api() -> Any:
     return importlib.import_module(".stage_d_runtime", __package__)
 
 
+def _production_backend_factory(*, context: Any, device: str) -> Any:
+    """Build the recovery-v2 Stage D backend after the D7 gate passes."""
+
+    d7 = importlib.import_module(".stage_d_d7", __package__)
+    return d7.production_backend_factory(context=context, device=device)
+
+
 def _finalization_api() -> Any:
     """Import finalization code only when a D5 command actually needs it."""
 
@@ -1077,10 +1102,22 @@ def _finalization_exception_types(
     return base, blocked, integrity
 
 
-def _execution_gate(factory: Callable[..., Any] | None) -> Any:
+def _execution_gate(
+    factory: Callable[..., Any] | None, *, allow_d7_default: bool,
+) -> Any:
     gate_factory = factory
+    if gate_factory is None and allow_d7_default:
+        try:
+            gate_factory = getattr(
+                importlib.import_module(".stage_d_d7", __package__),
+                "D7ExecutionGate", None,
+            )
+        except Exception:
+            gate_factory = None
     if gate_factory is None:
-        gate_factory = getattr(_runtime_api(), "UnavailableD7ExecutionGate", None)
+        gate_factory = getattr(
+            _runtime_api(), "UnavailableD7ExecutionGate", None
+        )
     if not callable(gate_factory):
         raise StageDCLIRuntimeIntegrityError(
             "Stage D runtime has no D7 execution gate implementation"
@@ -1197,15 +1234,25 @@ def _run_runtime_command(
     shard_runner: Callable[..., Any] | None,
     execution_gate_factory: Callable[..., Any] | None,
     backend_factory: Callable[..., Any] | None,
+    pipeline_provider_is_default: bool,
 ) -> Mapping[str, Any]:
     # D3 metadata is independently rebuilt before the D7 consumer is invoked.
-    estimate, preflight = _estimate_and_preflight(pipeline, None)
     authorization = _strict_authorization_json(args.authorization)
+    if execution_gate_factory is None and pipeline_provider_is_default:
+        d7 = importlib.import_module(".stage_d_d7", __package__)
+        pipeline = d7.load_recovery_pipeline(repo_root=args.repo_root)
+        estimate, preflight = d7.controls_from_authorization(
+            authorization, repo_root=args.repo_root,
+        )
+    else:
+        estimate, preflight = _estimate_and_preflight(pipeline, None)
     retry_authorizations = (
         _strict_retry_authorizations(args.retry_authorization)
         if args.command == "run-shard" else ()
     )
-    gate = _execution_gate(execution_gate_factory)
+    gate = _execution_gate(
+        execution_gate_factory, allow_d7_default=pipeline_provider_is_default,
+    )
 
     if args.command == "init":
         initializer = _runtime_callable(
@@ -1218,11 +1265,14 @@ def _run_runtime_command(
         return _initialization_document(result, args=args, pipeline=pipeline)
 
     runner = _runtime_callable(shard_runner, "run_stage_d_shard")
+    selected_backend_factory = (
+        _production_backend_factory if backend_factory is None else backend_factory
+    )
     result = _call_runtime(
         runner, pipeline.plan, output_root=args.output_root,
         estimate=estimate, preflight=preflight, shard_id=args.shard_index,
         execution_context=authorization, execution_gate=gate,
-        backend_factory=backend_factory, device=args.device,
+        backend_factory=selected_backend_factory, device=args.device,
         retry_authorizations=retry_authorizations,
     )
     if not isinstance(result, Mapping) and not callable(
@@ -1399,10 +1449,30 @@ def main(
         except SystemExit as error:
             return EXIT_SUCCESS if error.code == 0 else EXIT_INPUT_ERROR
 
+        if args.command in _D7_COMMANDS:
+            d7 = importlib.import_module(".stage_d_d7", __package__)
+            if args.command == "smoke":
+                document = d7.run_synthetic_smoke(repo_root=args.repo_root)
+            elif args.command == "budget":
+                document = d7.write_d7_budget(repo_root=args.repo_root)
+            else:
+                document = d7.build_execution_authorization(
+                    repo_root=args.repo_root, shard_count=args.shard_count,
+                )
+                d7._write_atomic(
+                    Path(args.repo_root).resolve() / d7.AUTHORIZATION_PATH, document,
+                )
+            _write_json(document, output)
+            return EXIT_SUCCESS
+
         provider = _load_pipeline if pipeline_provider is None else pipeline_provider
-        pipeline = _require_pipeline(
-            provider(args), require_plan=args.command != "validate-contracts",
-        )
+        if args.command in _D4_RUNTIME_COMMANDS and pipeline_provider is None:
+            d7 = importlib.import_module(".stage_d_d7", __package__)
+            pipeline = d7.load_recovery_pipeline(repo_root=args.repo_root)
+        else:
+            pipeline = _require_pipeline(
+                provider(args), require_plan=args.command != "validate-contracts",
+            )
 
         if args.command == "validate-contracts":
             _write_json(_contract_summary(pipeline), output)
@@ -1418,6 +1488,7 @@ def main(
                 shard_runner=shard_runner,
                 execution_gate_factory=execution_gate_factory,
                 backend_factory=backend_factory,
+                pipeline_provider_is_default=pipeline_provider is None,
             )
             document = _write_runtime_json(result, output)
             return (
@@ -1506,6 +1577,9 @@ def main(
         StageDCLIIntegrityError, StageDConfigError, StageDManifestError,
         StageDPlanError, StageDAuthorizationError,
     ) as error:
+        _write_json(_error_document(error, "STAGE_D_INTEGRITY_ERROR"), errors)
+        return EXIT_INTEGRITY_FAILURE
+    except ValueError as error:
         _write_json(_error_document(error, "STAGE_D_INTEGRITY_ERROR"), errors)
         return EXIT_INTEGRITY_FAILURE
     except Exception as error:  # fail closed at the CLI boundary

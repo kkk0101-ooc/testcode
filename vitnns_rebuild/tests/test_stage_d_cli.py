@@ -176,7 +176,7 @@ def _install_estimate_pipeline(
     return estimate, preflight
 
 
-def test_parser_exposes_exact_d6_command_surface() -> None:
+def test_parser_exposes_exact_d7_command_surface() -> None:
     parser = cli.build_parser()
     subparsers = [
         action for action in parser._actions
@@ -188,8 +188,9 @@ def test_parser_exposes_exact_d6_command_surface() -> None:
         "prepare-authorization", "init", "run-shard",
         "finalize", "validate", "aggregate",
         "build-paper-package", "validate-paper-package",
+        "smoke", "budget", "authorize-execution",
     }
-    forbidden = {"export", "synthetic", "smoke", "budget"}
+    forbidden = {"export", "synthetic"}
     assert forbidden.isdisjoint(subparsers[0].choices)
 
     for command in ("finalize", "validate"):

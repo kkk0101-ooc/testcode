@@ -503,7 +503,9 @@ class ProductionStageDBackend(ProductionStageCBackend):
 
     def __init__(
         self, *, trace_mode: str | None = None,
-        trace_builder: Callable[..., Any] | None = None, **kwargs: Any,
+        trace_builder: Callable[..., Any] | None = None,
+        stage_d_model_binding: Mapping[str, Any] | None = None,
+        **kwargs: Any,
     ) -> None:
         requested = kwargs.pop(
             "fidelity_seed_namespace", STAGE_D_FIDELITY_SEED_NAMESPACE
@@ -520,9 +522,20 @@ class ProductionStageDBackend(ProductionStageCBackend):
             raise TypeError("trace_builder must be callable or None")
         self._stage_d_configured_trace_mode = trace_mode
         self._stage_d_trace_builder = trace_builder
+        self._stage_d_model_binding = (
+            None if stage_d_model_binding is None
+            else MappingProxyType(_plain(
+                stage_d_model_binding, "stage_d_model_binding"
+            ))
+        )
         super().__init__(
             fidelity_seed_namespace=STAGE_D_FIDELITY_SEED_NAMESPACE, **kwargs
         )
+
+    def _bound_model_record(self) -> dict[str, Any]:
+        if self._stage_d_model_binding is not None:
+            return dict(self._stage_d_model_binding)
+        return super()._bound_model_record()
 
     def adapt_unit(
         self, group: StageDImageGroup, unit: StageDUnit

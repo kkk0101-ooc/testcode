@@ -230,6 +230,21 @@ def test_stage_d_seed_golden_namespace_and_fine_retention(plan):
             sample_loader=lambda *_: None,
             fidelity_seed_namespace="stage-c-fidelity|20260821|",
         )
+
+
+def test_stage_d_backend_uses_explicit_recovery_model_provenance_overlay() -> None:
+    model = {
+        "identity": "RECOVERY_V2_NEW_ARTIFACT_NOT_HISTORICAL_2E718",
+        "state_dict_sha256": "4" * 64,
+        "canonical_tensor_digest": "1" * 64,
+    }
+    backend = ProductionStageDBackend(
+        sample_loader=lambda *_args: None, stage_d_model_binding=model,
+    )
+    assert backend._bound_model_record() == model
+    assert "2e718037429f18ec77aa629471beb2e99993d7383375188bab777aba04d5e4d0" not in json.dumps(
+        backend._bound_model_record()
+    )
     payload = StageDBackendPayload(
         l0={}, l1={"clean": np.zeros((56, 56), dtype=np.float32)}
     )

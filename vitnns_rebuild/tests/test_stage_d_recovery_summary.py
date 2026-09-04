@@ -8,7 +8,8 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from vitnns.stage_d_recovery import STAGES, semantic_digest, validate_stage_bundle
+from vitnns.stage_d_recovery import STAGES, semantic_digest
+from vitnns.stage_d_d7 import validate_archived_recovery_chain
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -52,12 +53,11 @@ def test_audit_inventory_is_exhaustive_and_uniquely_classified() -> None:
     assert [record["stage"] for record in audit["current_records"]] == list(STAGES)
 
 
-def test_r2_stage_chain_refs_blobs_sources_and_schema_uris() -> None:
+def test_r3_stage_chain_refs_blobs_sources_and_schema_uris() -> None:
+    archived = validate_archived_recovery_chain(repo_root=ROOT)
+    assert archived["status"] == "PASS"
+    assert [item["stage"] for item in archived["stages"]] == list(STAGES)
     for stage in STAGES:
-        result = validate_stage_bundle(stage, repo_root=ROOT)
-        assert result["status"] == "PASS"
-        assert result["reserve_accessed"] is False
-        assert result["downstream_authorized"] is False
         directory = ROOT / "reports/stage_d_recovery_v2_20260904_r3" / stage.lower()
         for name in ("completion.json", "validation.json", "status.json"):
             document = json.loads((directory / name).read_text())

@@ -1,0 +1,1448 @@
+"""Recovery-v2 D7 smoke, budget, producer freeze and execution gate.
+
+The module never resolves a Stage D registry image path.  Its integration
+smoke uses deterministic arrays, while its final budget is recomputed from the
+sealed recovery C9 H20 telemetry.  The only formal capability it can issue is
+an execution capability for a future D8.0; analysis remains unissued.
+"""
+
+from __future__ import annotations
+
+import copy
+import hashlib
+import json
+import math
+import os
+import re
+import stat
+import subprocess
+import tempfile
+from collections.abc import Mapping, Sequence
+from contextlib import contextmanager
+from dataclasses import dataclass, field
+from pathlib import Path, PurePosixPath
+from types import MappingProxyType, SimpleNamespace
+from typing import Any
+
+import numpy as np
+from jsonschema import Draft202012Validator
+
+from .constants import REPO_ROOT
+from .stage_d_config import load_stage_d_contracts, strict_json_bytes
+from .stage_d_plan import (
+    D7_PROFILE_SOURCE_STATUS, D7_VALIDATED_PROFILE_STATUS,
+    MATCHED_METHOD_ID, METHOD_IDS, NNS_METHOD_ID, StageDEstimate,
+    StageDExecutionPlan, StageDPreflight, StageDResourceProfile,
+    build_stage_d_plan, canonical_json_bytes, canonical_sha256,
+    estimate_stage_d_run, preflight_stage_d, validate_stage_d_estimate,
+    validate_stage_d_plan, validate_stage_d_preflight,
+    validate_stage_d_shard_mapping,
+)
+from .stage_d_recovery import load_recovery_binding
+
+
+class StageDD7Error(ValueError):
+    """D7 cannot establish a closed, recovery-v2 execution gate."""
+
+
+D7_ID = "STAGE_D_RECOVERY_V2_D7_20260904"
+SMOKE_DOCUMENT_TYPE = "stage_d_d7_synthetic_smoke_receipt"
+BUDGET_DOCUMENT_TYPE = "stage_d_d7_final_budget"
+AUTHORIZATION_DOCUMENT_TYPE = "stage_d_d7_execution_authorization"
+COMPLETION_DOCUMENT_TYPE = "stage_d_d7_completion"
+EXECUTION_AUTHORIZATION = "AUTHORIZED_STAGE_D_FIDELITY_SCOPE"
+ANALYSIS_AUTHORIZATION = "NOT_EVALUATED"
+PRODUCER_REF = "refs/archive/stage-d-fidelity-v1-producer"
+AUTHORITY_REF = "refs/archive/stage-d-fidelity-v1-d7-authority"
+COMPLETION_REF = "refs/archive/stage-d-fidelity-v1-d7-completion"
+VALIDATION_PATH = "reports/stage_d_d7_recovery_v2_20260904/validation.json"
+STATUS_PATH = "reports/stage_d_d7_recovery_v2_20260904/status.json"
+HANDOFF_PATH = "reports/stage_d_d7_recovery_v2_20260904/d7_to_future_d8_handoff.json"
+SMOKE_ROOT = "evidence/stage_d/d7_recovery_v2_20260904/synthetic_smoke"
+SMOKE_RECEIPT_PATH = "reports/stage_d_d7_recovery_v2_20260904/smoke_receipt.json"
+BUDGET_PATH = "config/stage_d_d7_budget_20260904.json"
+AUTHORIZATION_PATH = "config/stage_d_d7_execution_authorization_20260904.json"
+COMPLETION_ROOT = "reports/stage_d_d7_recovery_v2_20260904"
+FORMAL_ROOT = "evidence/stage_d/d8_recovery_v2_20260904/formal"
+C9_REPORT_PATH = "evidence/stage_c/c9_recovery_v2_0d88fbb/formal/c9_evidence_report.json"
+C9_REPORT_FILE_SHA256 = "ad164a87aa6dedba461e1b19d639d22d955a675d75e0c6e257af4d5846682763"
+C9_REPORT_CANONICAL_DIGEST = "959bc874b04b007f487d05734cf5b85b1eaef75bb8c2ff2ded222c7cf9083248"
+D6_COMPLETION_COMMIT = "586634ee9919d857cd3409e08b2bf6edfdaa7867"
+D6_TERMINAL_DIGEST = "fc9e9f5bd2be749947881615fb6944181a6d3e5b64378aaca8e5592935626637"
+RECOVERY_MODEL_SHA256 = "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d"
+RECOVERY_MODEL_TENSOR_DIGEST = "150234d8117a50057f62aa14a97f46bbf1da92b00b386c10c71cc7000c5d51dd"
+DEFAULT_SHARD_COUNT = 8
+
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
+_MAX_JSON_BYTES = 32 * 1024 * 1024
+_SMOKE_SCHEMA = "config/stage_d_d7_smoke.schema.json"
+_BUDGET_SCHEMA = "config/stage_d_d7_budget.schema.json"
+_AUTH_SCHEMA = "config/stage_d_d7_execution_authorization.schema.json"
+_AUTHORITY_ONLY_PATHS = {f"vitnns_rebuild/{AUTHORIZATION_PATH}"}
+
+
+def _plain(value: Any, context: str = "value") -> Any:
+    converter = getattr(value, "to_dict", None)
+    if callable(converter) and not isinstance(value, Mapping):
+        value = converter()
+    if value is None or type(value) in {str, bool, int}:
+        return value
+    if type(value) is float:
+        if not math.isfinite(value):
+            raise StageDD7Error(f"{context} contains a non-finite number")
+        return value
+    if isinstance(value, Mapping):
+        result: dict[str, Any] = {}
+        for key, child in value.items():
+            if not isinstance(key, str) or not key:
+                raise StageDD7Error(f"{context} has an invalid key")
+            result[key] = _plain(child, f"{context}.{key}")
+        return result
+    if isinstance(value, (list, tuple)):
+        return [_plain(child, f"{context}[{index}]") for index, child in enumerate(value)]
+    raise StageDD7Error(f"{context} is not JSON-compatible")
+
+
+def _semantic_digest(document: Mapping[str, Any]) -> str:
+    return canonical_sha256({
+        key: child for key, child in document.items() if key != "canonical_digest"
+    })
+
+
+def _file_bytes(document: Mapping[str, Any]) -> bytes:
+    return json.dumps(
+        _plain(document), sort_keys=True, separators=(",", ":"),
+        ensure_ascii=False, allow_nan=False,
+    ).encode("utf-8") + b"\n"
+
+
+def _read_regular_json(path: Path, context: str) -> tuple[dict[str, Any], bytes]:
+    if not hasattr(os, "O_NOFOLLOW"):
+        raise StageDD7Error("safe no-follow reads are unavailable")
+    descriptor: int | None = None
+    try:
+        descriptor = os.open(
+            path, os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
+        )
+        before = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(before.st_mode) or before.st_nlink != 1
+            or before.st_size > _MAX_JSON_BYTES
+        ):
+            raise StageDD7Error(f"{context} must be a bounded single-link regular file")
+        chunks: list[bytes] = []
+        remaining = before.st_size + 1
+        while remaining:
+            chunk = os.read(descriptor, min(remaining, 1024 * 1024))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        raw = b"".join(chunks)
+        after = os.fstat(descriptor)
+        identity = lambda item: (
+            item.st_dev, item.st_ino, item.st_size, item.st_mtime_ns, item.st_ctime_ns
+        )
+        if len(raw) != before.st_size or identity(before) != identity(after):
+            raise StageDD7Error(f"{context} changed while being read")
+    except StageDD7Error:
+        raise
+    except OSError as error:
+        raise StageDD7Error(f"cannot read {context}: {path}") from error
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+    try:
+        value = strict_json_bytes(raw, context)
+    except Exception as error:
+        raise StageDD7Error(f"invalid {context}") from error
+    if not isinstance(value, dict):
+        raise StageDD7Error(f"{context} must be an object")
+    return value, raw
+
+
+def _write_atomic(path: Path, document: Mapping[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    raw = _file_bytes(document)
+    descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(raw)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    finally:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+
+
+def _git(repo: Path, *arguments: str) -> str:
+    environment = os.environ.copy()
+    environment.update({
+        "GIT_OPTIONAL_LOCKS": "0", "GIT_TERMINAL_PROMPT": "0",
+        "GIT_LFS_SKIP_SMUDGE": "1",
+    })
+    try:
+        result = subprocess.run(
+            ["git", *arguments], cwd=repo, check=True, capture_output=True,
+            text=True, timeout=60, env=environment,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        raise StageDD7Error(f"Git check failed: {' '.join(arguments)}") from error
+    return result.stdout.strip()
+
+
+def _git_success(repo: Path, *arguments: str) -> bool:
+    environment = os.environ.copy()
+    environment.update({
+        "GIT_OPTIONAL_LOCKS": "0", "GIT_TERMINAL_PROMPT": "0",
+        "GIT_LFS_SKIP_SMUDGE": "1",
+    })
+    try:
+        result = subprocess.run(
+            ["git", *arguments], cwd=repo, check=False, capture_output=True,
+            timeout=60, env=environment,
+        )
+    except OSError as error:
+        raise StageDD7Error(f"Git check failed: {' '.join(arguments)}") from error
+    return result.returncode == 0
+
+
+def _schema_validate(document: Mapping[str, Any], path: Path, context: str) -> None:
+    schema, _ = _read_regular_json(path, f"{context} schema")
+    Draft202012Validator.check_schema(schema)
+    errors = sorted(
+        Draft202012Validator(schema).iter_errors(document),
+        key=lambda item: tuple(str(part) for part in item.absolute_path),
+    )
+    if errors:
+        location = ".".join(str(part) for part in errors[0].absolute_path) or "root"
+        raise StageDD7Error(f"{context} schema failure at {location}: {errors[0].message}")
+
+
+def validate_archived_recovery_chain(
+    *, repo_root: Path | str = REPO_ROOT,
+) -> Mapping[str, Any]:
+    """Recompute D0--D6 from each immutable completion snapshot."""
+
+    repo = Path(repo_root).resolve()
+    prefix = _git(repo, "rev-parse", "--show-prefix")
+    records = []
+    previous: str | None = None
+    expected_scopes = {
+        "D0": "FORMAL_PREPARATION_PASS",
+        "D1": "FORMAL_PREPARATION_PASS",
+        "D2": "FORMAL_PREPARATION_PASS",
+        "D3": "CONTROL_PLANE_READINESS_PASS",
+        "D4": "PRODUCER_IMPLEMENTATION_READINESS_PASS",
+        "D5": "VALIDATION_IMPLEMENTATION_READINESS_PASS",
+        "D6": "ANALYSIS_IMPLEMENTATION_READINESS_PASS",
+    }
+    for stage in expected_scopes:
+        lower = stage.lower()
+        ref = f"refs/archive/stage-d-recovery-v2-r3-{lower}-completion"
+        commit = _git(repo, "rev-parse", f"{ref}^{{commit}}")
+        if previous is not None and not _git_success(
+            repo, "merge-base", "--is-ancestor", previous, commit
+        ):
+            raise StageDD7Error(f"{stage} does not descend from direct upstream")
+        base = f"reports/stage_d_recovery_v2_20260904_r3/{lower}"
+
+        def blob(relative: str) -> bytes:
+            try:
+                return subprocess.run(
+                    ["git", "show", f"{commit}:{prefix}{relative}"],
+                    cwd=repo, check=True, capture_output=True, timeout=30,
+                    env={**os.environ, "GIT_OPTIONAL_LOCKS": "0", "GIT_LFS_SKIP_SMUDGE": "1"},
+                ).stdout
+            except (OSError, subprocess.SubprocessError) as error:
+                raise StageDD7Error(f"cannot read archived {stage} source: {relative}") from error
+
+        completion_raw = blob(f"{base}/completion.json")
+        validation_raw = blob(f"{base}/validation.json")
+        status_raw = blob(f"{base}/status.json")
+        completion = strict_json_bytes(completion_raw, f"archived {stage} completion")
+        validation = strict_json_bytes(validation_raw, f"archived {stage} validation")
+        status = strict_json_bytes(status_raw, f"archived {stage} status")
+        if any(not isinstance(item, Mapping) for item in (completion, validation, status)):
+            raise StageDD7Error(f"archived {stage} record is not an object")
+        for document, label in ((completion, "completion"), (validation, "validation"), (status, "status")):
+            if document.get("canonical_digest") != _semantic_digest(document):
+                raise StageDD7Error(f"archived {stage} {label} digest mismatch")
+        if (
+            status.get("status") != "PASS"
+            or status.get("pass_scope") != expected_scopes[stage]
+            or status.get("completion_file_sha256") != hashlib.sha256(completion_raw).hexdigest()
+            or status.get("validation_file_sha256") != hashlib.sha256(validation_raw).hexdigest()
+            or status.get("validation_complete_before_terminal") is not True
+            or set(status.get("authorization", {}).values()) != {False}
+            or set(status.get("access_attestation", {}).values()) != {False}
+            or validation.get("source_recomputed") is not True
+            or validation.get("errors") != []
+            or validation.get("blocking_reasons") != []
+        ):
+            raise StageDD7Error(f"archived {stage} terminal semantics drifted")
+        producer = completion["git"]["producer_commit"]
+        for source in completion["source_files"]:
+            try:
+                source_raw = subprocess.run(
+                    ["git", "show", f"{producer}:{prefix}{source['path']}"],
+                    cwd=repo, check=True, capture_output=True, timeout=30,
+                    env={**os.environ, "GIT_OPTIONAL_LOCKS": "0", "GIT_LFS_SKIP_SMUDGE": "1"},
+                ).stdout
+            except (OSError, subprocess.SubprocessError) as error:
+                raise StageDD7Error(
+                    f"cannot read archived {stage} producer source: {source['path']}"
+                ) from error
+            if hashlib.sha256(source_raw).hexdigest() != source["file_sha256"]:
+                raise StageDD7Error(f"archived {stage} producer source hash drifted")
+        records.append({
+            "stage": stage, "commit": commit,
+            "terminal_file_sha256": hashlib.sha256(status_raw).hexdigest(),
+            "terminal_canonical_digest": status["canonical_digest"],
+            "producer_source_count": len(completion["source_files"]),
+        })
+        previous = commit
+    return {
+        "status": "PASS", "source_recomputed_from_archive_blobs": True,
+        "stages": records, "canonical_digest": canonical_sha256(records),
+    }
+
+
+@dataclass(frozen=True, slots=True)
+class RecoveryStageDPipeline:
+    contracts: Any
+    manifest: Any
+    plan: StageDExecutionPlan
+
+
+def load_recovery_pipeline(*, repo_root: Path | str = REPO_ROOT) -> RecoveryStageDPipeline:
+    """Build the frozen plan through the R3 overlay, never the stale D3 source loader."""
+
+    repo = Path(repo_root).resolve()
+    archived = validate_archived_recovery_chain(repo_root=repo)
+    d6_ref = "refs/archive/stage-d-recovery-v2-r3-d6-completion"
+    if _git(repo, "rev-parse", f"{d6_ref}^{{commit}}") != D6_COMPLETION_COMMIT:
+        raise StageDD7Error("D6 recovery-v2 direct upstream is not current")
+    prefix = _git(repo, "rev-parse", "--show-prefix")
+    d6_relative = "reports/stage_d_recovery_v2_20260904_r3/d6/status.json"
+    try:
+        d6_raw = subprocess.run(
+            ["git", "show", f"{D6_COMPLETION_COMMIT}:{prefix}{d6_relative}"],
+            cwd=repo, check=True, capture_output=True, timeout=30,
+            env={**os.environ, "GIT_OPTIONAL_LOCKS": "0", "GIT_LFS_SKIP_SMUDGE": "1"},
+        ).stdout
+        d6 = strict_json_bytes(d6_raw, "archived D6 terminal record")
+    except (OSError, subprocess.SubprocessError) as error:
+        raise StageDD7Error("cannot read archived D6 terminal record") from error
+    if (
+        not isinstance(d6, Mapping) or d6.get("status") != "PASS"
+        or d6.get("pass_scope") != "ANALYSIS_IMPLEMENTATION_READINESS_PASS"
+        or d6.get("canonical_digest") != D6_TERMINAL_DIGEST
+        or _semantic_digest(d6) != D6_TERMINAL_DIGEST
+        or d6.get("authorization", {}).get("execution_authorization") is not False
+        or d6.get("access_attestation", {}).get("reserve_image_opened") is not False
+    ):
+        raise StageDD7Error("archived D6 terminal record is invalid")
+    if not _git_success(repo, "merge-base", "--is-ancestor", D6_COMPLETION_COMMIT, "HEAD"):
+        raise StageDD7Error("current HEAD does not descend from D6 completion")
+    recovery, _file_sha, _digest = load_recovery_binding(repo)
+    if recovery["model"]["file_sha256"] != RECOVERY_MODEL_SHA256:
+        raise StageDD7Error("recovery-v2 model overlay drifted")
+    contracts = load_stage_d_contracts(repo_root=repo)
+    registry, _ = _read_regular_json(
+        repo / "manifests/stage_d_fidelity_v1/registry.json",
+        "tracked Stage D registry metadata",
+    )
+    plan = validate_stage_d_plan(build_stage_d_plan(
+        contracts.config, contracts.run_spec, registry,
+    ))
+    manifest = SimpleNamespace(
+        registry_document=registry,
+        bindings=MappingProxyType({
+            "d6": MappingProxyType({
+                "verification_status": "PASS",
+                "completion_commit": D6_COMPLETION_COMMIT,
+                "terminal_canonical_digest": D6_TERMINAL_DIGEST,
+                "archive_chain_digest": archived["canonical_digest"],
+            }),
+            "recovery_v2": MappingProxyType({
+                "verification_status": "PASS",
+                "canonical_digest": recovery["canonical_digest"],
+            }),
+        }),
+        canonical_digest=canonical_sha256({
+            "d6": D6_TERMINAL_DIGEST,
+            "recovery_v2": recovery["canonical_digest"],
+            "registry": registry["canonical_digest"],
+        }),
+    )
+    return RecoveryStageDPipeline(contracts, manifest, plan)
+
+
+class _SmokeBackend:
+    def __init__(self) -> None:
+        self.active: str | None = None
+        self.release_count = 0
+        self.method_order: list[str] = []
+
+    @contextmanager
+    def image_scope(self, sample_id: str, *, device: str):
+        if device != "cpu" or self.active is not None:
+            raise StageDD7Error("D7 smoke backend scope is invalid")
+        self.active = sample_id
+        try:
+            yield self
+        finally:
+            self.active = None
+            self.release_count += 1
+
+    def run_stage_d_unit(self, group: Any, unit: Any, *, device: str, call_counter: Any) -> Any:
+        del group, device
+        from .stage_d_artifacts import StageDUnitPayload
+
+        self.method_order.append(unit.method_id)
+        call_counter.record_forward(1)
+        if unit.method_id == NNS_METHOD_ID:
+            call_counter.record_backward(1)
+        base = 1.0 if unit.method_id == NNS_METHOD_ID else 0.5
+        metric = np.full((56, 56), base, dtype=np.float32)
+        curves = np.empty((2, 5, 21), dtype=np.float64)
+        for direction in range(2):
+            for repeat in range(5):
+                curves[direction, repeat] = np.linspace(
+                    base + direction * 0.01 + repeat * 0.001,
+                    base + 1.0 + direction * 0.01 + repeat * 0.001, 21,
+                )
+        return StageDUnitPayload(
+            l0_scalars={
+                "diagnostic_only": True, "formal": False,
+                "method_id": unit.method_id,
+                "endpoint_id": "fine_4x4_cell_delta_fid",
+            },
+            metric_ready_map=metric, fidelity_curves=curves,
+        )
+
+
+def _inventory(root: Path) -> tuple[list[dict[str, Any]], int]:
+    records: list[dict[str, Any]] = []
+    total = 0
+    for directory, names, files in os.walk(root, followlinks=False):
+        names.sort()
+        files.sort()
+        current = Path(directory)
+        for name in files:
+            path = current / name
+            metadata = path.lstat()
+            if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+                raise StageDD7Error("smoke root contains a non-ordinary file")
+            relative = path.relative_to(root).as_posix()
+            raw = path.read_bytes()
+            records.append({
+                "path": relative, "bytes": len(raw),
+                "sha256": hashlib.sha256(raw).hexdigest(),
+            })
+            total += len(raw)
+    return records, total
+
+
+def _validate_smoke_pair(
+    root: Path, group: Any, *, plan_digest: str,
+) -> tuple[list[dict[str, Any]], str]:
+    """Source-recompute the two synthetic attempts and their numeric shape."""
+
+    from .stage_d_artifacts import validate_stage_d_attempt
+
+    rows: list[dict[str, Any]] = []
+    for unit in group.units:
+        attempt = root / "units" / unit.canonical_digest / "attempts/attempt-000001"
+        validation = validate_stage_d_attempt(
+            attempt, expected_unit=unit, expected_group=group,
+            expected_plan_digest=plan_digest,
+            expected_mode="SYNTHETIC_D4_TEST_ONLY",
+        )
+        if not validation.valid or not validation.terminal or not validation.complete:
+            raise StageDD7Error("synthetic smoke attempt source validation failed")
+        map_value = np.load(attempt / "L1/metric_ready_map.npy", allow_pickle=False)
+        with np.load(attempt / "L1/fidelity_curves.npz", allow_pickle=False) as archive:
+            if set(archive.files) != {"curves"}:
+                raise StageDD7Error("synthetic smoke curve archive is not closed")
+            curves = archive["curves"]
+        if (
+            map_value.dtype != np.float32 or map_value.shape != (56, 56)
+            or curves.dtype != np.float64 or curves.shape != (2, 5, 21)
+            or not np.isfinite(map_value).all() or not np.isfinite(curves).all()
+        ):
+            raise StageDD7Error("synthetic smoke numeric artifact shape drifted")
+        rows.append({
+            "unit_digest": unit.canonical_digest, "method_id": unit.method_id,
+            "attempt_digest": validation.digest,
+            "manifest_sha256": validation.manifest_sha256,
+            "artifact_count": validation.artifact_count,
+            "map_sha256": hashlib.sha256(map_value.tobytes(order="C")).hexdigest(),
+            "curve_sha256": hashlib.sha256(curves.tobytes(order="C")).hexdigest(),
+        })
+    if [row["method_id"] for row in rows] != list(METHOD_IDS):
+        raise StageDD7Error("synthetic smoke pair order drifted")
+    return rows, canonical_sha256(rows)
+
+
+def run_synthetic_smoke(
+    *, repo_root: Path | str = REPO_ROOT, output_root: Path | str | None = None,
+    receipt_path: Path | str | None = None,
+) -> Mapping[str, Any]:
+    """Run a fresh two-method, 422-coordinate diagnostic round trip."""
+
+    from .stage_d_artifacts import validate_stage_d_attempt
+    from .stage_d_producer import run_stage_d_execution_unit, run_stage_d_image_group
+    from .stage_d_runtime import _issue_synthetic_d4_test_context
+
+    repo = Path(repo_root).resolve()
+    root = repo / SMOKE_ROOT if output_root is None else Path(output_root).absolute()
+    receipt_file = (
+        repo / SMOKE_RECEIPT_PATH if receipt_path is None else Path(receipt_path).absolute()
+    )
+    if os.path.lexists(root):
+        raise StageDD7Error("D7 smoke root must be fresh")
+    pipeline = load_recovery_pipeline(repo_root=repo)
+    plan = pipeline.plan
+    estimate = estimate_stage_d_run(pipeline.contracts.config, plan)
+    preflight = preflight_stage_d(estimate)
+    context, gate = _issue_synthetic_d4_test_context(
+        plan, estimate, preflight, shard_count=DEFAULT_SHARD_COUNT,
+    )
+    # Exercise the gate before creating the diagnostic root.
+    checked = gate.validate_execution_context(
+        context, operation="smoke", output_root=root, plan=plan,
+        estimate=estimate, preflight=preflight,
+    )
+    if checked is not context:
+        raise StageDD7Error("synthetic smoke gate changed its opaque context")
+    root.mkdir(parents=True, mode=0o700)
+    group = next(item for item in plan.groups if not item.audit)
+    backend = _SmokeBackend()
+    owner = "stage-d-d7-synthetic-smoke"
+    owner_digest = hashlib.sha256(owner.encode("utf-8")).hexdigest()
+
+    def run_one(unit: Any, *, backend: Any, device: str) -> Mapping[str, Any]:
+        claim = {
+            "owner_token": owner, "owner_token_digest": owner_digest,
+            "group_owner_token_digest": owner_digest,
+            "unit_digest": unit.canonical_digest,
+            "group_digest": group.canonical_digest,
+            "attempt_id": "attempt-000001", "attempt_number": 1,
+            "attempt_path": str(
+                root / "units" / unit.canonical_digest / "attempts"
+                / "attempt-000001"
+            ),
+        }
+        result = run_stage_d_execution_unit(
+            unit, group=group, plan=plan, output_root=root, backend=backend,
+            context=context, claim=claim, device=device,
+        )
+        return {
+            **result,
+            "state": {
+                "succeeded": "TERMINAL_SUCCESS",
+                "scientific_failed": "TERMINAL_SCIENTIFIC_FAILURE",
+                "infrastructure_failed": "RETRY_PENDING",
+                "blocked": "BLOCKED",
+            }[result["state"]],
+        }
+
+    result = run_stage_d_image_group(
+        group, backend=backend, run_unit=run_one, device="cpu",
+    )
+    if (
+        result.state != "TERMINAL_SUCCESS" or not result.cache_released
+        or backend.release_count != 1
+        or backend.method_order != list(METHOD_IDS)
+    ):
+        raise StageDD7Error("synthetic smoke producer/cache gate failed")
+    attempts = []
+    for unit in group.units:
+        attempt = root / "units" / unit.canonical_digest / "attempts/attempt-000001"
+        validation = validate_stage_d_attempt(
+            attempt, expected_unit=unit, expected_group=group,
+            expected_plan_digest=plan.canonical_digest,
+            expected_mode="SYNTHETIC_D4_TEST_ONLY",
+        )
+        if not validation.valid or not validation.terminal or not validation.complete:
+            raise StageDD7Error("synthetic smoke attempt source validation failed")
+        attempts.append({
+            "unit_digest": unit.canonical_digest,
+            "method_id": unit.method_id, "attempt_digest": validation.digest,
+            "manifest_sha256": validation.manifest_sha256,
+            "artifact_count": validation.artifact_count,
+        })
+    # Run a second, independent source pass that decodes only the synthetic
+    # NPY/NPZ products.  This is the D7 mini-finalize/aggregate boundary.
+    aggregate_rows, aggregate_digest = _validate_smoke_pair(
+        root, group, plan_digest=plan.canonical_digest,
+    )
+    spec = {
+        "schema_version": 1, "document_type": "stage_d_d7_smoke_spec",
+        "formal": False, "input_kind": "DETERMINISTIC_SYNTHETIC_ARRAYS",
+        "sample_count": 1, "unit_count": 2, "map_count": 2,
+        "curve_count": 20, "curve_point_count": 420,
+        "logical_work_item_count": 422,
+        "audit_repeat_clean_included": False,
+        "methods": list(METHOD_IDS), "fine_only": True,
+        "reserve_image_accessed": False, "model_loaded": False,
+        "gpu_or_cuda_used": False, "formal_evidence": False,
+    }
+    spec["canonical_digest"] = _semantic_digest(spec)
+    finalization = {
+        "schema_version": 1, "document_type": "stage_d_d7_smoke_finalization",
+        "status": "PASS", "source_recomputed": True,
+        "terminal_units": 2, "succeeded_units": 2,
+        "attempts": attempts, "formal_evidence": False,
+        "independent_revalidation": True,
+    }
+    finalization["canonical_digest"] = _semantic_digest(finalization)
+    aggregate = {
+        "schema_version": 1, "document_type": "stage_d_d7_smoke_aggregation",
+        "status": "PASS", "diagnostic_only": True,
+        "methods_present": list(METHOD_IDS), "paired_sample_count": 1,
+        "source_rows_digest": aggregate_digest,
+        "source_rows": aggregate_rows,
+        "formal_effect_result": False, "scientific_decision": "NOT_EVALUATED",
+    }
+    aggregate["canonical_digest"] = _semantic_digest(aggregate)
+    paper = {
+        "schema_version": 1, "document_type": "stage_d_d7_smoke_paper_package",
+        "status": "PASS", "diagnostic_only": True,
+        "source_aggregation_digest": aggregate["canonical_digest"],
+        "formal_paper_data_generated": False, "formal_figure_generated": False,
+    }
+    paper["canonical_digest"] = _semantic_digest(paper)
+    for name, document in (
+        ("smoke_spec.json", spec), ("finalization.json", finalization),
+        ("aggregation.json", aggregate), ("paper_package.json", paper),
+    ):
+        _write_atomic(root / name, document)
+    records, total = _inventory(root)
+    receipt = {
+        "$schema": "../../config/stage_d_d7_smoke.schema.json",
+        "schema_version": 1, "document_type": SMOKE_DOCUMENT_TYPE,
+        "d7_id": D7_ID, "status": "PASS", "formal": False,
+        "input_kind": "DETERMINISTIC_SYNTHETIC_ARRAYS",
+        "root": (
+            str(root.relative_to(repo)) if root.is_relative_to(repo) else str(root)
+        ),
+        "plan_digest": plan.canonical_digest,
+        "counts": {
+            "sample_count": 1, "unit_count": 2, "map_count": 2,
+            "curve_count": 20, "curve_point_count": 420,
+            "logical_work_item_count": 422,
+        },
+        "chain": {
+            "producer": "PASS", "artifact": "PASS",
+            "finalize": "PASS", "source_validate": "PASS",
+            "aggregate": "PASS", "paper_export": "PASS",
+            "cache_release": "PASS",
+        },
+        "root_inventory": {
+            "file_count": len(records), "total_bytes": total,
+            "canonical_digest": canonical_sha256(records),
+        },
+        "access_attestation": {
+            "reserve_path_exists_checked": False,
+            "reserve_image_statted": False, "reserve_image_opened": False,
+            "reserve_image_hashed": False, "reserve_image_decoded": False,
+            "reserve_image_preprocessed": False,
+            "reserve_image_used_for_inference": False,
+            "model_loaded": False, "gpu_or_cuda_used": False,
+            "stage_d_outcome_accessed": False,
+        },
+        "authority": {
+            "execution_authorization": "NOT_ISSUED",
+            "analysis_authorization": ANALYSIS_AUTHORIZATION,
+            "stage_d_execution_started": False,
+        },
+    }
+    receipt["canonical_digest"] = _semantic_digest(receipt)
+    _schema_validate(receipt, repo / _SMOKE_SCHEMA, "D7 smoke receipt")
+    _write_atomic(receipt_file, receipt)
+    return receipt
+
+
+def validate_smoke(
+    *, repo_root: Path | str = REPO_ROOT, receipt_path: Path | str | None = None,
+) -> Mapping[str, Any]:
+    repo = Path(repo_root).resolve()
+    path = repo / SMOKE_RECEIPT_PATH if receipt_path is None else Path(receipt_path)
+    receipt, _ = _read_regular_json(path, "D7 smoke receipt")
+    _schema_validate(receipt, repo / _SMOKE_SCHEMA, "D7 smoke receipt")
+    if receipt.get("canonical_digest") != _semantic_digest(receipt):
+        raise StageDD7Error("D7 smoke receipt canonical digest mismatch")
+    if receipt.get("status") != "PASS" or receipt.get("formal") is not False:
+        raise StageDD7Error("D7 smoke did not pass as a non-formal diagnostic")
+    root_value = Path(receipt["root"])
+    root = root_value if root_value.is_absolute() else repo / root_value
+    records, total = _inventory(root)
+    expected = {
+        "file_count": len(records), "total_bytes": total,
+        "canonical_digest": canonical_sha256(records),
+    }
+    if receipt.get("root_inventory") != expected:
+        raise StageDD7Error("D7 smoke root inventory drifted")
+    if set(receipt["access_attestation"].values()) != {False}:
+        raise StageDD7Error("D7 smoke access boundary was crossed")
+    spec, _ = _read_regular_json(root / "smoke_spec.json", "D7 smoke spec")
+    finalization, _ = _read_regular_json(
+        root / "finalization.json", "D7 smoke finalization",
+    )
+    aggregate, _ = _read_regular_json(
+        root / "aggregation.json", "D7 smoke aggregation",
+    )
+    paper, _ = _read_regular_json(
+        root / "paper_package.json", "D7 smoke paper package",
+    )
+    for document, label in (
+        (spec, "spec"), (finalization, "finalization"),
+        (aggregate, "aggregation"), (paper, "paper package"),
+    ):
+        if document.get("canonical_digest") != _semantic_digest(document):
+            raise StageDD7Error(f"D7 smoke {label} digest mismatch")
+    if (
+        spec.get("logical_work_item_count") != 422
+        or finalization.get("independent_revalidation") is not True
+        or aggregate.get("scientific_decision") != "NOT_EVALUATED"
+        or paper.get("formal_paper_data_generated") is not False
+        or paper.get("source_aggregation_digest") != aggregate["canonical_digest"]
+    ):
+        raise StageDD7Error("D7 smoke chain semantics drifted")
+    pipeline = load_recovery_pipeline(repo_root=repo)
+    group = next(item for item in pipeline.plan.groups if not item.audit)
+    rows, digest = _validate_smoke_pair(
+        root, group, plan_digest=pipeline.plan.canonical_digest,
+    )
+    if (
+        aggregate.get("source_rows") != rows
+        or aggregate.get("source_rows_digest") != digest
+    ):
+        raise StageDD7Error("D7 smoke independent source rows drifted")
+    return receipt
+
+
+def record_failed_smoke(
+    failed_root: Path | str, *, reason: str, repo_root: Path | str = REPO_ROOT,
+) -> Mapping[str, Any]:
+    """Write a non-PASS index for a retained D7 development smoke failure."""
+
+    repo = Path(repo_root).resolve()
+    root = Path(failed_root).absolute()
+    records, total = _inventory(root)
+    document = {
+        "schema_version": 1,
+        "document_type": "stage_d_d7_failed_smoke_record",
+        "d7_id": D7_ID, "status": "FAILED_RETAINED",
+        "root": str(root.relative_to(repo)), "reason": reason,
+        "root_inventory": {
+            "file_count": len(records), "total_bytes": total,
+            "canonical_digest": canonical_sha256(records),
+        },
+        "terminal_pass_generated": False, "formal_evidence": False,
+        "reserve_image_accessed": False, "stage_d_execution_started": False,
+    }
+    document["canonical_digest"] = _semantic_digest(document)
+    _write_atomic(root / "failure_record.json", document)
+    return document
+
+
+def _load_c9_budget_source(repo: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+    report, raw = _read_regular_json(repo / C9_REPORT_PATH, "sealed C9 report")
+    if hashlib.sha256(raw).hexdigest() != C9_REPORT_FILE_SHA256:
+        raise StageDD7Error("sealed C9 report file digest drifted")
+    if report.get("canonical_digest") != C9_REPORT_CANONICAL_DIGEST or (
+        _semantic_digest(report) != C9_REPORT_CANONICAL_DIGEST
+    ):
+        raise StageDD7Error("sealed C9 report canonical digest drifted")
+    if not (
+        report.get("status") == "PASS"
+        and report.get("integrity_valid") is True
+        and report.get("terminal_unit_count") == 320
+        and report.get("state_counts", {}).get("succeeded") == 320
+    ):
+        raise StageDD7Error("sealed C9 report is not a complete source")
+    projection = report["post_c9_budget"]["projection"]
+    return report, projection
+
+
+def build_d7_budget(*, repo_root: Path | str = REPO_ROOT) -> Mapping[str, Any]:
+    repo = Path(repo_root).resolve()
+    pipeline = load_recovery_pipeline(repo_root=repo)
+    _report, source = _load_c9_budget_source(repo)
+    measured = source["measured_maxima"]
+    storage = source["storage"]
+    seconds = float(source["time"]["slowest_valid_measured_unit_seconds"])
+    profiles = []
+    for method in METHOD_IDS:
+        l2 = int(storage["method_profiles"][method]["conservative_l2_bytes_per_audit_unit"])
+        for kind in ("primary_execution_unit", "audit_repeat_map"):
+            profiles.append(StageDResourceProfile(
+                method_id=method, unit_kind=kind, seconds=seconds,
+                forward_calls=int(measured["forward_calls_per_unit"]),
+                backward_calls=int(measured["backward_calls_per_unit"]),
+                l0_l1_payload_bytes=int(
+                    storage["method_profiles"][method]["conservative_non_l2_bytes_per_unit"]
+                ),
+                l2_payload_bytes=l2 if kind == "audit_repeat_map" else 0,
+                control_and_provenance_bytes=int(
+                    storage["conservative_batch_control_bytes_per_unit"]
+                ),
+                cuda_peak_reserved_bytes=int(
+                    measured["cuda_peak_reserved_bytes_per_unit"]
+                ),
+                source_status=D7_PROFILE_SOURCE_STATUS,
+            ))
+    estimate = validate_stage_d_estimate(estimate_stage_d_run(
+        pipeline.contracts.config, pipeline.plan, profiles,
+    ))
+    preflight = validate_stage_d_preflight(preflight_stage_d(estimate))
+    if (
+        estimate.profile_status != D7_VALIDATED_PROFILE_STATUS
+        or estimate.budget_status != "PASS"
+        or preflight.status != "READY_FOR_D7_AUTHORIZATION"
+        or preflight.d7_final is not True
+        or estimate.launch_violations or estimate.completed_gate_violations
+    ):
+        raise StageDD7Error("D7 conservative budget blocks launch")
+    document = {
+        "$schema": "stage_d_d7_budget.schema.json",
+        "schema_version": 1, "document_type": BUDGET_DOCUMENT_TYPE,
+        "d7_id": D7_ID, "status": "PASS",
+        "source": {
+            "path": C9_REPORT_PATH,
+            "file_sha256": C9_REPORT_FILE_SHA256,
+            "canonical_digest": C9_REPORT_CANONICAL_DIGEST,
+            "role": "SEALED_RECOVERY_C9_H20_TELEMETRY_NOT_C10_AUTHORITY",
+            "slowest_valid_measured_unit_seconds": seconds,
+        },
+        "plan": {
+            "canonical_digest": pipeline.plan.canonical_digest,
+            "coordinate_digest": pipeline.plan.coordinate_digest,
+            "image_groups": 500, "execution_units": 1000,
+            "audit_repeat_maps": 10, "logical_work_items": 211010,
+            "historical_8000_unit_projection_used": False,
+        },
+        "safety_factors": {"time": 1.25, "storage_and_control": 1.25},
+        "estimate": estimate.to_dict(), "preflight": preflight.to_dict(),
+        "authority": {
+            "execution_authorization": "NOT_ISSUED",
+            "analysis_authorization": ANALYSIS_AUTHORIZATION,
+            "stage_d_execution_started": False,
+        },
+    }
+    document["canonical_digest"] = _semantic_digest(document)
+    _schema_validate(document, repo / _BUDGET_SCHEMA, "D7 budget")
+    return document
+
+
+def write_d7_budget(*, repo_root: Path | str = REPO_ROOT) -> Mapping[str, Any]:
+    repo = Path(repo_root).resolve()
+    document = build_d7_budget(repo_root=repo)
+    _write_atomic(repo / BUDGET_PATH, document)
+    return document
+
+
+def load_d7_budget(*, repo_root: Path | str = REPO_ROOT) -> tuple[Mapping[str, Any], StageDEstimate, StageDPreflight]:
+    repo = Path(repo_root).resolve()
+    document, _ = _read_regular_json(repo / BUDGET_PATH, "D7 budget")
+    _schema_validate(document, repo / _BUDGET_SCHEMA, "D7 budget")
+    if document.get("canonical_digest") != _semantic_digest(document):
+        raise StageDD7Error("D7 budget canonical digest mismatch")
+    expected = build_d7_budget(repo_root=repo)
+    if document != expected:
+        raise StageDD7Error("D7 budget is not source-recomputable")
+    estimate = validate_stage_d_estimate(document["estimate"])
+    preflight = validate_stage_d_preflight(document["preflight"])
+    return document, estimate, preflight
+
+
+def verify_recovery_model(*, repo_root: Path | str = REPO_ROOT) -> Mapping[str, Any]:
+    from .recovery_v2 import (
+        load_recovery_v2_binding, verify_recovery_v2_lfs_identity,
+        verify_recovery_v2_state_dict,
+    )
+
+    repo = Path(repo_root).resolve()
+    binding = load_recovery_v2_binding(
+        repo / "config/recovery_v2_binding.json",
+        schema_path=repo / "config/recovery_v2_binding.schema.json",
+        repo_root=repo, verify_assets=False,
+    )
+    lfs = verify_recovery_v2_lfs_identity(binding, repo_root=repo)
+    tensors = verify_recovery_v2_state_dict(binding)
+    if (
+        tensors["state_dict_sha256"] != RECOVERY_MODEL_SHA256
+        or tensors["canonical_tensor_digest"] != RECOVERY_MODEL_TENSOR_DIGEST
+        or lfs.get("oid_sha256") != RECOVERY_MODEL_SHA256
+    ):
+        raise StageDD7Error("recovery-v2 model identity verification failed")
+    return {
+        "identity": binding.model["identity"],
+        "path": str(binding.model_path.relative_to(repo)),
+        **tensors, "lfs_oid_sha256": lfs["oid_sha256"],
+    }
+
+
+def production_backend_factory(*, context: Any, device: str) -> Any:
+    """Create the D8 backend lazily after runtime validates D7 authority."""
+
+    del device
+    from .modeling import canonical_preprocess_spec
+    from .recovery_v2 import load_recovery_v2_binding
+    from .stage_d_producer import ProductionStageDBackend
+
+    binding = load_recovery_v2_binding(
+        REPO_ROOT / "config/recovery_v2_binding.json",
+        schema_path=REPO_ROOT / "config/recovery_v2_binding.schema.json",
+        repo_root=REPO_ROOT, verify_assets=False,
+    )
+    pipeline = load_recovery_pipeline(repo_root=REPO_ROOT)
+    rows_by_sample = {
+        row["sample_id"]: row
+        for row in pipeline.manifest.registry_document["rows"]
+    }
+
+    def sample_field(sample: Any, name: str) -> Any:
+        if isinstance(sample, Mapping):
+            return sample.get(name)
+        return getattr(sample, name, None)
+
+    def load_sample(sample: Any, model: Any) -> dict[str, Any]:
+        import torch
+        from PIL import Image
+        from torchvision.transforms import InterpolationMode
+        from torchvision.transforms import functional as transform_functional
+        from .io_utils import sha256_file
+
+        sample_id = sample_field(sample, "sample_id")
+        relative_path = sample_field(sample, "relative_path")
+        expected_sha256 = sample_field(sample, "image_sha256")
+        if (
+            not isinstance(sample_id, str) or not isinstance(relative_path, str)
+            or not sample_id.endswith("/" + relative_path)
+            or not isinstance(expected_sha256, str)
+            or _SHA256_RE.fullmatch(expected_sha256) is None
+        ):
+            raise StageDD7Error("authorized Stage D sample identity is invalid")
+        row = rows_by_sample.get(sample_id)
+        if (
+            not isinstance(row, Mapping)
+            or row.get("relative_path") != relative_path
+            or row.get("image_sha256") != expected_sha256
+        ):
+            raise StageDD7Error("authorized sample differs from frozen registry")
+        # This closure is invoked only by a future D8 run.  Merely constructing
+        # the D7 producer never resolves or stats a registry-referenced image.
+        image_path = Path(binding.data_root) / relative_path
+        if sha256_file(image_path) != expected_sha256:
+            raise StageDD7Error("authorized Stage D image digest mismatch")
+        specification = canonical_preprocess_spec(model)
+        if (
+            specification.input_size != (3, 224, 224)
+            or specification.resize_shorter_side != 248
+            or specification.center_crop != (224, 224)
+            or specification.interpolation != "bicubic"
+            or specification.mean != (0.5, 0.5, 0.5)
+            or specification.std != (0.5, 0.5, 0.5)
+        ):
+            raise StageDD7Error("canonical preprocessing contract drifted")
+        with Image.open(image_path) as source:
+            rgb = source.convert("RGB")
+            resized = transform_functional.resize(
+                rgb, specification.resize_shorter_side,
+                interpolation=InterpolationMode.BICUBIC, antialias=True,
+            )
+            cropped = transform_functional.center_crop(
+                resized, list(specification.center_crop),
+            )
+            canonical = transform_functional.pil_to_tensor(cropped).to(
+                dtype=torch.float32
+            ).div(255.0).unsqueeze(0)
+        mean = torch.tensor(specification.mean, dtype=torch.float32).view(1, 3, 1, 1)
+        std = torch.tensor(specification.std, dtype=torch.float32).view(1, 3, 1, 1)
+        return {
+            "canonical_rgb": canonical,
+            "normalized_input": (canonical - mean) / std,
+            "registry_row": row, "image_path": image_path,
+        }
+
+    return ProductionStageDBackend(
+        sample_loader=load_sample, state_dict_path=binding.model_path,
+        # The Stage C base class historically requires a paired C7 authority.
+        # D7 itself is the stronger Stage D execution gate, so model loading is
+        # bound directly by recovery-v2 and the opaque runtime context.
+        model_loader=lambda **kwargs: __import__(
+            "vitnns.modeling", fromlist=["load_canonical_model"]
+        ).load_canonical_model(
+            **{key: value for key, value in kwargs.items() if key != "recovery_binding"},
+            recovery_binding=binding,
+        ),
+        stage_d_model_binding=dict(context.model_binding),
+        config=pipeline.contracts.config,
+        registry=pipeline.manifest.registry_document, plan=pipeline.plan,
+        config_path=REPO_ROOT / "config/stage_d.json",
+        code_state=dict(context.code_binding),
+    )
+
+
+def _fresh_formal_root(repo: Path, raw: str) -> Path:
+    relative = PurePosixPath(raw)
+    if relative.is_absolute() or ".." in relative.parts or not raw.startswith("evidence/stage_d/"):
+        raise StageDD7Error("formal root must be a safe project-relative Stage D evidence path")
+    root = repo.joinpath(*relative.parts)
+    current = repo
+    for part in relative.parts[:-1]:
+        current /= part
+        if os.path.lexists(current):
+            metadata = os.lstat(current)
+            if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(metadata.st_mode):
+                raise StageDD7Error("formal root parent is unsafe")
+    if os.path.lexists(root):
+        raise StageDD7Error("formal D8 root is not fresh")
+    return root
+
+
+def _producer_state(repo: Path) -> Mapping[str, Any]:
+    producer = _git(repo, "rev-parse", f"{PRODUCER_REF}^{{commit}}")
+    tree = _git(repo, "rev-parse", f"{producer}^{{tree}}")
+    if _COMMIT_RE.fullmatch(producer) is None or _COMMIT_RE.fullmatch(tree) is None:
+        raise StageDD7Error("D7 producer ref is invalid")
+    return {"commit": producer, "tree": tree, "clean": True, "ref": PRODUCER_REF}
+
+
+def _source_bindings(repo: Path) -> Mapping[str, Any]:
+    recovery, recovery_sha, recovery_digest = load_recovery_binding(repo)
+    d6, d6_raw = _read_regular_json(
+        repo / "reports/stage_d_recovery_v2_20260904_r3/d6/status.json",
+        "D6 terminal record",
+    )
+    return {
+        "d0": {"status": "RECOVERY_V2_R3_PASS", "canonical_digest": "124b404297c99e5a1913511a51caedec241ce05804949b390a14719814eb6c11"},
+        "d1": {"status": "RECOVERY_V2_R3_METADATA_PASS", "canonical_digest": "00ad4968256606e95022f22d7502990223274738ca8066526134cae1945cbf40"},
+        "d2": {"status": "RECOVERY_V2_R3_PASS", "canonical_digest": "5b3c8497dccda450b1b2682364c4f07bcf017e657d999ccb1d765aae9eec224c"},
+        "c10": {
+            "status": "BLOCKED_NO_GO_NOVELTY_HISTORICAL_SOURCE",
+            "canonical_digest": recovery["recovery_chain"]["c10"]["report_canonical_digest"],
+            "downstream_authorized": False,
+        },
+        "d6": {
+            "status": "ANALYSIS_IMPLEMENTATION_READINESS_PASS",
+            "canonical_digest": d6["canonical_digest"],
+            "file_sha256": hashlib.sha256(d6_raw).hexdigest(),
+        },
+        "recovery_binding": {
+            "status": "CURRENT_RECOVERY_V2_OVERLAY",
+            "canonical_digest": recovery_digest, "file_sha256": recovery_sha,
+        },
+    }
+
+
+def build_execution_authorization(
+    *, repo_root: Path | str = REPO_ROOT, shard_count: int = DEFAULT_SHARD_COUNT,
+    formal_root: str = FORMAL_ROOT,
+) -> Mapping[str, Any]:
+    repo = Path(repo_root).resolve()
+    if _git(repo, "status", "--porcelain=v1", "--untracked-files=all"):
+        raise StageDD7Error("D7 authorization requires a clean producer worktree")
+    producer = _producer_state(repo)
+    if _git(repo, "rev-parse", "HEAD") != producer["commit"]:
+        raise StageDD7Error("authorization must be generated at the frozen producer commit")
+    smoke = validate_smoke(repo_root=repo)
+    budget, estimate, preflight = load_d7_budget(repo_root=repo)
+    pipeline = load_recovery_pipeline(repo_root=repo)
+    _fresh_formal_root(repo, formal_root)
+    model = verify_recovery_model(repo_root=repo)
+    mapping = dict(validate_stage_d_shard_mapping(pipeline.plan, shard_count))
+    group_counts = [sum(value == index for value in mapping.values()) for index in range(shard_count)]
+    lock_raw = (repo / "requirements.lock.txt").read_bytes()
+    attestation, attestation_raw = _read_regular_json(
+        repo / "manifests/stage_d_fidelity_v1/pre_authorization_access_attestation.json",
+        "pre-authorization access attestation",
+    )
+    if (
+        attestation["current_task_access_facts"]["reserve_image_bytes_accessed"] is not False
+        or attestation["authorization"]["execution_authorization"] != "NOT_ISSUED"
+    ):
+        raise StageDD7Error("pre-authorization access attestation is not closed")
+    document = {
+        "$schema": "stage_d_d7_execution_authorization.schema.json",
+        "schema_version": 1, "document_type": AUTHORIZATION_DOCUMENT_TYPE,
+        "d7_id": D7_ID, "status": "PASS",
+        "authorization_scope": "D7_RECOVERY_V2_FIDELITY_ONLY",
+        "execution_authorization": EXECUTION_AUTHORIZATION,
+        "analysis_authorization": ANALYSIS_AUTHORIZATION,
+        "reserve_access_boundary": "DEFERRED_TO_D8_0_AFTER_REVALIDATION",
+        "stage_d_execution_started": False,
+        "authority_commit": "SELF", "authority_ref": AUTHORITY_REF,
+        "producer": producer,
+        "formal_root": formal_root, "formal_root_fresh_at_issuance": True,
+        "plan": {
+            "canonical_digest": pipeline.plan.canonical_digest,
+            "coordinate_digest": pipeline.plan.coordinate_digest,
+            "counts": _plain(pipeline.plan.counts),
+        },
+        "budget": {
+            "path": BUDGET_PATH, "canonical_digest": budget["canonical_digest"],
+            "estimate": estimate.to_dict(), "preflight": preflight.to_dict(),
+        },
+        "sharding": {
+            "shard_count": shard_count,
+            "assignment_formula": "selection_order_modulo_frozen_shard_count",
+            "mapping_digest": canonical_sha256([mapping[index] for index in range(500)]),
+            "image_group_counts": group_counts,
+            "serial_shard_handoff": True, "image_group_split_allowed": False,
+        },
+        "smoke": {
+            "path": SMOKE_RECEIPT_PATH,
+            "canonical_digest": smoke["canonical_digest"],
+            "formal": False, "logical_work_item_count": 422,
+        },
+        "code_binding": {
+            "commit": producer["commit"], "tree": producer["tree"],
+            "clean": True,
+        },
+        "dependency_binding": {
+            "path": "requirements.lock.txt",
+            "lock_sha256": hashlib.sha256(lock_raw).hexdigest(),
+        },
+        "model_binding": model, "source_bindings": _source_bindings(repo),
+        "pre_authorization_attestation": {
+            "path": "manifests/stage_d_fidelity_v1/pre_authorization_access_attestation.json",
+            "file_sha256": hashlib.sha256(attestation_raw).hexdigest(),
+            "canonical_digest": attestation["canonical_digest"],
+            "forbidden_access_detected": False,
+        },
+        "access_attestation": {
+            "reserve_image_bytes_accessed": False,
+            "model_loaded_for_identity_verification": True,
+            "model_used_for_inference": False,
+            "cuda_accessed": False, "outcome_accessed": False,
+        },
+        "model_verification": {
+            "file_and_tensor_identity_verified": True,
+            "used_for_inference": False, "cuda_used": False,
+        },
+        "c10_status_preserved": {
+            "acceptance": "BLOCKED", "primary_decision": "NO_GO_NOVELTY",
+            "translation_stability": "FAIL_STABILITY",
+            "center_crop_resize_stability": "FAIL_STABILITY",
+            "overall_spatial": "FAIL_SPATIAL",
+            "holm": "HOLM_BLOCKED_UNDERSPECIFIED",
+            "downstream_authorized": False,
+        },
+        "prohibitions": {
+            "d8_initialized": False, "d9_started": False, "d10_started": False,
+            "formal_aggregation_authorized": False,
+            "c10_stage_d_pooling_allowed": False,
+        },
+    }
+    document["canonical_digest"] = _semantic_digest(document)
+    _schema_validate(document, repo / _AUTH_SCHEMA, "D7 execution authorization")
+    return document
+
+
+@dataclass(frozen=True, slots=True)
+class _D7ValidatedExecutionContext:
+    formal: bool
+    authorization_scope: str
+    execution_authorization: str
+    authorization_slot: Mapping[str, Any]
+    shard_count: int
+    shard_mapping: Mapping[int, int]
+    plan_digest: str
+    budget_digest: str
+    preflight_digest: str
+    code_binding: Mapping[str, Any]
+    dependency_binding: Mapping[str, Any]
+    model_binding: Mapping[str, Any]
+    source_bindings: Mapping[str, Any]
+    access_attestation: Mapping[str, bool]
+    canonical_digest: str
+    _issuer: object = field(repr=False, compare=False)
+
+
+_D7_ISSUER = object()
+
+
+def _freeze(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return MappingProxyType({key: _freeze(child) for key, child in value.items()})
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze(child) for child in value)
+    return copy.deepcopy(value)
+
+
+def validate_execution_authorization(
+    value: Mapping[str, Any] | None = None, *, repo_root: Path | str = REPO_ROOT,
+    require_authority_ref: bool = True, require_fresh_root: bool = True,
+) -> _D7ValidatedExecutionContext:
+    repo = Path(repo_root).resolve()
+    source, raw = _read_regular_json(repo / AUTHORIZATION_PATH, "D7 execution authorization")
+    if value is not None and _plain(value) != source:
+        raise StageDD7Error("supplied D7 authorization differs from its tracked source")
+    _schema_validate(source, repo / _AUTH_SCHEMA, "D7 execution authorization")
+    if source.get("canonical_digest") != _semantic_digest(source):
+        raise StageDD7Error("D7 execution authorization digest mismatch")
+    pipeline = load_recovery_pipeline(repo_root=repo)
+    budget, estimate, preflight = load_d7_budget(repo_root=repo)
+    producer = _producer_state(repo)
+    if source["producer"] != producer or source["code_binding"] != {
+        "commit": producer["commit"], "tree": producer["tree"], "clean": True,
+    }:
+        raise StageDD7Error("D7 authorization producer binding drifted")
+    if source["plan"]["canonical_digest"] != pipeline.plan.canonical_digest:
+        raise StageDD7Error("D7 authorization plan binding drifted")
+    if (
+        source["budget"]["canonical_digest"] != budget["canonical_digest"]
+        or source["budget"]["estimate"] != estimate.to_dict()
+        or source["budget"]["preflight"] != preflight.to_dict()
+    ):
+        raise StageDD7Error("D7 authorization budget binding drifted")
+    validate_smoke(repo_root=repo)
+    observed_model = verify_recovery_model(repo_root=repo)
+    if source["model_binding"] != observed_model:
+        raise StageDD7Error("D7 authorization model binding drifted")
+    lock_raw = (repo / "requirements.lock.txt").read_bytes()
+    if source["dependency_binding"] != {
+        "path": "requirements.lock.txt",
+        "lock_sha256": hashlib.sha256(lock_raw).hexdigest(),
+    }:
+        raise StageDD7Error("D7 authorization dependency binding drifted")
+    if source["source_bindings"] != _source_bindings(repo):
+        raise StageDD7Error("D7 authorization recovery source binding drifted")
+    count = source["sharding"]["shard_count"]
+    mapping = dict(validate_stage_d_shard_mapping(pipeline.plan, count))
+    mapping_list = [mapping[index] for index in range(500)]
+    if (
+        source["sharding"]["mapping_digest"] != canonical_sha256(mapping_list)
+        or source["sharding"]["image_group_counts"]
+        != [sum(value == index for value in mapping.values()) for index in range(count)]
+    ):
+        raise StageDD7Error("D7 authorization shard mapping drifted")
+    if require_fresh_root:
+        _fresh_formal_root(repo, source["formal_root"])
+    if require_authority_ref:
+        authority = _git(repo, "rev-parse", f"{AUTHORITY_REF}^{{commit}}")
+        parent = _git(repo, "rev-parse", f"{authority}^")
+        changed = set(_git(repo, "diff", "--name-only", parent, authority).splitlines())
+        if parent != producer["commit"] or changed != _AUTHORITY_ONLY_PATHS:
+            raise StageDD7Error("D7 authority commit is not an authority-only direct child")
+        prefix = _git(repo, "rev-parse", "--show-prefix")
+        blob = _git(repo, "rev-parse", f"{authority}:{prefix}{AUTHORIZATION_PATH}")
+        expected_blob = hashlib.sha1(f"blob {len(raw)}\0".encode() + raw).hexdigest()
+        if blob != expected_blob:
+            raise StageDD7Error("D7 authority ref does not contain the authorization bytes")
+    slot = {
+        "status": EXECUTION_AUTHORIZATION,
+        "authorization_canonical_digest": source["canonical_digest"],
+        "authority_ref": AUTHORITY_REF, "authority_commit": "SELF",
+    }
+    values = {
+        "formal": True, "authorization_scope": source["authorization_scope"],
+        "execution_authorization": EXECUTION_AUTHORIZATION,
+        "authorization_slot": slot, "shard_count": count,
+        "shard_mapping": mapping_list, "plan_digest": pipeline.plan.canonical_digest,
+        "budget_digest": estimate.canonical_digest,
+        "preflight_digest": preflight.canonical_digest,
+        "code_binding": source["code_binding"],
+        "dependency_binding": source["dependency_binding"],
+        "model_binding": source["model_binding"],
+        "source_bindings": {
+            key: source["source_bindings"][key] for key in ("d0", "d1", "d2", "c10")
+        },
+        "access_attestation": source["access_attestation"],
+    }
+    digest = canonical_sha256(values)
+    return _D7ValidatedExecutionContext(
+        **{**values, "shard_mapping": MappingProxyType(mapping)},
+        canonical_digest=digest, _issuer=_D7_ISSUER,
+    )
+
+
+class D7ExecutionGate:
+    def __init__(self, *, repo_root: Path | str = REPO_ROOT) -> None:
+        self.repo_root = Path(repo_root).resolve()
+
+    def validate_execution_context(
+        self, context: object | None, *, operation: str, output_root: Path | str,
+        plan: StageDExecutionPlan, estimate: StageDEstimate, preflight: StageDPreflight,
+    ) -> _D7ValidatedExecutionContext:
+        if not isinstance(context, Mapping):
+            raise StageDD7Error("D7 gate requires the tracked authorization document")
+        checked = validate_execution_authorization(
+            context, repo_root=self.repo_root,
+            require_fresh_root=operation == "init",
+        )
+        if operation not in {"init", "run-shard"}:
+            raise StageDD7Error("D7 authorization operation is outside D8 execution")
+        expected_root = self.repo_root / context["formal_root"]
+        if Path(output_root).absolute() != expected_root.absolute():
+            raise StageDD7Error("D7 authorization output root binding drifted")
+        if (
+            plan.canonical_digest != checked.plan_digest
+            or estimate.canonical_digest != checked.budget_digest
+            or preflight.canonical_digest != checked.preflight_digest
+        ):
+            raise StageDD7Error("D7 runtime controls drifted from authorization")
+        return checked
+
+
+def controls_from_authorization(
+    authorization: Mapping[str, Any], *, repo_root: Path | str = REPO_ROOT,
+) -> tuple[StageDEstimate, StageDPreflight]:
+    source, _estimate, _preflight = load_d7_budget(repo_root=repo_root)
+    if (
+        authorization.get("budget", {}).get("canonical_digest")
+        != source["canonical_digest"]
+    ):
+        raise StageDD7Error("authorization does not bind the current D7 budget")
+    return (
+        validate_stage_d_estimate(authorization["budget"]["estimate"]),
+        validate_stage_d_preflight(authorization["budget"]["preflight"]),
+    )
+
+
+def build_d7_validation(
+    *, repo_root: Path | str = REPO_ROOT,
+    test_results: Sequence[Mapping[str, Any]],
+) -> Mapping[str, Any]:
+    """Build a nonterminal independent-validation record after authority."""
+
+    repo = Path(repo_root).resolve()
+    context = validate_execution_authorization(repo_root=repo)
+    source, raw = _read_regular_json(
+        repo / AUTHORIZATION_PATH, "D7 execution authorization",
+    )
+    if not test_results or any(
+        not isinstance(item, Mapping) or item.get("actual_exit_status") != 0
+        for item in test_results
+    ):
+        raise StageDD7Error("D7 completion requires all declared validations to pass")
+    authority = _git(repo, "rev-parse", f"{AUTHORITY_REF}^{{commit}}")
+    document = {
+        "schema_version": 1, "document_type": "stage_d_d7_validation",
+        "d7_id": D7_ID, "status": "PASS_NONTERMINAL",
+        "independent_validation": True, "source_recomputed": True,
+        "authorization_path": AUTHORIZATION_PATH,
+        "authorization_file_sha256": hashlib.sha256(raw).hexdigest(),
+        "authorization_canonical_digest": source["canonical_digest"],
+        "runtime_context_digest": context.canonical_digest,
+        "producer_commit": source["producer"]["commit"],
+        "authority_commit": authority, "authority_ref": AUTHORITY_REF,
+        "tests": [_plain(item) for item in test_results],
+        "errors": [], "blocking_reasons": [],
+        "access_attestation": {
+            "reserve_image_exists_checked": False,
+            "reserve_image_statted": False, "reserve_image_opened": False,
+            "reserve_image_hashed": False, "reserve_image_decoded": False,
+            "reserve_image_preprocessed": False,
+            "reserve_image_used_for_inference": False,
+            "stage_d_outcome_accessed": False,
+        },
+        "authorization": {
+            "execution_authorization": EXECUTION_AUTHORIZATION,
+            "analysis_authorization": ANALYSIS_AUTHORIZATION,
+            "reserve_access_authorization": "DEFERRED_TO_D8_0",
+        },
+    }
+    document["canonical_digest"] = _semantic_digest(document)
+    return document
+
+
+def write_d7_terminal_records(
+    *, repo_root: Path | str = REPO_ROOT,
+    test_results: Sequence[Mapping[str, Any]],
+) -> Mapping[str, Any]:
+    """Publish validation first, then atomically publish terminal D7 PASS."""
+
+    repo = Path(repo_root).resolve()
+    validation_path = repo / VALIDATION_PATH
+    status_path = repo / STATUS_PATH
+    handoff_path = repo / HANDOFF_PATH
+    for path in (validation_path, status_path, handoff_path):
+        if os.path.lexists(path):
+            raise StageDD7Error(f"D7 terminal path is not fresh: {path}")
+    validation = build_d7_validation(repo_root=repo, test_results=test_results)
+    _write_atomic(validation_path, validation)
+    validation_raw = validation_path.read_bytes()
+    authorization, authorization_raw = _read_regular_json(
+        repo / AUTHORIZATION_PATH, "D7 execution authorization",
+    )
+    status = {
+        "schema_version": 1, "document_type": COMPLETION_DOCUMENT_TYPE,
+        "d7_id": D7_ID, "status": "PASS",
+        "pass_scope": "EXECUTION_AUTHORIZATION_GATE_PASS_NOT_EXECUTION_OR_ANALYSIS",
+        "validation_complete_before_terminal": True,
+        "validation_path": VALIDATION_PATH,
+        "validation_file_sha256": hashlib.sha256(validation_raw).hexdigest(),
+        "validation_canonical_digest": validation["canonical_digest"],
+        "authorization_path": AUTHORIZATION_PATH,
+        "authorization_file_sha256": hashlib.sha256(authorization_raw).hexdigest(),
+        "authorization_canonical_digest": authorization["canonical_digest"],
+        "producer_commit": authorization["producer"]["commit"],
+        "authority_commit": validation["authority_commit"],
+        "completion_commit": "SELF", "completion_ref": COMPLETION_REF,
+        "d8_initialized": False, "d9_started": False, "d10_started": False,
+        "scientific_result": "NOT_EVALUATED",
+        "analysis_authorization": ANALYSIS_AUTHORIZATION,
+        "reserve_access_authorization": "DEFERRED_TO_D8_0",
+        "access_attestation": validation["access_attestation"],
+    }
+    status["canonical_digest"] = _semantic_digest(status)
+    pending = status_path.with_name("status.pending.json")
+    _write_atomic(pending, status)
+    # Validate exact bytes before the terminal name exists.
+    staged, staged_raw = _read_regular_json(pending, "pending D7 terminal status")
+    if staged != status or hashlib.sha256(staged_raw).hexdigest() != hashlib.sha256(_file_bytes(status)).hexdigest():
+        raise StageDD7Error("pending D7 terminal status failed byte validation")
+    os.replace(pending, status_path)
+    handoff = {
+        "schema_version": 1, "document_type": "stage_d_d7_to_future_d8_handoff",
+        "d7_id": D7_ID, "status": "PASS",
+        "d7_scope": "EXECUTION_AUTHORIZATION_GATE_PASS_NOT_SCIENTIFIC_RESULT",
+        "producer_commit": authorization["producer"]["commit"],
+        "authority_commit": validation["authority_commit"],
+        "completion_commit": "SELF",
+        "authorization_canonical_digest": authorization["canonical_digest"],
+        "budget_canonical_digest": authorization["budget"]["canonical_digest"],
+        "smoke_canonical_digest": authorization["smoke"]["canonical_digest"],
+        "next_task": "FUTURE_D8_0_REVALIDATE_AND_INITIALIZE_ONLY",
+        "d8_initialized": False, "d8_shards_started": False,
+        "d9_started": False, "d10_started": False,
+        "analysis_authorization": ANALYSIS_AUTHORIZATION,
+        "reserve_access_this_d7": False,
+        "d8_0_must_revalidate": [
+            "producer_ref", "authority_ref", "authorization_bytes",
+            "recovery_model", "plan", "budget", "shard_mapping",
+            "fresh_formal_root", "pre_authorization_access_attestation",
+        ],
+        "c10_status_preserved": authorization["c10_status_preserved"],
+    }
+    handoff["canonical_digest"] = _semantic_digest(handoff)
+    _write_atomic(handoff_path, handoff)
+    return status
+
+
+__all__ = [
+    "ANALYSIS_AUTHORIZATION", "AUTHORIZATION_PATH", "AUTHORITY_REF",
+    "BUDGET_PATH", "COMPLETION_REF", "D7ExecutionGate", "D7_ID",
+    "DEFAULT_SHARD_COUNT", "EXECUTION_AUTHORIZATION", "FORMAL_ROOT",
+    "PRODUCER_REF", "SMOKE_RECEIPT_PATH", "SMOKE_ROOT",
+    "StageDD7Error", "build_d7_budget", "build_execution_authorization",
+    "controls_from_authorization", "load_d7_budget",
+    "load_recovery_pipeline", "run_synthetic_smoke",
+    "record_failed_smoke",
+    "production_backend_factory",
+    "build_d7_validation", "write_d7_terminal_records",
+    "validate_archived_recovery_chain",
+    "validate_execution_authorization", "validate_smoke",
+    "verify_recovery_model", "write_d7_budget",
+]

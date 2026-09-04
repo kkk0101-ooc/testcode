@@ -149,6 +149,12 @@ def test_runtime_seals_formal_gate_result_before_backend_and_unit(controls) -> N
     values.update({
         "formal": True, "authorization_scope": "D7_FORMAL_TEST_FIXTURE",
         "execution_authorization": "AUTHORIZED_STAGE_D_FIDELITY_SCOPE",
+        "access_attestation": {
+            "reserve_image_bytes_accessed": False,
+            "model_loaded_for_identity_verification": True,
+            "model_used_for_inference": False,
+            "cuda_accessed": False, "outcome_accessed": False,
+        },
     })
     values["canonical_digest"] = canonical_sha256({
         **values, "shard_mapping": [

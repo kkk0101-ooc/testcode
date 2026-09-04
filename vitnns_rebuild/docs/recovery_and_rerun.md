@@ -20,7 +20,10 @@ Stage D rebinding while preserving the historical protocols and records.
 - Stage D recovery status: D0-D6 have current recovery-v2 R3 pre-reserve
   records. D0-D2 are formal preparation PASS; D3 is control-plane readiness;
   D4-D6 are implementation/readiness PASS based on metadata/synthetic fixtures.
-- Stage D formal execution status: not authorized and not started.
+- Stage D D7 recovery-v2 gate is in progress under
+  [`recovery_stage_d_d7_amendment_20260904.md`](recovery_stage_d_d7_amendment_20260904.md).
+  The non-reserve synthetic smoke and independent 1,000-unit budget have passed;
+  execution remains unstarted and analysis authorization remains unissued.
 - Stage C historical summary remains available in the documents. Recovery-v2
   C7, salvage C8, new C9, and new C10 evidence roots are present locally. C10
   build/integrity validation completed; acceptance is `BLOCKED` and its
@@ -30,7 +33,8 @@ The historical Stage D machine-readable files still name historical C10 and
 `2e718...` identities and remain immutable audit evidence. The versioned overlay
 `config/stage_d_recovery_v2_binding_20260904.json` and corrected R3 D0-D6
 records supersede those launch identities without rewriting the scientific
-contract. D7 has not run and no execution authorization has been issued.
+contract. D7 uses a separate versioned producer and authority-only commit; no
+historical Stage D record is rewritten.
 
 ## Environment
 

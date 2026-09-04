@@ -508,9 +508,16 @@ def _normalize_execution_context(
         ),
         "validated execution context access_attestation",
     ))
-    expected_access = {
+    synthetic_access = {
         "reserve_image_bytes_accessed": False,
         "model_accessed": False,
+        "cuda_accessed": False,
+        "outcome_accessed": False,
+    }
+    formal_access = {
+        "reserve_image_bytes_accessed": False,
+        "model_loaded_for_identity_verification": True,
+        "model_used_for_inference": False,
         "cuda_accessed": False,
         "outcome_accessed": False,
     }
@@ -518,14 +525,14 @@ def _normalize_execution_context(
         if (
             scope != _SYNTHETIC_SCOPE
             or execution_authorization != _NOT_ISSUED
-            or access != expected_access
+            or access != synthetic_access
         ):
             raise StageDRuntimeIntegrityError(
                 "synthetic D4 context crossed its non-formal access boundary"
             )
     elif (
         execution_authorization != _FORMAL_EXECUTION_AUTHORIZATION
-        or isinstance(context, Mapping)
+        or isinstance(context, Mapping) or access != formal_access
     ):
         raise StageDExecutionAuthorizationRequired(
             "formal Stage D context is not an opaque D7-gate result"

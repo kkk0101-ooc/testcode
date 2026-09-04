@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_d_d7_budget.schema.json",
+  "title": "Stage D D7 final recovery-v2 budget",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "document_type", "d7_id", "status", "source", "plan", "safety_factors", "estimate", "preflight", "authority", "canonical_digest"],
+  "properties": {
+    "$schema": {"const": "stage_d_d7_budget.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_d_d7_final_budget"},
+    "d7_id": {"const": "STAGE_D_RECOVERY_V2_D7_20260904"},
+    "status": {"const": "PASS"},
+    "source": {"type": "object", "additionalProperties": false, "required": ["path", "file_sha256", "canonical_digest", "role", "slowest_valid_measured_unit_seconds"], "properties": {"path": {"type": "string"}, "file_sha256": {"$ref": "#/$defs/sha256"}, "canonical_digest": {"$ref": "#/$defs/sha256"}, "role": {"const": "SEALED_RECOVERY_C9_H20_TELEMETRY_NOT_C10_AUTHORITY"}, "slowest_valid_measured_unit_seconds": {"type": "number", "exclusiveMinimum": 0}}},
+    "plan": {"type": "object", "additionalProperties": false, "required": ["canonical_digest", "coordinate_digest", "image_groups", "execution_units", "audit_repeat_maps", "logical_work_items", "historical_8000_unit_projection_used"], "properties": {"canonical_digest": {"$ref": "#/$defs/sha256"}, "coordinate_digest": {"$ref": "#/$defs/sha256"}, "image_groups": {"const": 500}, "execution_units": {"const": 1000}, "audit_repeat_maps": {"const": 10}, "logical_work_items": {"const": 211010}, "historical_8000_unit_projection_used": {"const": false}}},
+    "safety_factors": {"type": "object", "additionalProperties": false, "required": ["time", "storage_and_control"], "properties": {"time": {"const": 1.25}, "storage_and_control": {"const": 1.25}}},
+    "estimate": {"type": "object", "required": ["profile_status", "budget_status", "launch_violations", "completed_gate_violations", "canonical_digest"], "properties": {"profile_status": {"const": "D7_VALIDATED_CONSERVATIVE_PROFILE"}, "budget_status": {"const": "PASS"}, "launch_violations": {"maxItems": 0}, "completed_gate_violations": {"maxItems": 0}, "canonical_digest": {"$ref": "#/$defs/sha256"}}},
+    "preflight": {"type": "object", "required": ["status", "execution_authorization", "analysis_authorization", "d7_final", "canonical_digest"], "properties": {"status": {"const": "READY_FOR_D7_AUTHORIZATION"}, "execution_authorization": {"const": "NOT_ISSUED"}, "analysis_authorization": {"const": "NOT_EVALUATED"}, "d7_final": {"const": true}, "canonical_digest": {"$ref": "#/$defs/sha256"}}},
+    "authority": {"type": "object", "additionalProperties": false, "required": ["execution_authorization", "analysis_authorization", "stage_d_execution_started"], "properties": {"execution_authorization": {"const": "NOT_ISSUED"}, "analysis_authorization": {"const": "NOT_EVALUATED"}, "stage_d_execution_started": {"const": false}}},
+    "canonical_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}
