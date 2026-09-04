@@ -93,6 +93,25 @@ D8_0_REBIND_PRODUCER_REF = (
 D8_0_REBIND_FORMAL_ROOT = (
     "evidence/stage_d/d8_recovery_v2_20260904/formal_r2"
 )
+D8_CONTINUATION_ID = "STAGE_D_RECOVERY_V2_D8_CONTINUATION_R1_20260904"
+D8_CONTINUATION_AUTHORIZATION_DOCUMENT_TYPE = (
+    "stage_d_d8_continuation_authorization"
+)
+D8_CONTINUATION_AUTHORIZATION_PATH = (
+    "config/stage_d_d8_continuation_authorization_20260904_r1.json"
+)
+D8_CONTINUATION_AUTHORITY_REF = (
+    "refs/archive/stage-d-fidelity-v1-d8-continuation-r1-authority"
+)
+D8_CONTINUATION_PRODUCER_REF = (
+    "refs/archive/stage-d-fidelity-v1-d8-continuation-r1-producer"
+)
+D8_S00_RECEIPT_PATH = (
+    "reports/stage_d_d8_recovery_v2_20260904_r4/d8_s00_shard_receipt.json"
+)
+D8_S00_COMPLETION_PATH = (
+    "reports/stage_d_d8_recovery_v2_20260904_r4/d8_s00_completion.json"
+)
 D8_0_INITIAL_BLOCKED_RECORD_PATH = (
     "reports/stage_d_d8_recovery_v2_20260904_r4/"
     "d8_0_initial_blocked_root.json"
@@ -121,9 +140,15 @@ _AUTH_SCHEMA = "config/stage_d_d7_execution_authorization_r4.schema.json"
 _D8_0_REBIND_AUTH_SCHEMA = (
     "config/stage_d_d8_0_fresh_root_authorization.schema.json"
 )
+_D8_CONTINUATION_AUTH_SCHEMA = (
+    "config/stage_d_d8_continuation_authorization.schema.json"
+)
 _AUTHORITY_ONLY_PATHS = {f"vitnns_rebuild/{AUTHORIZATION_PATH}"}
 _D8_0_REBIND_AUTHORITY_ONLY_PATHS = {
     f"vitnns_rebuild/{D8_0_REBIND_AUTHORIZATION_PATH}",
+}
+_D8_CONTINUATION_AUTHORITY_ONLY_PATHS = {
+    f"vitnns_rebuild/{D8_CONTINUATION_AUTHORIZATION_PATH}",
 }
 
 
@@ -2031,6 +2056,175 @@ def write_d8_0_fresh_root_authorization(
     return document
 
 
+def build_d8_continuation_authorization(
+    *, repo_root: Path | str = REPO_ROOT, require_current_head: bool = True,
+    require_clean_worktree: bool = True,
+) -> Mapping[str, Any]:
+    """Authorize the checkpoint-binding correction for post-S00 shards."""
+
+    repo = Path(repo_root).resolve()
+    if (
+        require_clean_worktree
+        and _git(repo, "status", "--porcelain=v1", "--untracked-files=all")
+    ):
+        raise StageDD7Error(
+            "D8 continuation authorization requires a clean worktree"
+        )
+    producer = _producer_state(
+        repo, producer_ref=D8_CONTINUATION_PRODUCER_REF,
+    )
+    if require_current_head and _git(repo, "rev-parse", "HEAD") != producer["commit"]:
+        raise StageDD7Error(
+            "D8 continuation authorization must be generated at the frozen producer"
+        )
+    rebind, rebind_raw = _read_regular_json(
+        repo / D8_0_REBIND_AUTHORIZATION_PATH,
+        "D8.0 fresh-root authorization",
+    )
+    _validate_d8_0_fresh_root_authorization(
+        rebind, rebind_raw, repo=repo, require_fresh_root=False,
+        require_authority_ref=True,
+    )
+    receipt, receipt_raw = _read_regular_json(
+        repo / D8_S00_RECEIPT_PATH, "D8-S00 shard receipt",
+    )
+    completion, completion_raw = _read_regular_json(
+        repo / D8_S00_COMPLETION_PATH, "D8-S00 completion record",
+    )
+    if (
+        receipt.get("document_type") != "stage_d_d8_shard_receipt"
+        or receipt.get("status") != "PASS"
+        or receipt.get("subtask") != "D8-S00"
+        or receipt.get("canonical_digest") != _semantic_digest(receipt)
+        or receipt.get("formal_root") != D8_0_REBIND_FORMAL_ROOT
+        or receipt.get("ledger_transition", {}).get("after_shard_state")
+        != "completed"
+        or receipt.get("ledger_transition", {}).get("later_shard_states")
+        != ["pending"] * 7
+    ):
+        raise StageDD7Error("D8-S00 receipt is not a completed continuation anchor")
+    if (
+        completion.get("document_type") != "stage_d_d8_s00_completion"
+        or completion.get("subtask_status") != "SUBTASK_PASS"
+        or completion.get("canonical_digest") != _semantic_digest(completion)
+        or completion.get("receipt", {}).get("receipt_canonical_digest")
+        != receipt["canonical_digest"]
+        or completion.get("continuation", {}).get("shard_continuation_authorized")
+        is not False
+    ):
+        raise StageDD7Error("D8-S00 completion does not require continuation repair")
+    document = {
+        "$schema": "stage_d_d8_continuation_authorization.schema.json",
+        "schema_version": 1,
+        "document_type": D8_CONTINUATION_AUTHORIZATION_DOCUMENT_TYPE,
+        "authorization_id": D8_CONTINUATION_ID,
+        "status": "PASS",
+        "producer": producer,
+        "control_plane_code_binding": {
+            "commit": producer["commit"], "tree": producer["tree"],
+            "clean": True,
+        },
+        "persisted_execution_context": {
+            "authorization_path": D8_0_REBIND_AUTHORIZATION_PATH,
+            "file_sha256": hashlib.sha256(rebind_raw).hexdigest(),
+            "canonical_digest": rebind["canonical_digest"],
+            "authority_ref": D8_0_REBIND_AUTHORITY_REF,
+            "authority_commit": _git(
+                repo, "rev-parse", f"{D8_0_REBIND_AUTHORITY_REF}^{{commit}}",
+            ),
+            "code_binding": rebind["code_binding"],
+        },
+        "formal_root": D8_0_REBIND_FORMAL_ROOT,
+        "s00_anchor": {
+            "receipt_path": D8_S00_RECEIPT_PATH,
+            "receipt_file_sha256": hashlib.sha256(receipt_raw).hexdigest(),
+            "receipt_canonical_digest": receipt["canonical_digest"],
+            "completion_path": D8_S00_COMPLETION_PATH,
+            "completion_file_sha256": hashlib.sha256(completion_raw).hexdigest(),
+            "completion_canonical_digest": completion["canonical_digest"],
+            "ledger_after_digest": receipt["ledger_transition"]["after_canonical_digest"],
+            "ledger_after_generation": receipt["ledger_transition"]["after_generation"],
+        },
+        "correction": {
+            "scope": "ACCESS_START_CHECKPOINT_BINDING_ONLY",
+            "d8_0_initial_checkpoint_remains_immutable": True,
+            "current_checkpoint_still_source_validated": True,
+            "access_journal_live_assets_and_authority_checks_unchanged": True,
+            "scientific_scope_changed": False,
+            "existing_s00_evidence_rewritten": False,
+        },
+        "authorized_next_shard": 1,
+        "execution_authorization": EXECUTION_AUTHORIZATION,
+        "analysis_authorization": ANALYSIS_AUTHORIZATION,
+        "d9_started": False,
+        "d10_started": False,
+        "prohibitions": {
+            "rerun_s00_allowed": False,
+            "run_s02_or_later_allowed": False,
+            "formal_aggregation_authorized": False,
+            "analysis_authorization_issued": False,
+            "c10_status_rewrite_allowed": False,
+        },
+    }
+    document["canonical_digest"] = _semantic_digest(document)
+    _schema_validate(
+        document, repo / _D8_CONTINUATION_AUTH_SCHEMA,
+        "D8 continuation authorization",
+    )
+    return document
+
+
+def _validate_d8_continuation_authorization(
+    source: Mapping[str, Any], raw: bytes, *, repo: Path,
+    require_authority_ref: bool,
+) -> Mapping[str, Any]:
+    _schema_validate(
+        source, repo / _D8_CONTINUATION_AUTH_SCHEMA,
+        "D8 continuation authorization",
+    )
+    if source.get("canonical_digest") != _semantic_digest(source):
+        raise StageDD7Error("D8 continuation authorization digest mismatch")
+    expected = build_d8_continuation_authorization(
+        repo_root=repo, require_current_head=False,
+        require_clean_worktree=False,
+    )
+    if source != expected:
+        raise StageDD7Error("D8 continuation authorization is not source-recomputable")
+    if require_authority_ref:
+        authority = _git(
+            repo, "rev-parse", f"{D8_CONTINUATION_AUTHORITY_REF}^{{commit}}",
+        )
+        parent = _git(repo, "rev-parse", f"{authority}^")
+        producer = _git(
+            repo, "rev-parse", f"{D8_CONTINUATION_PRODUCER_REF}^{{commit}}",
+        )
+        changed = set(_git(repo, "diff", "--name-only", parent, authority).splitlines())
+        if parent != producer or changed != _D8_CONTINUATION_AUTHORITY_ONLY_PATHS:
+            raise StageDD7Error(
+                "D8 continuation authority is not an authority-only direct child"
+            )
+        prefix = _git(repo, "rev-parse", "--show-prefix")
+        blob = _git(
+            repo, "rev-parse",
+            f"{authority}:{prefix}{D8_CONTINUATION_AUTHORIZATION_PATH}",
+        )
+        expected_blob = hashlib.sha1(f"blob {len(raw)}\0".encode() + raw).hexdigest()
+        if blob != expected_blob:
+            raise StageDD7Error(
+                "D8 continuation authority does not contain the authorization bytes"
+            )
+    return source["persisted_execution_context"]
+
+
+def write_d8_continuation_authorization(
+    *, repo_root: Path | str = REPO_ROOT,
+) -> Mapping[str, Any]:
+    repo = Path(repo_root).resolve()
+    document = build_d8_continuation_authorization(repo_root=repo)
+    _write_atomic(repo / D8_CONTINUATION_AUTHORIZATION_PATH, document)
+    return document
+
+
 @dataclass(frozen=True, slots=True)
 class _D7ValidatedExecutionContext:
     formal: bool
@@ -2070,7 +2264,46 @@ def validate_execution_authorization(
     repo = Path(repo_root).resolve()
     supplied = None if value is None else _plain(value)
     rebind: Mapping[str, Any] | None = None
+    continuation: Mapping[str, Any] | None = None
     if (
+        isinstance(supplied, Mapping)
+        and supplied.get("document_type")
+        == D8_CONTINUATION_AUTHORIZATION_DOCUMENT_TYPE
+    ):
+        continuation, continuation_raw = _read_regular_json(
+            repo / D8_CONTINUATION_AUTHORIZATION_PATH,
+            "D8 continuation authorization",
+        )
+        if supplied != continuation:
+            raise StageDD7Error(
+                "supplied D8 continuation authorization differs from tracked source"
+            )
+        persisted = _validate_d8_continuation_authorization(
+            continuation, continuation_raw, repo=repo,
+            require_authority_ref=require_authority_ref,
+        )
+        rebind, rebind_raw = _read_regular_json(
+            repo / D8_0_REBIND_AUTHORIZATION_PATH,
+            "D8.0 fresh-root authorization",
+        )
+        base, formal_root = _validate_d8_0_fresh_root_authorization(
+            rebind, rebind_raw, repo=repo, require_fresh_root=False,
+            require_authority_ref=require_authority_ref,
+        )
+        if persisted != {
+            "authorization_path": D8_0_REBIND_AUTHORIZATION_PATH,
+            "file_sha256": hashlib.sha256(rebind_raw).hexdigest(),
+            "canonical_digest": rebind["canonical_digest"],
+            "authority_ref": D8_0_REBIND_AUTHORITY_REF,
+            "authority_commit": _git(
+                repo, "rev-parse", f"{D8_0_REBIND_AUTHORITY_REF}^{{commit}}",
+            ),
+            "code_binding": rebind["code_binding"],
+        }:
+            raise StageDD7Error(
+                "D8 continuation persisted execution context drifted"
+            )
+    elif (
         isinstance(supplied, Mapping)
         and supplied.get("document_type")
         == D8_0_REBIND_AUTHORIZATION_DOCUMENT_TYPE
@@ -2088,19 +2321,20 @@ def validate_execution_authorization(
             require_fresh_root=require_fresh_root,
             require_authority_ref=require_authority_ref,
         )
-        source, raw = _load_r4_execution_authorization(repo)
-        if base != {
-            "path": AUTHORIZATION_PATH,
-            "file_sha256": hashlib.sha256(raw).hexdigest(),
-            "canonical_digest": source["canonical_digest"],
-            "authority_ref": AUTHORITY_REF,
-            "authority_commit": _git(repo, "rev-parse", f"{AUTHORITY_REF}^{{commit}}"),
-        }:
-            raise StageDD7Error(
-                "D8.0 fresh-root authorization base authority binding drifted"
-            )
     else:
-        source, raw = _load_r4_execution_authorization(repo)
+        formal_root = None
+    source, raw = _load_r4_execution_authorization(repo)
+    if rebind is not None and base != {
+        "path": AUTHORIZATION_PATH,
+        "file_sha256": hashlib.sha256(raw).hexdigest(),
+        "canonical_digest": source["canonical_digest"],
+        "authority_ref": AUTHORITY_REF,
+        "authority_commit": _git(repo, "rev-parse", f"{AUTHORITY_REF}^{{commit}}"),
+    }:
+        raise StageDD7Error(
+            "D8.0 fresh-root authorization base authority binding drifted"
+        )
+    if rebind is None:
         if supplied is not None and supplied != source:
             raise StageDD7Error("supplied D7 authorization differs from its tracked source")
         formal_root = source["formal_root"]
@@ -2175,6 +2409,8 @@ def validate_execution_authorization(
         expected_blob = hashlib.sha1(f"blob {len(raw)}\0".encode() + raw).hexdigest()
         if blob != expected_blob:
             raise StageDD7Error("D7 authority ref does not contain the authorization bytes")
+    # A continuation wrapper authorizes corrected control code but must not
+    # mutate the execution-context identity persisted in the existing root.
     active_authorization_digest = (
         source["canonical_digest"] if rebind is None else rebind["canonical_digest"]
     )
@@ -2242,8 +2478,10 @@ def controls_from_authorization(
     source, _estimate, _preflight = load_d7_budget(repo_root=repo_root)
     budget = authorization.get("budget")
     if budget is None and (
-        authorization.get("document_type")
-        == D8_0_REBIND_AUTHORIZATION_DOCUMENT_TYPE
+        authorization.get("document_type") in {
+            D8_0_REBIND_AUTHORIZATION_DOCUMENT_TYPE,
+            D8_CONTINUATION_AUTHORIZATION_DOCUMENT_TYPE,
+        }
     ):
         base, _ = _load_r4_execution_authorization(Path(repo_root).resolve())
         budget = base.get("budget")

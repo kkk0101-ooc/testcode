@@ -12,7 +12,8 @@ from vitnns.stage_d_d7 import (
     AUTHORIZATION_PATH, BUDGET_PATH, D8_0_REBIND_FORMAL_ROOT,
     DEFAULT_SHARD_COUNT, FORMAL_ROOT, FULL_CHAIN_RECEIPT_PATH,
     StageDD7Error, _D7ValidatedExecutionContext,
-    build_d8_0_fresh_root_authorization, build_d7_budget,
+    build_d8_0_fresh_root_authorization, build_d8_continuation_authorization,
+    build_d7_budget,
     build_execution_authorization, controls_from_authorization, load_d7_budget,
     load_recovery_pipeline,
     run_d8_initializer_synthetic_smoke, run_synthetic_smoke,
@@ -272,6 +273,32 @@ def test_d8_0_rebind_gate_binds_replacement_formal_root_when_present() -> None:
             output_root=REPO_ROOT / FORMAL_ROOT,
             plan=pipeline.plan, estimate=estimate, preflight=preflight,
         )
+
+
+def test_d8_continuation_authorization_preserves_persisted_context_when_present() -> None:
+    path = REPO_ROOT / d7_module.D8_CONTINUATION_AUTHORIZATION_PATH
+    if not path.exists():
+        pytest.skip("continuation authority-only commit is not created yet")
+    document = json.loads(path.read_text(encoding="utf-8"))
+    expected = build_d8_continuation_authorization(
+        repo_root=REPO_ROOT, require_current_head=False,
+        require_clean_worktree=False,
+    )
+    assert document == expected
+    checked = validate_execution_authorization(
+        document, repo_root=REPO_ROOT, require_authority_ref=False,
+        require_fresh_root=False,
+    )
+    rebind = json.loads(
+        (REPO_ROOT / d7_module.D8_0_REBIND_AUTHORIZATION_PATH).read_text()
+    )
+    original = validate_execution_authorization(
+        rebind, repo_root=REPO_ROOT, require_authority_ref=False,
+        require_fresh_root=False,
+    )
+    assert checked.canonical_digest == original.canonical_digest
+    assert checked.code_binding == original.code_binding
+    assert document["authorized_next_shard"] == 1
 
 
 def test_production_backend_factory_is_lazy_before_d8_access(

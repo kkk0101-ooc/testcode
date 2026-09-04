@@ -133,6 +133,53 @@ def synthetic_observation(group, contract):
     }
 
 
+def formal_observation(group, contract):
+    return {
+        **synthetic_observation(group, contract),
+        "source_payload_sha256": group.image_sha256,
+        "image_sha256": group.image_sha256,
+    }
+
+
+def formal_permit(controls, count=500):
+    import vitnns.stage_d_runtime as runtime
+
+    plan, estimate, preflight = controls
+    synthetic, _ = permit(controls, count)
+    values = {name: getattr(synthetic, name) for name in (
+        "authorization_slot", "shard_count", "shard_mapping",
+        "plan_digest", "budget_digest", "preflight_digest",
+        "code_binding", "dependency_binding", "model_binding",
+        "source_bindings",
+    )}
+    values.update({
+        "formal": True, "authorization_scope": "D7_FORMAL_TEST_FIXTURE",
+        "execution_authorization": "AUTHORIZED_STAGE_D_FIDELITY_SCOPE",
+        "access_attestation": {
+            "reserve_image_bytes_accessed": False,
+            "model_loaded_for_identity_verification": True,
+            "model_used_for_inference": False, "cuda_accessed": False,
+            "outcome_accessed": False,
+        },
+    })
+    values["canonical_digest"] = canonical_sha256({
+        **values, "shard_mapping": [
+            values["shard_mapping"][index] for index in range(500)
+        ],
+    })
+    formal = type("FormalContext", (), values)()
+
+    class Gate:
+        def validate_execution_context(self, context, **_kwargs):
+            assert context is formal
+            return formal
+
+    binding = runtime._normalize_execution_context(
+        formal, plan=plan, estimate=estimate, preflight=preflight
+    )
+    return formal, Gate(), binding
+
+
 def resign(root: Path, value: dict[str, Any]) -> None:
     value["canonical_digest"] = canonical_sha256({
         key: child for key, child in value.items() if key != "canonical_digest"
@@ -152,6 +199,24 @@ def test_gate_and_controls_precede_root_and_backend(controls, tmp_path: Path) ->
             shard_id=0, backend_factory=lambda **_kwargs: calls.append("backend"),
         )
     assert calls == [] and not root.exists()
+
+
+def test_continuation_authorization_is_bound_to_exact_requested_shard(
+    controls, tmp_path: Path,
+) -> None:
+    plan, estimate, preflight = controls
+    calls: list[str] = []
+    continuation = {"authorized_next_shard": 1}
+    with pytest.raises(
+        StageDExecutionAuthorizationRequired, match="different shard",
+    ):
+        run_stage_d_shard(
+            plan, output_root=tmp_path / "never-opened",
+            estimate=estimate, preflight=preflight, shard_id=2,
+            execution_context=continuation,
+            backend_factory=lambda **_kwargs: calls.append("backend"),
+        )
+    assert calls == []
 
 
 def test_d8_initializer_durable_resume_and_no_unit_execution(controls, tmp_path: Path) -> None:
@@ -278,6 +343,87 @@ def test_formal_run_shard_requires_runnable_access_gate(controls, tmp_path: Path
             asset_contracts=access_contracts(plan),
         )
     assert backend_calls == []
+
+
+def test_formal_access_gate_survives_prior_shard_checkpoint_progress(
+    controls, tmp_path: Path,
+) -> None:
+    plan, estimate, preflight = controls
+    formal, gate, _binding = formal_permit(controls, 500)
+    root = tmp_path / "formal-continuation"
+    contracts = access_contracts(plan)
+    initialize_stage_d_access_root(
+        root, plan, estimate, preflight, execution_context=formal,
+        execution_gate=gate, asset_contracts=contracts,
+        asset_validator=formal_observation,
+    )
+    backend0 = FakeBackend(lambda _unit: payload())
+    first = run_stage_d_shard(
+        plan, output_root=root, estimate=estimate, preflight=preflight,
+        shard_id=0, execution_context=formal, execution_gate=gate,
+        backend_factory=lambda **_kwargs: backend0,
+        asset_contracts=contracts,
+    )
+    assert first.state == "completed"
+    assert first.counts["terminal_units"] == 2
+
+    validated = validate_stage_d_access_root(
+        root, plan, estimate, preflight, execution_context=formal,
+        execution_gate=gate, asset_contracts=contracts,
+    )
+    assert validated["state"] == "RUNNABLE"
+
+    backend1 = FakeBackend(lambda _unit: payload())
+    second = run_stage_d_shard(
+        plan, output_root=root, estimate=estimate, preflight=preflight,
+        shard_id=1, execution_context=formal, execution_gate=gate,
+        backend_factory=lambda **_kwargs: backend1,
+        asset_contracts=contracts,
+    )
+    assert second.state == "completed"
+    assert second.counts["terminal_units"] == 2
+    assert backend0.order == backend1.order == [0, 1]
+
+
+def test_formal_continuation_rejects_access_start_checkpoint_tamper_before_backend(
+    controls, tmp_path: Path,
+) -> None:
+    plan, estimate, preflight = controls
+    formal, gate, _binding = formal_permit(controls, 500)
+    root = tmp_path / "formal-continuation-tamper"
+    contracts = access_contracts(plan)
+    initialize_stage_d_access_root(
+        root, plan, estimate, preflight, execution_context=formal,
+        execution_gate=gate, asset_contracts=contracts,
+        asset_validator=formal_observation,
+    )
+    backend0 = FakeBackend(lambda _unit: payload())
+    run_stage_d_shard(
+        plan, output_root=root, estimate=estimate, preflight=preflight,
+        shard_id=0, execution_context=formal, execution_gate=gate,
+        backend_factory=lambda **_kwargs: backend0, asset_contracts=contracts,
+    )
+    lifecycle_path = root / "access/lifecycle.json"
+    lifecycle = json.loads(lifecycle_path.read_text())
+    lifecycle["runtime_checkpoint_at_access_start"] = "f" * 64
+    lifecycle["canonical_digest"] = canonical_sha256({
+        key: value for key, value in lifecycle.items()
+        if key != "canonical_digest"
+    })
+    lifecycle_path.write_bytes(canonical_json_bytes(lifecycle) + b"\n")
+    backend_calls: list[str] = []
+    with pytest.raises(StageDRuntimeIntegrityError, match="access lifecycle binding"):
+        run_stage_d_shard(
+            plan, output_root=root, estimate=estimate, preflight=preflight,
+            shard_id=1, execution_context=formal, execution_gate=gate,
+            backend_factory=lambda **_kwargs: backend_calls.append("called"),
+            asset_contracts=contracts,
+        )
+    assert backend_calls == []
+    assert not list(
+        (root / "units" / plan.groups[1].units[0].canonical_digest / "attempts")
+        .glob("attempt-*")
+    )
 
 
 def test_access_journal_tamper_is_rejected(controls, tmp_path: Path) -> None:

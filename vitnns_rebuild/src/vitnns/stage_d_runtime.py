@@ -1143,6 +1143,24 @@ def _initial_checkpoint(
     })
 
 
+def _access_start_checkpoint_digest(
+    plan: StageDExecutionPlan, estimate: StageDEstimate,
+    preflight: StageDPreflight, context_binding: Mapping[str, Any],
+) -> str:
+    """Recompute the immutable checkpoint identity bound by D8.0.
+
+    The live runtime checkpoint advances after every lease, claim and terminal
+    publication.  The access lifecycle intentionally remains bound to the
+    generation-zero checkpoint that existed before the first reserve access,
+    so later shards must compare it with this deterministic reconstruction
+    rather than with the current mutable checkpoint.
+    """
+
+    return _initial_checkpoint(
+        plan, estimate, preflight, context_binding,
+    )["canonical_digest"]
+
+
 _CHECKPOINT_KEYS = {
     "schema_version", "document_type", "generation",
     "previous_checkpoint_digest", "plan_digest", "estimate_digest",
@@ -3194,11 +3212,12 @@ def validate_stage_d_access_root(
             checkpoint = _read_valid_checkpoint_locked(
                 root, typed_plan, typed_estimate, typed_preflight, context_binding
             )
-        _require_pristine_runtime_checkpoint(checkpoint)
         lifecycle, events, validated, pending, failure = _validate_access_lifecycle(
             root, plan=typed_plan,
             runtime_binding_digest=context_binding["runtime_binding_digest"],
-            checkpoint_digest=checkpoint["canonical_digest"],
+            checkpoint_digest=_access_start_checkpoint_digest(
+                typed_plan, typed_estimate, typed_preflight, context_binding,
+            ),
             contracts=contracts,
             repair_lag=repair_lag,
             require_live_identity=context_binding["formal"],
@@ -4079,6 +4098,14 @@ def run_stage_d_shard(
     )
     if type(shard_id) is not int:
         raise StageDRuntimeIntegrityError("shard_id must be an integer")
+    if (
+        isinstance(execution_context, Mapping)
+        and "authorized_next_shard" in execution_context
+        and execution_context["authorized_next_shard"] != shard_id
+    ):
+        raise StageDExecutionAuthorizationRequired(
+            "D8 continuation authorization is bound to a different shard"
+        )
     checked_context = _consume_execution_gate(
         execution_gate, execution_context, operation="run-shard",
         output_root=output_root, plan=typed_plan, estimate=typed_estimate,
@@ -4108,7 +4135,10 @@ def run_stage_d_shard(
                 _validate_access_lifecycle(
                     root, plan=typed_plan,
                     runtime_binding_digest=context_binding["runtime_binding_digest"],
-                    checkpoint_digest=checkpoint["canonical_digest"],
+                    checkpoint_digest=_access_start_checkpoint_digest(
+                        typed_plan, typed_estimate, typed_preflight,
+                        context_binding,
+                    ),
                     contracts=contracts,
                     require_live_identity=True,
                 )
