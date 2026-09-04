@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_d_d7_budget_r4.schema.json",
+  "title": "Stage D D7 R4 final recovery-v2 budget",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "document_type", "d7_id", "status", "source", "plan", "safety_factors", "estimate", "preflight", "authority", "canonical_digest"],
+  "properties": {
+    "$schema": {"const": "stage_d_d7_budget_r4.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_d_d7_final_budget"},
+    "d7_id": {"const": "STAGE_D_RECOVERY_V2_D7_R4_20260904"},
+    "status": {"const": "PASS"},
+    "source": {"type": "object"}, "plan": {"type": "object"},
+    "safety_factors": {"type": "object"},
+    "estimate": {"type": "object", "required": ["profile_status", "budget_status", "launch_violations", "completed_gate_violations", "canonical_digest"], "properties": {"profile_status": {"const": "D7_VALIDATED_CONSERVATIVE_PROFILE"}, "budget_status": {"const": "PASS"}, "launch_violations": {"maxItems": 0}, "completed_gate_violations": {"maxItems": 0}, "canonical_digest": {"$ref": "#/$defs/sha256"}}},
+    "preflight": {"type": "object", "required": ["status", "d7_final", "canonical_digest"], "properties": {"status": {"const": "READY_FOR_D7_AUTHORIZATION"}, "d7_final": {"const": true}, "canonical_digest": {"$ref": "#/$defs/sha256"}}},
+    "authority": {"type": "object"}, "canonical_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

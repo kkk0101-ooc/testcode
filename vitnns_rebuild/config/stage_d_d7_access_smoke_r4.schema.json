@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_d_d7_access_smoke_r4.schema.json",
+  "title": "Stage D D7 R4 synthetic D8.0 initializer smoke",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "document_type", "d7_id", "status", "formal", "input_kind", "root", "plan_digest", "state_sequence", "counts", "digests", "properties", "root_inventory", "access_attestation", "canonical_digest"],
+  "properties": {
+    "$schema": {"const": "../../config/stage_d_d7_access_smoke_r4.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_d_d7_d8_initializer_smoke_receipt"},
+    "d7_id": {"const": "STAGE_D_RECOVERY_V2_D7_R4_20260904"},
+    "status": {"const": "PASS"}, "formal": {"const": false},
+    "input_kind": {"const": "COMPLETE_500_GROUP_SYNTHETIC_FILESYSTEM_FIXTURE"},
+    "root": {"type": "string", "minLength": 1},
+    "plan_digest": {"$ref": "#/$defs/sha256"},
+    "state_sequence": {"const": ["ACCESS_STARTED", "INTERRUPTED", "RESUMED", "RUNNABLE"]},
+    "counts": {"type": "object", "additionalProperties": false, "required": ["expected_assets", "validated_assets", "interrupted_after_assets", "journal_entries", "unit_attempt_directories"], "properties": {"expected_assets": {"const": 500}, "validated_assets": {"const": 500}, "interrupted_after_assets": {"const": 127}, "journal_entries": {"type": "integer", "minimum": 1002}, "unit_attempt_directories": {"const": 0}}},
+    "digests": {"type": "object", "additionalProperties": false, "required": ["access_lifecycle", "journal_head", "live_assets"], "properties": {"access_lifecycle": {"$ref": "#/$defs/sha256"}, "journal_head": {"$ref": "#/$defs/sha256"}, "live_assets": {"$ref": "#/$defs/sha256"}}},
+    "properties": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["access_started_durable_before_callback", "per_asset_intent_durable_before_callback", "append_only_hash_chain_source_recomputed", "interruption_resumed_without_duplicate_validation", "all_assets_required_before_runnable", "unit_execution_started", "synthetic_only"],
+      "properties": {
+        "access_started_durable_before_callback": {"const": true},
+        "per_asset_intent_durable_before_callback": {"const": true},
+        "append_only_hash_chain_source_recomputed": {"const": true},
+        "interruption_resumed_without_duplicate_validation": {"const": true},
+        "all_assets_required_before_runnable": {"const": true},
+        "unit_execution_started": {"const": false},
+        "synthetic_only": {"const": true}
+      }
+    },
+    "root_inventory": {"type": "object", "additionalProperties": false, "required": ["file_count", "total_bytes", "canonical_digest"], "properties": {"file_count": {"type": "integer", "minimum": 1}, "total_bytes": {"type": "integer", "minimum": 1}, "canonical_digest": {"$ref": "#/$defs/sha256"}}},
+    "access_attestation": {"type": "object", "minProperties": 8, "additionalProperties": {"const": false}},
+    "canonical_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

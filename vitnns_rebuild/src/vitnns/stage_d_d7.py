@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import io
 import json
 import math
 import os
@@ -45,7 +46,7 @@ class StageDD7Error(ValueError):
     """D7 cannot establish a closed, recovery-v2 execution gate."""
 
 
-D7_ID = "STAGE_D_RECOVERY_V2_D7_R3_20260904"
+D7_ID = "STAGE_D_RECOVERY_V2_D7_R4_20260904"
 LEGACY_D7_ID = "STAGE_D_RECOVERY_V2_D7_20260904"
 SMOKE_DOCUMENT_TYPE = "stage_d_d7_synthetic_smoke_receipt"
 BUDGET_DOCUMENT_TYPE = "stage_d_d7_final_budget"
@@ -53,24 +54,28 @@ AUTHORIZATION_DOCUMENT_TYPE = "stage_d_d7_execution_authorization"
 COMPLETION_DOCUMENT_TYPE = "stage_d_d7_completion"
 EXECUTION_AUTHORIZATION = "AUTHORIZED_STAGE_D_FIDELITY_SCOPE"
 ANALYSIS_AUTHORIZATION = "NOT_EVALUATED"
-PRODUCER_REF = "refs/archive/stage-d-fidelity-v1-d7-r3-producer"
-AUTHORITY_REF = "refs/archive/stage-d-fidelity-v1-d7-r3-authority"
-COMPLETION_REF = "refs/archive/stage-d-fidelity-v1-d7-r3-completion"
+PRODUCER_REF = "refs/archive/stage-d-fidelity-v1-d7-r4-producer"
+AUTHORITY_REF = "refs/archive/stage-d-fidelity-v1-d7-r4-authority"
+COMPLETION_REF = "refs/archive/stage-d-fidelity-v1-d7-r4-completion"
 SMOKE_ROOT = "evidence/stage_d/d7_recovery_v2_20260904/synthetic_smoke"
 SMOKE_RECEIPT_PATH = "reports/stage_d_d7_recovery_v2_20260904/smoke_receipt.json"
-BUDGET_PATH = "config/stage_d_d7_budget_20260904_r3.json"
+BUDGET_PATH = "config/stage_d_d7_budget_20260904_r4.json"
 HISTORICAL_AUTHORIZATION_PATH = (
     "config/stage_d_d7_execution_authorization_20260904.json"
 )
-AUTHORIZATION_PATH = "config/stage_d_d7_execution_authorization_20260904_r3.json"
-COMPLETION_ROOT = "reports/stage_d_d7_recovery_v2_20260904_r3"
+AUTHORIZATION_PATH = "config/stage_d_d7_execution_authorization_20260904_r4.json"
+COMPLETION_ROOT = "reports/stage_d_d7_recovery_v2_20260904_r4"
 VALIDATION_PATH = f"{COMPLETION_ROOT}/validation.json"
 STATUS_PATH = f"{COMPLETION_ROOT}/status.json"
 HANDOFF_PATH = f"{COMPLETION_ROOT}/d7_to_future_d8_handoff.json"
 FULL_CHAIN_ROOT = (
-    "evidence/stage_d/d7_recovery_v2_20260904/full_chain_synthetic_r3"
+    "evidence/stage_d/d7_recovery_v2_20260904/full_chain_synthetic_r4"
 )
 FULL_CHAIN_RECEIPT_PATH = f"{COMPLETION_ROOT}/full_chain_smoke_receipt.json"
+ACCESS_SMOKE_ROOT = (
+    "evidence/stage_d/d7_recovery_v2_20260904/d8_initializer_synthetic_r4"
+)
+ACCESS_SMOKE_RECEIPT_PATH = f"{COMPLETION_ROOT}/d8_initializer_smoke_receipt.json"
 FORMAL_ROOT = "evidence/stage_d/d8_recovery_v2_20260904/formal"
 C9_REPORT_PATH = "evidence/stage_c/c9_recovery_v2_0d88fbb/formal/c9_evidence_report.json"
 C9_REPORT_FILE_SHA256 = "ad164a87aa6dedba461e1b19d639d22d955a675d75e0c6e257af4d5846682763"
@@ -85,9 +90,10 @@ _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 _MAX_JSON_BYTES = 32 * 1024 * 1024
 _SMOKE_SCHEMA = "config/stage_d_d7_smoke.schema.json"
-_FULL_CHAIN_SCHEMA = "config/stage_d_d7_full_chain_smoke.schema.json"
-_BUDGET_SCHEMA = "config/stage_d_d7_budget_r3.schema.json"
-_AUTH_SCHEMA = "config/stage_d_d7_execution_authorization_r3.schema.json"
+_FULL_CHAIN_SCHEMA = "config/stage_d_d7_full_chain_smoke_r4.schema.json"
+_ACCESS_SMOKE_SCHEMA = "config/stage_d_d7_access_smoke_r4.schema.json"
+_BUDGET_SCHEMA = "config/stage_d_d7_budget_r4.schema.json"
+_AUTH_SCHEMA = "config/stage_d_d7_execution_authorization_r4.schema.json"
 _AUTHORITY_ONLY_PATHS = {f"vitnns_rebuild/{AUTHORIZATION_PATH}"}
 
 
@@ -928,7 +934,7 @@ def run_full_chain_synthetic_smoke(
     closed = closed_analysis_summary(result)
     inventory, total = _inventory(base)
     document = {
-        "$schema": "../../config/stage_d_d7_full_chain_smoke.schema.json",
+        "$schema": "../../config/stage_d_d7_full_chain_smoke_r4.schema.json",
         "schema_version": 1, "document_type": "stage_d_d7_full_chain_smoke_receipt",
         "d7_id": D7_ID, "status": "PASS", "formal": False,
         "input_kind": "COMPLETE_500_GROUP_DETERMINISTIC_SYNTHETIC_FIXTURE",
@@ -984,6 +990,186 @@ def run_full_chain_synthetic_smoke(
     _schema_validate(document, repo / _FULL_CHAIN_SCHEMA, "D7 full-chain smoke")
     _write_atomic(receipt_file, document)
     return document
+
+
+def _synthetic_asset_contracts(pipeline: RecoveryStageDPipeline) -> list[dict[str, Any]]:
+    return [_plain(row) for row in pipeline.manifest.registry_document["rows"]]
+
+
+def _synthetic_access_observation(
+    group: Any, contract: Mapping[str, Any],
+) -> Mapping[str, Any]:
+    payload_digest = hashlib.sha256(
+        ("stage-d-d8-initializer-synthetic|" + group.sample_id).encode("utf-8")
+    ).hexdigest()
+    return {
+        "source_kind": "SYNTHETIC_D7_R4_FILESYSTEM_FIXTURE",
+        "source_payload_sha256": payload_digest,
+        "image_sha256": payload_digest,
+        "size_bytes": contract["size_bytes"],
+        "width": contract["width"], "height": contract["height"],
+        "mode": contract["mode"], "image_format": contract["image_format"],
+        "official_ilsvrc2012_class_id": contract["official_ilsvrc2012_class_id"],
+        "official_wnid": contract["official_wnid"],
+        "imagenet1k_index": contract["imagenet1k_index"],
+        "label_source": contract["label_source"],
+    }
+
+
+def run_d8_initializer_synthetic_smoke(
+    *, repo_root: Path | str = REPO_ROOT, output_root: Path | str | None = None,
+    receipt_path: Path | str | None = None,
+) -> Mapping[str, Any]:
+    """Exercise the frozen D8.0 implementation without resolving live assets."""
+
+    from . import stage_d_runtime as runtime
+
+    repo = Path(repo_root).resolve()
+    root = repo / ACCESS_SMOKE_ROOT if output_root is None else Path(output_root).absolute()
+    receipt_file = (
+        repo / ACCESS_SMOKE_RECEIPT_PATH
+        if receipt_path is None else Path(receipt_path).absolute()
+    )
+    if os.path.lexists(root):
+        raise StageDD7Error("D7-R4 initializer smoke root must be fresh")
+    pipeline = load_recovery_pipeline(repo_root=repo)
+    estimate = estimate_stage_d_run(pipeline.contracts.config, pipeline.plan)
+    preflight = preflight_stage_d(estimate)
+    context, gate = runtime._issue_synthetic_d4_test_context(
+        pipeline.plan, estimate, preflight, shard_count=DEFAULT_SHARD_COUNT,
+    )
+    contracts = _synthetic_asset_contracts(pipeline)
+    calls: list[int] = []
+
+    def validator(group: Any, contract: Mapping[str, Any]) -> Mapping[str, Any]:
+        access_root = root / "access"
+        lifecycle, _ = _read_regular_json(
+            access_root / runtime.ACCESS_LIFECYCLE_FILENAME,
+            "synthetic access lifecycle before asset callback",
+        )
+        journal = sorted((access_root / runtime.ACCESS_JOURNAL_DIRECTORY).iterdir())
+        if (
+            lifecycle["state"] != "ACCESS_STARTED"
+            or lifecycle["journal_entry_count"] != len(journal)
+            or lifecycle["journal_head_digest"]
+            != _read_regular_json(journal[-1], "synthetic access intent")[0]["canonical_digest"]
+            or _read_regular_json(journal[-1], "synthetic access intent")[0]["event"]
+            not in {"ASSET_ACCESS_INTENT", "ASSET_ACCESS_RESUMED"}
+        ):
+            raise StageDD7Error("asset callback ran before durable access intent")
+        calls.append(group.selection_order)
+        return _synthetic_access_observation(group, contract)
+
+    injected = False
+    def stop_after_prefix(point: str, selection_order: int | None) -> None:
+        nonlocal injected
+        if point == "after_asset_validated" and selection_order == 126 and not injected:
+            injected = True
+            raise KeyboardInterrupt("D7-R4 synthetic interruption")
+
+    try:
+        runtime.initialize_stage_d_access_root(
+            root, pipeline.plan, estimate, preflight, execution_context=context,
+            execution_gate=gate, asset_contracts=contracts, asset_validator=validator,
+            fault_injector=stop_after_prefix,
+        )
+        raise StageDD7Error("D7-R4 interruption injection did not fire")
+    except KeyboardInterrupt as error:
+        if str(error) != "D7-R4 synthetic interruption":
+            raise
+    interrupted = runtime.validate_stage_d_access_root(
+        root, pipeline.plan, estimate, preflight, execution_context=context,
+        execution_gate=gate, asset_contracts=contracts, require_runnable=False,
+    )
+    if (
+        interrupted["state"] != "ACCESS_STARTED"
+        or interrupted["validated_asset_count"] != 127
+        or list((root / "units").glob("*/attempts/*"))
+    ):
+        raise StageDD7Error("D7-R4 interruption evidence is not resumable/no-unit")
+    resumed = runtime.initialize_stage_d_access_root(
+        root, pipeline.plan, estimate, preflight, execution_context=context,
+        execution_gate=gate, asset_contracts=contracts, asset_validator=validator,
+    )
+    independently_validated = runtime.validate_stage_d_access_root(
+        root, pipeline.plan, estimate, preflight, execution_context=context,
+        execution_gate=gate, asset_contracts=contracts, require_runnable=True,
+    )
+    if (
+        resumed["state"] != "RUNNABLE"
+        or independently_validated["validated_asset_count"] != 500
+        or calls != list(range(500))
+        or list((root / "units").glob("*/attempts/*"))
+    ):
+        raise StageDD7Error("D7-R4 initializer smoke did not reach no-unit RUNNABLE")
+    inventory, total = _inventory(root)
+    document = {
+        "$schema": "../../config/stage_d_d7_access_smoke_r4.schema.json",
+        "schema_version": 1,
+        "document_type": "stage_d_d7_d8_initializer_smoke_receipt",
+        "d7_id": D7_ID, "status": "PASS", "formal": False,
+        "input_kind": "COMPLETE_500_GROUP_SYNTHETIC_FILESYSTEM_FIXTURE",
+        "root": str(root.relative_to(repo)) if root.is_relative_to(repo) else str(root),
+        "plan_digest": pipeline.plan.canonical_digest,
+        "state_sequence": ["ACCESS_STARTED", "INTERRUPTED", "RESUMED", "RUNNABLE"],
+        "counts": {
+            "expected_assets": 500, "validated_assets": 500,
+            "interrupted_after_assets": 127,
+            "journal_entries": independently_validated["journal_entry_count"],
+            "unit_attempt_directories": 0,
+        },
+        "digests": {
+            "access_lifecycle": independently_validated["canonical_digest"],
+            "journal_head": independently_validated["journal_head_digest"],
+            "live_assets": independently_validated["live_assets_digest"],
+        },
+        "properties": {
+            "access_started_durable_before_callback": True,
+            "per_asset_intent_durable_before_callback": True,
+            "append_only_hash_chain_source_recomputed": True,
+            "interruption_resumed_without_duplicate_validation": True,
+            "all_assets_required_before_runnable": True,
+            "unit_execution_started": False,
+            "synthetic_only": True,
+        },
+        "root_inventory": {
+            "file_count": len(inventory), "total_bytes": total,
+            "canonical_digest": canonical_sha256(inventory),
+        },
+        "access_attestation": {
+            "reserve_image_exists_checked": False, "reserve_image_statted": False,
+            "reserve_image_opened": False, "reserve_image_hashed": False,
+            "reserve_image_decoded": False, "reserve_image_preprocessed": False,
+            "reserve_image_used_for_inference": False,
+            "stage_d_outcome_accessed": False,
+        },
+    }
+    document["canonical_digest"] = _semantic_digest(document)
+    _schema_validate(document, repo / _ACCESS_SMOKE_SCHEMA, "D7-R4 access smoke")
+    _write_atomic(receipt_file, document)
+    return document
+
+
+def validate_d8_initializer_synthetic_smoke(
+    *, repo_root: Path | str = REPO_ROOT, receipt_path: Path | str | None = None,
+) -> Mapping[str, Any]:
+    repo = Path(repo_root).resolve()
+    path = repo / ACCESS_SMOKE_RECEIPT_PATH if receipt_path is None else Path(receipt_path)
+    receipt, _ = _read_regular_json(path, "D7-R4 access smoke receipt")
+    _schema_validate(receipt, repo / _ACCESS_SMOKE_SCHEMA, "D7-R4 access smoke")
+    if receipt.get("canonical_digest") != _semantic_digest(receipt):
+        raise StageDD7Error("D7-R4 access smoke receipt digest mismatch")
+    root_value = Path(receipt["root"])
+    root = root_value if root_value.is_absolute() else repo / root_value
+    inventory, total = _inventory(root)
+    if receipt["root_inventory"] != {
+        "file_count": len(inventory), "total_bytes": total,
+        "canonical_digest": canonical_sha256(inventory),
+    }:
+        raise StageDD7Error("D7-R4 access smoke inventory drifted")
+    if set(receipt["access_attestation"].values()) != {False}:
+        raise StageDD7Error("D7-R4 access smoke crossed the reserve boundary")
+    return receipt
 
 
 def validate_full_chain_synthetic_smoke(
@@ -1092,7 +1278,7 @@ def build_d7_budget(*, repo_root: Path | str = REPO_ROOT) -> Mapping[str, Any]:
     ):
         raise StageDD7Error("D7 conservative budget blocks launch")
     document = {
-        "$schema": "stage_d_d7_budget_r3.schema.json",
+        "$schema": "stage_d_d7_budget_r4.schema.json",
         "schema_version": 1, "document_type": BUDGET_DOCUMENT_TYPE,
         "d7_id": D7_ID, "status": "PASS",
         "source": {
@@ -1309,6 +1495,126 @@ def production_backend_factory(*, context: Any, device: str) -> Any:
     )
 
 
+def validate_live_asset(
+    group: Any, contract: Mapping[str, Any], *, data_root: Path | str,
+) -> Mapping[str, Any]:
+    """Hash and decode exactly one authorized asset after durable intent.
+
+    The caller owns ordering and journaling.  This function accepts only a flat,
+    no-follow, single-link regular file and returns no pixels or model inputs.
+    """
+
+    relative_path = getattr(group, "relative_path", None)
+    sample_id = getattr(group, "sample_id", None)
+    expected_sha256 = getattr(group, "image_sha256", None)
+    pure = PurePosixPath(relative_path) if isinstance(relative_path, str) else None
+    if (
+        pure is None or pure.is_absolute() or len(pure.parts) != 1
+        or pure.as_posix() != relative_path or sample_id != f"ILSVRC2012_val/{relative_path}"
+        or not isinstance(expected_sha256, str) or _SHA256_RE.fullmatch(expected_sha256) is None
+    ):
+        raise StageDD7Error("authorized live-asset path is unsafe")
+    if (
+        contract.get("sample_id") != sample_id
+        or contract.get("relative_path") != relative_path
+        or contract.get("image_sha256") != expected_sha256
+    ):
+        raise StageDD7Error("live-asset contract differs from the frozen plan")
+    root = Path(os.path.abspath(os.fspath(data_root)))
+    directory_flags = (
+        os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+        | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    )
+    file_flags = (
+        os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+    )
+    root_fd = os.open(root, directory_flags)
+    try:
+        descriptor = os.open(relative_path, file_flags, dir_fd=root_fd)
+        try:
+            before = os.fstat(descriptor)
+            if (
+                not stat.S_ISREG(before.st_mode) or before.st_nlink != 1
+                or before.st_size != contract.get("size_bytes")
+            ):
+                raise StageDD7Error("live asset is not the expected single-link file")
+            payload = bytearray()
+            digest = hashlib.sha256()
+            while True:
+                block = os.read(descriptor, 1024 * 1024)
+                if not block:
+                    break
+                payload.extend(block)
+                digest.update(block)
+            after = os.fstat(descriptor)
+            identity = lambda item: (
+                item.st_dev, item.st_ino, item.st_mode, item.st_nlink,
+                item.st_size, item.st_mtime_ns, item.st_ctime_ns,
+            )
+            if identity(before) != identity(after) or len(payload) != before.st_size:
+                raise StageDD7Error("live asset changed while being read")
+        finally:
+            os.close(descriptor)
+    finally:
+        os.close(root_fd)
+    observed_sha256 = digest.hexdigest()
+    if observed_sha256 != expected_sha256:
+        raise StageDD7Error("live asset SHA-256 differs from frozen registry")
+    from PIL import Image
+    try:
+        with Image.open(io.BytesIO(payload)) as image:
+            image.load()
+            width, height = image.size
+            mode, image_format = image.mode, image.format
+    except Exception as error:
+        raise StageDD7Error("live asset is not a decodable JPEG") from error
+    expected_metadata = {
+        "width": contract.get("width"), "height": contract.get("height"),
+        "mode": contract.get("mode"), "image_format": contract.get("image_format"),
+    }
+    if {"width": width, "height": height, "mode": mode, "image_format": image_format} != expected_metadata:
+        raise StageDD7Error("live asset decoded metadata differs from frozen registry")
+    return {
+        "source_kind": "LIVE_RESERVE_JPEG",
+        "source_payload_sha256": observed_sha256,
+        "image_sha256": observed_sha256, "size_bytes": len(payload),
+        "width": width, "height": height, "mode": mode,
+        "image_format": image_format,
+        "official_ilsvrc2012_class_id": contract["official_ilsvrc2012_class_id"],
+        "official_wnid": contract["official_wnid"],
+        "imagenet1k_index": contract["imagenet1k_index"],
+        "label_source": contract["label_source"],
+    }
+
+
+def production_access_validator(
+    *, repo_root: Path | str = REPO_ROOT,
+) -> Any:
+    """Return a lazy validator so no data path is resolved before journaling."""
+
+    repo = Path(repo_root).resolve()
+    data_root: Path | None = None
+
+    def validate(group: Any, contract: Mapping[str, Any]) -> Mapping[str, Any]:
+        nonlocal data_root
+        if data_root is None:
+            binding, _ = _read_regular_json(
+                repo / "config/recovery_v2_binding.json", "recovery-v2 binding"
+            )
+            raw = binding.get("stage_c_input", {}).get("data_root")
+            relative = PurePosixPath(raw) if isinstance(raw, str) else None
+            if (
+                relative is None or relative.is_absolute() or relative.as_posix() != raw
+                or any(part in {"", ".", ".."} for part in relative.parts)
+            ):
+                raise StageDD7Error("recovery-v2 data root binding is unsafe")
+            data_root = repo.joinpath(*relative.parts)
+        return validate_live_asset(group, contract, data_root=data_root)
+
+    return validate
+
+
 def _fresh_formal_root(repo: Path, raw: str) -> Path:
     relative = PurePosixPath(raw)
     if relative.is_absolute() or ".." in relative.parts or not raw.startswith("evidence/stage_d/"):
@@ -1372,6 +1678,7 @@ def build_execution_authorization(
     if _git(repo, "rev-parse", "HEAD") != producer["commit"]:
         raise StageDD7Error("authorization must be generated at the frozen producer commit")
     smoke = validate_full_chain_synthetic_smoke(repo_root=repo)
+    initializer_smoke = validate_d8_initializer_synthetic_smoke(repo_root=repo)
     budget, estimate, preflight = load_d7_budget(repo_root=repo)
     pipeline = load_recovery_pipeline(repo_root=repo)
     _fresh_formal_root(repo, formal_root)
@@ -1389,7 +1696,7 @@ def build_execution_authorization(
     ):
         raise StageDD7Error("pre-authorization access attestation is not closed")
     document = {
-        "$schema": "stage_d_d7_execution_authorization_r3.schema.json",
+        "$schema": "stage_d_d7_execution_authorization_r4.schema.json",
         "schema_version": 1, "document_type": AUTHORIZATION_DOCUMENT_TYPE,
         "d7_id": D7_ID, "status": "PASS",
         "authorization_scope": "D7_RECOVERY_V2_FIDELITY_ONLY",
@@ -1422,6 +1729,14 @@ def build_execution_authorization(
             "formal": False, "image_groups": 500,
             "execution_units": 1000,
             "real_d4_d5_d6_api_chain": True,
+        },
+        "d8_initializer": {
+            "path": ACCESS_SMOKE_RECEIPT_PATH,
+            "canonical_digest": initializer_smoke["canonical_digest"],
+            "synthetic_only": True, "durable_access_started": True,
+            "append_only_journal": True, "interruption_recovery": True,
+            "failure_blocks": True, "all_500_required_before_runnable": True,
+            "unit_execution_started": False,
         },
         "code_binding": {
             "commit": producer["commit"], "tree": producer["tree"],
@@ -1531,6 +1846,19 @@ def validate_execution_authorization(
         or source["smoke"]["real_d4_d5_d6_api_chain"] is not True
     ):
         raise StageDD7Error("D7 authorization full-chain smoke binding drifted")
+    observed_initializer = validate_d8_initializer_synthetic_smoke(repo_root=repo)
+    if source["d8_initializer"] != {
+        "path": ACCESS_SMOKE_RECEIPT_PATH,
+        "canonical_digest": observed_initializer["canonical_digest"],
+        "synthetic_only": True,
+        "durable_access_started": True,
+        "append_only_journal": True,
+        "interruption_recovery": True,
+        "failure_blocks": True,
+        "all_500_required_before_runnable": True,
+        "unit_execution_started": False,
+    }:
+        raise StageDD7Error("D7 authorization D8.0 initializer binding drifted")
     observed_model = verify_recovery_model(repo_root=repo)
     if source["model_binding"] != observed_model:
         raise StageDD7Error("D7 authorization model binding drifted")
@@ -1601,12 +1929,12 @@ class D7ExecutionGate:
     ) -> _D7ValidatedExecutionContext:
         if not isinstance(context, Mapping):
             raise StageDD7Error("D7 gate requires the tracked authorization document")
+        if operation not in {"initialize-access", "validate-access", "run-shard"}:
+            raise StageDD7Error("D7 authorization operation is outside D8 execution")
         checked = validate_execution_authorization(
             context, repo_root=self.repo_root,
-            require_fresh_root=operation == "init",
+            require_fresh_root=False,
         )
-        if operation not in {"init", "run-shard"}:
-            raise StageDD7Error("D7 authorization operation is outside D8 execution")
         expected_root = self.repo_root / context["formal_root"]
         if Path(output_root).absolute() != expected_root.absolute():
             raise StageDD7Error("D7 authorization output root binding drifted")

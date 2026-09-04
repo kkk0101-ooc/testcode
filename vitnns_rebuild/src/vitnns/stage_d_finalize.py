@@ -518,7 +518,8 @@ def _inventory(
                 )
             if stat.S_ISDIR(named.st_mode):
                 allowed_directory = (
-                    (not prefix.parts and name in {"units", FINAL_DIRECTORY_NAME})
+                    (not prefix.parts and name in {"units", "access", FINAL_DIRECTORY_NAME})
+                    or (len(prefix.parts) == 1 and prefix.parts[0] == "access" and name == "journal")
                     or (len(prefix.parts) == 1 and prefix.parts[0] == "units")
                     or (len(prefix.parts) == 2 and prefix.parts[0] == "units" and name == "attempts")
                     or (len(prefix.parts) == 3 and prefix.parts[0] == "units" and name.startswith("attempt-"))
@@ -744,6 +745,8 @@ def _validate_source_directories(
     """Reject empty/extra directories omitted by a file-only inventory."""
 
     expected = {"units"}
+    if "access" in captured_directories:
+        expected.update({"access", "access/journal"})
     for unit in plan.units:
         base = PurePosixPath("units") / unit.canonical_digest
         expected.update({base.as_posix(), (base / "attempts").as_posix()})
@@ -1584,7 +1587,11 @@ def _root_layout(
     root: Path, plan: StageDExecutionPlan, *, sealed: bool,
 ) -> None:
     observed = set(os.listdir(root))
-    expected = set(_RUNTIME_ROOT_ENTRIES) | ({FINAL_DIRECTORY_NAME} if sealed else set())
+    expected = (
+        set(_RUNTIME_ROOT_ENTRIES)
+        | ({"access"} if "access" in observed else set())
+        | ({FINAL_DIRECTORY_NAME} if sealed else set())
+    )
     if observed != expected:
         raise StageDFinalizeIntegrityError(
             f"Stage D root layout is not closed; missing={sorted(expected-observed)}, extra={sorted(observed-expected)}"
@@ -1594,7 +1601,7 @@ def _root_layout(
         metadata = os.lstat(child)
         if stat.S_ISLNK(metadata.st_mode):
             raise StageDFinalizeIntegrityError(f"Stage D root contains symlink {name}")
-        if name in {"units", FINAL_DIRECTORY_NAME}:
+        if name in {"units", "access", FINAL_DIRECTORY_NAME}:
             if not stat.S_ISDIR(metadata.st_mode):
                 raise StageDFinalizationIntegrityError(f"{name} is not a directory")
         elif not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:

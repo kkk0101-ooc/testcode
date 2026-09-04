@@ -13,7 +13,8 @@ from vitnns.stage_d_d7 import (
     FULL_CHAIN_RECEIPT_PATH,
     StageDD7Error, _D7ValidatedExecutionContext, build_d7_budget,
     build_execution_authorization, load_d7_budget, load_recovery_pipeline,
-    run_synthetic_smoke, validate_execution_authorization, validate_smoke,
+    run_d8_initializer_synthetic_smoke, run_synthetic_smoke,
+    validate_d8_initializer_synthetic_smoke, validate_execution_authorization, validate_smoke,
     validate_full_chain_synthetic_smoke,
 )
 from vitnns import stage_d_d7 as d7_module
@@ -86,15 +87,35 @@ def test_r3_full_chain_smoke_calls_real_d4_d5_d6_apis() -> None:
     assert (REPO_ROOT / FULL_CHAIN_RECEIPT_PATH).is_file()
 
 
-def test_r3_paths_do_not_reuse_prior_terminal_or_authority() -> None:
-    assert d7_module.D7_ID.endswith("_R3_20260904")
-    assert d7_module.AUTHORIZATION_PATH.endswith("_r3.json")
-    assert d7_module.COMPLETION_ROOT.endswith("_20260904_r3")
+def test_r4_paths_do_not_reuse_prior_terminal_or_authority() -> None:
+    assert d7_module.D7_ID.endswith("_R4_20260904")
+    assert d7_module.AUTHORIZATION_PATH.endswith("_r4.json")
+    assert d7_module.COMPLETION_ROOT.endswith("_20260904_r4")
     assert d7_module.FULL_CHAIN_RECEIPT_PATH.startswith(
         d7_module.COMPLETION_ROOT + "/"
     )
-    assert d7_module.PRODUCER_REF.endswith("d7-r3-producer")
-    assert d7_module.AUTHORITY_REF.endswith("d7-r3-authority")
+    assert d7_module.PRODUCER_REF.endswith("d7-r4-producer")
+    assert d7_module.AUTHORITY_REF.endswith("d7-r4-authority")
+
+
+def test_r4_d8_initializer_smoke_is_source_recomputed(tmp_path: Path) -> None:
+    receipt_path = tmp_path / "initializer_receipt.json"
+    receipt = run_d8_initializer_synthetic_smoke(
+        repo_root=REPO_ROOT, output_root=tmp_path / "synthetic-d8-init",
+        receipt_path=receipt_path,
+    )
+    assert receipt["status"] == "PASS"
+    assert receipt["state_sequence"] == [
+        "ACCESS_STARTED", "INTERRUPTED", "RESUMED", "RUNNABLE",
+    ]
+    assert receipt["counts"] == {
+        "expected_assets": 500, "validated_assets": 500,
+        "interrupted_after_assets": 127, "journal_entries": 1002,
+        "unit_attempt_directories": 0,
+    }
+    assert validate_d8_initializer_synthetic_smoke(
+        repo_root=REPO_ROOT, receipt_path=receipt_path,
+    )["canonical_digest"] == receipt["canonical_digest"]
 
 
 def test_final_budget_uses_1000_unit_plan_and_passes_all_caps() -> None:

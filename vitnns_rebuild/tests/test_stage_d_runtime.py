@@ -22,8 +22,9 @@ from vitnns.stage_d_runtime import (
     RUNTIME_CHECKPOINT_FILENAME, StageDConcurrentClaimError,
     StageDExecutionAuthorizationRequired, StageDRecoveryAuthorizationRequired,
     StageDRuntimeBlockedError, StageDRuntimeIntegrityError,
-    _issue_synthetic_d4_test_context, initialize_stage_d_output_root,
-    recover_stage_d_claim, run_stage_d_shard,
+    _issue_synthetic_d4_test_context, initialize_stage_d_access_root,
+    initialize_stage_d_output_root, recover_stage_d_claim, run_stage_d_shard,
+    validate_stage_d_access_root,
 )
 
 
@@ -111,6 +112,27 @@ def checkpoint(root: Path) -> dict[str, Any]:
     return json.loads((root / RUNTIME_CHECKPOINT_FILENAME).read_text())
 
 
+def access_contracts(plan):
+    registry = json.loads(
+        (REPO_ROOT / "manifests/stage_d_fidelity_v1/registry.json").read_text()
+    )
+    by_id = {row["sample_id"]: row for row in registry["rows"]}
+    return [by_id[group.sample_id] for group in plan.groups]
+
+
+def synthetic_observation(group, contract):
+    digest = __import__("hashlib").sha256(group.sample_id.encode()).hexdigest()
+    return {
+        "source_kind": "SYNTHETIC_TEST_FIXTURE",
+        "source_payload_sha256": digest, "image_sha256": digest,
+        **{key: contract[key] for key in (
+            "size_bytes", "width", "height", "mode", "image_format",
+            "official_ilsvrc2012_class_id", "official_wnid",
+            "imagenet1k_index", "label_source",
+        )},
+    }
+
+
 def resign(root: Path, value: dict[str, Any]) -> None:
     value["canonical_digest"] = canonical_sha256({
         key: child for key, child in value.items() if key != "canonical_digest"
@@ -130,6 +152,156 @@ def test_gate_and_controls_precede_root_and_backend(controls, tmp_path: Path) ->
             shard_id=0, backend_factory=lambda **_kwargs: calls.append("backend"),
         )
     assert calls == [] and not root.exists()
+
+
+def test_d8_initializer_durable_resume_and_no_unit_execution(controls, tmp_path: Path) -> None:
+    plan, estimate, preflight = controls
+    context, gate = permit(controls, 8)
+    root = tmp_path / "synthetic-d8-init"
+    contracts = access_contracts(plan)
+    calls: list[int] = []
+    stopped = False
+
+    def validator(group, contract):
+        lifecycle = json.loads((root / "access/lifecycle.json").read_text())
+        events = sorted((root / "access/journal").iterdir())
+        assert lifecycle["state"] == "ACCESS_STARTED"
+        assert lifecycle["journal_entry_count"] == len(events)
+        assert json.loads(events[-1].read_text())["event"] in {
+            "ASSET_ACCESS_INTENT", "ASSET_ACCESS_RESUMED",
+        }
+        calls.append(group.selection_order)
+        return synthetic_observation(group, contract)
+
+    def interrupt(point, selection_order):
+        nonlocal stopped
+        if point == "after_asset_validated_event" and selection_order == 9 and not stopped:
+            stopped = True
+            raise KeyboardInterrupt
+
+    with pytest.raises(KeyboardInterrupt):
+        initialize_stage_d_access_root(
+            root, plan, estimate, preflight, execution_context=context,
+            execution_gate=gate, asset_contracts=contracts,
+            asset_validator=validator, fault_injector=interrupt,
+        )
+    partial = validate_stage_d_access_root(
+        root, plan, estimate, preflight, execution_context=context,
+        execution_gate=gate, asset_contracts=contracts, require_runnable=False,
+        repair_lag=True,
+    )
+    assert partial["state"] == "ACCESS_STARTED"
+    assert partial["validated_asset_count"] == 10
+    result = initialize_stage_d_access_root(
+        root, plan, estimate, preflight, execution_context=context,
+        execution_gate=gate, asset_contracts=contracts, asset_validator=validator,
+    )
+    assert result["state"] == "RUNNABLE"
+    assert calls == list(range(500))
+    assert not list((root / "units").glob("*/attempts/*"))
+
+
+def test_d8_initializer_failure_is_durable_and_blocked(controls, tmp_path: Path) -> None:
+    plan, estimate, preflight = controls
+    context, gate = permit(controls, 8)
+    root = tmp_path / "synthetic-d8-blocked"
+    contracts = access_contracts(plan)
+
+    def validator(group, contract):
+        if group.selection_order == 3:
+            raise ValueError("synthetic digest mismatch")
+        return synthetic_observation(group, contract)
+
+    with pytest.raises(StageDRuntimeBlockedError):
+        initialize_stage_d_access_root(
+            root, plan, estimate, preflight, execution_context=context,
+            execution_gate=gate, asset_contracts=contracts, asset_validator=validator,
+        )
+    blocked = validate_stage_d_access_root(
+        root, plan, estimate, preflight, execution_context=context,
+        execution_gate=gate, asset_contracts=contracts, require_runnable=False,
+    )
+    assert blocked["state"] == "BLOCKED"
+    assert blocked["validated_asset_count"] == 3
+    assert blocked["failure_code"] == "LIVE_ASSET_VALIDATION_FAILED"
+    assert not list((root / "units").glob("*/attempts/*"))
+    with pytest.raises(StageDRuntimeBlockedError):
+        initialize_stage_d_access_root(
+            root, plan, estimate, preflight, execution_context=context,
+            execution_gate=gate, asset_contracts=contracts, asset_validator=validator,
+        )
+
+
+def test_formal_run_shard_requires_runnable_access_gate(controls, tmp_path: Path) -> None:
+    import vitnns.stage_d_runtime as runtime
+
+    plan, estimate, preflight = controls
+    synthetic, _ = permit(controls, 8)
+    values = {name: getattr(synthetic, name) for name in (
+        "authorization_slot", "shard_count", "shard_mapping",
+        "plan_digest", "budget_digest", "preflight_digest",
+        "code_binding", "dependency_binding", "model_binding",
+        "source_bindings",
+    )}
+    values.update({
+        "formal": True, "authorization_scope": "D7_FORMAL_TEST_FIXTURE",
+        "execution_authorization": "AUTHORIZED_STAGE_D_FIDELITY_SCOPE",
+        "access_attestation": {
+            "reserve_image_bytes_accessed": False,
+            "model_loaded_for_identity_verification": True,
+            "model_used_for_inference": False, "cuda_accessed": False,
+            "outcome_accessed": False,
+        },
+    })
+    values["canonical_digest"] = canonical_sha256({
+        **values, "shard_mapping": [values["shard_mapping"][i] for i in range(500)],
+    })
+    formal = type("FormalContext", (), values)()
+
+    class Gate:
+        def validate_execution_context(self, context, **_kwargs):
+            assert context is formal
+            return formal
+
+    binding = runtime._normalize_execution_context(
+        formal, plan=plan, estimate=estimate, preflight=preflight
+    )
+    root = runtime._initialize_validated_output_root(
+        tmp_path / "formal-before-access", plan, estimate, preflight, binding
+    )
+    backend_calls: list[str] = []
+    with pytest.raises(StageDRuntimeIntegrityError, match="access controls"):
+        run_stage_d_shard(
+            plan, output_root=root, estimate=estimate, preflight=preflight,
+            shard_id=0, execution_context=formal, execution_gate=Gate(),
+            backend_factory=lambda **_kwargs: backend_calls.append("called"),
+            asset_contracts=access_contracts(plan),
+        )
+    assert backend_calls == []
+
+
+def test_access_journal_tamper_is_rejected(controls, tmp_path: Path) -> None:
+    plan, estimate, preflight = controls
+    context, gate = permit(controls, 8)
+    root = tmp_path / "synthetic-d8-tamper"
+    contracts = access_contracts(plan)
+    initialize_stage_d_access_root(
+        root, plan, estimate, preflight, execution_context=context,
+        execution_gate=gate, asset_contracts=contracts,
+        asset_validator=synthetic_observation,
+    )
+    path = root / "access/journal/000010.json"
+    event = json.loads(path.read_text())
+    event["asset"]["sample_id"] = "tampered"
+    event["canonical_digest"] = canonical_sha256({
+        key: value for key, value in event.items() if key != "canonical_digest"
+    })
+    path.write_bytes(canonical_json_bytes(event) + b"\n")
+    with pytest.raises(StageDRuntimeIntegrityError):
+        validate_stage_d_access_root(
+            root, plan, estimate, preflight, execution_context=context,
+            execution_gate=gate, asset_contracts=contracts,
+        )
 
 
 def test_runtime_seals_formal_gate_result_before_backend_and_unit(controls) -> None:

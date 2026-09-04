@@ -90,7 +90,39 @@ _LOCK_NAMES = (
     CHECKPOINT_LOCK_FILENAME,
     ARTIFACT_ACTIVITY_LOCK_FILENAME,
 )
+_ACCESS_DIRECTORY_NAME = "access"
+ACCESS_LIFECYCLE_FILENAME = "lifecycle.json"
+ACCESS_JOURNAL_DIRECTORY = "journal"
 _ROOT_ENTRIES = frozenset({RUNTIME_CHECKPOINT_FILENAME, *_LOCK_NAMES, "units"})
+_ACCESS_STATES = frozenset({"ACCESS_STARTED", "RUNNABLE", "BLOCKED"})
+_ACCESS_EVENTS = frozenset({
+    "ACCESS_STARTED", "ASSET_ACCESS_INTENT", "ASSET_ACCESS_RESUMED",
+    "ASSET_VALIDATED", "ASSET_REJECTED", "ACCESS_COMPLETE",
+})
+_ACCESS_OBSERVATION_KEYS = frozenset({
+    "source_kind", "source_payload_sha256", "image_sha256",
+    "size_bytes", "width", "height", "mode", "image_format",
+    "official_ilsvrc2012_class_id", "official_wnid",
+    "imagenet1k_index", "label_source",
+})
+_ACCESS_ASSET_KEYS = frozenset({
+    "selection_order", "sample_id", "relative_path",
+    "expected_image_sha256", "registry_row_digest", "observation",
+})
+_ACCESS_EVENT_KEYS = frozenset({
+    "schema_version", "document_type", "sequence", "event",
+    "previous_event_digest", "plan_digest", "runtime_binding_digest",
+    "asset", "failure_code", "canonical_digest",
+})
+_ACCESS_LIFECYCLE_KEYS = frozenset({
+    "schema_version", "document_type", "state", "plan_digest",
+    "registry_digest", "ordered_sample_ids_digest",
+    "runtime_binding_digest", "runtime_checkpoint_at_access_start",
+    "expected_asset_count", "validated_asset_count",
+    "next_selection_order", "journal_entry_count",
+    "journal_head_digest", "live_assets_digest", "blocked_reasons",
+    "unit_execution_started_during_initialization", "canonical_digest",
+})
 _UNIT_STATES = frozenset({
     "pending", "claimed", "succeeded", "scientific_failed",
     "retry_pending", "blocked",
@@ -1436,6 +1468,686 @@ def _strict_control_json(path: Path, context: str) -> dict[str, Any]:
     return value
 
 
+def _atomic_create_control_json(path: Path, value: Mapping[str, Any]) -> None:
+    """Create one immutable canonical control and fsync its directory."""
+
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    _atomic_create_checkpoint(path, value)
+
+
+def _access_event(
+    *, sequence: int, event: str, previous: str | None, plan_digest: str,
+    runtime_binding_digest: str, asset: Mapping[str, Any] | None = None,
+    failure_code: str | None = None,
+) -> dict[str, Any]:
+    if event not in _ACCESS_EVENTS:
+        raise StageDRuntimeIntegrityError("unknown Stage D access event")
+    return _signed({
+        "schema_version": 1,
+        "document_type": "stage_d_access_journal_event",
+        "sequence": sequence,
+        "event": event,
+        "previous_event_digest": previous,
+        "plan_digest": plan_digest,
+        "runtime_binding_digest": runtime_binding_digest,
+        "asset": None if asset is None else _plain(asset),
+        "failure_code": failure_code,
+    })
+
+
+def _access_lifecycle(
+    *, state: str, plan: StageDExecutionPlan, runtime_binding_digest: str,
+    checkpoint_digest: str, validated_asset_count: int,
+    journal_entry_count: int, journal_head_digest: str | None,
+    live_assets_digest: str | None, blocked_reasons: Sequence[str] = (),
+) -> dict[str, Any]:
+    if state not in _ACCESS_STATES:
+        raise StageDRuntimeIntegrityError("unknown Stage D access lifecycle state")
+    return _signed({
+        "schema_version": 1,
+        "document_type": "stage_d_access_lifecycle",
+        "state": state,
+        "plan_digest": plan.canonical_digest,
+        "registry_digest": plan.registry_digest,
+        "ordered_sample_ids_digest": plan.ordered_sample_ids_digest,
+        "runtime_binding_digest": runtime_binding_digest,
+        "runtime_checkpoint_at_access_start": checkpoint_digest,
+        "expected_asset_count": len(plan.groups),
+        "validated_asset_count": validated_asset_count,
+        "next_selection_order": (
+            validated_asset_count if validated_asset_count < len(plan.groups) else None
+        ),
+        "journal_entry_count": journal_entry_count,
+        "journal_head_digest": journal_head_digest,
+        "live_assets_digest": live_assets_digest,
+        "blocked_reasons": list(blocked_reasons),
+        "unit_execution_started_during_initialization": False,
+    })
+
+
+def _validate_access_event(
+    value: Any, *, sequence: int, previous: str | None,
+    plan_digest: str, runtime_binding_digest: str,
+) -> dict[str, Any]:
+    event = _plain(_require_mapping(value, "access journal event"))
+    _require_exact_keys(event, _ACCESS_EVENT_KEYS, "access journal event")
+    if (
+        event["schema_version"] != 1
+        or event["document_type"] != "stage_d_access_journal_event"
+        or event["sequence"] != sequence
+        or event["event"] not in _ACCESS_EVENTS
+        or event["previous_event_digest"] != previous
+        or event["plan_digest"] != plan_digest
+        or event["runtime_binding_digest"] != runtime_binding_digest
+        or event["canonical_digest"] != _self_digest(event)
+    ):
+        raise StageDRuntimeIntegrityError("access journal event binding drifted")
+    if event["event"] in {"ACCESS_STARTED", "ACCESS_COMPLETE"}:
+        if event["asset"] is not None or event["failure_code"] is not None:
+            raise StageDRuntimeIntegrityError("boundary access event has asset data")
+    else:
+        asset = _plain(_require_mapping(event["asset"], "access event asset"))
+        _require_exact_keys(asset, _ACCESS_ASSET_KEYS, "access event asset")
+        if event["event"] == "ASSET_REJECTED":
+            if not isinstance(event["failure_code"], str) or not event["failure_code"]:
+                raise StageDRuntimeIntegrityError("rejected asset lacks a failure code")
+        elif event["failure_code"] is not None:
+            raise StageDRuntimeIntegrityError("non-rejected access event has a failure")
+    return event
+
+
+def _read_access_chain(
+    root: Path, *, plan: StageDExecutionPlan, runtime_binding_digest: str,
+) -> list[dict[str, Any]]:
+    journal = root / _ACCESS_DIRECTORY_NAME / ACCESS_JOURNAL_DIRECTORY
+    try:
+        children = sorted(journal.iterdir(), key=lambda item: item.name)
+    except OSError as error:
+        raise StageDRuntimeIntegrityError("access journal is missing or unsafe") from error
+    expected_names = [f"{index:06d}.json" for index in range(len(children))]
+    if [child.name for child in children] != expected_names:
+        raise StageDRuntimeIntegrityError("access journal is not a closed sequence")
+    events: list[dict[str, Any]] = []
+    previous: str | None = None
+    for index, child in enumerate(children):
+        event = _validate_access_event(
+            _strict_control_json(child, f"access journal entry {index}"),
+            sequence=index, previous=previous, plan_digest=plan.canonical_digest,
+            runtime_binding_digest=runtime_binding_digest,
+        )
+        events.append(event)
+        previous = event["canonical_digest"]
+    return events
+
+
+def _validate_access_layout(root: Path) -> None:
+    access_root = root / _ACCESS_DIRECTORY_NAME
+    journal = access_root / ACCESS_JOURNAL_DIRECTORY
+    try:
+        access_info = os.lstat(access_root)
+        journal_info = os.lstat(journal)
+        lifecycle_info = os.lstat(access_root / ACCESS_LIFECYCLE_FILENAME)
+    except OSError as error:
+        raise StageDRuntimeIntegrityError("access controls are missing or unsafe") from error
+    if (
+        stat.S_ISLNK(access_info.st_mode) or not stat.S_ISDIR(access_info.st_mode)
+        or stat.S_ISLNK(journal_info.st_mode) or not stat.S_ISDIR(journal_info.st_mode)
+        or stat.S_ISLNK(lifecycle_info.st_mode)
+        or not stat.S_ISREG(lifecycle_info.st_mode)
+        or lifecycle_info.st_nlink != 1
+        or {child.name for child in access_root.iterdir()}
+        != {ACCESS_LIFECYCLE_FILENAME, ACCESS_JOURNAL_DIRECTORY}
+    ):
+        raise StageDRuntimeIntegrityError("access control layout is not closed")
+    for child in journal.iterdir():
+        info = os.lstat(child)
+        if (
+            stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode)
+            or info.st_nlink != 1
+        ):
+            raise StageDRuntimeIntegrityError("access journal entry is unsafe")
+
+
+def _validated_access_rows(
+    events: Sequence[Mapping[str, Any]], plan: StageDExecutionPlan,
+    contracts: Sequence[Mapping[str, Any]] | None = None,
+    *, require_live_identity: bool = True,
+) -> tuple[list[dict[str, Any]], int | None, str | None]:
+    if not events or events[0]["event"] != "ACCESS_STARTED":
+        raise StageDRuntimeIntegrityError("access journal lacks ACCESS_STARTED")
+    validated: list[dict[str, Any]] = []
+    pending: int | None = None
+    failure: str | None = None
+    complete = False
+    for event in events[1:]:
+        kind = event["event"]
+        if complete or failure is not None:
+            raise StageDRuntimeIntegrityError("access journal continued after terminal event")
+        if kind in {"ASSET_ACCESS_INTENT", "ASSET_ACCESS_RESUMED"}:
+            if len(validated) >= len(plan.groups):
+                raise StageDRuntimeIntegrityError("access intent sequence is ambiguous")
+            asset = event["asset"]
+            group = plan.groups[len(validated)]
+            if (
+                asset["selection_order"] != group.selection_order
+                or asset["sample_id"] != group.sample_id
+                or asset["relative_path"] != group.relative_path
+                or asset["expected_image_sha256"] != group.image_sha256
+                or asset["registry_row_digest"] != group.registry_row_digest
+                or asset["observation"] is not None
+            ):
+                raise StageDRuntimeIntegrityError("access intent differs from frozen plan")
+            if (kind == "ASSET_ACCESS_INTENT" and pending is not None) or (
+                kind == "ASSET_ACCESS_RESUMED" and pending != group.selection_order
+            ):
+                raise StageDRuntimeIntegrityError("access resume sequence is ambiguous")
+            pending = group.selection_order
+        elif kind in {"ASSET_VALIDATED", "ASSET_REJECTED"}:
+            if pending != len(validated):
+                raise StageDRuntimeIntegrityError("access result lacks matching durable intent")
+            asset = event["asset"]
+            group = plan.groups[pending]
+            observation = asset["observation"]
+            if (
+                asset["selection_order"] != group.selection_order
+                or asset["sample_id"] != group.sample_id
+                or asset["relative_path"] != group.relative_path
+                or asset["expected_image_sha256"] != group.image_sha256
+                or asset["registry_row_digest"] != group.registry_row_digest
+            ):
+                raise StageDRuntimeIntegrityError("access result differs from frozen plan")
+            if kind == "ASSET_VALIDATED":
+                observed = _plain(_require_mapping(observation, "asset observation"))
+                _require_exact_keys(observed, _ACCESS_OBSERVATION_KEYS, "asset observation")
+                expected_metadata = (
+                    {} if contracts is None else {key: contracts[pending][key] for key in (
+                        "size_bytes", "width", "height", "mode",
+                        "image_format", "official_ilsvrc2012_class_id",
+                        "official_wnid", "imagenet1k_index", "label_source",
+                    )}
+                )
+                if (
+                    not isinstance(observed["image_sha256"], str)
+                    or _SHA256_RE.fullmatch(observed["image_sha256"]) is None
+                    or (require_live_identity and observed["image_sha256"] != group.image_sha256)
+                    or not isinstance(observed["source_payload_sha256"], str)
+                    or _SHA256_RE.fullmatch(observed["source_payload_sha256"]) is None
+                    or (
+                        require_live_identity
+                        and observed["source_payload_sha256"] != group.image_sha256
+                    )
+                    or any(observed[key] != value for key, value in expected_metadata.items())
+                ):
+                    raise StageDRuntimeIntegrityError("validated asset digest drifted")
+                validated.append({
+                    "selection_order": group.selection_order,
+                    "sample_id": group.sample_id,
+                    "relative_path": group.relative_path,
+                    "image_sha256": observed["image_sha256"],
+                    "size_bytes": observed["size_bytes"],
+                    "width": observed["width"], "height": observed["height"],
+                    "mode": observed["mode"],
+                    "image_format": observed["image_format"],
+                    "official_ilsvrc2012_class_id": observed["official_ilsvrc2012_class_id"],
+                    "official_wnid": observed["official_wnid"],
+                    "imagenet1k_index": observed["imagenet1k_index"],
+                    "label_source": observed["label_source"],
+                })
+            else:
+                if observation is not None:
+                    raise StageDRuntimeIntegrityError(
+                        "rejected asset leaked an observation"
+                    )
+                failure = event["failure_code"]
+            pending = None
+        elif kind == "ACCESS_COMPLETE":
+            if pending is not None or len(validated) != len(plan.groups):
+                raise StageDRuntimeIntegrityError("access completed before full validation")
+            complete = True
+        else:
+            raise StageDRuntimeIntegrityError("unexpected access journal transition")
+    return validated, pending, failure
+
+
+def _validate_access_lifecycle(
+    root: Path, *, plan: StageDExecutionPlan, runtime_binding_digest: str,
+    checkpoint_digest: str, contracts: Sequence[Mapping[str, Any]] | None = None,
+    repair_lag: bool = False, require_live_identity: bool = True,
+) -> tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]], int | None, str | None]:
+    _validate_access_layout(root)
+    lifecycle = _strict_control_json(
+        root / _ACCESS_DIRECTORY_NAME / ACCESS_LIFECYCLE_FILENAME,
+        "access lifecycle",
+    )
+    _require_exact_keys(lifecycle, _ACCESS_LIFECYCLE_KEYS, "access lifecycle")
+    if (
+        lifecycle["schema_version"] != 1
+        or lifecycle["document_type"] != "stage_d_access_lifecycle"
+        or lifecycle["state"] not in _ACCESS_STATES
+        or lifecycle["plan_digest"] != plan.canonical_digest
+        or lifecycle["registry_digest"] != plan.registry_digest
+        or lifecycle["ordered_sample_ids_digest"] != plan.ordered_sample_ids_digest
+        or lifecycle["runtime_binding_digest"] != runtime_binding_digest
+        or lifecycle["runtime_checkpoint_at_access_start"] != checkpoint_digest
+        or lifecycle["unit_execution_started_during_initialization"] is not False
+        or lifecycle["canonical_digest"] != _self_digest(lifecycle)
+    ):
+        raise StageDRuntimeIntegrityError("access lifecycle binding drifted")
+    events = _read_access_chain(
+        root, plan=plan, runtime_binding_digest=runtime_binding_digest,
+    )
+    validated, pending, failure = _validated_access_rows(
+        events, plan, contracts, require_live_identity=require_live_identity,
+    )
+    live_digest = canonical_sha256({"assets": validated}) if len(validated) == len(plan.groups) else None
+    expected_state = "BLOCKED" if failure is not None else (
+        "RUNNABLE" if events[-1]["event"] == "ACCESS_COMPLETE" else "ACCESS_STARTED"
+    )
+    expected = _access_lifecycle(
+        state=expected_state, plan=plan, runtime_binding_digest=runtime_binding_digest,
+        checkpoint_digest=checkpoint_digest, validated_asset_count=len(validated),
+        journal_entry_count=len(events), journal_head_digest=events[-1]["canonical_digest"],
+        live_assets_digest=live_digest if expected_state == "RUNNABLE" else None,
+        blocked_reasons=(() if failure is None else (failure,)),
+    )
+    if lifecycle != expected:
+        if not repair_lag:
+            raise StageDRuntimeIntegrityError("access lifecycle differs from journal source")
+        count = lifecycle["journal_entry_count"]
+        if type(count) is not int or count < 1 or count > len(events):
+            raise StageDRuntimeIntegrityError("access lifecycle journal count is invalid")
+        prefix = events[:count]
+        prefix_validated, _prefix_pending, prefix_failure = _validated_access_rows(
+            prefix, plan, contracts, require_live_identity=require_live_identity,
+        )
+        prefix_state = "BLOCKED" if prefix_failure is not None else (
+            "RUNNABLE" if prefix[-1]["event"] == "ACCESS_COMPLETE"
+            else "ACCESS_STARTED"
+        )
+        prefix_live_digest = (
+            canonical_sha256({"assets": prefix_validated})
+            if prefix_state == "RUNNABLE" else None
+        )
+        prefix_expected = _access_lifecycle(
+            state=prefix_state, plan=plan,
+            runtime_binding_digest=runtime_binding_digest,
+            checkpoint_digest=checkpoint_digest,
+            validated_asset_count=len(prefix_validated),
+            journal_entry_count=len(prefix),
+            journal_head_digest=prefix[-1]["canonical_digest"],
+            live_assets_digest=prefix_live_digest,
+            blocked_reasons=(() if prefix_failure is None else (prefix_failure,)),
+        )
+        if lifecycle != prefix_expected:
+            raise StageDRuntimeIntegrityError("access lifecycle is not a valid journal prefix")
+        _replace_access_lifecycle(root, expected)
+        lifecycle = expected
+    return lifecycle, events, validated, pending, failure
+
+
+def _access_asset_projection(
+    group: StageDImageGroup, observation: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    return {
+        "selection_order": group.selection_order, "sample_id": group.sample_id,
+        "relative_path": group.relative_path,
+        "expected_image_sha256": group.image_sha256,
+        "registry_row_digest": group.registry_row_digest,
+        "observation": None if observation is None else _plain(observation),
+    }
+
+
+def _validate_access_contracts(
+    values: Sequence[Mapping[str, Any]], plan: StageDExecutionPlan,
+) -> tuple[dict[str, Any], ...]:
+    if not isinstance(values, Sequence) or isinstance(values, (str, bytes)):
+        raise StageDRuntimeIntegrityError("asset contracts must be a sequence")
+    if len(values) != len(plan.groups):
+        raise StageDRuntimeIntegrityError("asset contracts must cover all 500 groups")
+    required = {
+        "selection_order", "sample_id", "relative_path", "image_sha256",
+        "canonical_digest", "size_bytes", "width", "height", "mode",
+        "image_format", "official_ilsvrc2012_class_id", "official_wnid",
+        "imagenet1k_index", "label_source",
+    }
+    result: list[dict[str, Any]] = []
+    for index, (value, group) in enumerate(zip(values, plan.groups)):
+        source = _plain(_require_mapping(value, f"asset contract {index}"))
+        if not required <= set(source):
+            raise StageDRuntimeIntegrityError("asset contract fields are incomplete")
+        if (
+            source["selection_order"] != group.selection_order
+            or source["sample_id"] != group.sample_id
+            or source["relative_path"] != group.relative_path
+            or source["image_sha256"] != group.image_sha256
+            or source["canonical_digest"] != group.registry_row_digest
+        ):
+            raise StageDRuntimeIntegrityError("asset contract differs from frozen plan")
+        for name in ("size_bytes", "width", "height", "official_ilsvrc2012_class_id", "imagenet1k_index"):
+            if type(source[name]) is not int or source[name] < 0:
+                raise StageDRuntimeIntegrityError(f"asset contract {name} is invalid")
+        if source["width"] < 1 or source["height"] < 1:
+            raise StageDRuntimeIntegrityError("asset contract dimensions are invalid")
+        for name in ("mode", "image_format", "official_wnid", "label_source"):
+            if not isinstance(source[name], str) or not source[name]:
+                raise StageDRuntimeIntegrityError(f"asset contract {name} is invalid")
+        result.append(source)
+    return tuple(result)
+
+
+def _append_access_event(
+    root: Path, events: Sequence[Mapping[str, Any]], *, event: str,
+    plan: StageDExecutionPlan, runtime_binding_digest: str,
+    asset: Mapping[str, Any] | None = None, failure_code: str | None = None,
+) -> dict[str, Any]:
+    result = _access_event(
+        sequence=len(events), event=event,
+        previous=None if not events else events[-1]["canonical_digest"],
+        plan_digest=plan.canonical_digest,
+        runtime_binding_digest=runtime_binding_digest, asset=asset,
+        failure_code=failure_code,
+    )
+    _atomic_create_control_json(
+        root / _ACCESS_DIRECTORY_NAME / ACCESS_JOURNAL_DIRECTORY
+        / f"{len(events):06d}.json",
+        result,
+    )
+    return result
+
+
+def _replace_access_lifecycle(root: Path, document: Mapping[str, Any]) -> None:
+    _atomic_replace_control_json(
+        root / _ACCESS_DIRECTORY_NAME / ACCESS_LIFECYCLE_FILENAME, document,
+    )
+
+
+def _ensure_access_started(
+    root: Path, *, plan: StageDExecutionPlan, runtime_binding_digest: str,
+    checkpoint_digest: str,
+) -> None:
+    """Finish only the pre-access prefix after an initialization crash."""
+
+    access_root = root / _ACCESS_DIRECTORY_NAME
+    journal = access_root / ACCESS_JOURNAL_DIRECTORY
+    lifecycle_path = access_root / ACCESS_LIFECYCLE_FILENAME
+    if not os.path.lexists(access_root):
+        os.mkdir(access_root, 0o700)
+        _fsync_directory(root)
+    else:
+        info = os.lstat(access_root)
+        if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+            raise StageDRuntimeIntegrityError("access root is unsafe")
+    children = {child.name for child in access_root.iterdir()}
+    if children - {ACCESS_JOURNAL_DIRECTORY, ACCESS_LIFECYCLE_FILENAME}:
+        raise StageDRuntimeIntegrityError("partial access root has unknown entries")
+    if not os.path.lexists(journal):
+        if ACCESS_LIFECYCLE_FILENAME in children:
+            raise StageDRuntimeIntegrityError("access lifecycle exists without journal")
+        os.mkdir(journal, 0o700)
+        _fsync_directory(access_root)
+    else:
+        info = os.lstat(journal)
+        if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+            raise StageDRuntimeIntegrityError("access journal root is unsafe")
+    entries = list(journal.iterdir())
+    if not entries:
+        first = _append_access_event(
+            root, (), event="ACCESS_STARTED", plan=plan,
+            runtime_binding_digest=runtime_binding_digest,
+        )
+    else:
+        events = _read_access_chain(
+            root, plan=plan, runtime_binding_digest=runtime_binding_digest,
+        )
+        if len(events) != 1 or events[0]["event"] != "ACCESS_STARTED":
+            if not os.path.lexists(lifecycle_path):
+                raise StageDRuntimeIntegrityError(
+                    "access journal advanced without a durable lifecycle"
+                )
+            return
+        first = events[0]
+    if not os.path.lexists(lifecycle_path):
+        _atomic_create_control_json(
+            lifecycle_path, _access_lifecycle(
+                state="ACCESS_STARTED", plan=plan,
+                runtime_binding_digest=runtime_binding_digest,
+                checkpoint_digest=checkpoint_digest, validated_asset_count=0,
+                journal_entry_count=1,
+                journal_head_digest=first["canonical_digest"],
+                live_assets_digest=None,
+            ),
+        )
+        _fsync_directory(root)
+
+
+def _require_pristine_runtime_checkpoint(checkpoint: Mapping[str, Any]) -> None:
+    if (
+        checkpoint["generation"] != 0
+        or checkpoint["lifecycle"]["state"] != "initialized"
+        or any(row["state"] != "pending" for row in checkpoint["shards"])
+        or any(row["state"] != "pending" for row in checkpoint["groups"])
+        or any(row["state"] != "pending" or row["attempts"] for row in checkpoint["units"])
+    ):
+        raise StageDRuntimeBlockedError(
+            "D8.0 access initialization requires a pristine no-unit runtime root"
+        )
+
+
+def initialize_stage_d_access_root(
+    output_root: Path | str, plan: Any, estimate: Any, preflight: Any,
+    *, execution_context: object | None = None,
+    execution_gate: StageDExecutionGate | Callable[..., Any] | None = None,
+    asset_contracts: Sequence[Mapping[str, Any]] = (),
+    asset_validator: Callable[[StageDImageGroup, Mapping[str, Any]], Mapping[str, Any]] | None = None,
+    fault_injector: Callable[[str, int | None], Any] | None = None,
+) -> Mapping[str, Any]:
+    """Run the D8.0 durable access boundary without executing a unit.
+
+    D7 verifies this exact implementation using an injected synthetic asset
+    validator.  A future authorized D8.0 supplies the production validator.
+    Process-control interruptions leave a durable intent and are resumed from
+    that exact selection order; ordinary validation failures durably block the
+    root.
+    """
+
+    typed_plan, typed_estimate, typed_preflight = _validate_control_inputs(
+        plan, estimate, preflight
+    )
+    contracts = _validate_access_contracts(asset_contracts, typed_plan)
+    if not callable(asset_validator):
+        raise StageDRuntimeIntegrityError(
+            "D8.0 requires an explicit post-authorization asset validator"
+        )
+    checked_context = _consume_execution_gate(
+        execution_gate, execution_context, operation="initialize-access",
+        output_root=output_root, plan=typed_plan, estimate=typed_estimate,
+        preflight=typed_preflight,
+    )
+    context_binding = _normalize_execution_context(
+        checked_context, plan=typed_plan, estimate=typed_estimate,
+        preflight=typed_preflight,
+    )
+    _seal_execution_context(checked_context, context_binding)
+    lexical_root = _absolute_lexical_root(output_root, "Stage D output root")
+    if not os.path.lexists(lexical_root):
+        _initialize_validated_output_root(
+            lexical_root, typed_plan, typed_estimate, typed_preflight,
+            context_binding,
+        )
+    root = _existing_root(lexical_root)
+    _validate_closed_layout(root, typed_plan)
+
+    def fault(point: str, selection_order: int | None = None) -> None:
+        if fault_injector is not None:
+            fault_injector(point, selection_order)
+
+    with _lifecycle_lock(root, exclusive=True):
+        with _checkpoint_lock(root):
+            checkpoint = _read_valid_checkpoint_locked(
+                root, typed_plan, typed_estimate, typed_preflight, context_binding
+            )
+        _require_pristine_runtime_checkpoint(checkpoint)
+        access_root = root / _ACCESS_DIRECTORY_NAME
+        journal = access_root / ACCESS_JOURNAL_DIRECTORY
+        if not os.path.lexists(access_root):
+            _ensure_access_started(
+                root, plan=typed_plan,
+                runtime_binding_digest=context_binding["runtime_binding_digest"],
+                checkpoint_digest=checkpoint["canonical_digest"],
+            )
+            fault("after_access_started", None)
+        else:
+            _ensure_access_started(
+                root, plan=typed_plan,
+                runtime_binding_digest=context_binding["runtime_binding_digest"],
+                checkpoint_digest=checkpoint["canonical_digest"],
+            )
+        _validate_closed_layout(root, typed_plan)
+        lifecycle, events, validated, pending, failure = _validate_access_lifecycle(
+            root, plan=typed_plan,
+            runtime_binding_digest=context_binding["runtime_binding_digest"],
+            checkpoint_digest=checkpoint["canonical_digest"],
+            contracts=contracts,
+            repair_lag=True,
+            require_live_identity=context_binding["formal"],
+        )
+        if failure is not None or lifecycle["state"] == "BLOCKED":
+            raise StageDRuntimeBlockedError(
+                "D8.0 access root is durably blocked", reasons=(failure or "BLOCKED",)
+            )
+        if lifecycle["state"] == "RUNNABLE":
+            return lifecycle
+
+        while len(validated) < len(typed_plan.groups):
+            group = typed_plan.groups[len(validated)]
+            intent_kind = "ASSET_ACCESS_RESUMED" if pending is not None else "ASSET_ACCESS_INTENT"
+            intent = _append_access_event(
+                root, events, event=intent_kind, plan=typed_plan,
+                runtime_binding_digest=context_binding["runtime_binding_digest"],
+                asset=_access_asset_projection(group, None),
+            )
+            events.append(intent)
+            lifecycle = _access_lifecycle(
+                state="ACCESS_STARTED", plan=typed_plan,
+                runtime_binding_digest=context_binding["runtime_binding_digest"],
+                checkpoint_digest=checkpoint["canonical_digest"],
+                validated_asset_count=len(validated),
+                journal_entry_count=len(events),
+                journal_head_digest=events[-1]["canonical_digest"],
+                live_assets_digest=None,
+            )
+            _replace_access_lifecycle(root, lifecycle)
+            fault("after_asset_intent", group.selection_order)
+            try:
+                observation = _plain(
+                    _require_mapping(
+                        asset_validator(group, contracts[group.selection_order]),
+                        "asset validation observation",
+                    )
+                )
+                _require_exact_keys(
+                    observation, _ACCESS_OBSERVATION_KEYS, "asset validation observation"
+                )
+                contract = contracts[group.selection_order]
+                expected_registry = {key: contract[key] for key in (
+                    "size_bytes", "width", "height", "mode", "image_format",
+                    "official_ilsvrc2012_class_id", "official_wnid",
+                    "imagenet1k_index", "label_source",
+                )}
+                if (
+                    (
+                        context_binding["formal"]
+                        and observation["source_payload_sha256"] != group.image_sha256
+                    )
+                    or (
+                        context_binding["formal"]
+                        and observation["image_sha256"] != group.image_sha256
+                    )
+                    or not isinstance(observation["source_kind"], str)
+                    or not observation["source_kind"]
+                    or any(value is None for value in expected_registry.values())
+                    or any(observation[key] != value for key, value in expected_registry.items())
+                ):
+                    raise StageDRuntimeIntegrityError("live asset observation drifted")
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except Exception as error:
+                rejected = _append_access_event(
+                    root, events, event="ASSET_REJECTED", plan=typed_plan,
+                    runtime_binding_digest=context_binding["runtime_binding_digest"],
+                    asset=_access_asset_projection(group, None),
+                    failure_code="LIVE_ASSET_VALIDATION_FAILED",
+                )
+                events.append(rejected)
+                blocked = _access_lifecycle(
+                    state="BLOCKED", plan=typed_plan,
+                    runtime_binding_digest=context_binding["runtime_binding_digest"],
+                    checkpoint_digest=checkpoint["canonical_digest"],
+                    validated_asset_count=len(validated),
+                    journal_entry_count=len(events),
+                    journal_head_digest=events[-1]["canonical_digest"],
+                    live_assets_digest=None,
+                    blocked_reasons=("LIVE_ASSET_VALIDATION_FAILED",),
+                )
+                _replace_access_lifecycle(root, blocked)
+                raise StageDRuntimeBlockedError(
+                    "D8.0 live asset validation failed",
+                    reasons=("LIVE_ASSET_VALIDATION_FAILED",),
+                ) from error
+            result = _append_access_event(
+                root, events, event="ASSET_VALIDATED", plan=typed_plan,
+                runtime_binding_digest=context_binding["runtime_binding_digest"],
+                asset=_access_asset_projection(group, observation),
+            )
+            events.append(result)
+            fault("after_asset_validated_event", group.selection_order)
+            validated.append({
+                "selection_order": group.selection_order,
+                "sample_id": group.sample_id, "relative_path": group.relative_path,
+                "image_sha256": observation["image_sha256"],
+                **{key: observation[key] for key in (
+                    "size_bytes", "width", "height", "mode", "image_format",
+                    "official_ilsvrc2012_class_id", "official_wnid",
+                    "imagenet1k_index", "label_source",
+                )},
+            })
+            pending = None
+            lifecycle = _access_lifecycle(
+                state="ACCESS_STARTED", plan=typed_plan,
+                runtime_binding_digest=context_binding["runtime_binding_digest"],
+                checkpoint_digest=checkpoint["canonical_digest"],
+                validated_asset_count=len(validated), journal_entry_count=len(events),
+                journal_head_digest=events[-1]["canonical_digest"],
+                live_assets_digest=None,
+            )
+            _replace_access_lifecycle(root, lifecycle)
+            fault("after_asset_validated", group.selection_order)
+
+        final = _append_access_event(
+            root, events, event="ACCESS_COMPLETE", plan=typed_plan,
+            runtime_binding_digest=context_binding["runtime_binding_digest"],
+        )
+        events.append(final)
+        fault("after_access_complete_event", None)
+        runnable = _access_lifecycle(
+            state="RUNNABLE", plan=typed_plan,
+            runtime_binding_digest=context_binding["runtime_binding_digest"],
+            checkpoint_digest=checkpoint["canonical_digest"],
+            validated_asset_count=len(validated), journal_entry_count=len(events),
+            journal_head_digest=events[-1]["canonical_digest"],
+            live_assets_digest=canonical_sha256({"assets": validated}),
+        )
+        _replace_access_lifecycle(root, runnable)
+        checked, *_ = _validate_access_lifecycle(
+            root, plan=typed_plan,
+            runtime_binding_digest=context_binding["runtime_binding_digest"],
+            checkpoint_digest=checkpoint["canonical_digest"],
+            contracts=contracts,
+            require_live_identity=context_binding["formal"],
+        )
+        return checked
+
+
 def _source_resources(value: Any) -> dict[str, int | float]:
     source = _plain(_require_mapping(value, "attempt resource evidence"))
     result: dict[str, int | float] = dict(_ZERO_RESOURCES)
@@ -2092,11 +2804,12 @@ def _validate_closed_layout(root: Path, plan: StageDExecutionPlan) -> None:
             "cannot enumerate Stage D output root"
         ) from error
     observed = {child.name for child in children}
-    if observed != _ROOT_ENTRIES:
+    allowed = (_ROOT_ENTRIES, _ROOT_ENTRIES | {_ACCESS_DIRECTORY_NAME})
+    if observed not in allowed:
         raise StageDRuntimeIntegrityError(
             "Stage D root layout is not closed; "
             f"missing={sorted(_ROOT_ENTRIES - observed)}, "
-            f"unknown={sorted(observed - _ROOT_ENTRIES)}"
+            f"unknown={sorted(observed - (_ROOT_ENTRIES | {_ACCESS_DIRECTORY_NAME}))}"
         )
     for child in children:
         metadata = os.lstat(child)
@@ -2109,9 +2822,9 @@ def _validate_closed_layout(root: Path, plan: StageDExecutionPlan) -> None:
                 raise StageDRuntimeIntegrityError(
                     f"Stage D control is not a single-link file: {child.name}"
                 )
-        elif child.name == "units" and not stat.S_ISDIR(metadata.st_mode):
+        elif child.name in {"units", _ACCESS_DIRECTORY_NAME} and not stat.S_ISDIR(metadata.st_mode):
             raise StageDRuntimeIntegrityError(
-                "Stage D units root is not a directory"
+                f"Stage D {child.name} root is not a directory"
             )
     units_root = root / "units"
     observed_units: set[str] = set()
@@ -2161,6 +2874,35 @@ def _validate_closed_layout(root: Path, plan: StageDExecutionPlan) -> None:
         )
 
 
+def _initialize_validated_output_root(
+    output_root: Path | str, plan: StageDExecutionPlan, estimate: StageDEstimate,
+    preflight: StageDPreflight, context_binding: Mapping[str, Any],
+) -> Path:
+    root = _fresh_root(output_root)
+    try:
+        os.mkdir(root, 0o700)
+    except FileExistsError as error:
+        raise StageDRuntimeBlockedError(
+            "Stage D output root was claimed concurrently"
+        ) from error
+    # Initialization is deliberately one-way.  Any exception below leaves a
+    # non-fresh root which must be diagnosed and superseded, never reused.
+    for name in _LOCK_NAMES:
+        _create_lock_file(root / name)
+    os.mkdir(root / "units", 0o700)
+    for unit in plan.units:
+        unit_root = root / "units" / unit.canonical_digest
+        os.mkdir(unit_root, 0o700)
+        os.mkdir(unit_root / "attempts", 0o700)
+    _fsync_directory(root / "units")
+    checkpoint = _initial_checkpoint(
+        plan, estimate, preflight, context_binding
+    )
+    _atomic_create_checkpoint(root / RUNTIME_CHECKPOINT_FILENAME, checkpoint)
+    _fsync_directory(root)
+    return root
+
+
 def initialize_stage_d_output_root(
     output_root: Path | str,
     plan: Any,
@@ -2170,11 +2912,10 @@ def initialize_stage_d_output_root(
     execution_context: object | None = None,
     execution_gate: StageDExecutionGate | Callable[..., Any] | None = None,
 ) -> Path:
-    """Initialize a fresh D7-bound root without constructing a backend.
+    """Initialize a synthetic D4 root without constructing a backend.
 
-    Ordering is security-significant: D3 controls and the independent D7 gate
-    are validated before even checking whether the target exists, and all of
-    those checks precede the first filesystem mutation.
+    Formal roots must use :func:`initialize_stage_d_access_root`; this generic
+    initializer cannot bypass the durable D8.0 access boundary.
     """
 
     typed_plan, typed_estimate, typed_preflight = _validate_control_inputs(
@@ -2190,29 +2931,13 @@ def initialize_stage_d_output_root(
         preflight=typed_preflight,
     )
     _seal_execution_context(checked_context, context_binding)
-    root = _fresh_root(output_root)
-    try:
-        os.mkdir(root, 0o700)
-    except FileExistsError as error:
-        raise StageDRuntimeBlockedError(
-            "Stage D output root was claimed concurrently"
-        ) from error
-    # Initialization is deliberately one-way.  Any exception below leaves a
-    # non-fresh root which must be diagnosed and superseded, never reused.
-    for name in _LOCK_NAMES:
-        _create_lock_file(root / name)
-    os.mkdir(root / "units", 0o700)
-    for unit in typed_plan.units:
-        unit_root = root / "units" / unit.canonical_digest
-        os.mkdir(unit_root, 0o700)
-        os.mkdir(unit_root / "attempts", 0o700)
-    _fsync_directory(root / "units")
-    checkpoint = _initial_checkpoint(
-        typed_plan, typed_estimate, typed_preflight, context_binding
+    if context_binding["formal"]:
+        raise StageDExecutionAuthorizationRequired(
+            "formal Stage D roots require the D8.0 access initializer"
+        )
+    return _initialize_validated_output_root(
+        output_root, typed_plan, typed_estimate, typed_preflight, context_binding
     )
-    _atomic_create_checkpoint(root / RUNTIME_CHECKPOINT_FILENAME, checkpoint)
-    _fsync_directory(root)
-    return root
 
 
 def _find_unit_row(
@@ -2437,6 +3162,63 @@ def _consume_recovery_gate(
             "recovery gate did not return validated authorization"
         )
     return checked
+
+
+def validate_stage_d_access_root(
+    output_root: Path | str, plan: Any, estimate: Any, preflight: Any,
+    *, execution_context: object | None = None,
+    execution_gate: StageDExecutionGate | Callable[..., Any] | None = None,
+    asset_contracts: Sequence[Mapping[str, Any]] = (),
+    require_runnable: bool = True,
+    repair_lag: bool = False,
+) -> Mapping[str, Any]:
+    """Independently source-recompute the D8.0 journal and lifecycle."""
+
+    typed_plan, typed_estimate, typed_preflight = _validate_control_inputs(
+        plan, estimate, preflight
+    )
+    contracts = _validate_access_contracts(asset_contracts, typed_plan)
+    checked_context = _consume_execution_gate(
+        execution_gate, execution_context, operation="validate-access",
+        output_root=output_root, plan=typed_plan, estimate=typed_estimate,
+        preflight=typed_preflight,
+    )
+    context_binding = _normalize_execution_context(
+        checked_context, plan=typed_plan, estimate=typed_estimate,
+        preflight=typed_preflight,
+    )
+    _seal_execution_context(checked_context, context_binding)
+    root = _existing_root(output_root)
+    with _lifecycle_lock(root, exclusive=False):
+        with _checkpoint_lock(root):
+            checkpoint = _read_valid_checkpoint_locked(
+                root, typed_plan, typed_estimate, typed_preflight, context_binding
+            )
+        _require_pristine_runtime_checkpoint(checkpoint)
+        lifecycle, events, validated, pending, failure = _validate_access_lifecycle(
+            root, plan=typed_plan,
+            runtime_binding_digest=context_binding["runtime_binding_digest"],
+            checkpoint_digest=checkpoint["canonical_digest"],
+            contracts=contracts,
+            repair_lag=repair_lag,
+            require_live_identity=context_binding["formal"],
+        )
+    if require_runnable and lifecycle["state"] != "RUNNABLE":
+        raise StageDRuntimeBlockedError(
+            "D8.0 root is not runnable", reasons=tuple(lifecycle["blocked_reasons"]),
+        )
+    return MappingProxyType({
+        "state": lifecycle["state"],
+        "validated_asset_count": len(validated),
+        "expected_asset_count": len(typed_plan.groups),
+        "journal_entry_count": len(events),
+        "journal_head_digest": events[-1]["canonical_digest"],
+        "live_assets_digest": lifecycle["live_assets_digest"],
+        "pending_selection_order": pending,
+        "failure_code": failure,
+        "unit_execution_started_during_initialization": False,
+        "canonical_digest": lifecycle["canonical_digest"],
+    })
 
 
 def _recovery_digest(value: object) -> str:
@@ -3278,6 +4060,7 @@ def run_stage_d_shard(
     unit_runner: Callable[..., Any] | None = None,
     device: str = "cpu",
     retry_authorizations: Mapping[str, Any] | Sequence[Any] = (),
+    asset_contracts: Sequence[Mapping[str, Any]] = (),
 ) -> StageDShardSummary:
     """Run one modulo shard with atomic group ownership and recovery.
 
@@ -3316,9 +4099,24 @@ def run_stage_d_shard(
     visited_groups = claimed_groups = attempted_units = skipped_terminal_units = 0
     with _lifecycle_lock(root, exclusive=False):
         with _checkpoint_lock(root):
-            _read_valid_checkpoint_locked(
+            checkpoint = _read_valid_checkpoint_locked(
                 root, typed_plan, typed_estimate, typed_preflight, context_binding
             )
+        if context_binding["formal"]:
+            contracts = _validate_access_contracts(asset_contracts, typed_plan)
+            lifecycle, _events, _validated, _pending, _failure = (
+                _validate_access_lifecycle(
+                    root, plan=typed_plan,
+                    runtime_binding_digest=context_binding["runtime_binding_digest"],
+                    checkpoint_digest=checkpoint["canonical_digest"],
+                    contracts=contracts,
+                    require_live_identity=True,
+                )
+            )
+            if lifecycle["state"] != "RUNNABLE":
+                raise StageDRuntimeBlockedError(
+                    "formal Stage D shards require a RUNNABLE D8.0 access gate"
+                )
         shard_token, shard_owner_digest, checkpoint = _lease_shard(
             root, typed_plan, typed_estimate, typed_preflight, context_binding,
             shard_id,
@@ -3563,6 +4361,7 @@ def _issue_synthetic_d4_test_context(
 
 
 __all__ = [
+    "ACCESS_JOURNAL_DIRECTORY", "ACCESS_LIFECYCLE_FILENAME",
     "ARTIFACT_ACTIVITY_LOCK_FILENAME", "CHECKPOINT_LOCK_FILENAME",
     "LIFECYCLE_LOCK_FILENAME", "NONRETRYABLE_FAILURE_CLASSES",
     "RETRYABLE_INFRASTRUCTURE_FAILURE_CODES",
@@ -3572,7 +4371,8 @@ __all__ = [
     "StageDRuntimeBlockedError", "StageDRuntimeError",
     "StageDRuntimeIntegrityError", "StageDShardSummary",
     "UnavailableD7ExecutionGate", "UnavailableStageDRecoveryGate",
-    "ValidatedExecutionContext", "initialize_stage_d_output_root",
+    "ValidatedExecutionContext", "initialize_stage_d_access_root",
+    "initialize_stage_d_output_root", "validate_stage_d_access_root",
     "recover_stage_d_claim", "run_stage_d_shard",
     "validate_stage_d_retry_authorization",
 ]

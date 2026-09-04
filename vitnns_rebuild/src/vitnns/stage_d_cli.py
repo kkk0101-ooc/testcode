@@ -92,6 +92,16 @@ _INITIALIZATION_CONTROL_KEYS = frozenset({
     "analysis_authorization",
 })
 _INITIALIZATION_DIGEST_KEYS = frozenset({"plan_digest"})
+_D8_INITIALIZATION_CONTROL_KEYS = _INITIALIZATION_CONTROL_KEYS | frozenset({
+    "access_lifecycle", "unit_execution_started",
+})
+_D8_INITIALIZATION_DIGEST_KEYS = frozenset({
+    "plan_digest", "access_lifecycle_digest", "live_assets_digest",
+    "journal_head_digest",
+})
+_D8_INITIALIZATION_COUNT_KEYS = frozenset({
+    "validated_assets", "journal_entries",
+})
 _SHARD_OUTPUT_KEYS = frozenset({
     "schema_version", "document_type", "status", "control",
     "terminal", "resources", "digests", "counts",
@@ -310,7 +320,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     initialize = commands.add_parser(
         "init",
-        help="initialize a formal root under an externally issued D7 gate",
+        help=(
+            "run the D8.0 durable access initializer under an externally "
+            "issued D7 gate"
+        ),
     )
     _add_runtime_arguments(initialize, run_shard=False)
 
@@ -442,16 +455,20 @@ def _validate_initialization_output(value: Any) -> dict[str, Any]:
     _require_exact_runtime_keys(
         document, _INITIALIZATION_OUTPUT_KEYS, "initialization output",
     )
+    raw_control = document["control"]
+    d8 = isinstance(raw_control, Mapping) and "access_lifecycle" in raw_control
     control = _require_exact_runtime_keys(
-        document["control"], _INITIALIZATION_CONTROL_KEYS,
+        raw_control, _D8_INITIALIZATION_CONTROL_KEYS if d8 else _INITIALIZATION_CONTROL_KEYS,
         "initialization output.control",
     )
     digests = _require_exact_runtime_keys(
-        document["digests"], _INITIALIZATION_DIGEST_KEYS,
+        document["digests"],
+        _D8_INITIALIZATION_DIGEST_KEYS if d8 else _INITIALIZATION_DIGEST_KEYS,
         "initialization output.digests",
     )
     counts = _require_exact_runtime_keys(
-        document["counts"], frozenset(), "initialization output.counts",
+        document["counts"], _D8_INITIALIZATION_COUNT_KEYS if d8 else frozenset(),
+        "initialization output.counts",
     )
     if (
         document["schema_version"] != 1
@@ -462,9 +479,17 @@ def _validate_initialization_output(value: Any) -> dict[str, Any]:
         or not control["output_root"]
         or control["external_execution_gate_validated"] is not True
         or control["analysis_authorization"] != "NOT_EVALUATED"
-        or not isinstance(digests["plan_digest"], str)
-        or _SHA256_RE.fullmatch(digests["plan_digest"]) is None
-        or counts
+        or (d8 and control["access_lifecycle"] != "RUNNABLE")
+        or (d8 and control["unit_execution_started"] is not False)
+        or any(
+            not isinstance(digests[key], str)
+            or _SHA256_RE.fullmatch(digests[key]) is None
+            for key in (_D8_INITIALIZATION_DIGEST_KEYS if d8 else _INITIALIZATION_DIGEST_KEYS)
+        )
+        or (d8 and counts["validated_assets"] != 500)
+        or (d8 and type(counts["journal_entries"]) is not int)
+        or (d8 and counts["journal_entries"] < 1002)
+        or (not d8 and bool(counts))
     ):
         raise StageDCLIRuntimeIntegrityError(
             "initialization output contains invalid control values"
@@ -1198,6 +1223,40 @@ def _call_finalization(
 def _initialization_document(
     result: Any, *, args: argparse.Namespace, pipeline: StageDCLIPipeline,
 ) -> Mapping[str, Any]:
+    if isinstance(result, Mapping):
+        state = result.get("state")
+        if (
+            state != "RUNNABLE"
+            or result.get("validated_asset_count") != 500
+            or result.get("expected_asset_count") != 500
+            or result.get("unit_execution_started_during_initialization") is not False
+        ):
+            raise StageDCLIRuntimeIntegrityError(
+                "Stage D D8.0 initializer did not return a closed RUNNABLE control"
+            )
+        document = {
+            "schema_version": 1,
+            "document_type": "stage_d_initialization_control",
+            "status": "PASS",
+            "control": {
+                "operation": "init", "output_root": str(Path(args.output_root)),
+                "external_execution_gate_validated": True,
+                "analysis_authorization": "NOT_EVALUATED",
+                "access_lifecycle": "RUNNABLE",
+                "unit_execution_started": False,
+            },
+            "digests": {
+                "plan_digest": _field(pipeline.plan, "canonical_digest", "Stage D plan"),
+                "access_lifecycle_digest": result.get("canonical_digest"),
+                "live_assets_digest": result.get("live_assets_digest"),
+                "journal_head_digest": result.get("journal_head_digest"),
+            },
+            "counts": {
+                "validated_assets": result.get("validated_asset_count"),
+                "journal_entries": result.get("journal_entry_count"),
+            },
+        }
+        return _validate_initialization_output(document)
     if not isinstance(result, (str, os.PathLike)):
         raise StageDCLIRuntimeIntegrityError(
             "Stage D initializer returned an invalid control result"
@@ -1255,13 +1314,25 @@ def _run_runtime_command(
     )
 
     if args.command == "init":
-        initializer = _runtime_callable(
-            runtime_initializer, "initialize_stage_d_output_root",
-        )
-        result = _call_runtime(
-            initializer, args.output_root, pipeline.plan, estimate, preflight,
-            execution_context=authorization, execution_gate=gate,
-        )
+        if runtime_initializer is None and pipeline_provider_is_default:
+            d7 = importlib.import_module(".stage_d_d7", __package__)
+            initializer = _runtime_callable(None, "initialize_stage_d_access_root")
+            result = _call_runtime(
+                initializer, args.output_root, pipeline.plan, estimate, preflight,
+                execution_context=authorization, execution_gate=gate,
+                asset_contracts=pipeline.manifest.registry_document["rows"],
+                asset_validator=d7.production_access_validator(
+                    repo_root=args.repo_root
+                ),
+            )
+        else:
+            initializer = _runtime_callable(
+                runtime_initializer, "initialize_stage_d_output_root",
+            )
+            result = _call_runtime(
+                initializer, args.output_root, pipeline.plan, estimate, preflight,
+                execution_context=authorization, execution_gate=gate,
+            )
         return _initialization_document(result, args=args, pipeline=pipeline)
 
     runner = _runtime_callable(shard_runner, "run_stage_d_shard")
@@ -1274,6 +1345,10 @@ def _run_runtime_command(
         execution_context=authorization, execution_gate=gate,
         backend_factory=selected_backend_factory, device=args.device,
         retry_authorizations=retry_authorizations,
+        asset_contracts=(
+            pipeline.manifest.registry_document["rows"]
+            if pipeline_provider_is_default else ()
+        ),
     )
     if not isinstance(result, Mapping) and not callable(
         getattr(result, "to_dict", None)
