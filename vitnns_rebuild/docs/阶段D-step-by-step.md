@@ -2,9 +2,9 @@
 
 > 创建日期：2026-08-25。
 > 文档性质：阶段 D 的路线图、任务状态表、数据访问边界和跨对话追加式交接日志。
-> 当前状态：recovery-v2 已完成 canonical salvage C8、recovery C9、recovery C10 和 D0→D6。D7 false-PASS audit 判定旧 D7 terminal 为 `UNSUPPORTED_PASS`；D7-R3 只修复了 D4→D5→D6 full-chain smoke，仍缺少 D8.0 durable access initializer，因此不是 current gate。D7-R4 已完成 synthetic D8.0 initializer、producer freeze、authority-only commit 和独立验证，是 current pre-launch gate PASS，不是 execution、analysis 或 scientific PASS。D8–D10 均未启动，reserve access 仍未发生。
+> 当前状态：recovery-v2 已完成 canonical salvage C8、recovery C9、recovery C10 和 D0→D6。D7 false-PASS audit 判定旧 D7 terminal 为 `UNSUPPORTED_PASS`；D7-R3 只修复了 D4→D5→D6 full-chain smoke，仍缺少 D8.0 durable access initializer，因此不是 current gate。D7-R4 已完成 synthetic D8.0 initializer、producer freeze、authority-only commit 和独立验证，是 current pre-launch gate PASS，不是 execution、analysis 或 scientific PASS。D8.0 首次 root 因 bound data root 缺少第 0 张 reserve JPEG 而 `SUBTASK_BLOCKED` 并保留；随后从本地 ImageNet tar 物化并验证 500/500 reserve JPEG，通过 D8.0 fresh-root rebind authorization，在 `evidence/stage_d/d8_recovery_v2_20260904/formal_r2` 完成 D8.0 `SUBTASK_PASS`。D8 父任务仍为 `IN_PROGRESS`；D8 shards、D9、D10 均未启动，analysis authorization 仍为 `NOT_EVALUATED`。
 > Recovery override（2026-09-04）：[`recovery_stage_d_d0_d6_amendment_20260904.md`](recovery_stage_d_d0_d6_amendment_20260904.md) 与 `config/stage_d_recovery_v2_binding_20260904.json` 是当前 pre-reserve identity overlay；历史 D0–D2 PASS 仅为 stale history，历史 D3–D6 PASS 仅为 synthetic/implementation evidence。
-> 当前 next task：`FUTURE_D8_0_REVALIDATE_AND_INITIALIZE_ONLY`。D8.0 尚未执行；必须先复验 D7-R4 authority 和所有 live asset bindings，再创建 fresh root，且不得运行任何 unit。
+> 当前 next task：`D8-S00`。只能在 `evidence/stage_d/d8_recovery_v2_20260904/formal_r2` 的 `RUNNABLE` access gate 上运行 shard 0；不得运行 D8-S01、D9、D10、aggregate、finalize、analysis 或 paper export。
 > D7 勘误：首个 pre-execution authority `0036dd8d...` 因 strict guard 发现通用 model loader 会对历史 Stage A calibration JPEG 做不必要的 `lstat` 而被 supersede；它未访问 Stage D reserve、未运行 inference、未创建 D8 root，不得用于 launch。D7-v2 producer/authority `e337f8ca...` / `fe9a7f29...` 已重新签发并通过 strict guard。
 > 当前权威交接：[`recovery_stage_d_d7_r4_handoff_20260904.md`](recovery_stage_d_d7_r4_handoff_20260904.md) 和 `reports/stage_d_d7_recovery_v2_20260904_r4/d7_to_future_d8_handoff.json`；旧 D7/R3 handoff 只作历史审计。
 > 使用规则：每个新对话先读文首状态、第 7 节执行协议、第 9 节最新权威记录和当前提示词，再读提示词列出的章节与上游证据；一次只执行一个 `D_i` 或一个明确编号的 `D8-Sxx` shard。未更新本文、未追加 completion record、未给出下一任务完整提示词的任务，不算完成。
@@ -216,8 +216,8 @@ D10 建议固定生成以下 machine-readable paper data 和数值图；只有 v
 | D4 | PASS | 实现 image-group runner、shards、artifact/provenance | synthetic/mock only | 无效果结论 | D3 PASS |
 | D5 | PASS | 实现 finalize 与 source-recomputing validation | synthetic/tampered fixtures only | package/QC 状态 | D4 PASS |
 | D6 | PASS | 实现 aggregation、statistics、decision、paper export | synthetic fixtures only | synthetic decision only | D5 PASS |
-| D7 | NOT_STARTED | 真实已知样本 smoke、预算、冻结 producer 并签发授权 | Stage C 已知 calibration/audit；禁止 reserve 图像 | `AUTHORIZED_STAGE_D_FIDELITY_SCOPE` 或 BLOCKED | D6 PASS |
-| D8 | NOT_STARTED | 初始化并逐 shard 运行 500 图/1,000 units | 首次允许 reserve 图像、模型和原始结果 | unit terminal state；禁止科学汇总 | D7 PASS |
+| D7 | PASS | 真实已知样本 smoke、预算、冻结 producer 并签发授权 | Stage C 已知 calibration/audit；禁止 reserve 图像 | `AUTHORIZED_STAGE_D_FIDELITY_SCOPE` 或 BLOCKED | D6 PASS |
+| D8 | IN_PROGRESS（D8.0 `SUBTASK_PASS`，D8-S00 next） | 初始化并逐 shard 运行 500 图/1,000 units | 首次允许 reserve 图像、模型和原始结果 | unit terminal state；禁止科学汇总 | D7 PASS |
 | D9 | NOT_STARTED | 封存并独立验证 formal evidence | D8 root；CPU-only；禁止 JPEG/模型 | evidence/QC/validity readiness | D8 `PASS` 且所有 frozen shards terminal |
 | D10 | NOT_STARTED | 唯一正式统计决策与 paper artifact package | sealed D9 root、C10 reports；CPU-only | Stage D fidelity-scope decision | D9 authorizes analysis |
 
@@ -1391,4 +1391,92 @@ D6只有在 aggregation/statistics/truth-table/paper-package synthetic验收全�
 D8.0 只能创建 fresh formal root、durable `ACCESS_STARTED` lifecycle、append-only access journal、逐张验证 500 个 live reserve assets 与冻结 registry/official label metadata，全部通过后转 `RUNNABLE`。D8.0 不运行任何 unit，不执行 D8 shard，不 finalize、不 aggregate、不生成 analysis/paper result，不签发 analysis authorization，不修改 D0-D7/C10 scientific scope。任何 live asset failure、unsafe path、tamper、partial or ambiguous state 必须保留 blocked root 并停止。
 
 必须在完成后追加 D8.0 completion record；父 D8 保持 IN_PROGRESS，只有 D8 campaign 全部 shards terminal 后才能整体 PASS。
+```
+
+### 2026-09-04 20:31 +0800 — D8.0 revalidate-and-initialize completion record
+
+- parent_status: `IN_PROGRESS`
+- subtask_status: `SUBTASK_PASS`
+- objective_completed: D8.0 revalidate-and-initialize completed after preserving the first blocked root. The first root `evidence/stage_d/d8_recovery_v2_20260904/formal` was durably marked `SUBTASK_BLOCKED` because selection order 0 (`ILSVRC2012_val/ILSVRC2012_val_00018571.JPEG`) was absent from the bound data root at access time. The root and access journal are retained. The 500 registry JPEGs were then materialized from the local ImageNet validation tar, independently validated against frozen registry SHA-256, JPEG metadata and official label bindings, and a new fresh root `evidence/stage_d/d8_recovery_v2_20260904/formal_r2` was authorized and initialized to `RUNNABLE`.
+- authority_and_scope: D7-R4 remains the base execution authority only. A D8.0 fresh-root rebind authorization was added to bind the retained blocked root, the 500/500 asset materialization record, and replacement root `formal_r2`. No analysis authorization was issued; `analysis_authorization=NOT_EVALUATED`. No D8 shard, D9, D10, aggregation, finalization, statistical decision, paper data or figure generation occurred.
+- git_sha_before: `9173e235f60720301c4d52985d2a16a45961063c` on branch `stage-d-d3-pass`; local HEAD, upstream tracking ref and remote branch all matched this SHA at start; worktree/index were clean.
+- git_sha_producer: `4c4dd4af010afdc72e26f10cb8e6519e2448cf40` (`refs/archive/stage-d-fidelity-v1-d8-0-rebind-r1-producer`), containing only the D8.0 rebind validator/schema support, local-asset ignore rule and small diagnosis/materialization records.
+- git_sha_postprocessor: none
+- git_sha_completion: SELF
+- tree_clean_at_boundaries: start clean at `9173e235...`; first D8.0 root was retained local ignored evidence; materialized JPEGs are local assets and ignored; producer commit was made before the new rebind authority; final clean state and pushed SHA are reported after commit.
+- upstream_commits_and_refs: D7-R4 producer `refs/archive/stage-d-fidelity-v1-d7-r4-producer` / `d7c88df66f3e55ec31ad4c6ea34a3002ca6d1a4d`; D7-R4 authority `refs/archive/stage-d-fidelity-v1-d7-r4-authority` / `61214b808b75cf804763078479d1b96f7418db32` direct child of producer with diff only `vitnns_rebuild/config/stage_d_d7_execution_authorization_20260904_r4.json`; D7-R4 completion `refs/archive/stage-d-fidelity-v1-d7-r4-completion` / `9173e235f60720301c4d52985d2a16a45961063c`; D8.0 rebind producer `4c4dd4af010afdc72e26f10cb8e6519e2448cf40`; D8.0 rebind authority `fb27b2526d55861489c19069b3a5665cede757e3` direct child of rebind producer with diff only `vitnns_rebuild/config/stage_d_d8_0_fresh_root_authorization_20260904_r1.json`.
+- files_added_or_changed: `.gitignore`; `config/stage_d_d8_0_fresh_root_authorization.schema.json`; `config/stage_d_d8_0_fresh_root_authorization_20260904_r1.json`; `reports/stage_d_d8_recovery_v2_20260904_r4/d8_0_initial_blocked_root.json`; `reports/stage_d_d8_recovery_v2_20260904_r4/asset_materialization_verification.json`; `reports/stage_d_d8_recovery_v2_20260904_r4/d8_0_completion.json`; `src/vitnns/stage_d_d7.py`; `tests/test_stage_d_d7.py`; this document. Local ignored evidence roots: `evidence/stage_d/d8_recovery_v2_20260904/formal` and `.../formal_r2`; local ignored materialized JPEGs under `assets/data/ILSVRC2012_val/`.
+- frozen_inputs_and_sha256: R4 authorization file/canonical `458c903e783385514c861c636fcbd5ee2423c00b9b217592530242b71d0a2ab8` / `2c649deda654ac1a040d8919a973467ff6d520e5279a778bfef785c8ef072f8f`; R4 budget file/canonical `bb73456a0fcf4bd3b5e0c56fd2ad93931c0d83a2d3c6803ad927e14976308fbf` / `fa4be660c611bd03fb6bd5602f09a25e920e53c323e11264e95cc7aa90b9f06b`; R4 D8 initializer smoke file/canonical `32df2db101147521f0327279fee9da54f30b7fa90c4126973e1c45d024ab90b4` / `d5f2d3f179b903d0ad4fb41756ed5af71f48eb1de9c2e82fd825bae5e2e186ce`; R4 status file/canonical `7955c7b7b86ffeebb809d29a14658460adbcfaa03a0f17f699e504ce9ea4f01c` / `e8a6af329782885643d1867507a176b8125e3e01e90abf3c38845be1c8b22ebb`; registry file/canonical `9aace3abf02a2c07d992d88b765c53cfeffa7f83a6ed72ecefb8cecf9eb79b6b` / `514ce4dd2e1fedc1744893e5543651ea42c053458b233ff11a45f700bb4bc028`; pre-authorization attestation file/canonical `610794455a1d75ef0243c5252c1e2bc14f6a4ea36f6c2ff2acf380dfd2c27644` / `9d89a6596de5027f72aeb76aca4aa600f03b6bb4cf45c8259840fd01e85638fe`.
+- config_plan_and_canonical_digests: plan canonical/coordinate `5a40051ac17a7bfd6663640b1d2478c69d45eea07d3182653b90d2c7ca760443` / `cc560e2a2d4e1220ccd812c073119a2b679de213f9770358f7decf51824661fb`; shard mapping digest `789452ad2ed264c75a2abfe6f9e8d2659e3ca0c057c9a81f4b4a643ec7f59385`; rebind authorization file/canonical `c7f306e64dd99fe3b9e9e7586b8cde6805b907d1c2e84504043875c0a92f1657` / `3479f9457aa924fe189591e836e38bb1a65cce8543e3a879477025782659afc9`; D8.0 completion canonical `5fb57bbff06337f7111387ba0acb1c2ce6b7781b472e10758e5faa51de086deb`.
+- data_access_statement: This D8.0 task first failed on missing live reserve asset availability, then after local materialization read, hashed and decoded all 500 authorized reserve JPEGs solely for access initialization. It did not construct or use the model for inference, did not run CPU/GPU attribution, did not run any execution unit or shard, did not read or write AUC/`delta_fid`/summary/outcome values, did not finalize or aggregate, and did not generate paper artifacts.
+- artifacts_and_absolute_paths: blocked root `/data01/home/yeziqi.831/nxtrec_wksp/testcode/vitnns_rebuild/evidence/stage_d/d8_recovery_v2_20260904/formal`; runnable root `/data01/home/yeziqi.831/nxtrec_wksp/testcode/vitnns_rebuild/evidence/stage_d/d8_recovery_v2_20260904/formal_r2`; tracked records `reports/stage_d_d8_recovery_v2_20260904_r4/d8_0_initial_blocked_root.json`, `reports/stage_d_d8_recovery_v2_20260904_r4/asset_materialization_verification.json`, `reports/stage_d_d8_recovery_v2_20260904_r4/d8_0_completion.json`, and `config/stage_d_d8_0_fresh_root_authorization_20260904_r1.json`.
+- status_manifest_inventory_hashes: initial blocked lifecycle digest `96f7515e257bf91f9f7341c2c4c3ff5cf56a3a6f03b3872ad1012727c17c16a5`; initial blocked journal head `d0aa672a3ccafe3e76ea9b7a896c01d5042a624f659a9c8cdac5f9fcc78c7d00`; blocked root inventory digest `f1c5908354f0ed2650ea03afdc8909a59f50cc551f3b192bb3a2305f21cd3768`. Successful `formal_r2` `ACCESS_STARTED` event digest `87a067f7ab1504c6507752e52c88431d5c3f86002561e498f5890a5d16627742`; `ACCESS_STARTED` lifecycle digest `2775176fa331b170f36dbafe453bca2c00dd260c68546a7659abdf0c3175e149`; final access lifecycle digest `56b3f3cdb3a72bd72bdaa3f93f15cdb1043f362691a1b24089382862b935cf50`; access journal head digest `293f46d8a1421607a547171b3ed78be21aebab4461c00762fdba4fa68d50ddc8`; live assets digest `489aa2a9a16e4f84046df8ebdf910a5adf04d9525a1aa901915fe778c6ad1d40`; runtime checkpoint digest `0e91369655142c38b18142ded5d5532aa6df3f1d9acb3e8c3972667855a95e2e`; root inventory digest `0b1c3d948eabd750d4aa8efb2cc665433dcbec916bd034aa84d92fbfdca97aed` across 1007 files and 2238276 bytes.
+- expected_vs_observed_counts: live reserve assets `500/500`; missing `0`, tampered `0`, unsafe `0`, decode failure `0`, metadata mismatch `0`; access journal entries `1002`; shard ledger `8 pending/8`; image groups `500 pending/500`; units `1000 pending/1000`; unit attempt directories `0`; D8-S00 executed `false`.
+- tests_reused_from_prior_commit: D7-R4 validation reused only as anchored evidence after current source-recompute checks; no prior D8 execution result was reused. The first blocked D8.0 root is retained as failure evidence, not reused as the runnable root.
+- test_plan_announced_before_execution: Before final tests, scope was announced as D8.0 runtime/CLI focused tests, D7-R4/rebind authorization focused checks, JSON schema validation, `py_compile`, and `git diff --check`, explicitly excluding D8 shards, finalize, aggregate, D9/D10 and GPU inference.
+- tests_executed_this_task: preflight script PASS with 58 checks; D8.0 initial R4 `init` first returned runtime integrity error before root creation because the parent directory was missing, then returned `STAGE_D_EXECUTION_BLOCKED` after durable `LIVE_ASSET_VALIDATION_FAILED` on missing selection order 0; materialization verification PASS for 500/500 live assets; rebind authorization validation PASS before `formal_r2`; D8.0 rebind `init` PASS to `RUNNABLE`; source-recomputed `validate_stage_d_access_root(...formal_r2...)` PASS; `py_compile` PASS for `stage_d_d7.py`, `stage_d_runtime.py`, `stage_d_cli.py` and focused tests; `pytest -q tests/test_stage_d_d7.py -k 'd8_0_rebind'` PASS `2 passed, 16 deselected`; `pytest -q tests/test_stage_d_runtime.py -k 'd8_initializer or formal_run_shard_requires or access_journal_tamper' tests/test_stage_d_cli.py -k 'runtime_parsers_require_formal_inputs_and_expose_no_bypass or init_rejects_runtime_documents or metadata_gate_before_runtime_init'` PASS `3 passed, 73 deselected`; schema JSON parse and `git diff --check` PASS.
+- tests_not_run_and_reason: No full non-GPU suite, GPU/model inference tests, formal shards, D9 finalization, D10 aggregation/statistics or paper export were run because this task was D8.0 initialization and asset validation only. D8 shard tests beyond the existing gate/no-unit coverage were not expanded because no shard code path was executed.
+- acceptance_results: D8.0 first preserved a blocked root and journal when a live asset was unavailable. After materialization and rebind authorization, the replacement fresh root passed all D8.0 access gates: durable `ACCESS_STARTED`, append-only journal, 500/500 safe single-link JPEG hash/decode/metadata/official-label validation, transition to `RUNNABLE`, no unit attempt creation and no analysis authorization.
+- package_complete: not_applicable
+- scientific_validity: not_evaluated
+- analysis_authorized: false
+- budget_results: D7-R4 budget canonical `fa4be660c611bd03fb6bd5602f09a25e920e53c323e11264e95cc7aa90b9f06b` remained valid; no completed-campaign cost was evaluated.
+- paper_data_or_figures_generated: none
+- deviations_or_protocol_amendments: D8.0 required a fresh-root rebind because the original R4 formal root was durably blocked by missing local assets. The rebind is root/provenance-only and keeps the scientific protocol, registry, plan, budget, model identity and C10 status unchanged.
+- failures_and_retries_retained: initial blocked root retained locally at `evidence/stage_d/d8_recovery_v2_20260904/formal` with lifecycle digest `96f7515e257bf91f9f7341c2c4c3ff5cf56a3a6f03b3872ad1012727c17c16a5` and journal head `d0aa672a3ccafe3e76ea9b7a896c01d5042a624f659a9c8cdac5f9fcc78c7d00`. No unit attempt or retry occurred.
+- known_limitations_and_claim_boundaries: D8.0 proves live asset availability and binding only. It does not prove Stage D execution, validity, effect, cost, aggregation, paper data or figures. C10 remains `BLOCKED` / `NO_GO_NOVELTY`; translation/crop failures, overall spatial failure and `HOLM_BLOCKED_UNDERSPECIFIED` remain unchanged.
+- next_task_authorized: true
+- authorization_issued_this_task: false
+- execution_authorization_observed_valid: true
+- shard_continuation_authorized: true
+- retry_authorization_digest: none
+- remaining_shards: summary only: `D8-S00` through `D8-S07` remain pending; authoritative scheduling comes from `formal_r2/runtime_checkpoint.json` and its checkpoint digest.
+- effect_summary_accessed: false
+- next_task: D8-S00
+
+#### 下一对话完整提示词
+
+```text
+本次唯一任务：只执行 Stage D 的 D8-S00 shard。不得执行 D8-S01 或任何后续 shard，不得进入 D9/D10，不得 finalize，不得 aggregate，不得生成 analysis/paper result，不得签发 analysis authorization。
+
+工作目录：
+/data01/home/yeziqi.831/nxtrec_wksp/testcode/vitnns_rebuild
+
+开始条件：
+1. 当前 branch 必须是 `stage-d-d3-pass`，worktree/index clean，local HEAD、tracking ref、remote ref 必须等于上一轮最终报告的 D8.0 completion commit。
+2. 必须复核 D7-R4 base authority：producer ref `refs/archive/stage-d-fidelity-v1-d7-r4-producer` / `d7c88df66f3e55ec31ad4c6ea34a3002ca6d1a4d`，authority ref `refs/archive/stage-d-fidelity-v1-d7-r4-authority` / `61214b808b75cf804763078479d1b96f7418db32`，authorization canonical digest `2c649deda654ac1a040d8919a973467ff6d520e5279a778bfef785c8ef072f8f`，budget canonical digest `fa4be660c611bd03fb6bd5602f09a25e920e53c323e11264e95cc7aa90b9f06b`。
+3. 必须复核 D8.0 rebind authority：producer ref `refs/archive/stage-d-fidelity-v1-d8-0-rebind-r1-producer` / `4c4dd4af010afdc72e26f10cb8e6519e2448cf40`，authority ref `refs/archive/stage-d-fidelity-v1-d8-0-rebind-r1-authority` / `fb27b2526d55861489c19069b3a5665cede757e3`，authorization path `config/stage_d_d8_0_fresh_root_authorization_20260904_r1.json`, canonical digest `3479f9457aa924fe189591e836e38bb1a65cce8543e3a879477025782659afc9`。
+4. 必须验证 `reports/stage_d_d8_recovery_v2_20260904_r4/d8_0_completion.json` canonical digest `5fb57bbff06337f7111387ba0acb1c2ce6b7781b472e10758e5faa51de086deb`，以及 `evidence/stage_d/d8_recovery_v2_20260904/formal_r2` access lifecycle `RUNNABLE`、access lifecycle digest `56b3f3cdb3a72bd72bdaa3f93f15cdb1043f362691a1b24089382862b935cf50`、journal head digest `293f46d8a1421607a547171b3ed78be21aebab4461c00762fdba4fa68d50ddc8`、live assets digest `489aa2a9a16e4f84046df8ebdf910a5adf04d9525a1aa901915fe778c6ad1d40`、500/500 assets validated、0 unit attempts。
+5. The initial blocked root `evidence/stage_d/d8_recovery_v2_20260904/formal` must remain retained and must not be reused, deleted or rewritten.
+
+必读材料：
+- `docs/阶段D-step-by-step.md` 文首状态、第 7 节、第 8.1 节、第 9 节最新 D8.0 record 和本提示词
+- `reports/stage_d_d8_recovery_v2_20260904_r4/d8_0_completion.json`
+- `reports/stage_d_d8_recovery_v2_20260904_r4/d8_0_initial_blocked_root.json`
+- `reports/stage_d_d8_recovery_v2_20260904_r4/asset_materialization_verification.json`
+- `config/stage_d_d8_0_fresh_root_authorization_20260904_r1.json`
+- `config/stage_d_d7_execution_authorization_20260904_r4.json`
+- `docs/recovery_stage_d_d7_r4_handoff_20260904.md`
+- `docs/阶段D_protocol.md`
+- `docs/stage_d_acceptance.md`
+- D8 runtime/producer/CLI implementation and focused tests
+
+必须完成：
+1. 使用 D8.0 rebind authorization 和 `formal_r2` root，先验证 access gate 仍为 `RUNNABLE`，shard ledger 中 shard 0 为 `pending`，其他 shard 未提前运行。
+2. 只运行 shard 0：`selection_order % 8 == 0` 的 image groups；同图两 units 保持 NNS 后 matched 顺序；一块 GPU 一个进程，按实际设备设置 `CUDA_VISIBLE_DEVICES=<physical>` 后用 CLI `--device cuda:0`。
+3. 保留全部 attempt、failure 和 resource records；不得按 AUC、delta、prediction 或其它科学值决定 retry 或 early stop。任何 tamper、authorization drift、unsafe root 或 ambiguous state 必须 BLOCKED 并保留证据。
+4. 完成后生成/验证 shard 0 receipt 和 shard ledger transition，记录 expected/claimed/terminal/succeeded/failed、attempt ids、resource summary without effect metrics、receipt digest、ledger before/after digest。
+5. 父 D8 仍为 `IN_PROGRESS`；若 shard 0 terminal 且仍有 pending shards，下一任务只能是 `D8-S01`。
+
+明确禁止：
+- 不运行 D8-S01 或任何其他 shard。
+- 不进入 D9/D10，不 finalize、不 aggregate、不读取 effect summary、不生成 paper data/figures。
+- 不签发 analysis authorization；保持 `analysis_authorization=NOT_EVALUATED`。
+- 不修改 D0-D7 frozen scientific scope，不改写 C10 `BLOCKED/NO_GO_NOVELTY/FAIL_SPATIAL/HOLM_BLOCKED_UNDERSPECIFIED`。
+
+测试计划：
+测试前说明 D8-S00 preflight/access-gate/shard-run/receipt validation 的最小验证清单和预计耗时。D8 shard 本身是正式 GPU workload；不要额外跑无关全量 suite。
+
+完成与交接：
+追加 D8-S00 completion record；报告 formal root、shard index/count、counts、resource summary、receipt/ledger digests、unit execution true for shard 0 only、D9/D10 not started、analysis authorization still `NOT_EVALUATED`、C10 status unchanged、测试/验证、commit/ref/hash 和 push/local/tracking/remote SHA 核验。
 ```
