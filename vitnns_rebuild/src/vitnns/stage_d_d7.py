@@ -77,6 +77,30 @@ ACCESS_SMOKE_ROOT = (
 )
 ACCESS_SMOKE_RECEIPT_PATH = f"{COMPLETION_ROOT}/d8_initializer_smoke_receipt.json"
 FORMAL_ROOT = "evidence/stage_d/d8_recovery_v2_20260904/formal"
+D8_0_REBIND_ID = "STAGE_D_RECOVERY_V2_D8_0_REBIND_R1_20260904"
+D8_0_REBIND_AUTHORIZATION_DOCUMENT_TYPE = (
+    "stage_d_d8_0_fresh_root_authorization"
+)
+D8_0_REBIND_AUTHORIZATION_PATH = (
+    "config/stage_d_d8_0_fresh_root_authorization_20260904_r1.json"
+)
+D8_0_REBIND_AUTHORITY_REF = (
+    "refs/archive/stage-d-fidelity-v1-d8-0-rebind-r1-authority"
+)
+D8_0_REBIND_PRODUCER_REF = (
+    "refs/archive/stage-d-fidelity-v1-d8-0-rebind-r1-producer"
+)
+D8_0_REBIND_FORMAL_ROOT = (
+    "evidence/stage_d/d8_recovery_v2_20260904/formal_r2"
+)
+D8_0_INITIAL_BLOCKED_RECORD_PATH = (
+    "reports/stage_d_d8_recovery_v2_20260904_r4/"
+    "d8_0_initial_blocked_root.json"
+)
+D8_0_MATERIALIZATION_RECORD_PATH = (
+    "reports/stage_d_d8_recovery_v2_20260904_r4/"
+    "asset_materialization_verification.json"
+)
 C9_REPORT_PATH = "evidence/stage_c/c9_recovery_v2_0d88fbb/formal/c9_evidence_report.json"
 C9_REPORT_FILE_SHA256 = "ad164a87aa6dedba461e1b19d639d22d955a675d75e0c6e257af4d5846682763"
 C9_REPORT_CANONICAL_DIGEST = "959bc874b04b007f487d05734cf5b85b1eaef75bb8c2ff2ded222c7cf9083248"
@@ -94,7 +118,13 @@ _FULL_CHAIN_SCHEMA = "config/stage_d_d7_full_chain_smoke_r4.schema.json"
 _ACCESS_SMOKE_SCHEMA = "config/stage_d_d7_access_smoke_r4.schema.json"
 _BUDGET_SCHEMA = "config/stage_d_d7_budget_r4.schema.json"
 _AUTH_SCHEMA = "config/stage_d_d7_execution_authorization_r4.schema.json"
+_D8_0_REBIND_AUTH_SCHEMA = (
+    "config/stage_d_d8_0_fresh_root_authorization.schema.json"
+)
 _AUTHORITY_ONLY_PATHS = {f"vitnns_rebuild/{AUTHORIZATION_PATH}"}
+_D8_0_REBIND_AUTHORITY_ONLY_PATHS = {
+    f"vitnns_rebuild/{D8_0_REBIND_AUTHORIZATION_PATH}",
+}
 
 
 def _plain(value: Any, context: str = "value") -> Any:
@@ -1632,12 +1662,14 @@ def _fresh_formal_root(repo: Path, raw: str) -> Path:
     return root
 
 
-def _producer_state(repo: Path) -> Mapping[str, Any]:
-    producer = _git(repo, "rev-parse", f"{PRODUCER_REF}^{{commit}}")
+def _producer_state(
+    repo: Path, *, producer_ref: str = PRODUCER_REF,
+) -> Mapping[str, Any]:
+    producer = _git(repo, "rev-parse", f"{producer_ref}^{{commit}}")
     tree = _git(repo, "rev-parse", f"{producer}^{{tree}}")
     if _COMMIT_RE.fullmatch(producer) is None or _COMMIT_RE.fullmatch(tree) is None:
         raise StageDD7Error("D7 producer ref is invalid")
-    return {"commit": producer, "tree": tree, "clean": True, "ref": PRODUCER_REF}
+    return {"commit": producer, "tree": tree, "clean": True, "ref": producer_ref}
 
 
 def _source_bindings(repo: Path) -> Mapping[str, Any]:
@@ -1782,9 +1814,227 @@ def build_execution_authorization(
     return document
 
 
+def _load_r4_execution_authorization(
+    repo: Path,
+) -> tuple[Mapping[str, Any], bytes]:
+    source, raw = _read_regular_json(
+        repo / AUTHORIZATION_PATH, "D7-R4 execution authorization",
+    )
+    _schema_validate(source, repo / _AUTH_SCHEMA, "D7-R4 execution authorization")
+    if source.get("canonical_digest") != _semantic_digest(source):
+        raise StageDD7Error("D7-R4 execution authorization digest mismatch")
+    return source, raw
+
+
+def _blocked_root_record(path: Path) -> Mapping[str, Any]:
+    source, _ = _read_regular_json(path, "D8.0 blocked-root record")
+    if source.get("canonical_digest") != _semantic_digest(source):
+        raise StageDD7Error("D8.0 blocked-root record digest mismatch")
+    if (
+        source.get("document_type") != "stage_d_d8_0_initial_blocked_root"
+        or source.get("subtask_status") != "SUBTASK_BLOCKED"
+        or source.get("formal_root") != FORMAL_ROOT
+        or source.get("prohibitions_preserved", {}).get("unit_execution_started")
+        is not False
+    ):
+        raise StageDD7Error("D8.0 blocked-root record is not authoritative")
+    observed = source.get("asset_validation_counts", {})
+    if observed.get("validated") != 0 or observed.get("missing") != 1:
+        raise StageDD7Error("D8.0 blocked-root count evidence drifted")
+    return source
+
+
+def _materialization_record(path: Path) -> Mapping[str, Any]:
+    source, _ = _read_regular_json(path, "D8.0 asset materialization record")
+    if source.get("canonical_digest") != _semantic_digest(source):
+        raise StageDD7Error("D8.0 asset materialization record digest mismatch")
+    if (
+        source.get("document_type") != "stage_d_d8_0_asset_materialization"
+        or source.get("status") != "PASS"
+    ):
+        raise StageDD7Error("D8.0 materialization record is not a PASS")
+    counts = source.get("asset_validation_counts", {})
+    if (
+        counts.get("expected") != 500
+        or counts.get("validated") != 500
+        or counts.get("missing") != 0
+        or counts.get("tampered") != 0
+        or counts.get("unsafe") != 0
+        or counts.get("decode_failure") != 0
+        or counts.get("metadata_mismatch") != 0
+    ):
+        raise StageDD7Error("D8.0 materialization counts are not complete")
+    return source
+
+
+def build_d8_0_fresh_root_authorization(
+    *, repo_root: Path | str = REPO_ROOT,
+    formal_root: str = D8_0_REBIND_FORMAL_ROOT,
+    require_current_head: bool = True,
+    require_fresh_root: bool = True,
+    require_clean_worktree: bool = True,
+) -> Mapping[str, Any]:
+    """Bind a replacement fresh root after the first D8.0 root blocked.
+
+    This does not reissue the scientific execution authority.  It records the
+    outcome-blind diagnosis, successful asset materialization, and new root
+    path so the existing R4 authority can be consumed without reusing a blocked
+    root.
+    """
+
+    repo = Path(repo_root).resolve()
+    if (
+        require_clean_worktree
+        and _git(repo, "status", "--porcelain=v1", "--untracked-files=all")
+    ):
+        raise StageDD7Error("D8.0 rebind authorization requires a clean worktree")
+    producer = _producer_state(repo, producer_ref=D8_0_REBIND_PRODUCER_REF)
+    if require_current_head and _git(repo, "rev-parse", "HEAD") != producer["commit"]:
+        raise StageDD7Error(
+            "D8.0 rebind authorization must be generated at the frozen producer commit"
+        )
+    r4, r4_raw = _load_r4_execution_authorization(repo)
+    blocked = _blocked_root_record(repo / D8_0_INITIAL_BLOCKED_RECORD_PATH)
+    materialized = _materialization_record(repo / D8_0_MATERIALIZATION_RECORD_PATH)
+    if require_fresh_root:
+        _fresh_formal_root(repo, formal_root)
+    if formal_root == r4["formal_root"]:
+        raise StageDD7Error("D8.0 rebind authorization must select a new fresh root")
+    if (
+        materialized.get("source_blocked_root", {}).get("path") != FORMAL_ROOT
+        or materialized.get("source_blocked_root", {}).get("lifecycle_digest")
+        != blocked["digests"]["access_lifecycle"]
+        or materialized.get("source_blocked_root", {}).get("journal_head_digest")
+        != blocked["digests"]["journal_head"]
+        or materialized.get("live_assets_digest") is None
+    ):
+        raise StageDD7Error("D8.0 materialization is not bound to the blocked root")
+    authority = _git(repo, "rev-parse", f"{AUTHORITY_REF}^{{commit}}")
+    document = {
+        "$schema": "stage_d_d8_0_fresh_root_authorization.schema.json",
+        "schema_version": 1,
+        "document_type": D8_0_REBIND_AUTHORIZATION_DOCUMENT_TYPE,
+        "authorization_id": D8_0_REBIND_ID,
+        "status": "PASS",
+        "producer": producer,
+        "code_binding": {
+            "commit": producer["commit"], "tree": producer["tree"],
+            "clean": True,
+        },
+        "base_authorization": {
+            "path": AUTHORIZATION_PATH,
+            "file_sha256": hashlib.sha256(r4_raw).hexdigest(),
+            "canonical_digest": r4["canonical_digest"],
+            "authority_ref": AUTHORITY_REF,
+            "authority_commit": authority,
+        },
+        "diagnosis": {
+            "blocked_record_path": D8_0_INITIAL_BLOCKED_RECORD_PATH,
+            "blocked_formal_root": FORMAL_ROOT,
+            "blocked_lifecycle_digest": blocked["digests"]["access_lifecycle"],
+            "blocked_journal_head_digest": blocked["digests"]["journal_head"],
+            "blocking_reason": "LIVE_ASSET_VALIDATION_FAILED",
+            "validated_asset_count_before_block": 0,
+            "root_retained": True,
+        },
+        "asset_materialization": {
+            "record_path": D8_0_MATERIALIZATION_RECORD_PATH,
+            "canonical_digest": materialized["canonical_digest"],
+            "live_assets_digest": materialized["live_assets_digest"],
+            "validated_asset_count": 500,
+            "missing": 0,
+            "tampered": 0,
+            "unsafe": 0,
+            "decode_failure": 0,
+            "metadata_mismatch": 0,
+        },
+        "replacement_formal_root": formal_root,
+        "replacement_formal_root_fresh_at_issuance": True,
+        "execution_authorization": EXECUTION_AUTHORIZATION,
+        "analysis_authorization": ANALYSIS_AUTHORIZATION,
+        "stage_d_execution_started": False,
+        "d8_shards_started": False,
+        "d9_started": False,
+        "d10_started": False,
+        "prohibitions": {
+            "run_shard_before_reinitialized_runnable": False,
+            "formal_aggregation_authorized": False,
+            "analysis_authorization_issued": False,
+            "c10_status_rewrite_allowed": False,
+            "reuse_blocked_root_allowed": False,
+        },
+    }
+    document["canonical_digest"] = _semantic_digest(document)
+    _schema_validate(
+        document, repo / _D8_0_REBIND_AUTH_SCHEMA,
+        "D8.0 fresh-root authorization",
+    )
+    return document
+
+
+def _validate_d8_0_fresh_root_authorization(
+    source: Mapping[str, Any], raw: bytes, *, repo: Path,
+    require_fresh_root: bool, require_authority_ref: bool,
+) -> tuple[Mapping[str, Any], str]:
+    _schema_validate(
+        source, repo / _D8_0_REBIND_AUTH_SCHEMA,
+        "D8.0 fresh-root authorization",
+    )
+    if source.get("canonical_digest") != _semantic_digest(source):
+        raise StageDD7Error("D8.0 fresh-root authorization digest mismatch")
+    expected = build_d8_0_fresh_root_authorization(
+        repo_root=repo, formal_root=source["replacement_formal_root"],
+        require_current_head=False, require_fresh_root=False,
+        require_clean_worktree=False,
+    )
+    if source != expected:
+        raise StageDD7Error("D8.0 fresh-root authorization is not source-recomputable")
+    if require_fresh_root:
+        _fresh_formal_root(repo, source["replacement_formal_root"])
+    if require_authority_ref:
+        authority = _git(repo, "rev-parse", f"{D8_0_REBIND_AUTHORITY_REF}^{{commit}}")
+        parent = _git(repo, "rev-parse", f"{authority}^")
+        producer = _git(repo, "rev-parse", f"{D8_0_REBIND_PRODUCER_REF}^{{commit}}")
+        changed = set(_git(repo, "diff", "--name-only", parent, authority).splitlines())
+        if parent != producer or changed != _D8_0_REBIND_AUTHORITY_ONLY_PATHS:
+            raise StageDD7Error(
+                "D8.0 rebind authority commit is not an authority-only direct child"
+            )
+        prefix = _git(repo, "rev-parse", "--show-prefix")
+        blob = _git(
+            repo, "rev-parse",
+            f"{authority}:{prefix}{D8_0_REBIND_AUTHORIZATION_PATH}",
+        )
+        expected_blob = hashlib.sha1(f"blob {len(raw)}\0".encode() + raw).hexdigest()
+        if blob != expected_blob:
+            raise StageDD7Error(
+                "D8.0 rebind authority ref does not contain the authorization bytes"
+            )
+    base = source["base_authorization"]
+    producer = _producer_state(repo, producer_ref=D8_0_REBIND_PRODUCER_REF)
+    if source["producer"] != producer or source["code_binding"] != {
+        "commit": producer["commit"], "tree": producer["tree"], "clean": True,
+    }:
+        raise StageDD7Error("D8.0 rebind producer binding drifted")
+    return base, source["replacement_formal_root"]
+
+
+def write_d8_0_fresh_root_authorization(
+    *, repo_root: Path | str = REPO_ROOT,
+    formal_root: str = D8_0_REBIND_FORMAL_ROOT,
+) -> Mapping[str, Any]:
+    repo = Path(repo_root).resolve()
+    document = build_d8_0_fresh_root_authorization(
+        repo_root=repo, formal_root=formal_root,
+    )
+    _write_atomic(repo / D8_0_REBIND_AUTHORIZATION_PATH, document)
+    return document
+
+
 @dataclass(frozen=True, slots=True)
 class _D7ValidatedExecutionContext:
     formal: bool
+    formal_root: str
     authorization_scope: str
     execution_authorization: str
     authorization_slot: Mapping[str, Any]
@@ -1818,9 +2068,42 @@ def validate_execution_authorization(
     require_authority_ref: bool = True, require_fresh_root: bool = True,
 ) -> _D7ValidatedExecutionContext:
     repo = Path(repo_root).resolve()
-    source, raw = _read_regular_json(repo / AUTHORIZATION_PATH, "D7 execution authorization")
-    if value is not None and _plain(value) != source:
-        raise StageDD7Error("supplied D7 authorization differs from its tracked source")
+    supplied = None if value is None else _plain(value)
+    rebind: Mapping[str, Any] | None = None
+    if (
+        isinstance(supplied, Mapping)
+        and supplied.get("document_type")
+        == D8_0_REBIND_AUTHORIZATION_DOCUMENT_TYPE
+    ):
+        rebind, rebind_raw = _read_regular_json(
+            repo / D8_0_REBIND_AUTHORIZATION_PATH,
+            "D8.0 fresh-root authorization",
+        )
+        if supplied != rebind:
+            raise StageDD7Error(
+                "supplied D8.0 fresh-root authorization differs from tracked source"
+            )
+        base, formal_root = _validate_d8_0_fresh_root_authorization(
+            rebind, rebind_raw, repo=repo,
+            require_fresh_root=require_fresh_root,
+            require_authority_ref=require_authority_ref,
+        )
+        source, raw = _load_r4_execution_authorization(repo)
+        if base != {
+            "path": AUTHORIZATION_PATH,
+            "file_sha256": hashlib.sha256(raw).hexdigest(),
+            "canonical_digest": source["canonical_digest"],
+            "authority_ref": AUTHORITY_REF,
+            "authority_commit": _git(repo, "rev-parse", f"{AUTHORITY_REF}^{{commit}}"),
+        }:
+            raise StageDD7Error(
+                "D8.0 fresh-root authorization base authority binding drifted"
+            )
+    else:
+        source, raw = _load_r4_execution_authorization(repo)
+        if supplied is not None and supplied != source:
+            raise StageDD7Error("supplied D7 authorization differs from its tracked source")
+        formal_root = source["formal_root"]
     _schema_validate(source, repo / _AUTH_SCHEMA, "D7 execution authorization")
     if source.get("canonical_digest") != _semantic_digest(source):
         raise StageDD7Error("D7 execution authorization digest mismatch")
@@ -1879,7 +2162,7 @@ def validate_execution_authorization(
         != [sum(value == index for value in mapping.values()) for index in range(count)]
     ):
         raise StageDD7Error("D7 authorization shard mapping drifted")
-    if require_fresh_root:
+    if require_fresh_root and rebind is None:
         _fresh_formal_root(repo, source["formal_root"])
     if require_authority_ref:
         authority = _git(repo, "rev-parse", f"{AUTHORITY_REF}^{{commit}}")
@@ -1892,19 +2175,25 @@ def validate_execution_authorization(
         expected_blob = hashlib.sha1(f"blob {len(raw)}\0".encode() + raw).hexdigest()
         if blob != expected_blob:
             raise StageDD7Error("D7 authority ref does not contain the authorization bytes")
+    active_authorization_digest = (
+        source["canonical_digest"] if rebind is None else rebind["canonical_digest"]
+    )
+    active_authority_ref = AUTHORITY_REF if rebind is None else D8_0_REBIND_AUTHORITY_REF
     slot = {
         "status": EXECUTION_AUTHORIZATION,
-        "authorization_canonical_digest": source["canonical_digest"],
-        "authority_ref": AUTHORITY_REF, "authority_commit": "SELF",
+        "authorization_canonical_digest": active_authorization_digest,
+        "authority_ref": active_authority_ref, "authority_commit": "SELF",
     }
+    code_binding = source["code_binding"] if rebind is None else rebind["code_binding"]
     values = {
-        "formal": True, "authorization_scope": source["authorization_scope"],
+        "formal": True,
+        "authorization_scope": source["authorization_scope"],
         "execution_authorization": EXECUTION_AUTHORIZATION,
         "authorization_slot": slot, "shard_count": count,
         "shard_mapping": mapping_list, "plan_digest": pipeline.plan.canonical_digest,
         "budget_digest": estimate.canonical_digest,
         "preflight_digest": preflight.canonical_digest,
-        "code_binding": source["code_binding"],
+        "code_binding": code_binding,
         "dependency_binding": source["dependency_binding"],
         "model_binding": source["model_binding"],
         "source_bindings": {
@@ -1914,7 +2203,7 @@ def validate_execution_authorization(
     }
     digest = canonical_sha256(values)
     return _D7ValidatedExecutionContext(
-        **{**values, "shard_mapping": MappingProxyType(mapping)},
+        **{**values, "formal_root": formal_root, "shard_mapping": MappingProxyType(mapping)},
         canonical_digest=digest, _issuer=_D7_ISSUER,
     )
 
@@ -1935,7 +2224,7 @@ class D7ExecutionGate:
             context, repo_root=self.repo_root,
             require_fresh_root=False,
         )
-        expected_root = self.repo_root / context["formal_root"]
+        expected_root = self.repo_root / checked.formal_root
         if Path(output_root).absolute() != expected_root.absolute():
             raise StageDD7Error("D7 authorization output root binding drifted")
         if (
@@ -1951,14 +2240,18 @@ def controls_from_authorization(
     authorization: Mapping[str, Any], *, repo_root: Path | str = REPO_ROOT,
 ) -> tuple[StageDEstimate, StageDPreflight]:
     source, _estimate, _preflight = load_d7_budget(repo_root=repo_root)
-    if (
-        authorization.get("budget", {}).get("canonical_digest")
-        != source["canonical_digest"]
+    budget = authorization.get("budget")
+    if budget is None and (
+        authorization.get("document_type")
+        == D8_0_REBIND_AUTHORIZATION_DOCUMENT_TYPE
     ):
+        base, _ = _load_r4_execution_authorization(Path(repo_root).resolve())
+        budget = base.get("budget")
+    if budget is None or budget.get("canonical_digest") != source["canonical_digest"]:
         raise StageDD7Error("authorization does not bind the current D7 budget")
     return (
-        validate_stage_d_estimate(authorization["budget"]["estimate"]),
-        validate_stage_d_preflight(authorization["budget"]["preflight"]),
+        validate_stage_d_estimate(budget["estimate"]),
+        validate_stage_d_preflight(budget["preflight"]),
     )
 
 
@@ -2088,8 +2381,11 @@ __all__ = [
     "HISTORICAL_AUTHORIZATION_PATH",
     "BUDGET_PATH", "COMPLETION_REF", "D7ExecutionGate", "D7_ID",
     "DEFAULT_SHARD_COUNT", "EXECUTION_AUTHORIZATION", "FORMAL_ROOT",
+    "D8_0_REBIND_AUTHORIZATION_PATH", "D8_0_REBIND_AUTHORITY_REF",
+    "D8_0_REBIND_FORMAL_ROOT", "D8_0_REBIND_PRODUCER_REF",
     "PRODUCER_REF", "SMOKE_RECEIPT_PATH", "SMOKE_ROOT",
     "StageDD7Error", "build_d7_budget", "build_execution_authorization",
+    "build_d8_0_fresh_root_authorization",
     "controls_from_authorization", "load_d7_budget",
     "load_recovery_pipeline", "run_synthetic_smoke",
     "record_failed_smoke",
@@ -2100,4 +2396,5 @@ __all__ = [
     "validate_full_chain_synthetic_smoke",
     "validate_execution_authorization", "validate_smoke",
     "verify_recovery_model", "write_d7_budget",
+    "write_d8_0_fresh_root_authorization",
 ]

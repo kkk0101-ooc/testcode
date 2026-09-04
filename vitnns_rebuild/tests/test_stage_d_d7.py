@@ -9,10 +9,12 @@ from pathlib import Path
 import pytest
 
 from vitnns.stage_d_d7 import (
-    AUTHORIZATION_PATH, BUDGET_PATH, DEFAULT_SHARD_COUNT, FORMAL_ROOT,
-    FULL_CHAIN_RECEIPT_PATH,
-    StageDD7Error, _D7ValidatedExecutionContext, build_d7_budget,
-    build_execution_authorization, load_d7_budget, load_recovery_pipeline,
+    AUTHORIZATION_PATH, BUDGET_PATH, D8_0_REBIND_FORMAL_ROOT,
+    DEFAULT_SHARD_COUNT, FORMAL_ROOT, FULL_CHAIN_RECEIPT_PATH,
+    StageDD7Error, _D7ValidatedExecutionContext,
+    build_d8_0_fresh_root_authorization, build_d7_budget,
+    build_execution_authorization, controls_from_authorization, load_d7_budget,
+    load_recovery_pipeline,
     run_d8_initializer_synthetic_smoke, run_synthetic_smoke,
     validate_d8_initializer_synthetic_smoke, validate_execution_authorization, validate_smoke,
     validate_full_chain_synthetic_smoke,
@@ -212,10 +214,42 @@ def test_authorization_validation_rejects_tamper_when_present() -> None:
         )
 
 
-def test_formal_root_remains_absent() -> None:
-    assert not (REPO_ROOT / FORMAL_ROOT).exists()
+def test_original_formal_root_is_not_reused_after_d8_0_blocked() -> None:
+    root = REPO_ROOT / FORMAL_ROOT
+    if root.exists():
+        lifecycle = json.loads((root / "access/lifecycle.json").read_text())
+        assert lifecycle["state"] == "BLOCKED"
+        assert not list((root / "units").glob("*/attempts/attempt-*"))
+    else:
+        assert not root.exists()
     assert canonical_sha256([index % 8 for index in range(500)])
     assert (REPO_ROOT / BUDGET_PATH).is_file()
+
+
+def test_d8_0_rebind_authorization_is_source_recomputed_when_present() -> None:
+    path = REPO_ROOT / d7_module.D8_0_REBIND_AUTHORIZATION_PATH
+    if not path.exists():
+        pytest.skip("D8.0 rebind authorization is intentionally absent before rebind")
+    document = json.loads(path.read_text(encoding="utf-8"))
+    expected = build_d8_0_fresh_root_authorization(
+        repo_root=REPO_ROOT, require_current_head=False,
+        require_fresh_root=False, require_clean_worktree=False,
+    )
+    assert document == expected
+    checked = validate_execution_authorization(
+        document, repo_root=REPO_ROOT, require_authority_ref=False,
+        require_fresh_root=False,
+    )
+    assert checked.formal is True
+    assert checked.formal_root == D8_0_REBIND_FORMAL_ROOT
+    assert checked.authorization_slot["authorization_canonical_digest"] == (
+        document["canonical_digest"]
+    )
+    estimate, preflight = controls_from_authorization(document, repo_root=REPO_ROOT)
+    assert estimate.canonical_digest == document["base_authorization"].get(
+        "estimate_digest", estimate.canonical_digest,
+    )
+    assert preflight.analysis_authorization == "NOT_EVALUATED"
 
 
 def test_production_backend_factory_is_lazy_before_d8_access(

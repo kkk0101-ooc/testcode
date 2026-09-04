@@ -1,0 +1,269 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_d_d8_0_fresh_root_authorization.schema.json",
+  "title": "Stage D D8.0 fresh-root recovery authorization",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "document_type",
+    "authorization_id",
+    "status",
+    "producer",
+    "code_binding",
+    "base_authorization",
+    "diagnosis",
+    "asset_materialization",
+    "replacement_formal_root",
+    "replacement_formal_root_fresh_at_issuance",
+    "execution_authorization",
+    "analysis_authorization",
+    "stage_d_execution_started",
+    "d8_shards_started",
+    "d9_started",
+    "d10_started",
+    "prohibitions",
+    "canonical_digest"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "stage_d_d8_0_fresh_root_authorization.schema.json"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "document_type": {
+      "const": "stage_d_d8_0_fresh_root_authorization"
+    },
+    "authorization_id": {
+      "const": "STAGE_D_RECOVERY_V2_D8_0_REBIND_R1_20260904"
+    },
+    "status": {
+      "const": "PASS"
+    },
+    "producer": {
+      "$ref": "#/$defs/producer"
+    },
+    "code_binding": {
+      "$ref": "#/$defs/code_binding"
+    },
+    "base_authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "file_sha256",
+        "canonical_digest",
+        "authority_ref",
+        "authority_commit"
+      ],
+      "properties": {
+        "path": {
+          "const": "config/stage_d_d7_execution_authorization_20260904_r4.json"
+        },
+        "file_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "canonical_digest": {
+          "const": "2c649deda654ac1a040d8919a973467ff6d520e5279a778bfef785c8ef072f8f"
+        },
+        "authority_ref": {
+          "const": "refs/archive/stage-d-fidelity-v1-d7-r4-authority"
+        },
+        "authority_commit": {
+          "const": "61214b808b75cf804763078479d1b96f7418db32"
+        }
+      }
+    },
+    "diagnosis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "blocked_record_path",
+        "blocked_formal_root",
+        "blocked_lifecycle_digest",
+        "blocked_journal_head_digest",
+        "blocking_reason",
+        "validated_asset_count_before_block",
+        "root_retained"
+      ],
+      "properties": {
+        "blocked_record_path": {
+          "const": "reports/stage_d_d8_recovery_v2_20260904_r4/d8_0_initial_blocked_root.json"
+        },
+        "blocked_formal_root": {
+          "const": "evidence/stage_d/d8_recovery_v2_20260904/formal"
+        },
+        "blocked_lifecycle_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "blocked_journal_head_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "blocking_reason": {
+          "const": "LIVE_ASSET_VALIDATION_FAILED"
+        },
+        "validated_asset_count_before_block": {
+          "const": 0
+        },
+        "root_retained": {
+          "const": true
+        }
+      }
+    },
+    "asset_materialization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_path",
+        "canonical_digest",
+        "live_assets_digest",
+        "validated_asset_count",
+        "missing",
+        "tampered",
+        "unsafe",
+        "decode_failure",
+        "metadata_mismatch"
+      ],
+      "properties": {
+        "record_path": {
+          "const": "reports/stage_d_d8_recovery_v2_20260904_r4/asset_materialization_verification.json"
+        },
+        "canonical_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "live_assets_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "validated_asset_count": {
+          "const": 500
+        },
+        "missing": {
+          "const": 0
+        },
+        "tampered": {
+          "const": 0
+        },
+        "unsafe": {
+          "const": 0
+        },
+        "decode_failure": {
+          "const": 0
+        },
+        "metadata_mismatch": {
+          "const": 0
+        }
+      }
+    },
+    "replacement_formal_root": {
+      "const": "evidence/stage_d/d8_recovery_v2_20260904/formal_r2"
+    },
+    "replacement_formal_root_fresh_at_issuance": {
+      "const": true
+    },
+    "execution_authorization": {
+      "const": "AUTHORIZED_STAGE_D_FIDELITY_SCOPE"
+    },
+    "analysis_authorization": {
+      "const": "NOT_EVALUATED"
+    },
+    "stage_d_execution_started": {
+      "const": false
+    },
+    "d8_shards_started": {
+      "const": false
+    },
+    "d9_started": {
+      "const": false
+    },
+    "d10_started": {
+      "const": false
+    },
+    "prohibitions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_shard_before_reinitialized_runnable",
+        "formal_aggregation_authorized",
+        "analysis_authorization_issued",
+        "c10_status_rewrite_allowed",
+        "reuse_blocked_root_allowed"
+      ],
+      "properties": {
+        "run_shard_before_reinitialized_runnable": {
+          "const": false
+        },
+        "formal_aggregation_authorized": {
+          "const": false
+        },
+        "analysis_authorization_issued": {
+          "const": false
+        },
+        "c10_status_rewrite_allowed": {
+          "const": false
+        },
+        "reuse_blocked_root_allowed": {
+          "const": false
+        }
+      }
+    },
+    "canonical_digest": {
+      "$ref": "#/$defs/sha256"
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commit",
+        "tree",
+        "clean",
+        "ref"
+      ],
+      "properties": {
+        "commit": {
+          "$ref": "#/$defs/commit"
+        },
+        "tree": {
+          "$ref": "#/$defs/commit"
+        },
+        "clean": {
+          "const": true
+        },
+        "ref": {
+          "const": "refs/archive/stage-d-fidelity-v1-d8-0-rebind-r1-producer"
+        }
+      }
+    },
+    "code_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commit",
+        "tree",
+        "clean"
+      ],
+      "properties": {
+        "commit": {
+          "$ref": "#/$defs/commit"
+        },
+        "tree": {
+          "$ref": "#/$defs/commit"
+        },
+        "clean": {
+          "const": true
+        }
+      }
+    }
+  }
+}
