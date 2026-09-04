@@ -21,11 +21,11 @@ Stage D rebinding while preserving the historical protocols and records.
   records. D0-D2 are formal preparation PASS; D3 is control-plane readiness;
   D4-D6 are implementation/readiness PASS based on metadata/synthetic fixtures.
 - The prior Stage D D7 terminal is `UNSUPPORTED_PASS`: its smoke did not call
-  the real D5/D6 finalize/analysis/paper implementations. D7-R3 correction is
-  active under
-  [`recovery_stage_d_d7_r3_correction_20260904.md`](recovery_stage_d_d7_r3_correction_20260904.md).
-  Its fresh 500-group/1,000-unit synthetic full-chain smoke and independent
-  budget pass; producer freeze and replacement authority remain pending.
+  the real D5/D6 finalize/analysis/paper implementations. D7-R3 then repaired
+  that smoke gap, but its frozen producer still lacked the D8.0
+  `ACCESS_STARTED` / append-only journal / 500-asset / `RUNNABLE` initializer.
+  D7-R4 is the current gate, with handoff:
+  [`recovery_stage_d_d7_r4_handoff_20260904.md`](recovery_stage_d_d7_r4_handoff_20260904.md).
   The initial pre-execution authority `0036dd8d...` is superseded after a strict
   guard found an unnecessary historical calibration-JPEG `lstat` in its generic
   model loader; no Stage D reserve was accessed and no D8 root was created.

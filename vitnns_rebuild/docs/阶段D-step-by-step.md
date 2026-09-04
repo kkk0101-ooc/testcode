@@ -2,11 +2,11 @@
 
 > 创建日期：2026-08-25。
 > 文档性质：阶段 D 的路线图、任务状态表、数据访问边界和跨对话追加式交接日志。
-> 当前状态：recovery-v2 已完成 canonical salvage C8、recovery C9、recovery C10 和 D0→D6。D7 false-PASS audit 判定旧 D7 terminal 为 `UNSUPPORTED_PASS`：其 422-item smoke 没有实际调用 D5/D6 full chain。D7-R3 已在 fresh synthetic root 完成真实 500-group/1,000-unit D4→D5→D6 链，现等待 producer freeze 与新 authority；D8–D10 均未启动，reserve access 仍未发生。
+> 当前状态：recovery-v2 已完成 canonical salvage C8、recovery C9、recovery C10 和 D0→D6。D7 false-PASS audit 判定旧 D7 terminal 为 `UNSUPPORTED_PASS`；D7-R3 只修复了 D4→D5→D6 full-chain smoke，仍缺少 D8.0 durable access initializer，因此不是 current gate。D7-R4 已完成 synthetic D8.0 initializer、producer freeze、authority-only commit 和独立验证，是 current pre-launch gate PASS，不是 execution、analysis 或 scientific PASS。D8–D10 均未启动，reserve access 仍未发生。
 > Recovery override（2026-09-04）：[`recovery_stage_d_d0_d6_amendment_20260904.md`](recovery_stage_d_d0_d6_amendment_20260904.md) 与 `config/stage_d_recovery_v2_binding_20260904.json` 是当前 pre-reserve identity overlay；历史 D0–D2 PASS 仅为 stale history，历史 D3–D6 PASS 仅为 synthetic/implementation evidence。
-> 当前 next task：完成 D7-R3 producer freeze、authority-only commit 与 terminal validation；在此之前不得进入 D8.0。
+> 当前 next task：`FUTURE_D8_0_REVALIDATE_AND_INITIALIZE_ONLY`。D8.0 尚未执行；必须先复验 D7-R4 authority 和所有 live asset bindings，再创建 fresh root，且不得运行任何 unit。
 > D7 勘误：首个 pre-execution authority `0036dd8d...` 因 strict guard 发现通用 model loader 会对历史 Stage A calibration JPEG 做不必要的 `lstat` 而被 supersede；它未访问 Stage D reserve、未运行 inference、未创建 D8 root，不得用于 launch。D7-v2 producer/authority `e337f8ca...` / `fe9a7f29...` 已重新签发并通过 strict guard。
-> 当前权威修复：[`recovery_stage_d_d7_r3_correction_20260904.md`](recovery_stage_d_d7_r3_correction_20260904.md)；旧 D7 handoff 只作历史审计，D0-D6 总 false-PASS audit 仍为 `reports/stage_d_recovery_v2_20260904_r3/false_pass_audit.json`。
+> 当前权威交接：[`recovery_stage_d_d7_r4_handoff_20260904.md`](recovery_stage_d_d7_r4_handoff_20260904.md) 和 `reports/stage_d_d7_recovery_v2_20260904_r4/d7_to_future_d8_handoff.json`；旧 D7/R3 handoff 只作历史审计。
 > 使用规则：每个新对话先读文首状态、第 7 节执行协议、第 9 节最新权威记录和当前提示词，再读提示词列出的章节与上游证据；一次只执行一个 `D_i` 或一个明确编号的 `D8-Sxx` shard。未更新本文、未追加 completion record、未给出下一任务完整提示词的任务，不算完成。
 > 测试原则：只做与当前任务和实际改动直接相关的必要测试，避免无关、重复或低价值测试。每个测试/验证批次开始前一次性说明测试项目、必要性和预计耗时；只有新增高成本测试或扩大影响面时才补充说明。
 
@@ -1367,3 +1367,28 @@ D6只有在 aggregation/statistics/truth-table/paper-package synthetic验收全�
 - C10: acceptance remains `BLOCKED`, decision `NO_GO_NOVELTY`, effect `PASS_EFFECT`, translation/crop `FAIL_STABILITY`, overall spatial `FAIL_SPATIAL`, Holm `HOLM_BLOCKED_UNDERSPECIFIED`.
 - access and authority: D7/D8/D9/D10 not started; execution/analysis/reserve authorization false; no reserve image path existence check, stat, open, hash, decode, preprocess or inference occurred.
 - next task: future D7 is an independent gate and is not authorized by this record.
+
+### 2026-09-04 — D7-R4 access-gate correction completion record
+
+- status: `PASS`; scope is `EXECUTION_AUTHORIZATION_GATE_PASS_NOT_EXECUTION_OR_ANALYSIS` only.
+- false-PASS audit: D7 v1/v2 remain `UNSUPPORTED_PASS`; D7-R3 full-chain smoke is valid `SYNTHETIC_OR_IMPLEMENTATION_ONLY_PASS`, but R3 authority and the uncommitted R3 terminal candidate are `UNSUPPORTED_PASS` for current launch because R3 lacked the D8.0 durable access initializer. R3 rejected candidate files are retained locally under `evidence/stage_d/d7_recovery_v2_20260904/rejected_r3_terminal_candidate/` and are not current reports.
+- producer/authority/completion: producer `d7c88df66f3e55ec31ad4c6ea34a3002ca6d1a4d`; authority-only direct child `61214b808b75cf804763078479d1b96f7418db32`; completion commit `SELF`; refs `refs/archive/stage-d-fidelity-v1-d7-r4-producer`, `refs/archive/stage-d-fidelity-v1-d7-r4-authority`, `refs/archive/stage-d-fidelity-v1-d7-r4-completion`.
+- records: `reports/stage_d_d7_recovery_v2_20260904_r4/d8_initializer_smoke_receipt.json`, `full_chain_smoke_receipt.json`, `false_pass_audit.json`, `validation.json`, `status.json`, and `d7_to_future_d8_handoff.json`.
+- key digests: D8 initializer smoke canonical `d5f2d3f179b903d0ad4fb41756ed5af71f48eb1de9c2e82fd825bae5e2e186ce`; full-chain smoke canonical `b25bf175fcd7a8855ebd193aa77af9c556f4684cbb35c2ffbd7a6a73a40cba61`; budget canonical `fa4be660c611bd03fb6bd5602f09a25e920e53c323e11264e95cc7aa90b9f06b`; authority canonical `2c649deda654ac1a040d8919a973467ff6d520e5279a778bfef785c8ef072f8f`; validation canonical `fb43d324a79459769d2bc5bdbb8a05433df74069de8aefaff65d5077df34f92c`; status canonical `e8a6af329782885643d1867507a176b8125e3e01e90abf3c38845be1c8b22ebb`.
+- D8.0 readiness: synthetic fixture validated durable `ACCESS_STARTED`, append-only access journal, interruption recovery, fail-closed `BLOCKED`, all 500 assets required before `RUNNABLE`, and zero unit attempts during initialization.
+- access and authority: D7-R4 did not check existence, stat, open, hash, decode, preprocess or infer any Stage D reserve image. D8/D9/D10 are unstarted; formal D8 root is absent. Analysis authorization remains `NOT_EVALUATED`.
+- C10/frozen scope: C10 remains `BLOCKED` / `NO_GO_NOVELTY`; translation/crop failures, overall spatial failure and `HOLM_BLOCKED_UNDERSPECIFIED` remain disclosed. Stage D n=500 remains separate from C10 n=15.
+- tests: focused runtime `4 passed, 13 deselected`; D7 R4 focused `5 passed, 11 deselected`; CLI focused `3 passed, 56 deselected`; py_compile, `git diff --check`, authority validation, full-chain receipt validation, access receipt validation all PASS. No GPU/model inference, formal workload, D8 shard, D9 or D10 was run.
+- next_task_authorized: true, but only for a future D8.0 revalidate-and-initialize task from the R4 authority. D8.0 must still independently revalidate producer ref, authority ref, authorization bytes, recovery model, plan, budget, shard mapping, fresh formal root and pre-authorization attestation, then create the formal root and run only the access initializer; it must not execute any unit.
+
+#### 下一对话完整提示词
+
+```text
+本次唯一任务：只执行 Stage D 的 D8.0 revalidate-and-initialize 子任务。
+
+开始前必须复验 D7-R4 producer `d7c88df66f3e55ec31ad4c6ea34a3002ca6d1a4d`、authority `61214b808b75cf804763078479d1b96f7418db32`、authority canonical digest `2c649deda654ac1a040d8919a973467ff6d520e5279a778bfef785c8ef072f8f`、plan digest `5a40051ac17a7bfd6663640b1d2478c69d45eea07d3182653b90d2c7ca760443`、budget canonical digest `fa4be660c611bd03fb6bd5602f09a25e920e53c323e11264e95cc7aa90b9f06b`、recovery model identity and fresh formal root `evidence/stage_d/d8_recovery_v2_20260904/formal`。
+
+D8.0 只能创建 fresh formal root、durable `ACCESS_STARTED` lifecycle、append-only access journal、逐张验证 500 个 live reserve assets 与冻结 registry/official label metadata，全部通过后转 `RUNNABLE`。D8.0 不运行任何 unit，不执行 D8 shard，不 finalize、不 aggregate、不生成 analysis/paper result，不签发 analysis authorization，不修改 D0-D7/C10 scientific scope。任何 live asset failure、unsafe path、tamper、partial or ambiguous state 必须保留 blocked root 并停止。
+
+必须在完成后追加 D8.0 completion record；父 D8 保持 IN_PROGRESS，只有 D8 campaign 全部 shards terminal 后才能整体 PASS。
+```
