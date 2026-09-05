@@ -22,7 +22,8 @@ from vitnns.stage_d_runtime import (
     RUNTIME_CHECKPOINT_FILENAME, StageDConcurrentClaimError,
     StageDExecutionAuthorizationRequired, StageDRecoveryAuthorizationRequired,
     StageDRuntimeBlockedError, StageDRuntimeIntegrityError,
-    _issue_synthetic_d4_test_context, initialize_stage_d_access_root,
+    _expected_lifecycle_state, _issue_synthetic_d4_test_context,
+    initialize_stage_d_access_root,
     initialize_stage_d_output_root, recover_stage_d_claim, run_stage_d_shard,
     validate_stage_d_access_root,
 )
@@ -638,6 +639,26 @@ def test_checkpoint_projection_and_runner_publication_claims_fail_closed(
     resign(root, value)
     with pytest.raises(StageDRuntimeIntegrityError, match="lifecycle counters"):
         run(controls, root, context, gate, lambda **_kwargs: FakeBackend(lambda _: payload()))
+
+
+def test_lifecycle_complete_requires_all_shard_leases_released() -> None:
+    shards = [
+        {
+            "shard_id": 0,
+            "state": "completed",
+            "terminal": True,
+            "owner_token_digest": None,
+        },
+        {
+            "shard_id": 1,
+            "state": "leased",
+            "terminal": False,
+            "owner_token_digest": "a" * 64,
+        },
+    ]
+    assert _expected_lifecycle_state("running", 2, shards) == "running"
+    shards[1] = {**shards[1], "state": "completed", "terminal": True}
+    assert _expected_lifecycle_state("running", 3, shards) == "complete"
 
 
 def test_coordinator_recovery_of_missing_attempt_is_durable(controls, tmp_path: Path) -> None:

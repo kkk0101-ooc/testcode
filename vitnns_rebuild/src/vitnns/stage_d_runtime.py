@@ -1085,6 +1085,18 @@ def _lifecycle_projection(
     }
 
 
+def _expected_lifecycle_state(
+    state: str, generation: int, shards: Sequence[Mapping[str, Any]],
+) -> str:
+    if state == "blocked":
+        return "blocked"
+    if all(row["terminal"] for row in shards):
+        return "complete"
+    if generation == 0 and all(row["state"] == "pending" for row in shards):
+        return "initialized"
+    return "running"
+
+
 def _initial_checkpoint(
     plan: StageDExecutionPlan, estimate: StageDEstimate,
     preflight: StageDPreflight, context_binding: Mapping[str, Any],
@@ -2743,17 +2755,9 @@ def _validate_checkpoint(
         raise StageDRuntimeIntegrityError(
             "checkpoint unit ownership is outside the claimed group"
         )
-    if lifecycle["state"] == "blocked":
-        expected_lifecycle_state = "blocked"
-    elif all(row["terminal"] for row in normalized_units):
-        expected_lifecycle_state = "complete"
-    elif (
-        document["generation"] == 0
-        and all(row["state"] == "pending" for row in normalized_shards)
-    ):
-        expected_lifecycle_state = "initialized"
-    else:
-        expected_lifecycle_state = "running"
+    expected_lifecycle_state = _expected_lifecycle_state(
+        lifecycle["state"], document["generation"], normalized_shards,
+    )
     if lifecycle["state"] != expected_lifecycle_state:
         raise StageDRuntimeIntegrityError(
             "checkpoint lifecycle state disagrees with child controls"
