@@ -136,6 +136,16 @@ D8_CONTINUATION_R4_AUTHORITY_REF = (
 D8_CONTINUATION_R4_PRODUCER_REF = (
     "refs/archive/stage-d-fidelity-v1-d8-continuation-r4-producer"
 )
+D8_CONTINUATION_R5_ID = "STAGE_D_RECOVERY_V2_D8_CONTINUATION_R5_20260905"
+D8_CONTINUATION_R5_AUTHORIZATION_PATH = (
+    "config/stage_d_d8_continuation_authorization_20260905_r5.json"
+)
+D8_CONTINUATION_R5_AUTHORITY_REF = (
+    "refs/archive/stage-d-fidelity-v1-d8-continuation-r5-authority"
+)
+D8_CONTINUATION_R5_PRODUCER_REF = (
+    "refs/archive/stage-d-fidelity-v1-d8-continuation-r5-producer"
+)
 D8_S00_RECEIPT_PATH = (
     "reports/stage_d_d8_recovery_v2_20260904_r4/d8_s00_shard_receipt.json"
 )
@@ -159,6 +169,12 @@ D8_S03_RECEIPT_PATH = (
 )
 D8_S03_COMPLETION_PATH = (
     "reports/stage_d_d8_recovery_v2_20260904_r4/d8_s03_completion.json"
+)
+D8_S04_RECEIPT_PATH = (
+    "reports/stage_d_d8_recovery_v2_20260904_r4/d8_s04_shard_receipt.json"
+)
+D8_S04_COMPLETION_PATH = (
+    "reports/stage_d_d8_recovery_v2_20260904_r4/d8_s04_completion.json"
 )
 D8_0_INITIAL_BLOCKED_RECORD_PATH = (
     "reports/stage_d_d8_recovery_v2_20260904_r4/"
@@ -200,6 +216,9 @@ _D8_CONTINUATION_R3_AUTH_SCHEMA = (
 _D8_CONTINUATION_R4_AUTH_SCHEMA = (
     "config/stage_d_d8_continuation_authorization_r4.schema.json"
 )
+_D8_CONTINUATION_R5_AUTH_SCHEMA = (
+    "config/stage_d_d8_continuation_authorization_r5.schema.json"
+)
 _AUTHORITY_ONLY_PATHS = {f"vitnns_rebuild/{AUTHORIZATION_PATH}"}
 _D8_0_REBIND_AUTHORITY_ONLY_PATHS = {
     f"vitnns_rebuild/{D8_0_REBIND_AUTHORIZATION_PATH}",
@@ -215,6 +234,9 @@ _D8_CONTINUATION_R3_AUTHORITY_ONLY_PATHS = {
 }
 _D8_CONTINUATION_R4_AUTHORITY_ONLY_PATHS = {
     f"vitnns_rebuild/{D8_CONTINUATION_R4_AUTHORIZATION_PATH}",
+}
+_D8_CONTINUATION_R5_AUTHORITY_ONLY_PATHS = {
+    f"vitnns_rebuild/{D8_CONTINUATION_R5_AUTHORIZATION_PATH}",
 }
 
 
@@ -3131,6 +3153,286 @@ def write_d8_continuation_r4_authorization(
     return document
 
 
+def _validate_d8_continuation_r5_checkpoint_anchor(
+    source: Mapping[str, Any], *, repo: Path,
+) -> None:
+    """Require the live root to remain at the exact pre-S05 handoff."""
+
+    checkpoint, _raw = _read_regular_json(
+        repo / D8_0_REBIND_FORMAL_ROOT / "runtime_checkpoint.json",
+        "D8 generation-1894 runtime checkpoint",
+    )
+    anchor = source["checkpoint_anchor"]
+    shards = checkpoint.get("shards")
+    units = checkpoint.get("units")
+    groups = checkpoint.get("groups")
+    lifecycle = checkpoint.get("lifecycle")
+    if (
+        checkpoint.get("canonical_digest") != _semantic_digest(checkpoint)
+        or checkpoint.get("canonical_digest") != anchor["canonical_digest"]
+        or checkpoint.get("generation") != anchor["generation"]
+        or not isinstance(shards, list)
+        or [row.get("state") for row in shards] != anchor["shard_states"]
+        or not isinstance(lifecycle, Mapping)
+        or lifecycle.get("active_shard_leases")
+        != anchor["active_shard_leases"]
+        or lifecycle.get("active_group_claims")
+        != anchor["active_group_claims"]
+        or not isinstance(groups, list)
+        or not isinstance(units, list)
+    ):
+        raise StageDD7Error(
+            "D8-S05 checkpoint drifted from the authorized generation-1894 handoff"
+        )
+    shard_groups = [
+        row for row in groups if row.get("selection_order", -1) % DEFAULT_SHARD_COUNT == 5
+    ]
+    shard_units = [
+        row for row in units
+        if row.get("group_selection_order", -1) % DEFAULT_SHARD_COUNT == 5
+    ]
+    if (
+        len(shard_groups) != 62
+        or any(
+            row.get("state") != "pending"
+            or row.get("terminal") is not False
+            or row.get("owner_token_digest") is not None
+            for row in shard_groups
+        )
+        or len(shard_units) != 124
+        or sum(len(row.get("attempts", [])) for row in shard_units)
+        != anchor["authorized_shard_attempt_count"]
+        or any(
+            row.get("state") != "pending"
+            or row.get("terminal") is not False
+            or row.get("owner_token_digest") is not None
+            for row in shard_units
+        )
+    ):
+        raise StageDD7Error(
+            "D8-S05 coordinates are not pristine at the authorized checkpoint"
+        )
+
+
+def build_d8_continuation_r5_authorization(
+    *, repo_root: Path | str = REPO_ROOT, require_current_head: bool = True,
+    require_clean_worktree: bool = True, require_current_checkpoint: bool = True,
+) -> Mapping[str, Any]:
+    """Roll the immutable S04 receipt into an exact shard-5 authority."""
+
+    repo = Path(repo_root).resolve()
+    if (
+        require_clean_worktree
+        and _git(repo, "status", "--porcelain=v1", "--untracked-files=all")
+    ):
+        raise StageDD7Error(
+            "D8 continuation R5 authorization requires a clean worktree"
+        )
+    producer = _producer_state(
+        repo, producer_ref=D8_CONTINUATION_R5_PRODUCER_REF,
+    )
+    if require_current_head and _git(repo, "rev-parse", "HEAD") != producer["commit"]:
+        raise StageDD7Error(
+            "D8 continuation R5 authorization must be generated at the frozen producer"
+        )
+
+    rebind, rebind_raw = _read_regular_json(
+        repo / D8_0_REBIND_AUTHORIZATION_PATH,
+        "D8.0 fresh-root authorization",
+    )
+    _validate_d8_0_fresh_root_authorization(
+        rebind, rebind_raw, repo=repo, require_fresh_root=False,
+        require_authority_ref=True,
+    )
+    prior_authority, prior_authority_raw = _read_regular_json(
+        repo / D8_CONTINUATION_R4_AUTHORIZATION_PATH,
+        "D8 continuation R4 authorization",
+    )
+    _validate_d8_continuation_r4_authorization(
+        prior_authority, prior_authority_raw, repo=repo,
+        require_authority_ref=True,
+    )
+    receipt, receipt_raw = _read_regular_json(
+        repo / D8_S04_RECEIPT_PATH, "D8-S04 shard receipt",
+    )
+    completion, completion_raw = _read_regular_json(
+        repo / D8_S04_COMPLETION_PATH, "D8-S04 completion record",
+    )
+    if (
+        receipt.get("document_type") != "stage_d_d8_shard_receipt"
+        or receipt.get("status") != "PASS"
+        or receipt.get("subtask") != "D8-S04"
+        or receipt.get("canonical_digest") != _semantic_digest(receipt)
+        or receipt.get("formal_root") != D8_0_REBIND_FORMAL_ROOT
+        or receipt.get("ledger_transition", {}).get("after_shard_state")
+        != "completed"
+        or receipt.get("ledger_transition", {}).get("prior_shard_states")
+        != ["completed", "completed", "completed", "completed"]
+        or receipt.get("ledger_transition", {}).get("later_shard_states")
+        != ["pending"] * 3
+        or receipt.get("authority", {}).get("continuation_authority_commit")
+        != _git(repo, "rev-parse", f"{D8_CONTINUATION_R4_AUTHORITY_REF}^{{commit}}")
+        or receipt.get("authority", {}).get(
+            "continuation_authorization_canonical_digest"
+        ) != prior_authority["canonical_digest"]
+    ):
+        raise StageDD7Error(
+            "D8-S04 receipt is not a completed generation-1894 continuation anchor"
+        )
+    if (
+        completion.get("document_type") != "stage_d_d8_s04_completion"
+        or completion.get("subtask_status") != "SUBTASK_PASS"
+        or completion.get("canonical_digest") != _semantic_digest(completion)
+        or completion.get("receipt", {}).get("receipt_canonical_digest")
+        != receipt["canonical_digest"]
+        or completion.get("continuation", {}).get("next_task") != "D8-S05"
+        or completion.get("continuation", {}).get(
+            "shard_continuation_authorized"
+        ) is not False
+    ):
+        raise StageDD7Error(
+            "D8-S04 completion does not require a new shard-5 authority"
+        )
+
+    ledger = receipt["ledger_transition"]
+    authority_commit = _git(
+        repo, "rev-parse", f"{D8_CONTINUATION_R4_AUTHORITY_REF}^{{commit}}",
+    )
+    document = {
+        "$schema": "stage_d_d8_continuation_authorization_r5.schema.json",
+        "schema_version": 1,
+        "document_type": D8_CONTINUATION_AUTHORIZATION_DOCUMENT_TYPE,
+        "authorization_id": D8_CONTINUATION_R5_ID,
+        "status": "PASS",
+        "producer": producer,
+        "control_plane_code_binding": {
+            "commit": producer["commit"], "tree": producer["tree"],
+            "clean": True,
+        },
+        "persisted_execution_context": {
+            "authorization_path": D8_0_REBIND_AUTHORIZATION_PATH,
+            "file_sha256": hashlib.sha256(rebind_raw).hexdigest(),
+            "canonical_digest": rebind["canonical_digest"],
+            "authority_ref": D8_0_REBIND_AUTHORITY_REF,
+            "authority_commit": _git(
+                repo, "rev-parse", f"{D8_0_REBIND_AUTHORITY_REF}^{{commit}}",
+            ),
+            "code_binding": rebind["code_binding"],
+        },
+        "prior_authority": {
+            "authorization_path": D8_CONTINUATION_R4_AUTHORIZATION_PATH,
+            "file_sha256": hashlib.sha256(prior_authority_raw).hexdigest(),
+            "canonical_digest": prior_authority["canonical_digest"],
+            "producer_ref": D8_CONTINUATION_R4_PRODUCER_REF,
+            "producer_commit": _git(
+                repo, "rev-parse", f"{D8_CONTINUATION_R4_PRODUCER_REF}^{{commit}}",
+            ),
+            "authority_ref": D8_CONTINUATION_R4_AUTHORITY_REF,
+            "authority_commit": authority_commit,
+            "authorized_shard": 4,
+        },
+        "formal_root": D8_0_REBIND_FORMAL_ROOT,
+        "prior_shard_anchor": {
+            "shard_index": 4,
+            "receipt_path": D8_S04_RECEIPT_PATH,
+            "receipt_file_sha256": hashlib.sha256(receipt_raw).hexdigest(),
+            "receipt_canonical_digest": receipt["canonical_digest"],
+            "completion_path": D8_S04_COMPLETION_PATH,
+            "completion_file_sha256": hashlib.sha256(completion_raw).hexdigest(),
+            "completion_canonical_digest": completion["canonical_digest"],
+            "ledger_after_digest": ledger["after_canonical_digest"],
+            "ledger_after_generation": ledger["after_generation"],
+        },
+        "checkpoint_anchor": {
+            "canonical_digest": ledger["after_canonical_digest"],
+            "generation": ledger["after_generation"],
+            "shard_states": ["completed"] * 5 + ["pending"] * 3,
+            "active_shard_leases": 0,
+            "active_group_claims": 0,
+            "authorized_shard_attempt_count": 0,
+        },
+        "scope_preservation": {
+            "persisted_execution_context_unchanged": True,
+            "access_journal_live_assets_and_authority_checks_unchanged": True,
+            "scientific_scope_changed": False,
+            "existing_s00_s04_evidence_rewritten": False,
+        },
+        "authorized_next_shard": 5,
+        "execution_authorization": EXECUTION_AUTHORIZATION,
+        "analysis_authorization": ANALYSIS_AUTHORIZATION,
+        "d9_started": False,
+        "d10_started": False,
+        "prohibitions": {
+            "rerun_prior_shards_allowed": False,
+            "run_s06_or_later_allowed": False,
+            "formal_aggregation_authorized": False,
+            "analysis_authorization_issued": False,
+            "c10_status_rewrite_allowed": False,
+        },
+    }
+    document["canonical_digest"] = _semantic_digest(document)
+    _schema_validate(
+        document, repo / _D8_CONTINUATION_R5_AUTH_SCHEMA,
+        "D8 continuation R5 authorization",
+    )
+    if require_current_checkpoint:
+        _validate_d8_continuation_r5_checkpoint_anchor(document, repo=repo)
+    return document
+
+
+def _validate_d8_continuation_r5_authorization(
+    source: Mapping[str, Any], raw: bytes, *, repo: Path,
+    require_authority_ref: bool,
+) -> Mapping[str, Any]:
+    _schema_validate(
+        source, repo / _D8_CONTINUATION_R5_AUTH_SCHEMA,
+        "D8 continuation R5 authorization",
+    )
+    if source.get("canonical_digest") != _semantic_digest(source):
+        raise StageDD7Error("D8 continuation R5 authorization digest mismatch")
+    expected = build_d8_continuation_r5_authorization(
+        repo_root=repo, require_current_head=False,
+        require_clean_worktree=False, require_current_checkpoint=False,
+    )
+    if source != expected:
+        raise StageDD7Error(
+            "D8 continuation R5 authorization is not source-recomputable"
+        )
+    if require_authority_ref:
+        authority = _git(
+            repo, "rev-parse", f"{D8_CONTINUATION_R5_AUTHORITY_REF}^{{commit}}",
+        )
+        parent = _git(repo, "rev-parse", f"{authority}^")
+        producer = _git(
+            repo, "rev-parse", f"{D8_CONTINUATION_R5_PRODUCER_REF}^{{commit}}",
+        )
+        changed = set(_git(repo, "diff", "--name-only", parent, authority).splitlines())
+        if parent != producer or changed != _D8_CONTINUATION_R5_AUTHORITY_ONLY_PATHS:
+            raise StageDD7Error(
+                "D8 continuation R5 authority is not an authority-only direct child"
+            )
+        prefix = _git(repo, "rev-parse", "--show-prefix")
+        blob = _git(
+            repo, "rev-parse",
+            f"{authority}:{prefix}{D8_CONTINUATION_R5_AUTHORIZATION_PATH}",
+        )
+        expected_blob = hashlib.sha1(f"blob {len(raw)}\0".encode() + raw).hexdigest()
+        if blob != expected_blob:
+            raise StageDD7Error(
+                "D8 continuation R5 authority does not contain the authorization bytes"
+            )
+    return source["persisted_execution_context"]
+
+
+def write_d8_continuation_r5_authorization(
+    *, repo_root: Path | str = REPO_ROOT,
+) -> Mapping[str, Any]:
+    repo = Path(repo_root).resolve()
+    document = build_d8_continuation_r5_authorization(repo_root=repo)
+    _write_atomic(repo / D8_CONTINUATION_R5_AUTHORIZATION_PATH, document)
+    return document
+
+
 @dataclass(frozen=True, slots=True)
 class _D7ValidatedExecutionContext:
     formal: bool
@@ -3177,22 +3479,27 @@ def validate_execution_authorization(
         == D8_CONTINUATION_AUTHORIZATION_DOCUMENT_TYPE
     ):
         authorization_id = supplied.get("authorization_id")
+        is_r5 = authorization_id == D8_CONTINUATION_R5_ID
         is_r4 = authorization_id == D8_CONTINUATION_R4_ID
         is_r3 = authorization_id == D8_CONTINUATION_R3_ID
         is_r2 = authorization_id == D8_CONTINUATION_R2_ID
         continuation_path = (
-            D8_CONTINUATION_R4_AUTHORIZATION_PATH
-            if is_r4 else (
-                D8_CONTINUATION_R3_AUTHORIZATION_PATH
-                if is_r3 else (
-                D8_CONTINUATION_R2_AUTHORIZATION_PATH
-                if is_r2 else D8_CONTINUATION_AUTHORIZATION_PATH
+            D8_CONTINUATION_R5_AUTHORIZATION_PATH
+            if is_r5 else (
+                D8_CONTINUATION_R4_AUTHORIZATION_PATH
+                if is_r4 else (
+                    D8_CONTINUATION_R3_AUTHORIZATION_PATH
+                    if is_r3 else (
+                        D8_CONTINUATION_R2_AUTHORIZATION_PATH
+                        if is_r2 else D8_CONTINUATION_AUTHORIZATION_PATH
+                    )
                 )
             )
         )
         continuation, continuation_raw = _read_regular_json(
             repo / continuation_path,
-            ("D8 continuation R4 authorization" if is_r4 else
+            ("D8 continuation R5 authorization" if is_r5 else
+             "D8 continuation R4 authorization" if is_r4 else
              "D8 continuation R3 authorization" if is_r3 else
              "D8 continuation R2 authorization" if is_r2 else
              "D8 continuation authorization"),
@@ -3201,7 +3508,15 @@ def validate_execution_authorization(
             raise StageDD7Error(
                 "supplied D8 continuation authorization differs from tracked source"
             )
-        if is_r4:
+        if is_r5:
+            persisted = _validate_d8_continuation_r5_authorization(
+                continuation, continuation_raw, repo=repo,
+                require_authority_ref=require_authority_ref,
+            )
+            _validate_d8_continuation_r5_checkpoint_anchor(
+                continuation, repo=repo,
+            )
+        elif is_r4:
             persisted = _validate_d8_continuation_r4_authorization(
                 continuation, continuation_raw, repo=repo,
                 require_authority_ref=require_authority_ref,
