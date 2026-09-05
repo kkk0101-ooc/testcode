@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_d_d8_continuation_authorization_r4.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema", "schema_version", "document_type", "authorization_id",
+    "status", "producer", "control_plane_code_binding",
+    "persisted_execution_context", "prior_authority", "formal_root",
+    "prior_shard_anchor", "checkpoint_anchor", "scope_preservation",
+    "authorized_next_shard", "execution_authorization",
+    "analysis_authorization", "d9_started", "d10_started",
+    "prohibitions", "canonical_digest"
+  ],
+  "properties": {
+    "$schema": {"const": "stage_d_d8_continuation_authorization_r4.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_d_d8_continuation_authorization"},
+    "authorization_id": {"const": "STAGE_D_RECOVERY_V2_D8_CONTINUATION_R4_20260905"},
+    "status": {"const": "PASS"},
+    "producer": {"$ref": "#/$defs/producer"},
+    "control_plane_code_binding": {"$ref": "#/$defs/code_binding"},
+    "persisted_execution_context": {
+      "type": "object", "additionalProperties": false,
+      "required": ["authorization_path", "file_sha256", "canonical_digest", "authority_ref", "authority_commit", "code_binding"],
+      "properties": {
+        "authorization_path": {"const": "config/stage_d_d8_0_fresh_root_authorization_20260904_r1.json"},
+        "file_sha256": {"const": "c7f306e64dd99fe3b9e9e7586b8cde6805b907d1c2e84504043875c0a92f1657"},
+        "canonical_digest": {"const": "3479f9457aa924fe189591e836e38bb1a65cce8543e3a879477025782659afc9"},
+        "authority_ref": {"const": "refs/archive/stage-d-fidelity-v1-d8-0-rebind-r1-authority"},
+        "authority_commit": {"const": "fb27b2526d55861489c19069b3a5665cede757e3"},
+        "code_binding": {"$ref": "#/$defs/original_code_binding"}
+      }
+    },
+    "prior_authority": {
+      "type": "object", "additionalProperties": false,
+      "required": ["authorization_path", "file_sha256", "canonical_digest", "producer_ref", "producer_commit", "authority_ref", "authority_commit", "authorized_shard"],
+      "properties": {
+        "authorization_path": {"const": "config/stage_d_d8_continuation_authorization_20260905_r3.json"},
+        "file_sha256": {"const": "9385abc241586c5f69d215b251061f5e3046be118e2b184ac1f3eacc9d3e80b2"},
+        "canonical_digest": {"const": "d090dc69925e304244ee06cfc01611898af0a6f5d42a38b60e325d73eb7f872a"},
+        "producer_ref": {"const": "refs/archive/stage-d-fidelity-v1-d8-continuation-r3-producer"},
+        "producer_commit": {"const": "0e1cfe7d0b280202260dc5922b790d3aac0b226e"},
+        "authority_ref": {"const": "refs/archive/stage-d-fidelity-v1-d8-continuation-r3-authority"},
+        "authority_commit": {"const": "ba6f5a29c79429df9cd07e53aed6f71f1cd93572"},
+        "authorized_shard": {"const": 3}
+      }
+    },
+    "formal_root": {"const": "evidence/stage_d/d8_recovery_v2_20260904/formal_r2"},
+    "prior_shard_anchor": {
+      "type": "object", "additionalProperties": false,
+      "required": ["shard_index", "receipt_path", "receipt_file_sha256", "receipt_canonical_digest", "completion_path", "completion_file_sha256", "completion_canonical_digest", "ledger_after_digest", "ledger_after_generation"],
+      "properties": {
+        "shard_index": {"const": 3},
+        "receipt_path": {"const": "reports/stage_d_d8_recovery_v2_20260904_r4/d8_s03_shard_receipt.json"},
+        "receipt_file_sha256": {"const": "adea8d7417cf8c5a4ab1f5be428b40cdd127e6a0f704f42bd05a0f014c075be5"},
+        "receipt_canonical_digest": {"const": "dbb3ecbc47db9df6f4440f0d71aa3e461a9bc7f2017191b5b9ece9afd3ae930c"},
+        "completion_path": {"const": "reports/stage_d_d8_recovery_v2_20260904_r4/d8_s03_completion.json"},
+        "completion_file_sha256": {"const": "7e8661dd6538105c9b003369075092db582f113a22492c598b5704a0cf5e9598"},
+        "completion_canonical_digest": {"const": "d94575872debbf940a046c502971ba8fc47aa19e18933f3f6e88054696770ff5"},
+        "ledger_after_digest": {"const": "5e82bb12ca819e1bb1691ab54f4fa8550686fe6f61afd45a36bac09efcc3843d"},
+        "ledger_after_generation": {"const": 1520}
+      }
+    },
+    "checkpoint_anchor": {
+      "type": "object", "additionalProperties": false,
+      "required": ["canonical_digest", "generation", "shard_states", "active_shard_leases", "active_group_claims", "authorized_shard_attempt_count"],
+      "properties": {
+        "canonical_digest": {"const": "5e82bb12ca819e1bb1691ab54f4fa8550686fe6f61afd45a36bac09efcc3843d"},
+        "generation": {"const": 1520},
+        "shard_states": {"const": ["completed", "completed", "completed", "completed", "pending", "pending", "pending", "pending"]},
+        "active_shard_leases": {"const": 0},
+        "active_group_claims": {"const": 0},
+        "authorized_shard_attempt_count": {"const": 0}
+      }
+    },
+    "scope_preservation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["persisted_execution_context_unchanged", "access_journal_live_assets_and_authority_checks_unchanged", "scientific_scope_changed", "existing_s00_s03_evidence_rewritten"],
+      "properties": {
+        "persisted_execution_context_unchanged": {"const": true},
+        "access_journal_live_assets_and_authority_checks_unchanged": {"const": true},
+        "scientific_scope_changed": {"const": false},
+        "existing_s00_s03_evidence_rewritten": {"const": false}
+      }
+    },
+    "authorized_next_shard": {"const": 4},
+    "execution_authorization": {"const": "AUTHORIZED_STAGE_D_FIDELITY_SCOPE"},
+    "analysis_authorization": {"const": "NOT_EVALUATED"},
+    "d9_started": {"const": false},
+    "d10_started": {"const": false},
+    "prohibitions": {
+      "type": "object", "additionalProperties": false,
+      "required": ["rerun_prior_shards_allowed", "run_s05_or_later_allowed", "formal_aggregation_authorized", "analysis_authorization_issued", "c10_status_rewrite_allowed"],
+      "properties": {
+        "rerun_prior_shards_allowed": {"const": false},
+        "run_s05_or_later_allowed": {"const": false},
+        "formal_aggregation_authorized": {"const": false},
+        "analysis_authorization_issued": {"const": false},
+        "c10_status_rewrite_allowed": {"const": false}
+      }
+    },
+    "canonical_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "producer": {
+      "type": "object", "additionalProperties": false,
+      "required": ["commit", "tree", "clean", "ref"],
+      "properties": {
+        "commit": {"$ref": "#/$defs/commit"},
+        "tree": {"$ref": "#/$defs/commit"},
+        "clean": {"const": true},
+        "ref": {"const": "refs/archive/stage-d-fidelity-v1-d8-continuation-r4-producer"}
+      }
+    },
+    "code_binding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["commit", "tree", "clean"],
+      "properties": {"commit": {"$ref": "#/$defs/commit"}, "tree": {"$ref": "#/$defs/commit"}, "clean": {"const": true}}
+    },
+    "original_code_binding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["commit", "tree", "clean"],
+      "properties": {
+        "commit": {"const": "4c4dd4af010afdc72e26f10cb8e6519e2448cf40"},
+        "tree": {"const": "a27651064facd955f78ef3f517a0934f3e1ace58"},
+        "clean": {"const": true}
+      }
+    }
+  }
+}

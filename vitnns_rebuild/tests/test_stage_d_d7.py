@@ -14,6 +14,7 @@ from vitnns.stage_d_d7 import (
     StageDD7Error, _D7ValidatedExecutionContext,
     _validate_d8_continuation_r2_checkpoint_anchor,
     _validate_d8_continuation_r3_checkpoint_anchor,
+    _validate_d8_continuation_r4_checkpoint_anchor,
     build_d8_0_fresh_root_authorization, build_d8_continuation_authorization,
     build_d7_budget,
     build_execution_authorization, controls_from_authorization, load_d7_budget,
@@ -361,6 +362,36 @@ def test_d8_continuation_r3_checkpoint_anchor_is_exact(tmp_path: Path) -> None:
     source["checkpoint_anchor"]["authorized_shard_attempt_count"] = 1
     with pytest.raises(StageDD7Error, match="coordinates are not pristine"):
         _validate_d8_continuation_r3_checkpoint_anchor(source, repo=tmp_path)
+
+
+def test_d8_continuation_r4_checkpoint_anchor_is_exact(tmp_path: Path) -> None:
+    source_root = REPO_ROOT / D8_0_REBIND_FORMAL_ROOT
+    checkpoint_path = source_root / "runtime_checkpoint.json"
+    if not checkpoint_path.exists():
+        pytest.skip("formal checkpoint is local-only")
+    if json.loads(checkpoint_path.read_text())["generation"] != 1520:
+        pytest.skip("R4 authority has already been consumed by D8-S04")
+    target_root = tmp_path / D8_0_REBIND_FORMAL_ROOT
+    target_root.mkdir(parents=True)
+    (target_root / "runtime_checkpoint.json").write_bytes(
+        checkpoint_path.read_bytes()
+    )
+    source = {
+        "checkpoint_anchor": {
+            "canonical_digest": (
+                "5e82bb12ca819e1bb1691ab54f4fa8550686fe6f61afd45a36bac09efcc3843d"
+            ),
+            "generation": 1520,
+            "shard_states": ["completed"] * 4 + ["pending"] * 4,
+            "active_shard_leases": 0,
+            "active_group_claims": 0,
+            "authorized_shard_attempt_count": 0,
+        },
+    }
+    _validate_d8_continuation_r4_checkpoint_anchor(source, repo=tmp_path)
+    source["checkpoint_anchor"]["authorized_shard_attempt_count"] = 1
+    with pytest.raises(StageDD7Error, match="coordinates are not pristine"):
+        _validate_d8_continuation_r4_checkpoint_anchor(source, repo=tmp_path)
 
 
 def test_production_backend_factory_is_lazy_before_d8_access(
