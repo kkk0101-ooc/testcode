@@ -1567,7 +1567,10 @@ def validate_completion(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
     for value, name in ((status, "status"), (inventory, "inventory")):
         _validate_signed(value, f"E3-R1 {name}")
     rebuilt = _inventory(repo / ROOT_PATH, exclude=("whole_root_inventory.json", "status.json", "completion/e3_r1_completion.pending.json", "completion/e3_r1_completion.json"))
-    if any(inventory[key] != rebuilt[key] for key in ("files", "file_count", "total_bytes", "canonical_digest")):
+    if (
+        any(inventory[key] != rebuilt[key] for key in ("files", "file_count", "total_bytes"))
+        or canonical_sha256({"files": inventory["files"]}) != rebuilt["canonical_digest"]
+    ):
         raise StageEE3R1Error("E3-R1 whole-root inventory drifted")
     if status.get("status") != "PASS" or status.get("e3_v1_status_preserved") != "FAIL" or status.get("e4_authorized") is not True or status.get("e4_started") is not False:
         raise StageEE3R1Error("E3-R1 status drifted")
@@ -1723,7 +1726,10 @@ def validate_blocked_completion(repo_root: Path | str = REPO_ROOT) -> dict[str, 
     for value, name in ((status, "status"), (inventory, "inventory")):
         _validate_signed(value, f"E3-R1 blocked {name}")
     rebuilt = _inventory(repo / ROOT_PATH, exclude=("whole_root_inventory.json", "status.json", "completion/e3_r1_completion.pending.json", "completion/e3_r1_completion.json"))
-    if any(inventory[key] != rebuilt[key] for key in ("files", "file_count", "total_bytes", "canonical_digest")):
+    if (
+        any(inventory[key] != rebuilt[key] for key in ("files", "file_count", "total_bytes"))
+        or canonical_sha256({"files": inventory["files"]}) != rebuilt["canonical_digest"]
+    ):
         raise StageEE3R1Error("E3-R1 blocked root inventory drifted")
     if status.get("status") != "BLOCKED" or status.get("bulk_started") is not False or status.get("e4_authorized") is not False or status.get("e4_started") is not False:
         raise StageEE3R1Error("E3-R1 blocked status drifted")
