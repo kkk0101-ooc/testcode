@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vitnns.local/schemas/stage_e_e2_output.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "document_type", "table_id", "columns", "row_count", "rows", "canonical_digest"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_e_e2_output_table"},
+    "table_id": {"enum": ["upsampling_sensitivity", "pairwise_differences", "resource_and_qc"]},
+    "columns": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
+    "row_count": {"type": "integer", "minimum": 0},
+    "rows": {"type": "array", "items": {"type": "object"}},
+    "canonical_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

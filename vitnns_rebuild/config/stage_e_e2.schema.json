@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vitnns.local/schemas/stage_e_e2.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "document_type", "stage_id", "analysis_role", "canonical_digest", "bindings", "scope", "operator_contract", "scientific_contract", "execution", "budget", "authorization"],
+  "properties": {
+    "$schema": {"const": "stage_e_e2.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_e_e2_frozen_contract"},
+    "stage_id": {"const": "E2"},
+    "analysis_role": {"const": "POST_D10_SECONDARY_DESCRIPTIVE"},
+    "canonical_digest": {"$ref": "#/$defs/sha256"},
+    "bindings": {"type": "object", "additionalProperties": false, "required": ["e1_completion", "e0", "d9", "d10"], "properties": {"e1_completion": {"type": "object"}, "e0": {"type": "object"}, "d9": {"type": "object"}, "d10": {"type": "object"}}},
+    "scope": {"type": "object", "additionalProperties": false, "required": ["cohort", "registry_path", "ordered_sample_ids_sha256", "sample_count", "stratum", "block", "head", "method", "variants", "expected_image_groups", "expected_new_units", "expected_variant_rows", "expected_pairwise_rows"], "properties": {"cohort": {"const": "stage_d_fidelity_v1_500"}, "registry_path": {"type": "string"}, "ordered_sample_ids_sha256": {"$ref": "#/$defs/sha256"}, "sample_count": {"const": 500}, "stratum": {"const": "overall"}, "block": {"const": 0}, "head": {"const": 9}, "method": {"const": "matched_fixed_clean_attention_patch_token_contribution"}, "variants": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "object"}}, "expected_image_groups": {"const": 500}, "expected_new_units": {"const": 1000}, "expected_variant_rows": {"const": 2000}, "expected_pairwise_rows": {"const": 3000}}},
+    "operator_contract": {"type": "object"},
+    "scientific_contract": {"type": "object"},
+    "execution": {"type": "object"},
+    "budget": {"const": {"gpu_hours_max": 2.5, "cpu_hours_max": 8.0, "retained_bytes_max": 4294967296}},
+    "authorization": {"const": {"requires": "E1_PASS_E2_ONLY", "current_stage": "E2_ONLY", "on_pass": "E3_ONLY", "e3_started": false, "e4_started": false, "stage_f_started": false}}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}
