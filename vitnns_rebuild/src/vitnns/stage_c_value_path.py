@@ -2644,12 +2644,24 @@ def _validate_head_direction_ig_result(
     *,
     target: FrozenHeadDirectionTarget,
     expected_delta: float | None = None,
+    expected_steps: Sequence[int] = IG_STEPS,
 ) -> IGResult:
+    schedule = tuple(expected_steps)
+    if (
+        not schedule
+        or any(type(step) is not int or step <= 0 for step in schedule)
+        or tuple(sorted(set(schedule))) != schedule
+        or schedule[: len(IG_STEPS)] != IG_STEPS
+    ):
+        raise StageCValuePathError(
+            "head-direction IG expected schedule is not an ordered extension "
+            "of the frozen schedule"
+        )
     if not isinstance(result, IGResult):
         raise TypeError("integrated_gradients must return IGResult")
     if type(result.converged) is not bool:
         raise TypeError("IGResult.converged must be a boolean")
-    if type(result.steps) is not int or result.steps not in IG_STEPS:
+    if type(result.steps) is not int or result.steps not in schedule:
         raise StageCValuePathError(
             f"head-direction IG returned unregistered steps={result.steps!r}"
         )
@@ -2706,8 +2718,8 @@ def _validate_head_direction_ig_result(
                 "head-direction IG attempt pass flag is inconsistent"
             )
         attempt_passes.append(pass_values[0])
-    expected_steps = list(IG_STEPS[: len(attempt_steps)])
-    if attempt_steps != expected_steps or result.steps != attempt_steps[-1]:
+    expected_prefix = list(schedule[: len(attempt_steps)])
+    if attempt_steps != expected_prefix or result.steps != attempt_steps[-1]:
         raise StageCValuePathError(
             "head-direction IG attempts must be an exact frozen schedule prefix "
             "ending at result.steps"
@@ -2720,9 +2732,9 @@ def _validate_head_direction_ig_result(
             raise StageCValuePathError(
                 "head-direction IG must stop at its first conservation pass"
             )
-    elif passing_indices or tuple(attempt_steps) != IG_STEPS:
+    elif passing_indices or tuple(attempt_steps) != schedule:
         raise StageCValuePathError(
-            "nonconverged head-direction IG must retain all five failed attempts"
+            "nonconverged head-direction IG must retain the complete failed schedule"
         )
 
     native = result.attribution
@@ -2823,7 +2835,7 @@ def _validate_head_direction_ig_result(
         "quadrature": "gauss_legendre",
         "integration_dtype": "float32",
         "input_shape": [1, 3, 224, 224],
-        "step_schedule": list(IG_STEPS),
+        "step_schedule": list(schedule),
         "step_chunk_size": IG_STEP_CHUNK_SIZE,
         "atol": IG_ATOL,
         "rtol": IG_RTOL,
@@ -2927,6 +2939,8 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig_at_interventi
     *,
     clean_input_sha256: str | None = None,
     intervention_input_sha256: str | None = None,
+    _steps_schedule: Sequence[int] = IG_STEPS,
+    _numerical_recovery_id: str | None = None,
 ) -> MethodResult:
     """Attribute the issued fixed-clean-attention head scalar to RGB at ``z``."""
 
@@ -2934,6 +2948,20 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig_at_interventi
         raise RuntimeError(
             "head-direction Value-path IG cannot run inside "
             "torch.inference_mode()"
+        )
+    schedule = tuple(_steps_schedule)
+    e3_r1_schedule = IG_STEPS + (16384, 32768)
+    if schedule == IG_STEPS:
+        if _numerical_recovery_id is not None:
+            raise StageCValuePathError(
+                "default IG schedule cannot carry a numerical-recovery identity"
+            )
+    elif (
+        schedule != e3_r1_schedule
+        or _numerical_recovery_id != "STAGE-E-E3-R1-NUMERICAL-RECOVERY-20260906"
+    ):
+        raise StageCValuePathError(
+            "only the frozen E3-R1 numerical schedule extension is supported"
         )
     clean = _validate_clean_input(clean_inputs)
     inputs = _validate_clean_input(intervention_inputs)
@@ -2973,7 +3001,7 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig_at_interventi
         },
         "quadrature": "gauss_legendre",
         "integration_dtype": "float32",
-        "steps_schedule": list(IG_STEPS),
+        "steps_schedule": list(schedule),
         "step_chunk_size": IG_STEP_CHUNK_SIZE,
         "atol": IG_ATOL,
         "rtol": IG_RTOL,
@@ -2985,6 +3013,15 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig_at_interventi
         "is_complete_attention_attribution": False,
         "claim_boundary": "fixed_clean_attention_head_value_path_only",
     }
+    if _numerical_recovery_id is not None:
+        method_provenance["numerical_recovery"] = {
+            "id": _numerical_recovery_id,
+            "original_schedule": list(IG_STEPS),
+            "fallback_schedule": [16384, 32768],
+            "fallback_only_after_original_schedule_exhausted": True,
+            "atol": IG_ATOL,
+            "rtol": IG_RTOL,
+        }
     method_provenance["endpoint_parity"] = {
         "threshold": ENDPOINT_PARITY_MAX_ABS,
         "comparison": "strict_less_than",
@@ -3072,7 +3109,7 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig_at_interventi
                 callback,
                 owned_inputs,
                 owned_baseline,
-                steps=IG_STEPS,
+                steps=schedule,
                 step_chunk_size=IG_STEP_CHUNK_SIZE,
                 atol=IG_ATOL,
                 rtol=IG_RTOL,
@@ -3104,7 +3141,8 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig_at_interventi
             },
         )
         validated = _validate_head_direction_ig_result(
-            result_with_counts, target=frozen, expected_delta=expected_delta
+            result_with_counts, target=frozen, expected_delta=expected_delta,
+            expected_steps=schedule,
         )
         _verify_frozen_head_target(
             frozen, model, clean,
@@ -3132,6 +3170,12 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig_at_interventi
         )
     method_provenance["status"] = STATUS_OK
     method_provenance["ig_result"] = _ig_provenance_summary(validated)
+    if _numerical_recovery_id is not None:
+        method_provenance["numerical_recovery"].update({
+            "fallback_used": validated.steps in (16384, 32768),
+            "original_schedule_exhausted": validated.steps in (16384, 32768),
+            "selected_steps": validated.steps,
+        })
     return MethodResult(
         method_id=NNS_METHOD_ID,
         method_version=METHOD_VERSION,
@@ -3164,6 +3208,37 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig(
         provenance=provenance,
         clean_input_sha256=target.clean_input_sha256,
         intervention_input_sha256=target.clean_input_sha256,
+    )
+    provenance_dict = dict(result.provenance)
+    provenance_dict.pop("intervention_input_sha256", None)
+    return replace(result, provenance=provenance_dict)
+
+
+def e3_r1_conditional_fixed_clean_attention_head_direction_value_path_ig(
+    model: nn.Module,
+    clean_inputs: torch.Tensor,
+    target: FrozenHeadDirectionTarget,
+    provenance: Mapping[str, Any] | None = None,
+) -> MethodResult:
+    """Run the prospective E3-R1-only numerical recovery schedule.
+
+    The historical five-step ``IG_STEPS`` prefix and its tolerances are
+    unchanged.  The 16384 and 32768 fallbacks are reached only after every
+    earlier step fails conservation.
+    """
+
+    result = conditional_fixed_clean_attention_head_direction_value_path_ig_at_intervention(
+        model,
+        clean_inputs,
+        clean_inputs,
+        target,
+        provenance=provenance,
+        clean_input_sha256=target.clean_input_sha256,
+        intervention_input_sha256=target.clean_input_sha256,
+        _steps_schedule=IG_STEPS + (16384, 32768),
+        _numerical_recovery_id=(
+            "STAGE-E-E3-R1-NUMERICAL-RECOVERY-20260906"
+        ),
     )
     provenance_dict = dict(result.provenance)
     provenance_dict.pop("intervention_input_sha256", None)

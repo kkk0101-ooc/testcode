@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vitnns.local/schemas/stage_e_e3_r1_completion.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "document_type", "stage_id", "recovery_id", "status", "started_at", "completed_at", "e3_v1", "union", "package_completeness", "workflow_integrity", "scientific_validity", "cost_status", "actual_cost", "source_validation", "next_authorization", "e4_started", "canonical_digest"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_e_e3_r1_terminal_completion"},
+    "stage_id": {"const": "E3-R1"},
+    "recovery_id": {"const": "STAGE-E-E3-R1-NUMERICAL-RECOVERY-20260906"},
+    "status": {"enum": ["PASS", "FAIL", "BLOCKED"]},
+    "started_at": {"type": "string", "format": "date-time"},
+    "completed_at": {"type": "string", "format": "date-time"},
+    "e3_v1": {"type": "object"},
+    "union": {"type": "object"},
+    "package_completeness": {"enum": ["PASS", "FAIL", "BLOCKED"]},
+    "workflow_integrity": {"enum": ["PASS", "FAIL", "BLOCKED"]},
+    "scientific_validity": {"enum": ["PASS", "FAIL", "NOT_EVALUATED"]},
+    "cost_status": {"enum": ["PASS_COST", "FAIL_COST", "NOT_EVALUATED"]},
+    "actual_cost": {"type": "object"},
+    "source_validation": {"type": "object"},
+    "next_authorization": {"enum": ["E4_ONLY", "NONE"]},
+    "e4_started": {"const": false},
+    "canonical_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

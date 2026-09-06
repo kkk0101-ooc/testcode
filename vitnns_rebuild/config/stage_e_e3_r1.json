@@ -1,0 +1,105 @@
+{
+  "$schema": "stage_e_e3_r1.schema.json",
+  "schema_version": 1,
+  "document_type": "stage_e_e3_r1_frozen_contract",
+  "recovery_id": "STAGE-E-E3-R1-NUMERICAL-RECOVERY-20260906",
+  "canonical_digest": "21efae2f88177a59928f19dfa69469978ffeaeba95f26b66a41b8cd7ce7fef08",
+  "amendment": {
+    "path": "docs/recovery_stage_e_e3_r1_amendment_20260906.md",
+    "status": "APPROVED_FOR_E3_R1_GATED_RECOVERY_ONLY",
+    "outcome_awareness": "PROSPECTIVE_AFTER_TERMINAL_E3_V1_CONVERGENCE_FAILURE"
+  },
+  "e3_v1": {
+    "root": "evidence/stage_e/e3_recovery_v2_20260906/formal",
+    "archive_ref": "refs/archive/stage-e-e3-v1-terminal-fail",
+    "commit": "52b0847939a57e54cc72e590fbd9682a95d08444",
+    "tree": "278058f37c28b30ddeb31eadac339812888399c3",
+    "completion_path": "evidence/stage_e/e3_recovery_v2_20260906/formal/completion/e3_completion.json",
+    "completion_sha256": "75355b40fe9df19ae8eedd10ef96bacf0f2eab49989894940350790a0a57b4bd",
+    "completion_canonical_digest": "91e76bca8d36173f5fae076159e5e09934ef3c25a902d22bc721787108d82011",
+    "status_sha256": "a1e815e57711e88cff022861a4b2d6da65e7bd9ce8fa10b1efd41b396952afb2",
+    "status_canonical_digest": "490f69f83a7b841e32857338d0daa86734e5b618c375b7ccf26365a9c8e89a7a",
+    "plan_sha256": "9de140505720d19126b61a8b81c23f5963aef456d06ac7960285e2bca7591843",
+    "plan_canonical_digest": "25a89db050917587703903af32e972320339b2447ea21c22da58b2bf7e167430",
+    "inventory_sha256": "73858f1bb3a0e66942f7b044d33e935d1eec827b12de62163fecd00dc03e30e5",
+    "inventory_canonical_digest": "8bf58c71154f88f38d5f213a96d031f061511ecd5b64560da63b5d553fec2671",
+    "valid_terminal_attempts": 516,
+    "status": "FAIL",
+    "next_authorization": "NONE",
+    "mutable": false
+  },
+  "scope": {
+    "expected_new_units": 3000,
+    "inherited_terminal_units": 516,
+    "r1_eligible_units": 2484,
+    "pilot_orders": [61, 72],
+    "pilot_units": 12,
+    "bulk_units_after_pilot": 2472,
+    "eligibility": "ONLY_FROZEN_E3_V1_PLAN_UNITS_WITHOUT_A_LEGAL_TERMINAL_RESULT",
+    "origin_values": ["E3_V1_INHERITED", "E3_R1_NEW"]
+  },
+  "numerical_recovery": {
+    "method": "conditional_fixed_clean_attention_head_direction_value_path_ig",
+    "original_schedule": [512, 1024, 2048, 4096, 8192],
+    "fallback_schedule": [16384, 32768],
+    "complete_schedule": [512, 1024, 2048, 4096, 8192, 16384, 32768],
+    "fallback_only_after_original_exhausted": true,
+    "stop_at_first_pass": true,
+    "quadrature": "gauss_legendre",
+    "integration_dtype": "float32",
+    "step_chunk_size": 8,
+    "atol": 0.0001,
+    "rtol": 0.01,
+    "conservation_rule": "abs_error_less_than_or_equal_to_atol_plus_rtol_times_abs_delta"
+  },
+  "scientific_contract": {
+    "source": "config/stage_e_e3.json",
+    "coordinates": [[0, 9], [4, 2], [6, 10], [11, 2]],
+    "primary_anchor": [0, 9],
+    "primary_recompute": false,
+    "methods": [
+      "conditional_fixed_clean_attention_head_direction_value_path_ig",
+      "matched_fixed_clean_attention_patch_token_contribution"
+    ],
+    "sample_count": 500,
+    "sample_replacement": false,
+    "sample_deletion": false,
+    "seed_change": false,
+    "fidelity_change": false,
+    "statistics_change": false
+  },
+  "persistence": {
+    "attempt_id": "attempt-r1-000001",
+    "unit_atomic_publication": true,
+    "temporary_directory_then_rename": true,
+    "file_fsync": true,
+    "parent_directory_fsync": true,
+    "terminal_overwrite": false,
+    "scientific_failure_terminal": true
+  },
+  "budget": {
+    "gpu_hours_max": 8.0,
+    "cpu_hours_max": 16.0,
+    "retained_bytes_max": 12884901888,
+    "e3_v1_gpu_hours": 1.0879465173394418,
+    "e3_v1_cpu_seconds": 4469.05037553,
+    "e3_v1_retained_bytes_minimum": 33433845,
+    "projection_remaining_groups": 412,
+    "projection_factor": 1.25,
+    "finalization_reserve_bytes": 67108864,
+    "waiver_allowed": false
+  },
+  "roots": {
+    "formal": "evidence/stage_e/e3_r1_recovery_v2_20260906/formal",
+    "reports": "reports/stage_e_e3_r1_20260906",
+    "completion": "completion/e3_r1_completion.json"
+  },
+  "authorization": {
+    "pilot_only_before_continuation_gate": true,
+    "pilot_pass_required_for_bulk": true,
+    "actual_and_projected_budget_pass_required_for_bulk": true,
+    "e4_authorized_before_terminal_pass": false,
+    "on_terminal_pass": "E4_ONLY",
+    "e4_started": false
+  }
+}
