@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vitnns.local/schemas/stage_e_stage_completion.schema.json",
+  "title": "Stage E E1-E4 terminal completion record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "document_type", "stage_id", "status", "started_at",
+    "completed_at", "predecessor", "config_canonical_digest",
+    "run_spec_canonical_digest", "expected_coordinates",
+    "observed_coordinates", "variant_statuses", "package_completeness",
+    "workflow_integrity", "scientific_validity", "cost_status",
+    "source_validation", "upstream_unchanged", "actual_cost",
+    "next_authorization", "canonical_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_e_terminal_completion"},
+    "stage_id": {"enum": ["E1", "E2", "E3", "E4"]},
+    "status": {"enum": ["PASS", "FAIL", "BLOCKED"]},
+    "started_at": {"type": "string", "format": "date-time"},
+    "completed_at": {"type": "string", "format": "date-time"},
+    "predecessor": {"$ref": "#/$defs/file"},
+    "config_canonical_digest": {"$ref": "#/$defs/sha256"},
+    "run_spec_canonical_digest": {"$ref": "#/$defs/sha256"},
+    "expected_coordinates": {"type": "array"},
+    "observed_coordinates": {"type": "array"},
+    "variant_statuses": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["variant_id", "status", "reason"],
+        "properties": {
+          "variant_id": {"type": "string"},
+          "status": {"enum": ["PASS", "FAIL", "NA", "EQUIVALENT_RANKING", "NOT_RUN_WITH_REASON"]},
+          "reason": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "package_completeness": {"enum": ["PASS", "FAIL", "BLOCKED"]},
+    "workflow_integrity": {"enum": ["PASS", "FAIL", "BLOCKED"]},
+    "scientific_validity": {"enum": ["PASS", "FAIL", "MIXED", "NOT_EVALUATED"]},
+    "cost_status": {"enum": ["PASS_COST", "FAIL_COST", "NOT_EVALUATED"]},
+    "source_validation": {"type": "object"},
+    "upstream_unchanged": {"type": "boolean"},
+    "actual_cost": {"type": "object"},
+    "next_authorization": {"enum": ["E2_ONLY", "E3_ONLY", "E4_ONLY", "F0_ONLY", "NONE"]},
+    "canonical_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "file": {
+      "type": "object", "additionalProperties": false,
+      "required": ["path", "file_sha256", "canonical_digest"],
+      "properties": {
+        "path": {"type": "string"}, "file_sha256": {"$ref": "#/$defs/sha256"},
+        "canonical_digest": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

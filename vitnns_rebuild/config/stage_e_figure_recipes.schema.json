@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vitnns.local/schemas/stage_e_figure_recipes.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "document_type", "numeric_source", "renders_png", "figures", "canonical_digest"],
+  "properties": {
+    "schema_version": {"const": 1}, "document_type": {"const": "stage_e_figure_recipes"},
+    "numeric_source": {"const": "paper_data_only"}, "renders_png": {"const": false},
+    "figures": {"type": "array", "items": {"$ref": "#/$defs/recipe"}},
+    "canonical_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "$defs": {
+    "recipe": {
+      "type": "object", "additionalProperties": false,
+      "required": ["figure_id", "table_path", "x", "y", "group", "caption_contract", "numeric_source", "renders_png"],
+      "properties": {
+        "figure_id": {"type": "string"}, "table_path": {"type": "string"}, "x": {"type": "string"}, "y": {"type": "string"},
+        "group": {"type": "string"}, "caption_contract": {"type": "string"},
+        "numeric_source": {"const": "paper_data_only"}, "renders_png": {"const": false}
+      }
+    }
+  }
+}

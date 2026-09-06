@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vitnns.local/schemas/stage_e_output_table.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "document_type", "table_id", "columns", "row_count", "rows", "canonical_digest"],
+  "properties": {
+    "schema_version": {"const": 1}, "document_type": {"const": "stage_e_paper_table"},
+    "table_id": {"enum": ["patch_scale_sensitivity", "upsampling_sensitivity", "layer_head_descriptive", "prediction_strata", "resource_and_qc"]},
+    "columns": {"type": "array", "uniqueItems": true, "items": {"type": "string"}, "allOf": [{"contains": {"const": "variant_id"}}, {"contains": {"const": "sample_id"}}, {"contains": {"const": "selection_order"}}, {"contains": {"const": "cohort"}}, {"contains": {"const": "stratum"}}, {"contains": {"const": "validity_status"}}, {"contains": {"const": "source_hashes"}}, {"contains": {"const": "method"}}, {"contains": {"const": "target"}}, {"contains": {"const": "scale"}}, {"contains": {"const": "layer"}}, {"contains": {"const": "head"}}]},
+    "row_count": {"type": "integer", "minimum": 0},
+    "rows": {"type": "array", "items": {"$ref": "#/$defs/row"}},
+    "canonical_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "$defs": {
+    "row": {
+      "type": "object",
+      "required": ["variant_id", "sample_id", "selection_order", "cohort", "stratum", "validity_status", "source_hashes", "method", "target", "scale", "layer", "head"],
+      "properties": {
+        "variant_id": {"type": "string"}, "sample_id": {"type": ["string", "null"]}, "selection_order": {"type": ["integer", "null"]},
+        "cohort": {"const": "stage_d_fidelity_v1_500"}, "stratum": {"enum": ["overall", "correct", "misclassified"]},
+        "validity_status": {"enum": ["VALID", "FAILED", "NA"]}, "source_hashes": {"type": "object"},
+        "method": {"type": "string"}, "target": {"const": "fixed_clean_attention_cls_head_direction"},
+        "scale": {"type": "string"}, "layer": {"type": ["integer", "null"]}, "head": {"type": ["integer", "null"]}
+      }
+    }
+  }
+}

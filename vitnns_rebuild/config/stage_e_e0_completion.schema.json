@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vitnns.local/schemas/stage_e_e0_completion.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "document_type", "stage", "status", "started_at",
+    "completed_at", "planning_timing", "workspace_start", "outcome_firewall",
+    "access_log",
+    "upstream_validation", "contracts", "typed_plan", "reuse_inventory",
+    "budget", "test_results", "false_pass_audit", "upstream_unchanged",
+    "authorization", "git_publication", "canonical_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_e_e0_completion"},
+    "stage": {"const": "E0"},
+    "status": {"enum": ["PASS", "FAIL", "BLOCKED"]},
+    "started_at": {"type": "string", "format": "date-time"},
+    "completed_at": {"type": "string", "format": "date-time"},
+    "planning_timing": {"type": "object"},
+    "workspace_start": {"type": "object"},
+    "outcome_firewall": {"type": "object"},
+    "access_log": {"$ref": "#/$defs/file"},
+    "upstream_validation": {"$ref": "#/$defs/file"},
+    "contracts": {"type": "array", "minItems": 10, "items": {"$ref": "#/$defs/file"}},
+    "typed_plan": {"type": "object"},
+    "reuse_inventory": {"type": "object"},
+    "budget": {"type": "object"},
+    "test_results": {"$ref": "#/$defs/file"},
+    "false_pass_audit": {"$ref": "#/$defs/file"},
+    "upstream_unchanged": {"type": "object"},
+    "authorization": {"type": "object"},
+    "git_publication": {"type": "object"},
+    "canonical_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "file": {
+      "type": "object", "additionalProperties": false,
+      "required": ["path", "file_sha256", "canonical_digest"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "file_sha256": {"$ref": "#/$defs/sha256"},
+        "canonical_digest": {"anyOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]}
+      }
+    }
+  }
+}

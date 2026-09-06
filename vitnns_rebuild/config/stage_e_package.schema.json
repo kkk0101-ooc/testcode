@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vitnns.local/schemas/stage_e_package.schema.json",
+  "title": "Stage E E4 package control documents",
+  "oneOf": [
+    {"$ref": "#/$defs/analysis_report"},
+    {"$ref": "#/$defs/provenance"},
+    {"$ref": "#/$defs/payload_manifest"},
+    {"$ref": "#/$defs/status"}
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "base": {
+      "type": "object",
+      "required": ["schema_version", "document_type", "canonical_digest"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "document_type": {"type": "string"},
+        "canonical_digest": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "analysis_report": {
+      "allOf": [
+        {"$ref": "#/$defs/base"},
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["schema_version", "document_type", "status", "descriptive_only", "p_values_emitted", "winner_selection_performed", "new_go_no_go_issued", "variant_status_counts", "scientific_summary", "limitations", "canonical_digest"],
+          "properties": {
+            "schema_version": {"const": 1}, "document_type": {"const": "stage_e_analysis_report"},
+            "status": {"enum": ["PASS", "FAIL", "BLOCKED"]}, "descriptive_only": {"const": true},
+            "p_values_emitted": {"const": false}, "winner_selection_performed": {"const": false},
+            "new_go_no_go_issued": {"const": false}, "variant_status_counts": {"type": "object"},
+            "scientific_summary": {"type": "object"}, "limitations": {"type": "array", "items": {"type": "string"}},
+            "canonical_digest": {"$ref": "#/$defs/sha256"}
+          }
+        }
+      ]
+    },
+    "provenance": {
+      "allOf": [
+        {"$ref": "#/$defs/base"},
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["schema_version", "document_type", "source_files", "pair_bindings", "operations", "environment", "outcome_access", "d9_d10_unchanged", "c10_history_unchanged", "canonical_digest"],
+          "properties": {
+            "schema_version": {"const": 1}, "document_type": {"const": "stage_e_provenance"},
+            "source_files": {"type": "array"}, "pair_bindings": {"type": "array"},
+            "operations": {"type": "array"}, "environment": {"type": "object"},
+            "outcome_access": {"type": "object"}, "d9_d10_unchanged": {"const": true},
+            "c10_history_unchanged": {"const": true}, "canonical_digest": {"$ref": "#/$defs/sha256"}
+          }
+        }
+      ]
+    },
+    "payload_manifest": {
+      "allOf": [
+        {"$ref": "#/$defs/base"},
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["schema_version", "document_type", "immutable", "artifacts", "payload_count", "canonical_digest"],
+          "properties": {
+            "schema_version": {"const": 1}, "document_type": {"const": "stage_e_payload_manifest"},
+            "immutable": {"const": true},
+            "artifacts": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["path", "bytes", "sha256"], "properties": {"path": {"type": "string"}, "bytes": {"type": "integer", "minimum": 0}, "sha256": {"$ref": "#/$defs/sha256"}}}},
+            "payload_count": {"type": "integer", "minimum": 1}, "canonical_digest": {"$ref": "#/$defs/sha256"}
+          }
+        }
+      ]
+    },
+    "status": {
+      "allOf": [
+        {"$ref": "#/$defs/base"},
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["schema_version", "document_type", "status", "complete", "terminal", "immutable", "package_completeness", "workflow_integrity", "scientific_validity", "cost_status", "d10_decision_unchanged", "c10_history_unchanged", "whole_root_inventory", "git", "next_stage", "canonical_digest"],
+          "properties": {
+            "schema_version": {"const": 1}, "document_type": {"const": "stage_e_status"},
+            "status": {"enum": ["PASS", "FAIL", "BLOCKED"]}, "complete": {"type": "boolean"},
+            "terminal": {"const": true}, "immutable": {"const": true},
+            "package_completeness": {"enum": ["PASS", "FAIL", "BLOCKED"]},
+            "workflow_integrity": {"enum": ["PASS", "FAIL", "BLOCKED"]},
+            "scientific_validity": {"enum": ["PASS", "FAIL", "MIXED", "NOT_EVALUATED"]},
+            "cost_status": {"enum": ["PASS_COST", "FAIL_COST", "NOT_EVALUATED"]},
+            "d10_decision_unchanged": {"const": true}, "c10_history_unchanged": {"const": true},
+            "whole_root_inventory": {"type": "object", "required": ["file_count", "total_bytes", "canonical_digest"]},
+            "git": {"type": "object", "required": ["commit", "ref"]}, "next_stage": {"enum": ["F0", "NONE"]},
+            "canonical_digest": {"$ref": "#/$defs/sha256"}
+          }
+        }
+      ]
+    }
+  }
+}
