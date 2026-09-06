@@ -64,6 +64,7 @@ EMBED_DIM = 768
 CLS_TOKEN_INDEX = 0
 
 IG_STEPS = (512, 1024, 2048, 4096, 8192)
+E3_R3_STEPS = (65536, 131072, 262144)
 IG_STEP_CHUNK_SIZE = 8
 IG_ATOL = 1e-4
 IG_RTOL = 0.01
@@ -2651,7 +2652,10 @@ def _validate_head_direction_ig_result(
         not schedule
         or any(type(step) is not int or step <= 0 for step in schedule)
         or tuple(sorted(set(schedule))) != schedule
-        or schedule[: len(IG_STEPS)] != IG_STEPS
+        or (
+            schedule[: len(IG_STEPS)] != IG_STEPS
+            and schedule != E3_R3_STEPS
+        )
     ):
         raise StageCValuePathError(
             "head-direction IG expected schedule is not an ordered extension "
@@ -2776,19 +2780,33 @@ def _validate_head_direction_ig_result(
                 f"head-direction IG conservation {name} is non-finite"
             )
     report_delta = result.conservation["delta"].to(torch.float32)
-    report_sum = result.conservation["sum"].to(torch.float32)
-    report_abs = result.conservation["abs"].to(torch.float32)
-    report_rel = result.conservation["rel"].to(torch.float32)
-    attribution_sum = native.flatten(1).sum(dim=1)
+    stable_reduction = schedule == E3_R3_STEPS
+    report_sum = result.conservation["sum"].to(
+        torch.float64 if stable_reduction else torch.float32
+    )
+    report_abs = result.conservation["abs"].to(
+        torch.float64 if stable_reduction else torch.float32
+    )
+    report_rel = result.conservation["rel"].to(
+        torch.float64 if stable_reduction else torch.float32
+    )
+    attribution_sum = (
+        native.to(torch.float64).flatten(1).sum(dim=1)
+        if stable_reduction
+        else native.flatten(1).sum(dim=1)
+    )
     if not torch.equal(attribution_sum, report_sum):
         raise StageCValuePathError(
             "head-direction IG conservation sum does not equal attribution sum"
         )
-    expected_abs = (report_delta - report_sum).abs()
-    expected_rel = expected_abs / report_delta.abs().clamp_min(
-        torch.finfo(torch.float32).eps
+    expected_delta_for_sum = result.conservation["delta"].to(report_sum.dtype)
+    expected_abs = (expected_delta_for_sum - report_sum).abs()
+    expected_rel = expected_abs / expected_delta_for_sum.abs().clamp_min(
+        torch.finfo(report_sum.dtype).eps
     )
-    expected_pass = expected_abs <= (IG_ATOL + IG_RTOL * report_delta.abs())
+    expected_pass = expected_abs <= (
+        IG_ATOL + IG_RTOL * expected_delta_for_sum.abs()
+    )
     if not torch.equal(expected_abs, report_abs):
         raise StageCValuePathError(
             "head-direction IG final absolute error is inconsistent"
@@ -2832,8 +2850,6 @@ def _validate_head_direction_ig_result(
         raise TypeError("head-direction IG metadata must be a mapping")
     expected_metadata: dict[str, Any] = {
         "method": "integrated_gradients",
-        "quadrature": "gauss_legendre",
-        "integration_dtype": "float32",
         "input_shape": [1, 3, 224, 224],
         "step_schedule": list(schedule),
         "step_chunk_size": IG_STEP_CHUNK_SIZE,
@@ -2851,6 +2867,21 @@ def _validate_head_direction_ig_result(
         "fixed_clean_attention": True,
         "frozen_direction": True,
     }
+    if schedule == E3_R3_STEPS:
+        expected_metadata.update({
+            "quadrature": "gauss_legendre_scipy_roots_legendre",
+            "model_compute_dtype": "float32",
+            "quadrature_dtype": "float64",
+            "accumulation_dtype": "float64",
+            "accumulation_algorithm": "kahan_per_chunk",
+            "stored_attribution_dtype": "float32",
+            "conservation_reduction_dtype": "float64",
+        })
+    else:
+        expected_metadata.update({
+            "quadrature": "gauss_legendre",
+            "integration_dtype": "float32",
+        })
     for key, expected in expected_metadata.items():
         if metadata.get(key) != expected:
             raise StageCValuePathError(
@@ -2941,6 +2972,7 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig_at_interventi
     intervention_input_sha256: str | None = None,
     _steps_schedule: Sequence[int] = IG_STEPS,
     _numerical_recovery_id: str | None = None,
+    _numerical_stability_id: str | None = None,
 ) -> MethodResult:
     """Attribute the issued fixed-clean-attention head scalar to RGB at ``z``."""
 
@@ -2952,13 +2984,23 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig_at_interventi
     schedule = tuple(_steps_schedule)
     e3_r1_schedule = IG_STEPS + (16384, 32768)
     if schedule == IG_STEPS:
-        if _numerical_recovery_id is not None:
+        if _numerical_recovery_id is not None or _numerical_stability_id is not None:
             raise StageCValuePathError(
                 "default IG schedule cannot carry a numerical-recovery identity"
+            )
+    elif schedule == E3_R3_STEPS:
+        if (
+            _numerical_stability_id
+            != "STAGE-E-E3-R3-NUMERICAL-STABILITY-20260907"
+            or _numerical_recovery_id is not None
+        ):
+            raise StageCValuePathError(
+                "E3-R3 schedule requires its exact numerical-stability identity"
             )
     elif (
         schedule != e3_r1_schedule
         or _numerical_recovery_id != "STAGE-E-E3-R1-NUMERICAL-RECOVERY-20260906"
+        or _numerical_stability_id is not None
     ):
         raise StageCValuePathError(
             "only the frozen E3-R1 numerical schedule extension is supported"
@@ -3019,6 +3061,25 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig_at_interventi
             "original_schedule": list(IG_STEPS),
             "fallback_schedule": [16384, 32768],
             "fallback_only_after_original_schedule_exhausted": True,
+            "atol": IG_ATOL,
+            "rtol": IG_RTOL,
+        }
+    if _numerical_stability_id is not None:
+        method_provenance["algorithm"].update({
+            "quadrature": "gauss_legendre_scipy_roots_legendre",
+            "integration_dtype": "float64_kahan_with_float32_model_compute",
+        })
+        method_provenance["numerical_stability"] = {
+            "id": _numerical_stability_id,
+            "historical_schedule_exhausted": list(
+                IG_STEPS + (16384, 32768)
+            ),
+            "prospective_fallback_schedule": list(E3_R3_STEPS),
+            "model_compute_dtype": "float32",
+            "quadrature_dtype": "float64",
+            "accumulation_dtype": "float64",
+            "accumulation_algorithm": "kahan_per_chunk",
+            "stored_attribution_dtype": "float32",
             "atol": IG_ATOL,
             "rtol": IG_RTOL,
         }
@@ -3105,7 +3166,12 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig_at_interventi
                     direction_unit=frozen_direction,
                 )
 
-            result = attribution.integrated_gradients(
+            integrator = (
+                attribution.integrated_gradients_float64_kahan
+                if _numerical_stability_id is not None
+                else attribution.integrated_gradients
+            )
+            result = integrator(
                 callback,
                 owned_inputs,
                 owned_baseline,
@@ -3176,6 +3242,11 @@ def conditional_fixed_clean_attention_head_direction_value_path_ig_at_interventi
             "original_schedule_exhausted": validated.steps in (16384, 32768),
             "selected_steps": validated.steps,
         })
+    if _numerical_stability_id is not None:
+        method_provenance["numerical_stability"].update({
+            "selected_steps": validated.steps,
+            "converged": validated.converged,
+        })
     return MethodResult(
         method_id=NNS_METHOD_ID,
         method_version=METHOD_VERSION,
@@ -3243,6 +3314,107 @@ def e3_r1_conditional_fixed_clean_attention_head_direction_value_path_ig(
     provenance_dict = dict(result.provenance)
     provenance_dict.pop("intervention_input_sha256", None)
     return replace(result, provenance=provenance_dict)
+
+
+def e3_r3_conditional_fixed_clean_attention_head_direction_value_path_ig(
+    model: nn.Module,
+    clean_inputs: torch.Tensor,
+    target: FrozenHeadDirectionTarget,
+    provenance: Mapping[str, Any] | None = None,
+) -> MethodResult:
+    """Run the prospective E3-R3 numerical-stability fallback."""
+
+    result = conditional_fixed_clean_attention_head_direction_value_path_ig_at_intervention(
+        model, clean_inputs, clean_inputs, target, provenance=provenance,
+        clean_input_sha256=target.clean_input_sha256,
+        intervention_input_sha256=target.clean_input_sha256,
+        _steps_schedule=E3_R3_STEPS,
+        _numerical_stability_id=(
+            "STAGE-E-E3-R3-NUMERICAL-STABILITY-20260907"
+        ),
+    )
+    provenance_dict = dict(result.provenance)
+    provenance_dict.pop("intervention_input_sha256", None)
+    return replace(result, provenance=provenance_dict)
+
+
+def e3_r3_full_schedule_conditional_fixed_clean_attention_head_direction_value_path_ig(
+    model: nn.Module,
+    clean_inputs: torch.Tensor,
+    target: FrozenHeadDirectionTarget,
+    provenance: Mapping[str, Any] | None = None,
+) -> MethodResult:
+    """Run the historical schedule first and R3 only after its exhaustion."""
+
+    historical_schedule = IG_STEPS + (16384, 32768)
+    full_schedule = historical_schedule + E3_R3_STEPS
+    try:
+        historical = e3_r1_conditional_fixed_clean_attention_head_direction_value_path_ig(
+            model, clean_inputs, target, provenance=provenance
+        )
+    except StageCValuePathConvergenceError as historical_error:
+        try:
+            stable = e3_r3_conditional_fixed_clean_attention_head_direction_value_path_ig(
+                model, clean_inputs, target, provenance=provenance
+            )
+        except StageCValuePathConvergenceError as stable_error:
+            combined = replace(
+                stable_error.ig_result,
+                attempts=(
+                    tuple(historical_error.ig_result.attempts)
+                    + tuple(stable_error.ig_result.attempts)
+                ),
+                metadata={
+                    **stable_error.ig_result.metadata,
+                    "step_schedule": list(full_schedule),
+                    "historical_schedule_exhausted": True,
+                },
+            )
+            raise StageCValuePathConvergenceError(
+                "head-direction Value-path IG did not converge on the "
+                "complete E3-R3 schedule", combined,
+            ) from stable_error
+        provenance_dict = dict(stable.provenance)
+        ig = dict(provenance_dict["ig_result"])
+        ig["attempts"] = (
+            list(historical_error.ig_result.attempts) + list(ig["attempts"])
+        )
+        ig["metadata"] = {
+            **ig["metadata"],
+            "step_schedule": list(full_schedule),
+            "historical_schedule_exhausted": True,
+        }
+        provenance_dict["ig_result"] = ig
+        stability = dict(provenance_dict["numerical_stability"])
+        stability.update({
+            "fallback_used": True,
+            "historical_schedule_exhausted": True,
+            "full_schedule": list(full_schedule),
+        })
+        provenance_dict["numerical_stability"] = stability
+        return replace(stable, provenance=provenance_dict)
+    provenance_dict = dict(historical.provenance)
+    ig = dict(provenance_dict["ig_result"])
+    ig["metadata"] = {**ig["metadata"], "step_schedule": list(full_schedule)}
+    provenance_dict["ig_result"] = ig
+    provenance_dict.pop("numerical_recovery", None)
+    provenance_dict["numerical_stability"] = {
+        "id": "STAGE-E-E3-R3-NUMERICAL-STABILITY-20260907",
+        "historical_schedule_exhausted": False,
+        "prospective_fallback_schedule": list(E3_R3_STEPS),
+        "full_schedule": list(full_schedule),
+        "fallback_used": False,
+        "selected_steps": ig["selected_steps"],
+        "converged": True,
+        "model_compute_dtype": "float32",
+        "quadrature_dtype": "float64",
+        "accumulation_dtype": "float64",
+        "accumulation_algorithm": "kahan_per_chunk",
+        "stored_attribution_dtype": "float32",
+        "atol": IG_ATOL,
+        "rtol": IG_RTOL,
+    }
+    return replace(historical, provenance=provenance_dict)
 
 
 def matched_fixed_clean_attention_patch_token_contribution(

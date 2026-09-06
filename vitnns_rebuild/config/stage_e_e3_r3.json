@@ -1,0 +1,71 @@
+{
+  "$schema": "stage_e_e3_r3.schema.json",
+  "schema_version": 1,
+  "document_type": "stage_e_e3_r3_frozen_contract",
+  "recovery_id": "STAGE-E-E3-R3-NUMERICAL-STABILITY-20260907",
+  "canonical_digest": "e7e2dcbef13d15fd9e6b0001a511a4f134b6a55b5962ad97b113c5ab681c5402",
+  "upstream": {
+    "e3_v1_status": "FAIL",
+    "e3_r1_status": "BLOCKED",
+    "e3_r2_status": "FAIL",
+    "e3_r2_commit": "bf9fed71d33391d9a5e8f7f1025b1fedc57bdf22",
+    "e3_r2_ref": "refs/archive/stage-e-e3-r2-scientific-fail",
+    "e3_r2_tree": "864d1aedd10fe7cc01d5c6870cf29925809ad46c",
+    "e3_r2_completion_sha256": "83f219837b1672799ce1a9980481f917274027e97962f7265dc75602434b2e72",
+    "e3_r2_completion_canonical_digest": "8f845d51e00cf5eab20254e8ad75c193d4416c6b9a8819153dfb16df29d74d12",
+    "e3_r2_inventory_canonical_digest": "068f78c572e19993801238cc829db180d3b9931dc9c4e25bcdd6d079ab418ffd"
+  },
+  "pilot": {
+    "selection_order": 117,
+    "coordinate": [11, 2],
+    "method": "conditional_fixed_clean_attention_head_direction_value_path_ig",
+    "independent_runs": 2,
+    "same_selected_steps_required": true,
+    "repeatability_atol": 0.000001,
+    "repeatability_rtol": 0.00001
+  },
+  "numerical_stability": {
+    "historical_schedule": [512,1024,2048,4096,8192,16384,32768],
+    "prospective_schedule": [65536,131072,262144],
+    "model_compute_dtype": "float32",
+    "quadrature": "scipy_1_12_roots_legendre",
+    "quadrature_dtype": "float64",
+    "accumulation_dtype": "float64",
+    "accumulation_algorithm": "kahan_per_chunk",
+    "stored_attribution_dtype": "float32",
+    "step_chunk_size": 8,
+    "atol": 0.0001,
+    "rtol": 0.01
+  },
+  "scope": {
+    "expected_new_compute_units": 3000,
+    "inherited_valid_attempts": 1164,
+    "r3_new_attempts_required": 1836,
+    "pilot_order_in_new_attempts": true,
+    "sample_deletion": false,
+    "coordinate_change": false,
+    "method_change": false,
+    "seed_change": false,
+    "fidelity_change": false,
+    "statistics_change": false
+  },
+  "budget": {
+    "gpu_hours_max": 512.0,
+    "cpu_hours_max": 2048.0,
+    "retained_bytes_max": 68719476736,
+    "all_prior_and_r3_attempts_charged": true
+  },
+  "roots": {
+    "formal": "evidence/stage_e/e3_r3_recovery_v2_20260907/formal",
+    "pilot": "evidence/stage_e/e3_r3_recovery_v2_20260907/pilot",
+    "reports": "reports/stage_e_e3_r3_20260907",
+    "completion": "completion/e3_r3_completion.json"
+  },
+  "authorization": {
+    "pilot_only_before_repeatability_gate": true,
+    "bulk_before_pilot_pass": false,
+    "e4_before_terminal_pass": false,
+    "on_terminal_pass": "E4_ONLY",
+    "e4_started": false
+  }
+}

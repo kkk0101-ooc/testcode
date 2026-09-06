@@ -560,11 +560,13 @@ def _failure_result(
     peak_cuda_bytes: int, clean_sha256: str, diagnostic: np.ndarray,
     recovery_id: str = RECOVERY_ID, attempt_id: str = ATTEMPT_ID,
     origin: str = "E3_R1_NEW",
+    expected_schedule: Sequence[int] = COMPLETE_SCHEDULE,
+    failure_code: str = "ig_conservation_failed_after_e3_r1_schedule",
 ) -> dict[str, Any]:
     ig = error.ig_result
     target_digest = e1._target_semantic_digest(target_identity)
     attempts = [dict(item) for item in ig.attempts]
-    if tuple(item["steps"] for item in attempts) != COMPLETE_SCHEDULE or any(item["pass"] != [False] for item in attempts):
+    if tuple(item["steps"] for item in attempts) != tuple(expected_schedule) or any(item["pass"] != [False] for item in attempts):
         raise StageEE3R1Error("scientific failure did not exhaust the R1 schedule")
     diagnostic_digest = e1._array_digest(diagnostic)
     backward_calls = sum(int(math.ceil(item["steps"] / 8)) for item in attempts)
@@ -579,7 +581,7 @@ def _failure_result(
         "scale": unit["scale"],
         "coordinate_comparison_identity": unit["coordinate_comparison_identity"],
         "validity_status": "FAILED", "failure_class": "SCIENTIFIC_INVALIDITY",
-        "failure_code": "ig_conservation_failed_after_e3_r1_schedule",
+        "failure_code": failure_code,
         "na_reason": None, "attempt_id": attempt_id, "retry_count": 0,
         "source_hashes": {
             "image_sha256": unit["image_sha256"],
@@ -611,6 +613,10 @@ def _publish_attempt(
     payload: np.ndarray, *, fault_injector: Callable[[str], Any] | None = None,
     root_path: str | None = None, attempt_id: str = ATTEMPT_ID,
     recovery_id: str = RECOVERY_ID,
+    nns_schedule: Sequence[int] = COMPLETE_SCHEDULE,
+    numerical_field: str = "numerical_recovery",
+    numerical_id: str = RECOVERY_ID,
+    failure_code: str = "ig_conservation_failed_after_e3_r1_schedule",
 ) -> Path:
     selected_root = ROOT_PATH if root_path is None else root_path
     root, _, _, _, _ = _r1_attempt_paths(
@@ -677,6 +683,8 @@ def _publish_attempt(
     _validate_r1_attempt(
         repo, unit, root_path=selected_root, attempt_id=attempt_id,
         recovery_id=recovery_id, origin=result.get("origin", "E3_R1_NEW"),
+        nns_schedule=nns_schedule, numerical_field=numerical_field,
+        numerical_id=numerical_id, failure_code=failure_code,
     )
     return root
 
@@ -685,6 +693,10 @@ def _validate_r1_attempt(
     repo: Path, unit: Mapping[str, Any], *, root_path: str | None = None,
     attempt_id: str = ATTEMPT_ID, recovery_id: str = RECOVERY_ID,
     origin: str = "E3_R1_NEW",
+    nns_schedule: Sequence[int] = COMPLETE_SCHEDULE,
+    numerical_field: str = "numerical_recovery",
+    numerical_id: str = RECOVERY_ID,
+    failure_code: str = "ig_conservation_failed_after_e3_r1_schedule",
 ) -> dict[str, Any]:
     root, result_path, status_path, manifest_path, payload_path = _r1_attempt_paths(
         repo, unit["canonical_digest"], root_path=root_path, attempt_id=attempt_id,
@@ -763,11 +775,33 @@ def _validate_r1_attempt(
             attempts = ig.get("attempts", [])
             steps = tuple(item.get("steps") for item in attempts)
             passing = [index for index, item in enumerate(attempts) if item.get("pass") == [True]]
-            if ig.get("converged") is not True or steps != COMPLETE_SCHEDULE[:len(steps)] or passing != [len(attempts) - 1]:
+            expected_schedule = tuple(nns_schedule)
+            if ig.get("converged") is not True or steps != expected_schedule[:len(steps)] or passing != [len(attempts) - 1]:
                 raise StageEE3R1Error("valid E3-R1 NNS schedule/convergence failed")
-            recovery = result["method_provenance"].get("numerical_recovery", {})
-            if recovery.get("id") != RECOVERY_ID or recovery.get("atol") != 1e-4 or recovery.get("rtol") != 0.01:
+            recovery = result["method_provenance"].get(numerical_field, {})
+            if recovery.get("id") != numerical_id or recovery.get("atol") != 1e-4 or recovery.get("rtol") != 0.01:
                 raise StageEE3R1Error("valid E3-R1 NNS recovery provenance drifted")
+            metadata = ig.get("metadata", {})
+            if metadata.get("step_schedule") != list(expected_schedule):
+                raise StageEE3R1Error("valid E3-R1 NNS metadata schedule drifted")
+            if numerical_field == "numerical_stability":
+                used_stability_fallback = int(ig.get("selected_steps", 0)) > 32768
+                if recovery.get("fallback_used") is not used_stability_fallback:
+                    raise StageEE3R1Error("valid E3-R3 fallback flag drifted")
+                if used_stability_fallback and (
+                    metadata.get("quadrature_dtype") != "float64"
+                    or metadata.get("accumulation_dtype") != "float64"
+                    or metadata.get("accumulation_algorithm") != "kahan_per_chunk"
+                    or metadata.get("model_compute_dtype") != "float32"
+                    or metadata.get("stored_attribution_dtype") != "float32"
+                    or metadata.get("conservation_reduction_dtype") != "float64"
+                ):
+                    raise StageEE3R1Error("valid E3-R3 numerical metadata drifted")
+                if not used_stability_fallback and (
+                    metadata.get("quadrature") != "gauss_legendre"
+                    or metadata.get("integration_dtype") != "float32"
+                ):
+                    raise StageEE3R1Error("valid E3-R3 historical-prefix metadata drifted")
         else:
             matched = provenance.get("matched_contribution", {})
             qc = result.get("matched_conservation_qc", {})
@@ -815,17 +849,24 @@ def _validate_r1_attempt(
             or payload.dtype != np.float32 or payload.shape != (3, 224, 224)
             or not np.isfinite(payload).all() or status.get("state") != "scientific_failure"
             or result.get("failure_class") != "SCIENTIFIC_INVALIDITY"
-            or result.get("failure_code") != "ig_conservation_failed_after_e3_r1_schedule"
-            or tuple(item.get("steps") for item in attempts) != COMPLETE_SCHEDULE
+            or result.get("failure_code") != failure_code
+            or tuple(item.get("steps") for item in attempts) != tuple(nns_schedule)
             or any(item.get("pass") != [False] for item in attempts)
-            or ig.get("converged") is not False or ig.get("selected_steps") != 32768
+            or ig.get("converged") is not False or ig.get("selected_steps") != tuple(nns_schedule)[-1]
             or result.get("diagnostic_attribution_only") is not True
             or result.get("fidelity_executed") is not False
         ):
             raise StageEE3R1Error("E3-R1 scientific-failure attempt contract failed")
         metadata = ig.get("metadata", {})
-        if metadata.get("step_schedule") != list(COMPLETE_SCHEDULE) or metadata.get("atol") != 1e-4 or metadata.get("rtol") != 0.01 or metadata.get("step_chunk_size") != 8:
+        if metadata.get("step_schedule") != list(nns_schedule) or metadata.get("atol") != 1e-4 or metadata.get("rtol") != 0.01 or metadata.get("step_chunk_size") != 8:
             raise StageEE3R1Error("E3-R1 scientific-failure numerical metadata drifted")
+        if numerical_field == "numerical_stability" and (
+            metadata.get("quadrature_dtype") != "float64"
+            or metadata.get("accumulation_dtype") != "float64"
+            or metadata.get("accumulation_algorithm") != "kahan_per_chunk"
+            or metadata.get("conservation_reduction_dtype") != "float64"
+        ):
+            raise StageEE3R1Error("E3-R3 scientific-failure metadata drifted")
         if result.get("source_hashes", {}).get("failure_attribution_sha256") != e1._array_digest(payload):
             raise StageEE3R1Error("E3-R1 failure attribution digest drifted")
     else:

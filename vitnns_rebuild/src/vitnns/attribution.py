@@ -284,6 +284,81 @@ def _integral_for_steps(
     return difference.to(torch.float32) * accumulated
 
 
+def _integral_for_steps_float64_kahan(
+    forward_fn: ForwardCallback,
+    inputs: Tensor,
+    baselines: Tensor,
+    *,
+    steps: int,
+    step_chunk_size: int,
+) -> Tensor:
+    """Integrate a float32 model callback with float64 quadrature/Kahan sums.
+
+    Only interpolation and numerical accumulation use float64.  Every callback
+    input remains float32, so model parameters, forward/backward computation,
+    target semantics, and the final stored attribution dtype are unchanged.
+    """
+
+    import numpy as np
+    from scipy.special import roots_legendre
+
+    if inputs.dtype is not torch.float32 or baselines.dtype is not torch.float32:
+        raise TypeError(
+            "float64-stable IG requires float32 model inputs and baselines"
+        )
+    roots, raw_weights = roots_legendre(steps)
+    nodes_cpu = np.asarray((roots + 1.0) * 0.5, dtype=np.float64)
+    weights_cpu = np.asarray(raw_weights * 0.5, dtype=np.float64)
+    nodes = torch.from_numpy(nodes_cpu).to(device=inputs.device)
+    weights = torch.from_numpy(weights_cpu).to(device=inputs.device)
+    batch_size = inputs.shape[0]
+    difference64 = (inputs - baselines).to(torch.float64)
+    inputs64 = inputs.to(torch.float64)
+    baselines64 = baselines.to(torch.float64)
+    accumulated = torch.zeros_like(inputs64)
+    compensation = torch.zeros_like(inputs64)
+    broadcast_dims = (1,) * inputs.ndim
+    for start in range(0, steps, step_chunk_size):
+        stop = min(start + step_chunk_size, steps)
+        chunk_nodes = nodes[start:stop]
+        chunk_weights = weights[start:stop]
+        scaled64 = (
+            baselines64.unsqueeze(0)
+            + chunk_nodes.view(-1, *broadcast_dims) * difference64.unsqueeze(0)
+        )
+        chunk_steps = scaled64.shape[0]
+        scaled = (
+            scaled64.reshape(chunk_steps * batch_size, *inputs.shape[1:])
+            .to(torch.float32)
+            .detach()
+        )
+        scaled.requires_grad_(True)
+        selected = _normalize_selected_output(forward_fn(scaled), scaled.shape[0])
+        if selected.requires_grad:
+            gradient = torch.autograd.grad(
+                selected.sum(), scaled, retain_graph=False,
+                create_graph=False, allow_unused=True,
+            )[0]
+        else:
+            gradient = None
+        if gradient is None:
+            gradient = torch.zeros_like(scaled)
+        gradient64 = gradient.reshape(
+            chunk_steps, batch_size, *inputs.shape[1:]
+        ).to(torch.float64)
+        weight_shape = (chunk_steps,) + (1,) * inputs.ndim
+        weighted = (
+            gradient64 * chunk_weights.view(weight_shape)
+        ).sum(dim=0)
+        corrected = weighted - compensation
+        updated = accumulated + corrected
+        compensation = (updated - accumulated) - corrected
+        accumulated = updated
+        del selected, gradient, gradient64, scaled, scaled64, weighted, corrected
+    attribution64 = difference64 * accumulated
+    return attribution64.to(torch.float32)
+
+
 def _conservation(
     attribution: Tensor,
     delta: Tensor,
@@ -298,6 +373,30 @@ def _conservation(
     passed = absolute_error <= (atol + rtol * delta.abs())
     return {
         "delta": delta.detach(),
+        "sum": attribution_sum.detach(),
+        "abs": absolute_error.detach(),
+        "rel": relative_error.detach(),
+        "pass": passed.detach(),
+    }
+
+
+def _conservation_float64_reduction(
+    attribution: Tensor,
+    delta: Tensor,
+    *,
+    atol: float,
+    rtol: float,
+) -> Dict[str, Tensor]:
+    """Evaluate stored float32 attribution using a float64 final reduction."""
+
+    attribution_sum = attribution.to(torch.float64).flatten(1).sum(dim=1)
+    delta64 = delta.to(torch.float64)
+    absolute_error = (delta64 - attribution_sum).abs()
+    tiny = torch.finfo(torch.float64).eps
+    relative_error = absolute_error / delta64.abs().clamp_min(tiny)
+    passed = absolute_error <= (atol + rtol * delta64.abs())
+    return {
+        "delta": delta64.detach(),
         "sum": attribution_sum.detach(),
         "abs": absolute_error.detach(),
         "rel": relative_error.detach(),
@@ -387,6 +486,79 @@ def integrated_gradients(
         converged=bool(final_report["pass"].all().item()),
         attempts=tuple(attempts),
         metadata=result_metadata,
+    )
+
+
+def integrated_gradients_float64_kahan(
+    forward_fn: ForwardCallback,
+    inputs: Tensor,
+    baselines: Optional[Tensor] = None,
+    *,
+    steps: StepSpec,
+    step_chunk_size: int = 8,
+    atol: float = 1e-4,
+    rtol: float = 0.01,
+    parameters: Optional[Union[nn.Module, Iterable[nn.Parameter]]] = None,
+    metadata: Optional[Mapping[str, Any]] = None,
+) -> IGResult:
+    """Prospective float64-quadrature/Kahan IG for E3-R3 only."""
+
+    if not callable(forward_fn):
+        raise TypeError("forward_fn must be callable")
+    schedule = _resolve_steps(steps)
+    if (
+        isinstance(step_chunk_size, bool)
+        or not isinstance(step_chunk_size, int)
+        or step_chunk_size <= 0
+    ):
+        raise ValueError("step_chunk_size must be a positive integer")
+    prepared_inputs, prepared_baselines = _prepare_inputs(inputs, baselines)
+    if prepared_inputs.dtype is not torch.float32:
+        raise TypeError("E3-R3 model inputs must remain float32")
+    attempts: List[Mapping[str, Any]] = []
+    final_attribution: Optional[Tensor] = None
+    final_report: Optional[Mapping[str, Tensor]] = None
+    final_steps = schedule[-1]
+    with _temporarily_freeze(parameters):
+        start_value = _endpoint_values(forward_fn, prepared_baselines)
+        end_value = _endpoint_values(forward_fn, prepared_inputs)
+        delta = end_value - start_value
+        for step_count in schedule:
+            attribution = _integral_for_steps_float64_kahan(
+                forward_fn, prepared_inputs, prepared_baselines,
+                steps=step_count, step_chunk_size=step_chunk_size,
+            )
+            report = _conservation_float64_reduction(
+                attribution, delta, atol=atol, rtol=rtol
+            )
+            attempts.append(_serializable_attempt(step_count, report))
+            final_attribution, final_report, final_steps = (
+                attribution, report, step_count
+            )
+            if bool(report["pass"].all().item()):
+                break
+    assert final_attribution is not None and final_report is not None
+    result_metadata: Dict[str, Any] = {
+        "method": "integrated_gradients",
+        "quadrature": "gauss_legendre_scipy_roots_legendre",
+        "model_compute_dtype": "float32",
+        "quadrature_dtype": "float64",
+        "accumulation_dtype": "float64",
+        "accumulation_algorithm": "kahan_per_chunk",
+        "stored_attribution_dtype": "float32",
+        "conservation_reduction_dtype": "float64",
+        "input_shape": list(prepared_inputs.shape),
+        "step_schedule": list(schedule),
+        "step_chunk_size": step_chunk_size,
+        "atol": float(atol),
+        "rtol": float(rtol),
+    }
+    if metadata is not None:
+        result_metadata.update(dict(metadata))
+    return IGResult(
+        attribution=final_attribution, conservation=final_report,
+        steps=final_steps, converged=bool(final_report["pass"].all().item()),
+        attempts=tuple(attempts), metadata=result_metadata,
     )
 
 

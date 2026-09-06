@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vitnns.local/schemas/stage_e_e3_r3_completion.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version","document_type","stage_id","recovery_id","status","started_at","completed_at","historical_statuses","union","package_completeness","workflow_integrity","scientific_validity","cost_status","actual_cost","source_validation","next_authorization","e4_started","canonical_digest"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_e_e3_r3_terminal_completion"},
+    "stage_id": {"const": "E3-R3"},
+    "recovery_id": {"const": "STAGE-E-E3-R3-NUMERICAL-STABILITY-20260907"},
+    "status": {"const": "PASS"},
+    "started_at": {"type": "string", "format": "date-time"},
+    "completed_at": {"type": "string", "format": "date-time"},
+    "historical_statuses": {"const": {"E3":"FAIL","E3-R1":"BLOCKED","E3-R2":"FAIL"}},
+    "union": {"type": "object"},
+    "package_completeness": {"const": "PASS"},
+    "workflow_integrity": {"const": "PASS"},
+    "scientific_validity": {"const": "PASS"},
+    "cost_status": {"const": "PASS_COST"},
+    "actual_cost": {"type": "object"},
+    "source_validation": {"type": "object"},
+    "next_authorization": {"const": "E4_ONLY"},
+    "e4_started": {"const": false},
+    "canonical_digest": {"type":"string","pattern":"^[0-9a-f]{64}$"}
+  }
+}
