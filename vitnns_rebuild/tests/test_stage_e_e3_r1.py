@@ -226,3 +226,18 @@ def test_matched_exact_190_forward_calls_is_valid_threshold() -> None:
     source = (REPO_ROOT / "src/vitnns/stage_e_e3_r1.py").read_text()
     assert "minimum_forward_calls = 191 if unit[\"method\"] == e3.NNS_METHOD else 190" in source
     assert "result.get(\"forward_calls\", 0) < minimum_forward_calls" in source
+
+
+def test_checked_in_failed_pilot_gate_blocks_bulk_and_e4_if_present() -> None:
+    gate_path = REPO_ROOT / r1.PILOT_GATE_PATH
+    if not gate_path.exists():
+        pytest.skip("pilot gate not yet available")
+    gate = json.loads(gate_path.read_text())
+    assert gate["pilot_terminal_units"] == 12
+    assert gate["pilot_valid_units"] == 12
+    assert gate["pilot_nns_converged"] == 6
+    if gate["status"] == "FAIL":
+        assert gate["projected_budget_status"] == "FAIL"
+        assert gate["bulk_authorized"] is False
+        assert gate["e4_authorized"] is False
+        assert not (REPO_ROOT / r1.BULK_AUTH_PATH).exists()

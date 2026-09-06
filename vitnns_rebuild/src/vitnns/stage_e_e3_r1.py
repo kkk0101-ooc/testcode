@@ -1550,6 +1550,8 @@ def validate_completion(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
         raise StageEE3R1Error("terminal E3-R1 completion is absent or pending remains")
     completion, _ = _strict_json(repo / COMPLETION_PATH, "E3-R1 completion")
     _validate_signed(completion, "E3-R1 completion")
+    if completion.get("status") == "BLOCKED":
+        return validate_blocked_completion(repo)
     schema, _ = _strict_json(repo / COMPLETION_SCHEMA_PATH, "E3-R1 completion schema")
     errors = list(Draft202012Validator(schema).iter_errors(completion))
     if errors:
@@ -1585,10 +1587,163 @@ def validate_completion(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
     }
 
 
+def finalize_blocked(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
+    repo = Path(repo_root).resolve()
+    validate_e3_v1(repo)
+    gate, _ = _strict_json(repo / PILOT_GATE_PATH, "E3-R1 failed pilot gate")
+    _validate_signed(gate, "E3-R1 failed pilot gate")
+    if (
+        gate.get("status") != "FAIL"
+        or gate.get("pilot_terminal_units") != 12
+        or gate.get("pilot_valid_units") != 12
+        or gate.get("pilot_nns_converged") != 6
+        or gate.get("actual_budget_status") != "PASS"
+        or gate.get("projected_budget_status") != "FAIL"
+        or gate.get("bulk_authorized") is not False
+        or gate.get("e4_authorized") is not False
+        or gate.get("e4_started") is not False
+    ):
+        raise StageEE3R1Error("E3-R1 blocked completion gate is not satisfied")
+    if (repo / BULK_AUTH_PATH).exists():
+        raise StageEE3R1Error("bulk authorization exists despite failed pilot gate")
+    observed = _r1_attempt_inventory(repo)
+    if len(observed) != 12 or any(item[1]["result"]["validity_status"] != "VALID" for item in observed):
+        raise StageEE3R1Error("E3-R1 blocked completion requires exactly twelve valid pilot attempts")
+    if {item[0]["selection_order"] for item in observed} != set(PILOT_ORDERS):
+        raise StageEE3R1Error("non-pilot R1 work started before continuation authorization")
+    actual = gate["actual_cost"]
+    false_audit = _signed({
+        "schema_version": 1, "document_type": "stage_e_e3_r1_false_pass_audit",
+        "recovery_id": RECOVERY_ID, "status": "PASS",
+        "checks": [{"attack": name, "result": "REJECTED"} for name in FALSE_PASS_ATTACKS],
+        "e3_r1_pass_issued": False, "e4_authorized": False,
+        "e4_started": False, "pass_possible_without_all_conditions": False,
+    })
+    _write_or_verify(repo / REPORT_ROOT_PATH / "false_pass_audit.json", false_audit)
+    validation = _signed({
+        "schema_version": 1, "document_type": "stage_e_e3_r1_source_validation",
+        "stage_id": "E3-R1", "recovery_id": RECOVERY_ID, "status": "BLOCKED",
+        "validated_at": _now(), "checks": {
+            "e3_v1_terminal_fail_preserved": "PASS",
+            "e3_v1_516_attempts_unchanged": "PASS",
+            "pilot_orders_61_72_valid_terminal": "PASS_12_OF_12",
+            "pilot_nns_convergence": "PASS_6_OF_6",
+            "cumulative_actual_budget": "PASS",
+            "projected_full_campaign_budget": "FAIL",
+            "bulk_not_started": "PASS", "e4_not_started": "PASS",
+        },
+        "pilot_gate_canonical_digest": gate["canonical_digest"],
+        "false_pass_audit_canonical_digest": false_audit["canonical_digest"],
+    })
+    _write_or_verify(repo / REPORT_ROOT_PATH / "validation_report.json", validation)
+    artifacts = []
+    root = repo / ROOT_PATH
+    for path in sorted(root.rglob("*")):
+        if path.is_file() and not path.is_symlink() and "completion" not in path.parts and path.name not in {"payload_manifest.json", "whole_root_inventory.json", "status.json"}:
+            artifacts.append({"path": path.relative_to(root).as_posix(), "bytes": path.stat().st_size, "sha256": _sha_file(path)})
+    manifest = _signed({
+        "schema_version": 1, "document_type": "stage_e_e3_r1_payload_manifest",
+        "recovery_id": RECOVERY_ID, "immutable": True,
+        "terminal_stage_status": "BLOCKED", "payload_count": len(artifacts),
+        "artifacts": artifacts,
+    })
+    _write_or_verify(root / "payload_manifest.json", manifest)
+    inventory = _inventory(root, exclude=("whole_root_inventory.json", "status.json", "completion/e3_r1_completion.pending.json", "completion/e3_r1_completion.json"))
+    inventory_doc = _signed({
+        "schema_version": 1, "document_type": "stage_e_e3_r1_whole_root_inventory",
+        "root": ROOT_PATH, "scope": "all regular non-hidden E3-R1 formal files except self-referential inventory status and completion receipts",
+        **inventory,
+    })
+    _write_or_verify(root / "whole_root_inventory.json", inventory_doc)
+    status = _signed({
+        "schema_version": 1, "document_type": "stage_e_e3_r1_status",
+        "stage_id": "E3-R1", "recovery_id": RECOVERY_ID,
+        "status": "BLOCKED", "complete": False, "terminal": True,
+        "immutable": True, "e3_v1_status_preserved": "FAIL",
+        "package_completeness": "BLOCKED", "workflow_integrity": "PASS",
+        "scientific_validity": "NOT_EVALUATED", "pilot_scientific_validity": "PASS",
+        "cost_status": "FAIL_COST", "actual_cost": actual,
+        "projected_total": gate["projected_total"],
+        "block_reason": "PROJECTED_FULL_CAMPAIGN_BUDGET_EXCEEDS_FROZEN_E3_LIMITS",
+        "bulk_authorized": False, "bulk_started": False,
+        "e4_authorized": False, "e4_started": False, "stage_f_started": False,
+        "whole_root_inventory": {"path": "whole_root_inventory.json", "file_sha256": _sha_file(root / "whole_root_inventory.json"), "canonical_digest": inventory_doc["canonical_digest"], "file_count": inventory["file_count"], "total_bytes": inventory["total_bytes"]},
+    })
+    _write_or_verify(root / "status.json", status)
+    pending, _ = _strict_json(repo / COMPLETION_PENDING_PATH, "E3-R1 pending completion")
+    completion = _signed({
+        "schema_version": 1, "document_type": "stage_e_e3_r1_terminal_completion",
+        "stage_id": "E3-R1", "recovery_id": RECOVERY_ID, "status": "BLOCKED",
+        "started_at": pending["started_at"], "completed_at": _now(),
+        "e3_v1": {"status": "FAIL", "completion_canonical_digest": E3_V1_COMPLETION_DIGEST, "inventory_canonical_digest": E3_V1_INVENTORY_DIGEST, "inherited_attempts": 516, "modified": False},
+        "union": {"expected_new_compute_units": 3000, "e3_v1_inherited": 516, "e3_r1_new": 12, "valid_terminal": 528, "missing": 2472, "pilot_valid": 12, "pilot_nns_converged": 6},
+        "package_completeness": "BLOCKED", "workflow_integrity": "PASS",
+        "scientific_validity": "NOT_EVALUATED", "cost_status": "FAIL_COST",
+        "actual_cost": actual, "source_validation": {
+            "validation_report": _record(repo, REPORT_ROOT_PATH + "/validation_report.json"),
+            "test_report": _record(repo, RECOVERY_TEST_REPORT_PATH),
+            "false_pass_audit": _record(repo, REPORT_ROOT_PATH + "/false_pass_audit.json"),
+            "payload_manifest": _record(repo, ROOT_PATH + "/payload_manifest.json"),
+            "status": _record(repo, ROOT_PATH + "/status.json"),
+            "whole_root_inventory": _record(repo, ROOT_PATH + "/whole_root_inventory.json"),
+            "pilot_gate": _record(repo, PILOT_GATE_PATH),
+        },
+        "next_authorization": "NONE", "e4_started": False,
+    })
+    schema, _ = _strict_json(repo / COMPLETION_SCHEMA_PATH, "E3-R1 completion schema")
+    errors = list(Draft202012Validator(schema).iter_errors(completion))
+    if errors:
+        raise StageEE3R1Error(f"E3-R1 blocked completion schema failure: {errors[0].message}")
+    temporary = (repo / COMPLETION_PENDING_PATH).with_name(".e3-r1-completion-blocked.tmp")
+    _write_new_json(temporary, completion)
+    os.replace(temporary, repo / COMPLETION_PENDING_PATH)
+    os.replace(repo / COMPLETION_PENDING_PATH, repo / COMPLETION_PATH)
+    return validate_blocked_completion(repo)
+
+
+def validate_blocked_completion(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
+    repo = Path(repo_root).resolve()
+    completion, _ = _strict_json(repo / COMPLETION_PATH, "E3-R1 blocked completion")
+    _validate_signed(completion, "E3-R1 blocked completion")
+    schema, _ = _strict_json(repo / COMPLETION_SCHEMA_PATH, "E3-R1 completion schema")
+    if list(Draft202012Validator(schema).iter_errors(completion)):
+        raise StageEE3R1Error("E3-R1 blocked completion schema failed")
+    if completion.get("status") != "BLOCKED" or completion.get("next_authorization") != "NONE" or completion.get("e4_started") is not False:
+        raise StageEE3R1Error("E3-R1 blocked authorization boundary failed")
+    validate_e3_v1(repo)
+    gate, _ = _strict_json(repo / PILOT_GATE_PATH, "E3-R1 pilot gate")
+    _validate_signed(gate, "E3-R1 pilot gate")
+    if gate.get("status") != "FAIL" or gate.get("projected_budget_status") != "FAIL" or (repo / BULK_AUTH_PATH).exists():
+        raise StageEE3R1Error("E3-R1 blocked pilot/bulk boundary drifted")
+    observed = _r1_attempt_inventory(repo)
+    if len(observed) != 12 or {item[0]["selection_order"] for item in observed} != set(PILOT_ORDERS):
+        raise StageEE3R1Error("E3-R1 blocked attempt coverage drifted")
+    status, _ = _strict_json(repo / ROOT_PATH / "status.json", "E3-R1 blocked status")
+    inventory, _ = _strict_json(repo / ROOT_PATH / "whole_root_inventory.json", "E3-R1 blocked inventory")
+    for value, name in ((status, "status"), (inventory, "inventory")):
+        _validate_signed(value, f"E3-R1 blocked {name}")
+    rebuilt = _inventory(repo / ROOT_PATH, exclude=("whole_root_inventory.json", "status.json", "completion/e3_r1_completion.pending.json", "completion/e3_r1_completion.json"))
+    if any(inventory[key] != rebuilt[key] for key in ("files", "file_count", "total_bytes", "canonical_digest")):
+        raise StageEE3R1Error("E3-R1 blocked root inventory drifted")
+    if status.get("status") != "BLOCKED" or status.get("bulk_started") is not False or status.get("e4_authorized") is not False or status.get("e4_started") is not False:
+        raise StageEE3R1Error("E3-R1 blocked status drifted")
+    for record in completion["source_validation"].values():
+        if record != _record(repo, record["path"]):
+            raise StageEE3R1Error(f"E3-R1 blocked completion binding drifted: {record['path']}")
+    return {
+        "status": "BLOCKED", "reason": status["block_reason"],
+        "pilot_valid_units": 12, "pilot_nns_converged": 6,
+        "inherited_attempts": 516, "new_attempts": 12,
+        "missing_attempts": 2472, "actual_cost": completion["actual_cost"],
+        "projected_total": status["projected_total"],
+        "next_authorization": "NONE", "e4_started": False,
+    }
+
+
 def _main() -> int:
     parser = argparse.ArgumentParser(prog="python -m vitnns.stage_e_e3_r1")
     sub = parser.add_subparsers(dest="command", required=True)
-    for name in ("verify-preconditions", "initialize", "validate-initialized", "evaluate-pilot", "validate-outputs", "finalize", "validate-completion"):
+    for name in ("verify-preconditions", "initialize", "validate-initialized", "evaluate-pilot", "validate-outputs", "finalize", "finalize-blocked", "validate-completion"):
         child = sub.add_parser(name)
         child.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     tests = sub.add_parser("record-tests")
@@ -1631,6 +1786,8 @@ def _main() -> int:
         value = {"status": "PASS", "method_rows": len(output["method_rows"]), "paired_rows": len(output["pair_rows"]), "actual_cost": output["actual_cost"]}
     elif args.command == "finalize":
         value = finalize(args.repo_root)
+    elif args.command == "finalize-blocked":
+        value = finalize_blocked(args.repo_root)
     else:
         value = validate_completion(args.repo_root)
     print(json.dumps(value, indent=2, sort_keys=True, allow_nan=False))
