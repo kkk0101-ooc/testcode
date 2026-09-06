@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "document_type": "stage_e_e3_post_completion_validation",
+  "stage_id": "E3",
+  "status": "FAIL",
+  "validated_at": "2026-09-06T20:03:03+08:00",
+  "terminal_receipt_status": "FAIL",
+  "completion_file_sha256": "75355b40fe9df19ae8eedd10ef96bacf0f2eab49989894940350790a0a57b4bd",
+  "completion_canonical_digest": "91e76bca8d36173f5fae076159e5e09934ef3c25a902d22bc721787108d82011",
+  "whole_root_inventory_canonical_digest": "8bf58c71154f88f38d5f213a96d031f061511ecd5b64560da63b5d553fec2671",
+  "commands": [
+    {"command": "PYTHONPATH=src CUDA_VISIBLE_DEVICES='' ../.conda/envs/vitnns/bin/python -m pytest -q tests/test_stage_e_e3.py tests/test_stage_e_e2.py tests/test_stage_e_e1.py tests/test_stage_e_e0.py tests/test_stage_c_fidelity.py tests/test_stage_d_scientific.py tests/test_stage_d_runtime.py", "status": "PASS", "passed": 157, "failed": 0},
+    {"command": "PYTHONPATH=src CUDA_VISIBLE_DEVICES='' ../.conda/envs/vitnns/bin/python -m pytest -q tests/test_stage_e_e3.py", "status": "PASS", "passed": 22, "failed": 0},
+    {"command": "PYTHONPATH=src CUDA_VISIBLE_DEVICES='' ../.conda/envs/vitnns/bin/python -m vitnns.stage_e_e3 validate-completion", "status": "PASS_VALIDATED_TERMINAL_FAIL", "valid_terminal_attempts": 516, "expected_new_attempts": 3000, "next_authorization": "NONE", "e4_started": false},
+    {"command": "PYTHONPATH=src CUDA_VISIBLE_DEVICES='' ../.conda/envs/vitnns/bin/python -m vitnns.stage_e_e2 validate-completion", "status": "PASS", "completion_canonical_digest": "f40d1475cf1f55fbf8292db55b14ee15e76e15d392603c0ebe59f4f2fd3370fd"},
+    {"command": "PYTHONPATH=src CUDA_VISIBLE_DEVICES='' ../.conda/envs/vitnns/bin/python -m vitnns.stage_e_e1 validate-completion", "status": "PASS", "completion_canonical_digest": "b5be6be82ab166df89ebbd9ed8be50fddf37ebfc14a4294a2ed5272ab9b554fa"},
+    {"command": "PYTHONPATH=src CUDA_VISIBLE_DEVICES='' ../.conda/envs/vitnns/bin/python -m vitnns.stage_e_e0 validate-contracts", "status": "PASS"},
+    {"command": "PYTHONPATH=src CUDA_VISIBLE_DEVICES='' ../.conda/envs/vitnns/bin/python -m vitnns.stage_e_e0 validate-upstream", "status": "PASS", "d9_inventory": "76d7d532049a5c90a09c74ba56b019042d7f2f0174ccb439bd8f67713514cc5a", "d10_inventory": "b72d36430d149598ccd9cfd8dd586297e7231be29e61b44309e9971087e46535"},
+    {"command": "PYTHONPATH=src ../.conda/envs/vitnns/bin/python -m py_compile src/vitnns/stage_e_e3.py tests/test_stage_e_e3.py", "status": "PASS"},
+    {"command": "Draft202012Validator.check_schema for E3 and shared completion schemas", "status": "PASS"},
+    {"command": "git diff --check", "status": "PASS"}
+  ],
+  "scientific_failure": {
+    "type": "StageCValuePathConvergenceError",
+    "message": "head-direction Value-path IG did not converge on the complete frozen schedule",
+    "failed_image_selection_orders": [61, 72],
+    "retry_authorized": false
+  },
+  "published_scientific_tables": false,
+  "reason_tables_not_published": "Only 86 of 500 image groups had complete six-unit E3 payloads; partial descriptive summaries are forbidden.",
+  "protected_upstream_unchanged": true,
+  "false_pass_audit": "PASS",
+  "e4_authorized": false,
+  "e4_started": false,
+  "stage_f_started": false,
+  "git_commit_created": false,
+  "archive_ref_created": false,
+  "push_performed": false,
+  "canonical_digest": "eaf120d7fc86d265e076982f5859fb1333fa98504b214af957c1639cc28e60d8"
+}

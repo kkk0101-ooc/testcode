@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vitnns.local/schemas/stage_e_e3.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "document_type", "stage_id", "canonical_digest", "upstream", "scope", "scientific_contract", "attempt_policy", "budget", "execution", "authorization"],
+  "properties": {
+    "$schema": {"const": "stage_e_e3.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_e_e3_frozen_contract"},
+    "stage_id": {"const": "E3"},
+    "canonical_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "upstream": {"type": "object", "additionalProperties": false, "required": ["e2_completion_ref", "e2_completion_commit", "e2_superseding_completion_path", "e2_superseding_completion_sha256", "e2_superseding_completion_canonical_digest", "e2_superseding_status_canonical_digest", "e2_superseding_inventory_canonical_digest", "e2_original_blocked_completion_canonical_digest", "e2_owner_waiver_canonical_digest", "e1_completion_canonical_digest", "e0_completion_canonical_digest", "d9_inventory_canonical_digest", "d10_inventory_canonical_digest"], "properties": {
+      "e2_completion_ref": {"const": "refs/archive/stage-e-e2-completion"}, "e2_completion_commit": {"const": "e93b0d1b796d82ea6d7df84b07fd61d4b98c76c2"}, "e2_superseding_completion_path": {"type": "string"}, "e2_superseding_completion_sha256": {"$ref": "#/$defs/sha256"}, "e2_superseding_completion_canonical_digest": {"$ref": "#/$defs/sha256"}, "e2_superseding_status_canonical_digest": {"$ref": "#/$defs/sha256"}, "e2_superseding_inventory_canonical_digest": {"$ref": "#/$defs/sha256"}, "e2_original_blocked_completion_canonical_digest": {"$ref": "#/$defs/sha256"}, "e2_owner_waiver_canonical_digest": {"$ref": "#/$defs/sha256"}, "e1_completion_canonical_digest": {"$ref": "#/$defs/sha256"}, "e0_completion_canonical_digest": {"$ref": "#/$defs/sha256"}, "d9_inventory_canonical_digest": {"$ref": "#/$defs/sha256"}, "d10_inventory_canonical_digest": {"$ref": "#/$defs/sha256"}
+    }},
+    "scope": {"type": "object", "additionalProperties": false, "required": ["cohort", "sample_count", "selection_order", "coordinates", "methods", "strata", "stratum_counts", "expected_new_units", "expected_method_rows", "expected_paired_rows", "expected_summary_cells"], "properties": {
+      "cohort": {"const": "stage_d_fidelity_v1_500"}, "sample_count": {"const": 500}, "selection_order": {"const": "contiguous_unique_0_through_499"}, "coordinates": {"type": "array", "minItems": 4, "maxItems": 4}, "methods": {"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true}, "strata": {"const": ["overall", "correct", "misclassified"]}, "stratum_counts": {"const": {"overall": 500, "correct": 418, "misclassified": 82}}, "expected_new_units": {"const": 3000}, "expected_method_rows": {"const": 4000}, "expected_paired_rows": {"const": 2000}, "expected_summary_cells": {"const": 12}
+    }},
+    "scientific_contract": {"type": "object"},
+    "attempt_policy": {"type": "object"},
+    "budget": {"const": {"gpu_hours_max": 8.0, "cpu_hours_max": 16.0, "retained_bytes_max": 12884901888, "e2_waiver_applies": false}},
+    "execution": {"const": {"renders_png": false, "renders_pdf": false, "renders_svg": false, "manual_case_selection": false, "primary_recompute": false, "e4_started": false, "stage_f_started": false}},
+    "authorization": {"const": {"requires": "E2_SUPERSEDING_PASS_E3_ONLY", "current_stage": "E3_ONLY", "on_pass": "E4_ONLY", "e4_started": false, "stage_f_started": false}}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}
