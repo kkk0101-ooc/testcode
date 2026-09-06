@@ -75,6 +75,14 @@ def test_typed_counts_never_erase_failed_or_na() -> None:
         r4._typed_counts([{"validity_status": "DROPPED"}])
 
 
+def test_real_primary_anchor_accepts_bound_d9_aggregate_shape() -> None:
+    plan = r4._v1_plan(REPO_ROOT)
+    methods, pairs = r4.e3._primary_method_rows(REPO_ROOT, plan)
+    assert len(methods) == 1000
+    assert len(pairs) == 500
+    assert all(row["validity_status"] == "VALID" for row in methods + pairs)
+
+
 def test_completion_requires_mixed_validity_and_disclosure() -> None:
     schema = json.loads((REPO_ROOT / r4.COMPLETION_SCHEMA_PATH).read_text())
     assert schema["properties"]["scientific_validity"]["const"] == "MIXED"

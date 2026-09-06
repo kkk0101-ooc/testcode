@@ -918,7 +918,17 @@ def _primary_method_rows(repo: Path, plan: Mapping[str, Any]) -> tuple[list[dict
             binding = group["primary_anchor"]["sources"][method]
             source_row = source_index[(group["sample_id"], method)]; attempt = e1._source_attempt(repo, source_row); result, raw = _strict_json(attempt / "L0/result.json", "D9 primary result")
             if _sha(raw) != binding["source_result_sha256"] or result.get("method_id") != method or result.get("status") != "OK": raise StageEE3Error("D9 primary source result binding failed")
-            aggregates = {row["direction"]: row for row in result.get("fidelity_aggregates", [])}
+            aggregates = {}
+            for aggregate in result.get("fidelity_aggregates", []):
+                direction = aggregate.get("direction")
+                if direction is None:
+                    curve_directions = {row.get("direction") for row in aggregate.get("curves", [])}
+                    if len(curve_directions) != 1:
+                        raise StageEE3Error("D9 primary aggregate direction is absent or ambiguous")
+                    direction = next(iter(curve_directions))
+                if direction in aggregates:
+                    raise StageEE3Error("D9 primary aggregate direction is duplicated")
+                aggregates[direction] = aggregate
             if set(aggregates) != {"insertion", "deletion"}: raise StageEE3Error("D9 primary aggregate coverage failed")
             prefix = "nns" if method == NNS_METHOD else "matched"
             if aggregates["insertion"]["auc_mean"] != source[f"{prefix}_insertion_auc"] or aggregates["deletion"]["auc_mean"] != source[f"{prefix}_deletion_auc"]:

@@ -39,6 +39,7 @@ AUTH_PATH = ROOT_PATH + "/control/execution_authorization.json"
 COMPLETION_PENDING_PATH = ROOT_PATH + "/completion/e3_r4_completion.pending.json"
 COMPLETION_PATH = ROOT_PATH + "/completion/e3_r4_completion.json"
 TEST_REPORT_PATH = REPORT_ROOT_PATH + "/pre_execution_test_results.json"
+POST_EXECUTION_TEST_REPORT_PATH = REPORT_ROOT_PATH + "/post_execution_validation_test_results.json"
 R3_TERMINATION_PATH = REPORT_ROOT_PATH + "/e3_r3_pilot_termination_event.json"
 
 EXPECTED_CONFIG_DIGEST = "3f1d4efdb980985432692e7040ca06c48a084748054bf3081465cb65fd7343d0"
@@ -311,6 +312,22 @@ def record_tests(
         "command": command, "passed": passed, "failed": failed, "e4_started": False,
     })
     _write_or_verify(Path(repo_root).resolve() / TEST_REPORT_PATH, report)
+    return report
+
+
+def record_post_execution_tests(
+    repo_root: Path | str = REPO_ROOT, *, passed: int, failed: int, command: str,
+) -> dict[str, Any]:
+    if type(passed) is not int or passed <= 0 or failed != 0 or not command.strip():
+        raise StageEE3R4Error("only a real zero-failure post-execution test run can be recorded")
+    report = _signed({
+        "schema_version": 1, "document_type": "stage_e_e3_r4_post_execution_validation_test_results",
+        "recovery_id": RECOVERY_ID, "status": "PASS", "recorded_at": _now(),
+        "command": command, "passed": passed, "failed": failed,
+        "scientific_attempts_modified_or_rerun": False, "e4_started": False,
+        "validator_correction": {"scope": "READ_ONLY_D9_PRIMARY_AGGREGATE_PARSER", "before": "required_redundant_top_level_direction", "after": "derive_unique_direction_from_five_bound_curves_when_top_level_field_is_absent", "source_results_modified": False, "e3_r4_terminal_attempts_modified": False},
+    })
+    _write_or_verify(Path(repo_root).resolve() / POST_EXECUTION_TEST_REPORT_PATH, report)
     return report
 
 
@@ -651,7 +668,7 @@ def _actual_cost(repo: Path) -> dict[str, Any]:
         ROOT_PATH + "/control", ROOT_PATH + "/units", ROOT_PATH + "/telemetry",
     )
     retained = sum(_inventory(repo / path)["total_bytes"] for path in stable_retained_paths)
-    retained += sum((repo / path).stat().st_size for path in (TEST_REPORT_PATH, R3_TERMINATION_PATH))
+    retained += sum((repo / path).stat().st_size for path in (TEST_REPORT_PATH, POST_EXECUTION_TEST_REPORT_PATH, R3_TERMINATION_PATH))
     return {
         "e3_v1_r1_r2_gpu_hours": upstream["gpu_hours"], "e3_r3_interrupted_gpu_hours": R3_CHARGED_SECONDS / 3600.0, "e3_r4_gpu_hours": r4_gpu,
         "gpu_hours": upstream["gpu_hours"] + R3_CHARGED_SECONDS / 3600.0 + r4_gpu,
@@ -749,6 +766,9 @@ def finalize(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
     _write_or_verify(repo / REPORT_ROOT_PATH / "false_pass_audit.json", false_audit)
     tests, _ = _strict_json(repo / TEST_REPORT_PATH, "E3-R4 tests"); _validate_signed(tests, "E3-R4 tests")
     if tests.get("status") != "PASS" or tests.get("failed") != 0: raise StageEE3R4Error("E3-R4 tests are not PASS")
+    post_tests, _ = _strict_json(repo / POST_EXECUTION_TEST_REPORT_PATH, "E3-R4 post-execution tests"); _validate_signed(post_tests, "E3-R4 post-execution tests")
+    if post_tests.get("status") != "PASS" or post_tests.get("failed") != 0 or post_tests.get("scientific_attempts_modified_or_rerun") is not False:
+        raise StageEE3R4Error("E3-R4 post-execution tests are not PASS")
     validation = _signed({"schema_version": 1, "document_type": "stage_e_e3_r4_source_validation", "stage_id": "E3-R4", "recovery_id": RECOVERY_ID, "status": "PASS", "validated_at": _now(), "checks": {"historical_receipts_and_attempts_preserved": "PASS", "r3_interrupted_without_terminal_payload": "PASS", "origin_union": "PASS_516_12_636_VALID_1_FAILED_1835_NEW", "union_3000_unique_typed_terminal": "PASS", "order_117_failure_preserved": "PASS", "method_rows": "PASS_4000_WITH_TYPED_STATUS", "paired_rows": "PASS_2000_WITH_TYPED_STATUS", "image_table": "PASS_500_COMPLETE", "summary_population": "PASS_VALID_ONLY_WITH_TYPED_COUNTS", "scientific_contract_unchanged": "PASS", "cost_recorded_not_gated": "PASS", "e4_not_started": "PASS"}, "scientific_validity": "MIXED", "typed_terminal_counts": outputs["attempt_counts"], "summary_canonical_digest": outputs["summary"]["canonical_digest"], "false_pass_audit_canonical_digest": false_audit["canonical_digest"]})
     _write_or_verify(repo / REPORT_ROOT_PATH / "validation_report.json", validation)
     artifacts = []
@@ -764,7 +784,7 @@ def finalize(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
     status = _signed({"schema_version": 1, "document_type": "stage_e_e3_r4_status", "stage_id": "E3-R4", "recovery_id": RECOVERY_ID, "status": "PASS", "complete": True, "terminal": True, "immutable": True, "historical_statuses_preserved": {"E3": "FAIL", "E3-R1": "BLOCKED", "E3-R2": "FAIL", "E3-R3": "PENDING_INTERRUPTED_WITHOUT_TERMINAL_PILOT_PAYLOAD"}, "package_completeness": "PASS", "workflow_integrity": "PASS", "scientific_validity": "MIXED", "typed_terminal_counts": outputs["attempt_counts"], "cost_status": "RECORDED_NOT_A_COMPLETION_GATE", "actual_cost": cost, "e4_authorized": True, "e4_disclosure_required": True, "e4_started": False, "stage_f_started": False, "whole_root_inventory": {"path": "whole_root_inventory.json", "file_sha256": _sha_file(root / "whole_root_inventory.json"), "canonical_digest": inventory_doc["canonical_digest"], "file_count": inventory["file_count"], "total_bytes": inventory["total_bytes"]}})
     _write_or_verify(root / "status.json", status)
     pending, _ = _strict_json(repo / COMPLETION_PENDING_PATH, "E3-R4 pending")
-    completion = _signed({"schema_version": 1, "document_type": "stage_e_e3_r4_terminal_completion", "stage_id": "E3-R4", "recovery_id": RECOVERY_ID, "status": "PASS", "started_at": pending["started_at"], "completed_at": _now(), "historical_statuses": {"E3": "FAIL", "E3-R1": "BLOCKED", "E3-R2": "FAIL", "E3-R3": "PENDING_INTERRUPTED_WITHOUT_TERMINAL_PILOT_PAYLOAD"}, "union": {"expected_new_compute_units": 3000, "e3_v1_inherited": 516, "e3_r1_inherited": 12, "e3_r2_inherited_valid": 636, "e3_r2_inherited_failed": 1, "e3_r4_new": 1835, "terminal_counts": outputs["attempt_counts"], "method_rows": 4000, "paired_rows": 2000, "image_rows": 500, "summary_cells": 12}, "package_completeness": "PASS", "workflow_integrity": "PASS", "scientific_validity": "MIXED", "cost_status": "RECORDED_NOT_A_COMPLETION_GATE", "actual_cost": cost, "source_validation": {"validation_report": _record(repo, REPORT_ROOT_PATH + "/validation_report.json"), "test_report": _record(repo, TEST_REPORT_PATH), "false_pass_audit": _record(repo, REPORT_ROOT_PATH + "/false_pass_audit.json"), "r3_termination_event": _record(repo, R3_TERMINATION_PATH), "payload_manifest": _record(repo, ROOT_PATH + "/payload_manifest.json"), "status": _record(repo, ROOT_PATH + "/status.json"), "whole_root_inventory": _record(repo, ROOT_PATH + "/whole_root_inventory.json")}, "next_authorization": "E4_ONLY_WITH_MIXED_VALIDITY_DISCLOSURE", "e4_disclosure_required": True, "e4_started": False})
+    completion = _signed({"schema_version": 1, "document_type": "stage_e_e3_r4_terminal_completion", "stage_id": "E3-R4", "recovery_id": RECOVERY_ID, "status": "PASS", "started_at": pending["started_at"], "completed_at": _now(), "historical_statuses": {"E3": "FAIL", "E3-R1": "BLOCKED", "E3-R2": "FAIL", "E3-R3": "PENDING_INTERRUPTED_WITHOUT_TERMINAL_PILOT_PAYLOAD"}, "union": {"expected_new_compute_units": 3000, "e3_v1_inherited": 516, "e3_r1_inherited": 12, "e3_r2_inherited_valid": 636, "e3_r2_inherited_failed": 1, "e3_r4_new": 1835, "terminal_counts": outputs["attempt_counts"], "method_rows": 4000, "paired_rows": 2000, "image_rows": 500, "summary_cells": 12}, "package_completeness": "PASS", "workflow_integrity": "PASS", "scientific_validity": "MIXED", "cost_status": "RECORDED_NOT_A_COMPLETION_GATE", "actual_cost": cost, "source_validation": {"validation_report": _record(repo, REPORT_ROOT_PATH + "/validation_report.json"), "test_report": _record(repo, TEST_REPORT_PATH), "post_execution_test_report": _record(repo, POST_EXECUTION_TEST_REPORT_PATH), "false_pass_audit": _record(repo, REPORT_ROOT_PATH + "/false_pass_audit.json"), "r3_termination_event": _record(repo, R3_TERMINATION_PATH), "payload_manifest": _record(repo, ROOT_PATH + "/payload_manifest.json"), "status": _record(repo, ROOT_PATH + "/status.json"), "whole_root_inventory": _record(repo, ROOT_PATH + "/whole_root_inventory.json")}, "next_authorization": "E4_ONLY_WITH_MIXED_VALIDITY_DISCLOSURE", "e4_disclosure_required": True, "e4_started": False})
     schema, _ = _strict_json(repo / COMPLETION_SCHEMA_PATH, "E3-R4 completion schema")
     errors = list(Draft202012Validator(schema).iter_errors(completion))
     if errors: raise StageEE3R4Error(f"E3-R4 completion schema failure: {errors[0].message}")
@@ -807,12 +827,14 @@ def _main() -> int:
     for name in ("verify-preconditions", "initialize", "validate-initialized", "validate-outputs", "finalize", "validate-completion"):
         child = sub.add_parser(name); child.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     tests = sub.add_parser("record-tests"); tests.add_argument("--repo-root", type=Path, default=REPO_ROOT); tests.add_argument("--passed", type=int, required=True); tests.add_argument("--failed", type=int, required=True); tests.add_argument("--test-command", required=True)
+    post_tests = sub.add_parser("record-post-execution-tests"); post_tests.add_argument("--repo-root", type=Path, default=REPO_ROOT); post_tests.add_argument("--passed", type=int, required=True); post_tests.add_argument("--failed", type=int, required=True); post_tests.add_argument("--test-command", required=True)
     run = sub.add_parser("run-shard"); run.add_argument("--repo-root", type=Path, default=REPO_ROOT); run.add_argument("--shard-id", type=int, required=True); run.add_argument("--shard-count", type=int, required=True); run.add_argument("--device", default="cuda:0")
     args = parser.parse_args()
     if args.command == "verify-preconditions": value = verify_preconditions(args.repo_root)
     elif args.command == "initialize": value = initialize(args.repo_root)
     elif args.command == "validate-initialized": value = validate_initialized(args.repo_root)
     elif args.command == "record-tests": value = record_tests(args.repo_root, passed=args.passed, failed=args.failed, command=args.test_command)
+    elif args.command == "record-post-execution-tests": value = record_post_execution_tests(args.repo_root, passed=args.passed, failed=args.failed, command=args.test_command)
     elif args.command == "run-shard": value = run_shard(args.repo_root, shard_id=args.shard_id, shard_count=args.shard_count, device=args.device)
     elif args.command == "validate-outputs":
         output = validate_outputs(args.repo_root); value = {"status": "PASS", "terminal_counts": output["attempt_counts"], "method_rows": len(output["method_rows"]), "paired_rows": len(output["pair_rows"]), "actual_cost": output["actual_cost"]}
