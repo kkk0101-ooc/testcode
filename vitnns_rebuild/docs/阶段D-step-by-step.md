@@ -2,11 +2,11 @@
 
 > 创建日期：2026-08-25。
 > 文档性质：阶段 D 的路线图、任务状态表、数据访问边界和跨对话追加式交接日志。
-> 当前状态：recovery-v2 已完成 canonical salvage C8、recovery C9、recovery C10 和 D0→D6。D7-R4 是 current base execution gate PASS。D8.0 首次 root 因缺少第 0 张 reserve JPEG 而 `SUBTASK_BLOCKED` 并保留；fresh-root rebind 后 `formal_r2` 完成 D8.0 `SUBTASK_PASS`。D8-S00、D8-S01、D8-S02、D8-S03、D8-S04、D8-S05、D8-S06 与 D8-S07 均已在 `formal_r2` 完成并通过 control/receipt source-recompute：累计 500/500 image groups、1,000/1,000 units terminal succeeded。S07 rolling producer `3fdf2e1f...` 与 authority-only commit `c58f8ba4...` 精确绑定 S06 receipt 和 generation-2642 ledger；S07 完成后的权威 ledger 为 generation 3016。D9、D10 均未启动，父 D8 shard execution 已完成但 D8 completion sealing 仍需单独授权执行，analysis authorization 仍为 `NOT_EVALUATED`。
+> 当前状态：recovery-v2 已完成 canonical salvage C8、recovery C9、recovery C10 和 D0→D6。D7-R4 是 current base execution gate PASS。D8.0 首次 root 因缺少第 0 张 reserve JPEG 而 `SUBTASK_BLOCKED` 并保留；fresh-root rebind 后 `formal_r2` 完成 D8.0 `SUBTASK_PASS`。D8-S00、D8-S01、D8-S02、D8-S03、D8-S04、D8-S05、D8-S06 与 D8-S07 均已在 `formal_r2` 完成并通过 control/receipt source-recompute：累计 500/500 image groups、1,000/1,000 units terminal succeeded。D8 campaign completion sealing 已独立核验 S00-S07 receipt/completion 和 generation-3016 final checkpoint，并以 `PASS` 封存 D8 raw execution completeness。D9、D10 均未启动，scientific validity/effect/cost 均未评估，analysis 未授权。
 > Recovery override（2026-09-04）：[`recovery_stage_d_d0_d6_amendment_20260904.md`](recovery_stage_d_d0_d6_amendment_20260904.md) 与 `config/stage_d_recovery_v2_binding_20260904.json` 是当前 pre-reserve identity overlay；历史 D0–D2 PASS 仅为 stale history，历史 D3–D6 PASS 仅为 synthetic/implementation evidence。
-> 当前 next task：`D8-COMPLETION-SEALING`（或在单独明确授权下准备 D9）。只能封存 D8 shard execution completion record；不得重跑 D8-S00–S07，不得进入 D10、analysis 或 paper export。
+> 当前 next task：`D9`。只能执行 CPU-only formal-root finalize、独立 source-recomputing validation、QC、scientific validity、audit repeatability 和 actual cost audit；不得执行 D10 aggregate/statistics/decision 或 paper export。
 > D7 勘误：首个 pre-execution authority `0036dd8d...` 因 strict guard 发现通用 model loader 会对历史 Stage A calibration JPEG 做不必要的 `lstat` 而被 supersede；它未访问 Stage D reserve、未运行 inference、未创建 D8 root，不得用于 launch。D7-v2 producer/authority `e337f8ca...` / `fe9a7f29...` 已重新签发并通过 strict guard。
-> 当前权威交接：[`recovery_stage_d_d7_r4_handoff_20260904.md`](recovery_stage_d_d7_r4_handoff_20260904.md) 和 `reports/stage_d_d7_recovery_v2_20260904_r4/d7_to_future_d8_handoff.json`；旧 D7/R3 handoff 只作历史审计。
+> 当前权威交接：`reports/stage_d_d8_recovery_v2_20260904_r4/d8_campaign_completion.json` 和本文最新 D8 campaign completion record；[`recovery_stage_d_d7_r4_handoff_20260904.md`](recovery_stage_d_d7_r4_handoff_20260904.md) 与 `reports/stage_d_d7_recovery_v2_20260904_r4/d7_to_future_d8_handoff.json` 是 D7 上游 authority chain；旧 D7/R3 handoff 只作历史审计。
 > 使用规则：每个新对话先读文首状态、第 7 节执行协议、第 9 节最新权威记录和当前提示词，再读提示词列出的章节与上游证据；一次只执行一个 `D_i` 或一个明确编号的 `D8-Sxx` shard。未更新本文、未追加 completion record、未给出下一任务完整提示词的任务，不算完成。
 > 测试原则：只做与当前任务和实际改动直接相关的必要测试，避免无关、重复或低价值测试。每个测试/验证批次开始前一次性说明测试项目、必要性和预计耗时；只有新增高成本测试或扩大影响面时才补充说明。
 
@@ -216,7 +216,7 @@ D10 建议固定生成以下 machine-readable paper data 和数值图；只有 v
 | D5 | PASS | 实现 finalize 与 source-recomputing validation | synthetic/tampered fixtures only | package/QC 状态 | D4 PASS |
 | D6 | PASS | 实现 aggregation、statistics、decision、paper export | synthetic fixtures only | synthetic decision only | D5 PASS |
 | D7 | PASS | 真实已知样本 smoke、预算、冻结 producer 并签发授权 | Stage C 已知 calibration/audit；禁止 reserve 图像 | `AUTHORIZED_STAGE_D_FIDELITY_SCOPE` 或 BLOCKED | D6 PASS |
-| D8 | IN_PROGRESS（D8.0、D8-S00、D8-S01、D8-S02、D8-S03、D8-S04、D8-S05、D8-S06、D8-S07 `SUBTASK_PASS`；D8 completion sealing next） | 初始化并逐 shard 运行 500 图/1,000 units | 首次允许 reserve 图像、模型和原始结果 | unit terminal state；禁止科学汇总 | D7 PASS |
+| D8 | PASS（D8.0、D8-S00、D8-S01、D8-S02、D8-S03、D8-S04、D8-S05、D8-S06、D8-S07 与 D8 campaign completion sealing 均已完成） | 初始化并逐 shard 运行 500 图/1,000 units | 首次允许 reserve 图像、模型和原始结果 | unit terminal state；禁止科学汇总 | D7 PASS |
 | D9 | NOT_STARTED | 封存并独立验证 formal evidence | D8 root；CPU-only；禁止 JPEG/模型 | evidence/QC/validity readiness | D8 `PASS` 且所有 frozen shards terminal |
 | D10 | NOT_STARTED | 唯一正式统计决策与 paper artifact package | sealed D9 root、C10 reports；CPU-only | Stage D fidelity-scope decision | D9 authorizes analysis |
 
@@ -2071,4 +2071,115 @@ D8.0 只能创建 fresh formal root、durable `ACCESS_STARTED` lifecycle、appen
 4. 更新本文状态和下一任务提示词，commit并使用 SSH_AUTH_SOCK="$(cat /tmp/trae_ssh_auth_sock)" git push origin stage-d-d3-pass，复核 local/tracking/remote SHA、clean status 与 LFS status。
 
 明确禁止：不得读取 effect summary、不得生成 paper artifacts、不得签发 analysis authorization、不得改写 D0-D7 scope 或 C10 历史状态。
+```
+
+### 2026-09-06 08:07 +0800 — D8 campaign completion record
+
+- status: PASS
+- objective_completed: Independently sealed D8 raw execution completeness for `formal_r2` after verifying all D8-S00-S07 shard receipts/completions and the generation-3016 final runtime checkpoint. All 500/500 image groups and 1,000/1,000 units are terminal succeeded. This is not a D9 package-complete, scientific-validity, effect, cost or analysis authorization result.
+- authority_and_scope: D7-R4 execution authority remained valid; D8.0 fresh-root rebind and S00-S07 shard authorities were verified as control-plane execution authorities only. This task issued no new execution, retry or analysis authorization and did not start D9/D10.
+- git_sha_before: `1474b103124c5f68187960e305410e114718a350`
+- git_sha_producer: D8 raw execution was produced under D8.0 rebind producer `4c4dd4af010afdc72e26f10cb8e6519e2448cf40` plus rolling shard producers through R7 `3fdf2e1f30d5038679b4dd47afdabd9eb5d0528a`; this sealing task produced only coordination/report artifacts.
+- git_sha_postprocessor: `59c2c9c852908fc4aeb46078b7a5ce1cbde523da` for S07 control-plane checkpoint reconcile only; no unit was recomputed.
+- git_sha_completion: SELF
+- tree_clean_at_boundaries: start branch `stage-d-d3-pass` was clean with local/tracking/remote and S07 completion archive ref all at `1474b103124c5f68187960e305410e114718a350`. Completion commit and post-push clean state are reported by Git and the final handoff response.
+- upstream_commits_and_refs: D7-R4 producer/ref `d7c88df66f3e55ec31ad4c6ea34a3002ca6d1a4d` / `refs/archive/stage-d-fidelity-v1-d7-r4-producer`; D7-R4 authority/ref `61214b808b75cf804763078479d1b96f7418db32` / `refs/archive/stage-d-fidelity-v1-d7-r4-authority`; D8.0 rebind producer/ref `4c4dd4af010afdc72e26f10cb8e6519e2448cf40` / `refs/archive/stage-d-fidelity-v1-d8-0-rebind-r1-producer`; D8.0 rebind authority/ref `fb27b2526d55861489c19069b3a5665cede757e3` / `refs/archive/stage-d-fidelity-v1-d8-0-rebind-r1-authority`; R7 producer/ref `3fdf2e1f30d5038679b4dd47afdabd9eb5d0528a` / `refs/archive/stage-d-fidelity-v1-d8-continuation-r7-producer`; R7 authority/ref `c58f8ba4f8b2cbba15b08def615f0d3989682b4e` / `refs/archive/stage-d-fidelity-v1-d8-continuation-r7-authority`; S00-S07 completion refs resolve to `ac27c30f1f93e2df1ddd8f8fa02e8b13ea3e980d`, `f22a0942c559d1626b9cc3c4aa50cbd527082923`, `b81f165266d4ab19e9b78c8a4c048d0cde756ddc`, `8f54a3f00ba6815de722b07cd7af35d37daf3830`, `80a92ea77e5d450b3de0fdaa0f6dfae353b289e9`, `62d958c6f70daef97a8a546fbe01a63ade49fbd5`, `0df64dc7314cfc0faa286bb60627f3501b9a065a`, `1474b103124c5f68187960e305410e114718a350`.
+- files_added_or_changed: `src/vitnns/stage_d_d8_completion.py`; `tests/test_stage_d_d8_completion.py`; `reports/stage_d_d8_recovery_v2_20260904_r4/d8_campaign_completion.json`; this document.
+- frozen_inputs_and_sha256: `d8_campaign_completion.json` file SHA-256 `530f9973a62ef87dfa3fb347e63c5f78cfabc0e9d040f37f323cda5b4d53741c`, canonical digest `50fa9276fbd3dcc9684dc0482b1be639cfd59aa111bbfb30ce0aec5b676333c1`; final checkpoint file SHA-256 `d71f331e536359c0bbbb6a513b5eaeac060f53c5c294143c9595b96bce2c0af9`, canonical digest `3c0951e07ef1ed10446188c0ebd56e141a26218962fd147a7ce2f13a5d426fc9`; S00-S07 receipt file/canonical digests match the table in the D8 sealing instruction; S00-S07 completion file/canonical digests match the same table.
+- config_plan_and_canonical_digests: D8.0 rebind authorization canonical `3479f9457aa924fe189591e836e38bb1a65cce8543e3a879477025782659afc9`; D8 plan canonical `5a40051ac17a7bfd6663640b1d2478c69d45eea07d3182653b90d2c7ca760443`; D8 coordinate digest `cc560e2a2d4e1220ccd812c073119a2b679de213f9770358f7decf51824661fb`; D8.0 completion canonical `6bd9569f502a22a5785db4c92ac48cf33e7780c8a39487d6de59ab01f995664f`; access lifecycle/journal/live-assets digests `56b3f3cdb3a72bd72bdaa3f93f15cdb1043f362691a1b24089382862b935cf50` / `293f46d8a1421607a547171b3ed78be21aebab4461c00762fdba4fa68d50ddc8` / `489aa2a9a16e4f84046df8ebdf910a5adf04d9525a1aa901915fe778c6ad1d40`.
+- data_access_statement: This task read only Git refs/status/LFS metadata, tracked JSON reports/configs, formal-root access lifecycle/journal, runtime checkpoint, attempt status/manifest/provenance controls and artifact bytes for SHA-256 binding checks. It did not read JPEGs, construct or load a model, use GPU/CUDA, run D8 shards, run D9 finalize/validate, run D10 aggregate/statistics/decision, read effect summaries, deserialize L0/L1 scientific arrays, compute AUC/`delta_fid`/bootstrap/decision, or generate paper data/figures.
+- artifacts_and_absolute_paths: campaign report `/data01/home/yeziqi.831/nxtrec_wksp/testcode/vitnns_rebuild/reports/stage_d_d8_recovery_v2_20260904_r4/d8_campaign_completion.json`; formal root `/data01/home/yeziqi.831/nxtrec_wksp/testcode/vitnns_rebuild/evidence/stage_d/d8_recovery_v2_20260904/formal_r2`; retained blocked root `/data01/home/yeziqi.831/nxtrec_wksp/testcode/vitnns_rebuild/evidence/stage_d/d8_recovery_v2_20260904/formal`.
+- status_manifest_inventory_hashes: final checkpoint generation `3016`, file SHA-256 `d71f331e536359c0bbbb6a513b5eaeac060f53c5c294143c9595b96bce2c0af9`, canonical digest `3c0951e07ef1ed10446188c0ebd56e141a26218962fd147a7ce2f13a5d426fc9`; access lifecycle file SHA-256 `2e1574ede42eeab5a937d13c9971f4702d87762c1b32fa69b69a58e9e1dc26cb`, canonical digest `56b3f3cdb3a72bd72bdaa3f93f15cdb1043f362691a1b24089382862b935cf50`; no D9 whole-root inventory was created.
+- expected_vs_observed_counts: expected/observed image groups `500/500`; expected/observed units `1,000/1,000`; succeeded `1,000`; scientific failed `0`; retry pending `0`; blocked `0`; active claims `0`; active leases `0`; pending shards `0`; map work items `1,010/1,010`; fidelity curves `10,000/10,000`; curve points `210,000/210,000`; logical work items `211,010/211,010`.
+- tests_reused_from_prior_commit: D7-R4/D8.0/R1-R7 shard authority focused tests and each shard's receipt source-recompute checks are reused as recorded in their completion records. They were not re-run as shard execution.
+- test_plan_announced_before_execution: Announced a CPU-only D8 sealing verification over Git/ref/LFS, D7/D8 authority chain, S00-S07 receipt/completion records, final checkpoint/control/status/manifest/provenance and JSON/self-digest checks; explicitly excluded GPU, model loading, JPEG, D9/D10/finalize/aggregate, effect summaries and paper outputs.
+- tests_executed_this_task: startup Git/ref/LFS checks PASS; D8 campaign helper source-recomputed all shard receipts/completions and final checkpoint controls PASS; `python -m pytest -q tests/test_stage_d_d8_completion.py` -> `2 passed in 3.28s`; `python -m py_compile src/vitnns/stage_d_d8_completion.py tests/test_stage_d_d8_completion.py` PASS; `validate_d8_campaign_completion()` PASS with canonical `50fa9276fbd3dcc9684dc0482b1be639cfd59aa111bbfb30ce0aec5b676333c1`.
+- tests_not_run_and_reason: no full non-GPU suite because the change is a narrow report/helper plus handoff update; no D8 shard rerun, retry, GPU/model/JPEG access, D9 finalize/validate, D10 aggregate/statistics/decision, bootstrap or paper export because all are outside D8 completion sealing.
+- acceptance_results: D8-S00-S07 all `SUBTASK_PASS`; all shards terminal; all receipts and completion records verified; final checkpoint is complete with 500 terminal groups and 1,000 terminal succeeded units; S04 has a retained historical summary-field deviation (`counts.audit_image_groups` stored as `0`, source-recomputed `1`) but source manifests, L2 payload bindings and map/logical work-item totals verify audit evidence retained, so this is not an execution gap.
+- package_complete: not_applicable
+- scientific_validity: not_evaluated
+- analysis_authorized: false
+- budget_results: completed-campaign cost gate not_evaluated; no D8 launch-safety breach recorded in shard completions.
+- paper_data_or_figures_generated: none
+- deviations_or_protocol_amendments: S07 control-plane tail-finalize deviation retained exactly as recorded: worker exited after final terminal attempt publication because checkpoint lifecycle transition was too strict; commit `59c2c9c852908fc4aeb46078b7a5ce1cbde523da` only fixed checkpoint reconcile and group/shard release; no unit was recomputed and no retry attempt was created. S04 receipt summary-field deviation retained without modifying old records.
+- failures_and_retries_retained: initial blocked D8.0 root retained and not reused; no formal unit scientific failures; no retry authorization; no retry attempt; all attempt/failure/resource records retained.
+- known_limitations_and_claim_boundaries: D8 `PASS` means raw execution completeness only. It does not mean scientific validity, fidelity pass, cost pass, analysis authorization, D10 decision, paper result or C10 status change. C10 remains `BLOCKED` / `NO_GO_NOVELTY` / `FAIL_SPATIAL` / `HOLM_BLOCKED_UNDERSPECIFIED` with `downstream_authorized=false`.
+- all_shards_terminal: true
+- all_receipts_verified: true
+- expected_vs_terminal_image_groups/units: `500/500`, `1,000/1,000`
+- scientific_failures_present: false
+- next_task_authorized: true, only for D9
+- authorization_issued_this_task: false
+- execution_authorization_observed_valid: true
+- next_task: D9
+
+#### 下一对话完整提示词
+
+```text
+你在以下仓库工作：
+
+/data01/home/yeziqi.831/nxtrec_wksp/testcode/vitnns_rebuild
+
+当前有效项目只能是 `vitnns_rebuild`。
+
+本次唯一任务：执行 Stage D 的 D9 formal-root finalize and independent validation。D9 必须 CPU-only 封存 `formal_r2`，做独立 source-recomputing validation、QC、scientific validity、audit repeatability 和 actual cost audit。不得执行 D10 aggregate/statistics/decision，不得生成论文效果图或 paper package。
+
+工作目录与开始条件：
+1. branch 必须是 `stage-d-d3-pass`，worktree/index clean。
+2. D8 completion commit/ref 使用本 D8 completion record 的 `SELF` 约定和 archive ref 解析：`refs/archive/stage-d-fidelity-v1-d8-completion`。启动时必须用 `git rev-parse refs/archive/stage-d-fidelity-v1-d8-completion^{commit}` 得到唯一 D8 completion commit，并要求 local HEAD、tracking ref `origin/stage-d-d3-pass`、remote branch `refs/heads/stage-d-d3-pass` 全部等于该 commit。若 ref 缺失、不一致、behind/diverged、dirty 或 LFS 有待提交/待推送对象，D9 必须 BLOCKED，不得 reset、checkout、stash、覆盖或删除文件。
+3. D8 sealing baseline branch/local/tracking/remote SHA before completion was `1474b103124c5f68187960e305410e114718a350`; S07 completion ref `refs/archive/stage-d-fidelity-v1-d8-s07-completion` must still resolve to that SHA.
+4. D8 campaign completion report: `reports/stage_d_d8_recovery_v2_20260904_r4/d8_campaign_completion.json`; file SHA-256 `530f9973a62ef87dfa3fb347e63c5f78cfabc0e9d040f37f323cda5b4d53741c`; canonical digest `50fa9276fbd3dcc9684dc0482b1be639cfd59aa111bbfb30ce0aec5b676333c1`.
+5. Formal root: `/data01/home/yeziqi.831/nxtrec_wksp/testcode/vitnns_rebuild/evidence/stage_d/d8_recovery_v2_20260904/formal_r2`. The initial blocked root `/data01/home/yeziqi.831/nxtrec_wksp/testcode/vitnns_rebuild/evidence/stage_d/d8_recovery_v2_20260904/formal` must remain retained and must not be modified, deleted, reused, spliced or reinterpreted.
+6. Final runtime checkpoint: `evidence/stage_d/d8_recovery_v2_20260904/formal_r2/runtime_checkpoint.json`; generation `3016`; file SHA-256 `d71f331e536359c0bbbb6a513b5eaeac060f53c5c294143c9595b96bce2c0af9`; canonical digest `3c0951e07ef1ed10446188c0ebd56e141a26218962fd147a7ce2f13a5d426fc9`.
+
+必读材料：
+1. `docs/阶段D-step-by-step.md` 文首状态、§5、§6 D8/D9/D10 边界、§7、§8、最新 D8 campaign completion record 和本提示词。
+2. `docs/阶段D_protocol.md` 中 D8 execution completeness、retention/provenance、failure/retry 和 D9 package/validity/cost 边界。
+3. `docs/stage_d_acceptance.md` 中 D8 与 D9 acceptance，以及 package completeness、scientific validity、workflow integrity 的区别。
+4. `reports/stage_d_d8_recovery_v2_20260904_r4/d8_campaign_completion.json`。
+5. D7/D8 authority chain:
+   - D7-R4 producer/ref `d7c88df66f3e55ec31ad4c6ea34a3002ca6d1a4d` / `refs/archive/stage-d-fidelity-v1-d7-r4-producer`
+   - D7-R4 authority/ref `61214b808b75cf804763078479d1b96f7418db32` / `refs/archive/stage-d-fidelity-v1-d7-r4-authority`
+   - D8.0 rebind producer/ref `4c4dd4af010afdc72e26f10cb8e6519e2448cf40` / `refs/archive/stage-d-fidelity-v1-d8-0-rebind-r1-producer`
+   - D8.0 rebind authority/ref `fb27b2526d55861489c19069b3a5665cede757e3` / `refs/archive/stage-d-fidelity-v1-d8-0-rebind-r1-authority`
+   - D8.0 rebind authorization canonical `3479f9457aa924fe189591e836e38bb1a65cce8543e3a879477025782659afc9`
+   - D8 plan canonical `5a40051ac17a7bfd6663640b1d2478c69d45eea07d3182653b90d2c7ca760443`
+   - D8 coordinate digest `cc560e2a2d4e1220ccd812c073119a2b679de213f9770358f7decf51824661fb`
+   - D8.0 completion canonical `6bd9569f502a22a5785db4c92ac48cf33e7780c8a39487d6de59ab01f995664f`
+   - access lifecycle/journal/live-assets digests `56b3f3cdb3a72bd72bdaa3f93f15cdb1043f362691a1b24089382862b935cf50` / `293f46d8a1421607a547171b3ed78be21aebab4461c00762fdba4fa68d50ddc8` / `489aa2a9a16e4f84046df8ebdf910a5adf04d9525a1aa901915fe778c6ad1d40`
+   - R7 producer/ref `3fdf2e1f30d5038679b4dd47afdabd9eb5d0528a` / `refs/archive/stage-d-fidelity-v1-d8-continuation-r7-producer`
+   - R7 authority/ref `c58f8ba4f8b2cbba15b08def615f0d3989682b4e` / `refs/archive/stage-d-fidelity-v1-d8-continuation-r7-authority`
+   - R7 authorization canonical `69fb2d13538cec53a4f6776b75ca19404cecf0183bfced367acaa4360e1594dd`
+   - S07 postprocessor fix commit `59c2c9c852908fc4aeb46078b7a5ce1cbde523da`
+6. S00-S07 receipt/completion chain:
+   - S00 receipt file/canonical `93dd91beb47afa5a788a5ef66821459779c72c1a8fed1992b5700d238e75a942` / `9b4a9b1edb6b69d96db6893dbe051c2a8f6ae3795d4b634b12bd0485555b2827`; completion file/canonical `86e96bb3aea2c25557d0ee49e70f3c7f078258a105afd9054082c4f96f7ddaab` / `e2125ecf983a5c75244e762c0837902b3914279607ca04bd2f2dc00685804d91`
+   - S01 receipt file/canonical `4fa38255e69eca09b9a62db1e2257a9650380d72f4154abe8eca3c2d55699857` / `7178914a8c54824c869be6b67d11cc9a8ec9b3a823727b37dcac4e967a57be7e`; completion file/canonical `9a3599a8bfb5c970d4692ce2c2a56760526ad5a071cb4f02674647cc4f1a2abe` / `62dab22b67904c8e50fc9cb3a6aab9c558d3cbc815aaef3f713125bb44ec4996`
+   - S02 receipt file/canonical `a806eac0adff1c34cf2a587ec1adc5b7d63efefa45c729c5c82a2c0c060ce443` / `f7ebe0c1d474c34a048872d702f9448f69bf357918f45dba734873d61038e4f3`; completion file/canonical `aedb78ecdc563cdfa1c6846248994e4fe7777cbef4d6bea9db99dd5cb0fde566` / `b3cf5dd8f815d21371a19e035de6742e6f8859d7fe798e15ac5c2ea019afc66b`
+   - S03 receipt file/canonical `adea8d7417cf8c5a4ab1f5be428b40cdd127e6a0f704f42bd05a0f014c075be5` / `dbb3ecbc47db9df6f4440f0d71aa3e461a9bc7f2017191b5b9ece9afd3ae930c`; completion file/canonical `7e8661dd6538105c9b003369075092db582f113a22492c598b5704a0cf5e9598` / `d94575872debbf940a046c502971ba8fc47aa19e18933f3f6e88054696770ff5`
+   - S04 receipt file/canonical `8c64ef6060c6328de19d1166787bd9e7806f92bab24f0e2db5595b54a1719a42` / `6f5352892cb737f74216da22ea4eb5fa0a99310c819c6e55d128811900953bbe`; completion file/canonical `a42caed61962110e1d644975f14e6e143d9af327c72ce2cbad8920d2bb9c69cd` / `3e579ae1a93c4d31f24a30fd5593b0fc14e6e256c90ae46a8a25989f87638a72`
+   - S05 receipt file/canonical `947d2bc5332fdad5c0099dcfacc1dd4bc5a49318f51e6e3e5a6d61ab9b94ceee` / `71e83ac5c1697806df54321eaabe097e75e1558975945d80d2d7da49a5d1ac02`; completion file/canonical `e3de9e6b3fbe21869e5c52babcc4cba53663f078194f9d84b7017719e04d777e` / `0cbcd32896c3da8f16b2f4b30b2e8c594c273d17c56b76c21b50218c12ef36e3`
+   - S06 receipt file/canonical `64eaf5faf0b2b9c6399f2fb0d0582b4234258209aeca64d3c22fddf630f988d5` / `aa572fedb7f5ce4fd4fc084768dbd7f1070680660d967c88d56af75ed8e77b19`; completion file/canonical `2b25fadda0d377d46b19e28d39e622b195c8cf5f71c5fbfbfec291c77c0983ab` / `068ebf2bf49fec60286a7cb6a49daf4e58e02015853d10673655a8b02a7178c6`
+   - S07 receipt file/canonical `c536ab4cee9fdf796dec9a497fdbd89de1998404ccd92d81dfd276a79594a18d` / `a0aff53ec63227b9dea5f5b45a940aa295cc6ddfeddbf4e93439faa67ecae809`; completion file/canonical `a85318f9a9721f9748b88c637aea1cf367dd28e2da700b49b4328b97acbb8cf8` / `f853540712d0fbcdb358121af9dade8d2bdc012e0d2c720e58db6954669e9c5f`
+
+必须完成：
+1. CPU-only finalize and validate `formal_r2` from a clean authorized state, producing D9 final evidence/QC/validity/cost records under the D9-owned output location required by the existing implementation. Do not create D10 aggregate/statistics/decision outputs.
+2. Independently source-recompute package completeness, complete 500/1,000 reconciliation, pair bindings, attempt history, retained failure/resource records, audit repeatability, scientific validity conditions and actual cost audit. Keep package completeness, workflow integrity, scientific validity and cost status separate.
+3. Do not read JPEGs, do not construct or load a model, do not use GPU/CUDA, do not run D8 shards, and do not create retry attempts.
+4. Do not calculate aggregate `delta_fid`, median, positive count, bootstrap CI, method ranking or fidelity decision. Do not generate paper data, paper figures, overlays, contact sheets or Stage F display material.
+5. If package completeness and workflow integrity pass, set `analysis_authorized` only according to the D9 scientific-validity and protocol boundary. If `analysis_authorized=true`, write a D10 prompt limited to the allowed D10 path. If `analysis_authorized=false`, write a diagnostic or stop prompt and do not authorize D10.
+6. If any source is tampered, missing, unauthorized, incomplete, unsafe, contains active claims/leases, has ambiguous attempts, or cannot be uniquely interpreted, D9 must be `BLOCKED`; preserve evidence in place, do not auto-fix, do not rerun, and write a precise repair/diagnosis prompt.
+7. Preserve C10 historical status: acceptance `BLOCKED`, primary decision `NO_GO_NOVELTY`, overall spatial `FAIL_SPATIAL`, Holm `HOLM_BLOCKED_UNDERSPECIFIED`, downstream authorized `false`.
+
+明确禁止：
+- 不读取 JPEG、不开模型、不使用 GPU。
+- 不执行 D10 aggregate/statistics/decision，不运行 bootstrap，不作 `PASS_FIDELITY`、`GO_FIDELITY_SCOPE` 或其他 fidelity decision。
+- 不生成论文数据、论文图片、overlay、contact sheet 或“好看案例”。
+- 不修改 D7/D8 frozen protocol、registry、plan、method、target、baseline、threshold 或 shard mapping。
+- 不改写、删除、覆盖或复用首次 blocked root。
+
+测试计划：
+执行前先说明将验证哪些对象、为什么这些检查属于 D9、是否会读取 scientific outcome、预计耗时，并明确不会读 JPEG、不会加载模型、不会用 GPU、不会运行 D10。只运行最小充分 CPU-only finalize/validate、JSON/self-digest、focused tests、`py_compile`（仅修改过的 Python 文件）、`git diff --check`、Git/LFS 状态核验。不要机械运行全量 non-GPU suite，除非 D9 修改共享模块或最小受影响测试出现回归。
+
+完成与交接：
+更新本文 D9 状态并追加完整 D9 completion record。D9 完成后只有 `analysis_authorized=true` 才允许生成 D10 提示词；否则生成精确诊断/修复提示词。commit 并 push `stage-d-d3-pass`，创建/验证 D9 对应 archive ref，最终复核 local/tracking/remote SHA、clean status 和 LFS status。
 ```
