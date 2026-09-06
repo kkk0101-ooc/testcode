@@ -1,0 +1,69 @@
+{
+  "$schema": "stage_e_e3_r4.schema.json",
+  "schema_version": 1,
+  "document_type": "stage_e_e3_r4_typed_terminal_contract",
+  "recovery_id": "STAGE-E-E3-R4-TYPED-TERMINAL-20260907",
+  "amendment": {
+    "path": "docs/recovery_stage_e_e3_r4_typed_terminal_amendment_20260907.md",
+    "status": "APPROVED_PROSPECTIVELY_BEFORE_MISSING_COMPLEMENT",
+    "outcome_awareness": "AFTER_E3_R2_FAILURE_AND_BEFORE_E3_R4_EXECUTION"
+  },
+  "history": {
+    "e3_v1": "FAIL",
+    "e3_r1": "BLOCKED",
+    "e3_r2": "FAIL",
+    "e3_r3": "PENDING_INTERRUPTED_WITHOUT_TERMINAL_PILOT_PAYLOAD",
+    "immutable": true
+  },
+  "scope": {
+    "expected_new_compute_units": 3000,
+    "inherited_terminal_units": 1165,
+    "inherited_valid_units": 1164,
+    "inherited_failed_units": 1,
+    "missing_complement_units": 1835,
+    "eligibility": "ONLY_FROZEN_E3_V1_PLAN_UNITS_WITHOUT_ANY_LEGAL_E3_V1_E3_R1_OR_E3_R2_TERMINAL_RESULT",
+    "terminal_statuses": ["VALID", "FAILED", "NA"],
+    "continue_after_scientific_failure_or_na": true
+  },
+  "preserved_failure": {
+    "selection_order": 117,
+    "coordinate": [11, 2],
+    "method": "conditional_fixed_clean_attention_head_direction_value_path_ig",
+    "unit_digest": "508feeb360fa42e11fc45ab8c138a8bb58d09b48144dd2280160a7e32db4e346",
+    "status": "FAILED",
+    "retry_allowed": false
+  },
+  "scientific_contract": {
+    "source": "config/stage_e_e3.json",
+    "sample_count": 500,
+    "coordinates": [[0, 9], [4, 2], [6, 10], [11, 2]],
+    "methods": ["conditional_fixed_clean_attention_head_direction_value_path_ig", "matched_fixed_clean_attention_patch_token_contribution"],
+    "sample_change": false,
+    "coordinate_change": false,
+    "method_change": false,
+    "target_change": false,
+    "baseline_change": false,
+    "seed_change": false,
+    "fidelity_change": false,
+    "statistics_change": false
+  },
+  "numerical_contract": {
+    "schedule": [512, 1024, 2048, 4096, 8192, 16384, 32768],
+    "atol": 0.0001,
+    "rtol": 0.01,
+    "step_chunk_size": 8,
+    "quadrature": "gauss_legendre",
+    "integration_dtype": "float32",
+    "conservation_rule": "abs_error_less_than_or_equal_to_atol_plus_rtol_times_abs_delta"
+  },
+  "acceptance": {
+    "workflow_status": "PASS",
+    "package_completeness": "PASS",
+    "scientific_validity": "MIXED",
+    "numeric_summary_population": "VALID_ONLY_WITH_EXPECTED_VALID_FAILED_NA_COUNTS",
+    "cost_policy": "MEASURE_AND_DISCLOSE_NOT_A_COMPLETION_GATE",
+    "on_terminal_pass": "E4_ONLY_WITH_MIXED_VALIDITY_DISCLOSURE",
+    "e4_started": false
+  },
+  "canonical_digest": "3f1d4efdb980985432692e7040ca06c48a084748054bf3081465cb65fd7343d0"
+}
