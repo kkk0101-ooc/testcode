@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vitnns.local/schemas/stage_e_e3_r2.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "document_type", "recovery_id", "canonical_digest", "amendment", "e3_v1", "scope", "numerical_recovery", "scientific_contract", "persistence", "budget", "roots", "authorization"],
+  "properties": {
+    "$schema": {"const": "stage_e_e3_r2.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_e_e3_r2_frozen_contract"},
+    "recovery_id": {"const": "STAGE-E-E3-R2-BUDGET-CONTINUATION-20260906"},
+    "canonical_digest": {"$ref": "#/$defs/sha256"},
+    "amendment": {"type": "object"},
+    "e3_v1": {"type": "object"},
+    "scope": {"type": "object"},
+    "numerical_recovery": {"type": "object"},
+    "scientific_contract": {"type": "object"},
+    "persistence": {"type": "object"},
+    "budget": {"type": "object"},
+    "roots": {"type": "object"},
+    "authorization": {"type": "object"}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

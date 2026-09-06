@@ -283,8 +283,13 @@ def _v1_plan(repo: Path) -> dict[str, Any]:
     return plan
 
 
-def _r1_attempt_paths(repo: Path, unit_digest: str) -> tuple[Path, Path, Path, Path, Path | None]:
-    root = repo / ROOT_PATH / "units" / unit_digest / "attempts" / ATTEMPT_ID
+def _r1_attempt_paths(
+    repo: Path, unit_digest: str, *, root_path: str | None = None,
+    attempt_id: str | None = None,
+) -> tuple[Path, Path, Path, Path, Path | None]:
+    selected_root = ROOT_PATH if root_path is None else root_path
+    selected_attempt = ATTEMPT_ID if attempt_id is None else attempt_id
+    root = repo / selected_root / "units" / unit_digest / "attempts" / selected_attempt
     map_path = root / "map.npy"
     failure_map = root / "failure_attribution.npy"
     return root, root / "result.json", root / "status.json", root / "manifest.json", map_path if map_path.exists() else failure_map if failure_map.exists() else None
@@ -529,6 +534,8 @@ def _valid_result(
     method_result: Any, signed_map: np.ndarray, curves: list[dict[str, Any]],
     elapsed_seconds: float, cpu_seconds: float, forward_calls: int,
     backward_calls: int, peak_cuda_bytes: int, clean_sha256: str,
+    recovery_id: str = RECOVERY_ID, attempt_id: str = ATTEMPT_ID,
+    origin: str = "E3_R1_NEW",
 ) -> dict[str, Any]:
     result = e3._valid_result(
         unit=unit, target_identity=target_identity, response=response,
@@ -538,11 +545,11 @@ def _valid_result(
         peak_cuda_bytes=peak_cuda_bytes, clean_sha256=clean_sha256,
     )
     result["document_type"] = "stage_e_e3_r1_attempt_result"
-    result["attempt_id"] = ATTEMPT_ID
-    result["recovery_id"] = RECOVERY_ID
-    result["origin"] = "E3_R1_NEW"
-    result["pair_binding"]["attempt_id"] = ATTEMPT_ID
-    result["pair_binding"]["recovery_id"] = RECOVERY_ID
+    result["attempt_id"] = attempt_id
+    result["recovery_id"] = recovery_id
+    result["origin"] = origin
+    result["pair_binding"]["attempt_id"] = attempt_id
+    result["pair_binding"]["recovery_id"] = recovery_id
     result["pair_binding_digest"] = canonical_sha256(result["pair_binding"])
     return result
 
@@ -551,6 +558,8 @@ def _failure_result(
     *, unit: Mapping[str, Any], target_identity: Mapping[str, Any], response: Any,
     error: Any, elapsed_seconds: float, cpu_seconds: float, forward_calls: int,
     peak_cuda_bytes: int, clean_sha256: str, diagnostic: np.ndarray,
+    recovery_id: str = RECOVERY_ID, attempt_id: str = ATTEMPT_ID,
+    origin: str = "E3_R1_NEW",
 ) -> dict[str, Any]:
     ig = error.ig_result
     target_digest = e1._target_semantic_digest(target_identity)
@@ -562,7 +571,7 @@ def _failure_result(
     return {
         "schema_version": 1,
         "document_type": "stage_e_e3_r1_attempt_result",
-        "recovery_id": RECOVERY_ID, "origin": "E3_R1_NEW",
+        "recovery_id": recovery_id, "origin": origin,
         "unit_digest": unit["canonical_digest"], "sample_id": unit["sample_id"],
         "selection_order": unit["selection_order"], "stratum": unit["stratum"],
         "block": unit["block"], "head": unit["head"],
@@ -571,7 +580,7 @@ def _failure_result(
         "coordinate_comparison_identity": unit["coordinate_comparison_identity"],
         "validity_status": "FAILED", "failure_class": "SCIENTIFIC_INVALIDITY",
         "failure_code": "ig_conservation_failed_after_e3_r1_schedule",
-        "na_reason": None, "attempt_id": ATTEMPT_ID, "retry_count": 0,
+        "na_reason": None, "attempt_id": attempt_id, "retry_count": 0,
         "source_hashes": {
             "image_sha256": unit["image_sha256"],
             "clean_input_sha256": clean_sha256, "model_sha256": e3.MODEL_SHA256,
@@ -600,15 +609,21 @@ def _failure_result(
 def _publish_attempt(
     repo: Path, unit: Mapping[str, Any], result: Mapping[str, Any],
     payload: np.ndarray, *, fault_injector: Callable[[str], Any] | None = None,
+    root_path: str | None = None, attempt_id: str = ATTEMPT_ID,
+    recovery_id: str = RECOVERY_ID,
 ) -> Path:
-    root, _, _, _, _ = _r1_attempt_paths(repo, unit["canonical_digest"])
+    selected_root = ROOT_PATH if root_path is None else root_path
+    root, _, _, _, _ = _r1_attempt_paths(
+        repo, unit["canonical_digest"], root_path=selected_root,
+        attempt_id=attempt_id,
+    )
     if root.exists():
         raise StageEE3R1Error(f"refusing to overwrite terminal R1 attempt: {root}")
     attempts_root = root.parent
     attempts_root.mkdir(parents=True, exist_ok=True)
-    if any(path.name.startswith(".attempt-r1-") for path in attempts_root.iterdir()):
+    if any(path.name.startswith(f".{attempt_id}-") for path in attempts_root.iterdir()):
         raise StageEE3R1Error(f"ambiguous unpublished R1 attempt exists: {attempts_root}")
-    temporary = Path(tempfile.mkdtemp(prefix=".attempt-r1-000001-", dir=attempts_root))
+    temporary = Path(tempfile.mkdtemp(prefix=f".{attempt_id}-", dir=attempts_root))
     try:
         signed_result = _signed(result)
         result_raw = canonical_json_bytes(signed_result) + b"\n"
@@ -620,7 +635,7 @@ def _publish_attempt(
         state = "succeeded" if valid else "scientific_failure"
         status = _signed({
             "schema_version": 1, "document_type": "stage_e_e3_r1_attempt_status",
-            "recovery_id": RECOVERY_ID, "attempt_id": ATTEMPT_ID,
+            "recovery_id": recovery_id, "attempt_id": attempt_id,
             "attempt_number": 1, "unit_digest": unit["canonical_digest"],
             "state": state, "terminal": True, "retry_count": 0,
             "failure_class": signed_result["failure_class"],
@@ -632,7 +647,7 @@ def _publish_attempt(
         payload_path = temporary / payload_name
         manifest = _signed({
             "schema_version": 1, "document_type": "stage_e_e3_r1_attempt_manifest",
-            "recovery_id": RECOVERY_ID, "attempt_id": ATTEMPT_ID,
+            "recovery_id": recovery_id, "attempt_id": attempt_id,
             "attempt_number": 1, "unit_digest": unit["canonical_digest"],
             "validity_status": signed_result["validity_status"],
             "result_sha256": _sha(result_raw), "result_bytes": len(result_raw),
@@ -659,13 +674,20 @@ def _publish_attempt(
     finally:
         if temporary.exists():
             shutil.rmtree(temporary)
-    _validate_r1_attempt(repo, unit)
+    _validate_r1_attempt(
+        repo, unit, root_path=selected_root, attempt_id=attempt_id,
+        recovery_id=recovery_id,
+    )
     return root
 
 
-def _validate_r1_attempt(repo: Path, unit: Mapping[str, Any]) -> dict[str, Any]:
+def _validate_r1_attempt(
+    repo: Path, unit: Mapping[str, Any], *, root_path: str | None = None,
+    attempt_id: str = ATTEMPT_ID, recovery_id: str = RECOVERY_ID,
+    origin: str = "E3_R1_NEW",
+) -> dict[str, Any]:
     root, result_path, status_path, manifest_path, payload_path = _r1_attempt_paths(
-        repo, unit["canonical_digest"]
+        repo, unit["canonical_digest"], root_path=root_path, attempt_id=attempt_id,
     )
     if not root.is_dir() or payload_path is None or any(
         not path.is_file() for path in (result_path, status_path, manifest_path)
@@ -678,16 +700,16 @@ def _validate_r1_attempt(repo: Path, unit: Mapping[str, Any]) -> dict[str, Any]:
         _validate_signed(value, f"E3-R1 attempt {name}")
     payload = np.load(payload_path, allow_pickle=False)
     if (
-        result.get("recovery_id") != RECOVERY_ID
-        or result.get("origin") != "E3_R1_NEW"
+        result.get("recovery_id") != recovery_id
+        or result.get("origin") != origin
         or result.get("unit_digest") != unit["canonical_digest"]
         or result.get("sample_id") != unit["sample_id"]
         or result.get("selection_order") != unit["selection_order"]
         or result.get("block") != unit["block"] or result.get("head") != unit["head"]
         or result.get("method") != unit["method"]
-        or result.get("attempt_id") != ATTEMPT_ID or result.get("retry_count") != 0
+        or result.get("attempt_id") != attempt_id or result.get("retry_count") != 0
         or result.get("validity_status") not in {"VALID", "FAILED", "NA"}
-        or status.get("terminal") is not True or status.get("attempt_id") != ATTEMPT_ID
+        or status.get("terminal") is not True or status.get("attempt_id") != attempt_id
         or manifest.get("result_sha256") != _sha(result_raw)
         or manifest.get("status_sha256") != _sha(status_raw)
         or manifest.get("payload_name") != payload_path.name
@@ -726,7 +748,7 @@ def _validate_r1_attempt(repo: Path, unit: Mapping[str, Any]) -> dict[str, Any]:
             "seeds": [e3.e3_seed(unit["sample_id"], unit["block"], unit["head"], repeat) for repeat in range(5)],
             "seed_namespace": e3.SEED_NAMESPACE,
             "signed_map_sha256": e1._array_digest(payload),
-            "attempt_id": ATTEMPT_ID, "recovery_id": RECOVERY_ID,
+            "attempt_id": attempt_id, "recovery_id": recovery_id,
         }
         if result.get("pair_binding") != pair or result.get("pair_binding_digest") != canonical_sha256(pair):
             raise StageEE3R1Error("valid E3-R1 pair binding drifted")
