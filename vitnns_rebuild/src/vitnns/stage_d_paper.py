@@ -355,19 +355,65 @@ def _validate_analysis(value: Any, *, repo_root: Path | str | None) -> dict[str,
     ):
         raise StageDPaperContractError("c10 historical cohort separation is invalid")
     provenance = result["provenance"]
-    required_provenance = {
-        "synthetic_only": True, "formal_result": False,
-        "execution_authorization": "NOT_ISSUED",
-        "analysis_authorization": "NOT_EVALUATED",
-        "stage_d_execution_started": False,
-        "holm_status": "NOT_APPLICABLE_NO_SECONDARY_INFERENCE",
-        "c10_stage_d_pooling_allowed": False,
-    }
-    if not isinstance(provenance, Mapping) or any(
-        provenance.get(name) != expected
-        for name, expected in required_provenance.items()
+    if not isinstance(provenance, Mapping):
+        raise StageDPaperContractError("analysis provenance must be an object")
+    synthetic_only = provenance.get("synthetic_only")
+    formal_result = provenance.get("formal_result")
+    if (
+        type(synthetic_only) is not bool
+        or type(formal_result) is not bool
+        or synthetic_only == formal_result
+        or provenance.get("holm_status") != "NOT_APPLICABLE_NO_SECONDARY_INFERENCE"
+        or provenance.get("c10_stage_d_pooling_allowed") is not False
     ):
-        raise StageDPaperContractError("analysis provenance is not synthetic-only D6 scope")
+        raise StageDPaperContractError("analysis provenance has invalid scope controls")
+    if synthetic_only:
+        required_provenance = {
+            "execution_authorization": "NOT_ISSUED",
+            "analysis_authorization": "NOT_EVALUATED",
+            "stage_d_execution_started": False,
+        }
+        if any(
+            provenance.get(name) != expected
+            for name, expected in required_provenance.items()
+        ):
+            raise StageDPaperContractError(
+                "analysis provenance is not synthetic-only D6 scope"
+            )
+    else:
+        required_formal = {
+            "d9_analysis_authorization": "D9_AUTHORIZED_D10_FULL_ANALYSIS",
+            "d9_allowed_path": "D10_FULL_ANALYSIS_AND_DECISION",
+            "d9_sealed_root_read": True,
+            "d9_l0_read": True,
+            "d9_l1_read": True,
+            "d9_l2_read": False,
+            "jpeg_read": False,
+            "model_loaded": False,
+            "cuda_or_gpu_used": False,
+            "d8_shards_run": False,
+            "retry_attempts_created": False,
+            "execution_authorization": "AUTHORIZED_STAGE_D_FIDELITY_SCOPE",
+            "analysis_authorization": "D9_AUTHORIZED_D10_FULL_ANALYSIS",
+            "stage_d_execution_started": True,
+        }
+        if any(
+            provenance.get(name) != expected
+            for name, expected in required_formal.items()
+        ):
+            raise StageDPaperContractError(
+                "analysis provenance is not D9-authorized formal D10 scope"
+            )
+        for name in ("d9_report_sha256", "d9_report_canonical_digest"):
+            value = provenance.get(name)
+            if (
+                not isinstance(value, str)
+                or len(value) != 64
+                or any(character not in _SHA256 for character in value)
+            ):
+                raise StageDPaperContractError(
+                    "formal analysis provenance lacks D9 report digests"
+                )
     if valid:
         resources_and_qc = result["resources_and_qc"]
         curve_bootstrap = (
@@ -505,6 +551,11 @@ def _flatten_qc(value: Any, prefix: str = "") -> list[dict[str, str]]:
 
 def _derived_payloads(analysis: Mapping[str, Any]) -> dict[str, bytes]:
     valid = analysis["validity_status"] == "PASS"
+    provenance_source = analysis["provenance"]
+    if not isinstance(provenance_source, Mapping):
+        raise StageDPaperContractError("analysis provenance must be an object")
+    formal_result = provenance_source.get("formal_result") is True
+    synthetic_only = provenance_source.get("synthetic_only") is True
     summary = _summary_fields(analysis)
     per_sample = [dict(row) for row in analysis["per_sample"]]
     main_rows = [] if not valid else [{
@@ -625,11 +676,14 @@ def _derived_payloads(analysis: Mapping[str, Any]) -> dict[str, bytes]:
     provenance = _self_document(
         "stage_d_paper_provenance", source_analysis_canonical_digest=analysis["canonical_digest"],
         analysis_provenance=analysis["provenance"], numeric_sources=["analysis.json"],
-        execution_root_read=False, l0_read=False, l1_read=False, l2_read=False,
-        image_read=False, model_loaded=False, png_rendered=False, formal_result=False,
+        execution_root_read=formal_result, l0_read=formal_result,
+        l1_read=formal_result, l2_read=False,
+        image_read=False, model_loaded=False, png_rendered=False,
+        formal_result=formal_result,
     )
     report = _self_document(
-        "stage_d_analysis_report", complete=True, synthetic_only=True, formal_result=False,
+        "stage_d_analysis_report", complete=True,
+        synthetic_only=synthetic_only, formal_result=formal_result,
         validity_status=analysis["validity_status"], fidelity_status=analysis["fidelity_status"],
         overall_decision=analysis["overall_decision"], expected_coordinate_count=500,
         observed_coordinate_count=len(per_sample), bootstrap_performed=valid,
@@ -656,6 +710,10 @@ def _inventory(payloads: Mapping[str, bytes], names: Sequence[str]) -> list[dict
 
 
 def _complete_payloads(analysis: Mapping[str, Any]) -> dict[str, bytes]:
+    provenance = analysis["provenance"]
+    if not isinstance(provenance, Mapping):
+        raise StageDPaperContractError("analysis provenance must be an object")
+    formal_result = provenance.get("formal_result") is True
     payloads = _derived_payloads(analysis)
     manifest = _self_document(
         "stage_d_analysis_payload_manifest", immutable=True,
@@ -665,7 +723,7 @@ def _complete_payloads(analysis: Mapping[str, Any]) -> dict[str, bytes]:
     excluding_status = _inventory(payloads, (*PAYLOAD_FILES, MANIFEST_FILE))
     status = _self_document(
         "stage_d_analysis_package_status", complete=True, terminal=True, immutable=True,
-        formal_result=False, file_count_excluding_status=len(excluding_status),
+        formal_result=formal_result, file_count_excluding_status=len(excluding_status),
         whole_root_excluding_status=excluding_status,
         whole_root_excluding_status_digest=canonical_sha256({"files": excluding_status}),
         payload_manifest_sha256=hashlib.sha256(payloads[MANIFEST_FILE]).hexdigest(),
@@ -889,7 +947,8 @@ def validate_stage_d_analysis_package(
     _validate_payload_documents(payloads, repo_root=repo_root)
     return {
         "root": str(path), "valid": True, "complete": True,
-        "formal_result": False, "analysis_canonical_digest": analysis["canonical_digest"],
+        "formal_result": analysis["provenance"]["formal_result"],
+        "analysis_canonical_digest": analysis["canonical_digest"],
         "file_count": len(ALL_FILES),
         "status_sha256": hashlib.sha256(payloads[STATUS_FILE]).hexdigest(),
         "manifest_sha256": hashlib.sha256(payloads[MANIFEST_FILE]).hexdigest(),

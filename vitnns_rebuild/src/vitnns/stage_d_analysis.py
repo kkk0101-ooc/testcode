@@ -1,9 +1,9 @@
-"""Pure, synthetic-only D6 aggregation over a D5 validation receipt.
+"""Pure Stage D aggregation over a D5/D9 validation receipt.
 
 No function in this module opens a root, image, model, map, L2 object, or
 display artifact.  The only accepted numerical source is the unforgeable
 same-snapshot receipt issued by :mod:`stage_d_analysis_input`.  This keeps
-D5's source-recomputing validation ahead of every D6 calculation.
+D5/D9 source-recomputing validation ahead of every D6/D10 calculation.
 """
 
 from __future__ import annotations
@@ -363,7 +363,7 @@ def _invalid_rows(receipt: StageDValidatedAnalysisInput) -> tuple[list[dict[str,
 def aggregate_stage_d_analysis(
     receipt: StageDValidatedAnalysisInput, plan: Any,
 ) -> StageDAnalysisResult:
-    """Aggregate an already D5-validated synthetic input exactly once.
+    """Aggregate an already D5/D9-validated input exactly once.
 
     The type check intentionally makes a serialized external summary unusable
     as an input.  A caller must first obtain a fresh D5 receipt.
@@ -379,17 +379,49 @@ def aggregate_stage_d_analysis(
     if len(receipt.unit_rows) != 1000:
         raise StageDAnalysisContractError("receipt must contain all 1,000 reconciled units")
 
-    common_provenance = {
-        "synthetic_only": True, "formal_result": False,
-        "d5_receipt_plan_digest": receipt.plan_digest,
-        "d5_final_status_sha256": receipt.final_status_sha256,
-        "d5_root_inventory": _plain(receipt.root_inventory),
-        "execution_authorization": "NOT_ISSUED",
-        "analysis_authorization": "NOT_EVALUATED",
-        "stage_d_execution_started": False,
-        "holm_status": "NOT_APPLICABLE_NO_SECONDARY_INFERENCE",
-        "c10_stage_d_pooling_allowed": False,
-    }
+    if receipt.formal:
+        if not isinstance(receipt.d9_report, Mapping):
+            raise StageDAnalysisContractError(
+                "formal D10 aggregation requires a D9 report"
+            )
+        validation = receipt.d9_report["validation"]
+        common_provenance = {
+            "synthetic_only": False, "formal_result": True,
+            "d9_report_path": "reports/stage_d_d9_recovery_v2_20260906/d9_formal_validation.json",
+            "d9_report_sha256": receipt.d9_report_sha256,
+            "d9_report_canonical_digest": receipt.d9_report_canonical_digest,
+            "d9_analysis_authorization": validation["analysis_authorization"],
+            "d9_allowed_path": validation["d10_allowed_path"],
+            "d5_receipt_plan_digest": receipt.plan_digest,
+            "d5_final_status_sha256": receipt.final_status_sha256,
+            "d5_root_inventory": _plain(receipt.root_inventory),
+            "d9_sealed_root_read": True,
+            "d9_l0_read": True,
+            "d9_l1_read": True,
+            "d9_l2_read": False,
+            "jpeg_read": False,
+            "model_loaded": False,
+            "cuda_or_gpu_used": False,
+            "d8_shards_run": False,
+            "retry_attempts_created": False,
+            "execution_authorization": "AUTHORIZED_STAGE_D_FIDELITY_SCOPE",
+            "analysis_authorization": validation["analysis_authorization"],
+            "stage_d_execution_started": True,
+            "holm_status": "NOT_APPLICABLE_NO_SECONDARY_INFERENCE",
+            "c10_stage_d_pooling_allowed": False,
+        }
+    else:
+        common_provenance = {
+            "synthetic_only": True, "formal_result": False,
+            "d5_receipt_plan_digest": receipt.plan_digest,
+            "d5_final_status_sha256": receipt.final_status_sha256,
+            "d5_root_inventory": _plain(receipt.root_inventory),
+            "execution_authorization": "NOT_ISSUED",
+            "analysis_authorization": "NOT_EVALUATED",
+            "stage_d_execution_started": False,
+            "holm_status": "NOT_APPLICABLE_NO_SECONDARY_INFERENCE",
+            "c10_stage_d_pooling_allowed": False,
+        }
     reconciliation_qc = _reconciliation_qc(receipt)
     analysis_input_complete = all(
         row.terminal_state == "succeeded"
@@ -515,14 +547,36 @@ def closed_analysis_summary(result: Mapping[str, Any]) -> dict[str, Any]:
     }
     if set(value) != required or value.get("document_type") != DOCUMENT_TYPE:
         raise StageDAnalysisContractError("analysis result does not have a closed D6 shape")
+    provenance = value["provenance"]
+    if not isinstance(provenance, Mapping):
+        raise StageDAnalysisContractError(
+            "analysis result provenance is not a closed mapping"
+        )
+    synthetic_only = provenance.get("synthetic_only")
+    formal_result = provenance.get("formal_result")
+    execution_authorization = provenance.get("execution_authorization")
+    analysis_authorization = provenance.get("analysis_authorization")
+    stage_d_execution_started = provenance.get("stage_d_execution_started")
+    if (
+        type(synthetic_only) is not bool
+        or type(formal_result) is not bool
+        or synthetic_only == formal_result
+        or not isinstance(execution_authorization, str)
+        or not isinstance(analysis_authorization, str)
+        or type(stage_d_execution_started) is not bool
+    ):
+        raise StageDAnalysisContractError(
+            "analysis result provenance has invalid authority controls"
+        )
     return {
         "schema_version": 1, "document_type": "stage_d_d6_control_summary",
-        "status": "PASS", "synthetic_only": True, "formal_result": False,
+        "status": "PASS", "synthetic_only": synthetic_only,
+        "formal_result": formal_result,
         "analysis_canonical_digest": value["canonical_digest"],
         "coordinate_count": len(value["per_sample"]),
-        "execution_authorization": "NOT_ISSUED",
-        "analysis_authorization": "NOT_EVALUATED",
-        "stage_d_execution_started": False,
+        "execution_authorization": execution_authorization,
+        "analysis_authorization": analysis_authorization,
+        "stage_d_execution_started": stage_d_execution_started,
     }
 
 

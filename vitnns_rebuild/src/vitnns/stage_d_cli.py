@@ -67,6 +67,7 @@ _D5_FINALIZATION_COMMANDS = frozenset({"finalize", "validate"})
 _D6_ANALYSIS_COMMANDS = frozenset({
     "aggregate", "build-paper-package", "validate-paper-package",
 })
+_FORMAL_ANALYSIS_AUTHORIZATION = "D9_AUTHORIZED_D10_FULL_ANALYSIS"
 _D7_COMMANDS = frozenset({"smoke", "budget", "authorize-execution"})
 
 _SHARD_SUMMARY_KEYS = frozenset({
@@ -269,31 +270,53 @@ def _add_finalization_arguments(parser: argparse.ArgumentParser) -> None:
 def _add_analysis_arguments(
     parser: argparse.ArgumentParser, *, operation: str,
 ) -> None:
-    """Add only synthetic D6 package paths; never execution controls."""
+    """Add D6/D10 package paths; never execution controls."""
 
     _add_source_arguments(parser)
     if operation == "aggregate":
         parser.add_argument(
             "--output-root", type=Path, required=True,
-            help="sealed synthetic D5 root; formal roots are rejected",
+            help="sealed D5/D9 root",
         )
         parser.add_argument(
             "--analysis-root", type=Path, required=True,
-            help="fresh D6 synthetic analysis-package destination",
+            help="fresh D6/D10 analysis-package destination",
+        )
+        parser.add_argument(
+            "--allow-formal-root", action="store_true",
+            help="explicit D10-only authority to analyze a D9-sealed formal root",
+        )
+        parser.add_argument(
+            "--d9-formal-budget", type=Path,
+            default=REPO_ROOT / "config/stage_d_d7_budget_20260904_r4.json",
+            help="D7 final budget JSON used only with --allow-formal-root",
+        )
+        parser.add_argument(
+            "--d9-validation-report", type=Path,
+            default=REPO_ROOT / "reports/stage_d_d9_recovery_v2_20260906/d9_formal_validation.json",
+            help="D9 formal validation report required for formal D10 analysis",
         )
     elif operation == "build-paper-package":
         parser.add_argument(
             "--analysis-root", type=Path, required=True,
-            help="validated synthetic D6 analysis package",
+            help="validated D6/D10 analysis package",
         )
         parser.add_argument(
             "--paper-root", type=Path, required=True,
-            help="fresh D6 synthetic paper-package destination",
+            help="fresh D6/D10 paper-package destination",
+        )
+        parser.add_argument(
+            "--allow-formal-package", action="store_true",
+            help="explicit D10-only authority to copy a formal analysis package",
         )
     elif operation == "validate-paper-package":
         parser.add_argument(
             "--paper-root", type=Path, required=True,
-            help="synthetic D6 package to validate",
+            help="D6/D10 paper package to validate",
+        )
+        parser.add_argument(
+            "--allow-formal-package", action="store_true",
+            help="explicit D10-only authority to validate a formal paper package",
         )
     else:  # defensive boundary
         raise ValueError(f"unknown D6 operation: {operation}")
@@ -828,8 +851,11 @@ def _load_pipeline(args: argparse.Namespace) -> StageDCLIPipeline:
     repo_root = Path(args.repo_root)
     command = getattr(args, "command", None)
     verify_c10 = not (
-        command in _D5_FINALIZATION_COMMANDS
-        and getattr(args, "allow_formal_root", False)
+        (
+            getattr(args, "allow_formal_root", False)
+            or getattr(args, "allow_formal_package", False)
+        )
+        and command in (_D5_FINALIZATION_COMMANDS | _D6_ANALYSIS_COMMANDS)
     )
     contracts = load_stage_d_contracts(
         config_path=args.config or repo_root / "config/stage_d.json",
@@ -1431,7 +1457,9 @@ def _run_finalization_command(
     )
 
 
-def _d6_control_document(value: Any, *, operation: str) -> dict[str, Any]:
+def _d6_control_document(
+    value: Any, *, operation: str, allow_formal: bool = False,
+) -> dict[str, Any]:
     """Validate the deliberately non-numeric, non-identifying D6 CLI surface."""
 
     source = _json_value(value, "D6 control summary")
@@ -1440,22 +1468,46 @@ def _d6_control_document(value: Any, *, operation: str) -> dict[str, Any]:
         "formal_result", "analysis_canonical_digest", "coordinate_count",
         "execution_authorization", "analysis_authorization", "stage_d_execution_started",
     }
+    synthetic_only = source.get("synthetic_only")
+    formal_result = source.get("formal_result")
+    execution_authorization = source.get("execution_authorization")
+    analysis_authorization = source.get("analysis_authorization")
+    stage_d_execution_started = source.get("stage_d_execution_started")
     if (
         set(source) != expected
         or source["schema_version"] != 1
         or source["document_type"] != "stage_d_d6_control_summary"
         or source["status"] != "PASS"
-        or source["synthetic_only"] is not True
-        or source["formal_result"] is not False
+        or type(synthetic_only) is not bool
+        or type(formal_result) is not bool
+        or synthetic_only == formal_result
         or not isinstance(source["analysis_canonical_digest"], str)
         or _SHA256_RE.fullmatch(source["analysis_canonical_digest"]) is None
         or source["coordinate_count"] != 500
-        or source["execution_authorization"] != "NOT_ISSUED"
-        or source["analysis_authorization"] != "NOT_EVALUATED"
-        or source["stage_d_execution_started"] is not False
     ):
         raise StageDCLIAnalysisIntegrityError(
             "Stage D D6 operation did not return a safe closed control summary"
+        )
+    if synthetic_only:
+        valid_authority = (
+            allow_formal is False
+            and
+            execution_authorization == "NOT_ISSUED"
+            and analysis_authorization == "NOT_EVALUATED"
+            and stage_d_execution_started is False
+        )
+    else:
+        valid_authority = (
+            allow_formal is True
+            and
+            operation in _D6_ANALYSIS_COMMANDS
+            and execution_authorization == "AUTHORIZED_STAGE_D_FIDELITY_SCOPE"
+            and analysis_authorization == _FORMAL_ANALYSIS_AUTHORIZATION
+            and stage_d_execution_started is True
+        )
+    if not valid_authority:
+        raise StageDCLIAnalysisIntegrityError(
+            "Stage D analysis operation has invalid authority controls"
         )
     return source
 
@@ -1463,15 +1515,39 @@ def _d6_control_document(value: Any, *, operation: str) -> dict[str, Any]:
 def _run_analysis_command(
     args: argparse.Namespace, pipeline: StageDCLIPipeline,
 ) -> Mapping[str, Any]:
-    """Run D6 on synthetic-only inputs and project no numerical values."""
+    """Run D6/D10 analysis and project no numerical values on stdout."""
 
     try:
         input_api, analysis_api, paper_api = _analysis_api()
         if args.command == "aggregate":
-            estimate, preflight = _estimate_and_preflight(pipeline, None)
-            receipt = input_api.validate_stage_d_analysis_input(
-                args.output_root, pipeline.plan, estimate, preflight,
-            )
+            if args.allow_formal_root:
+                controls = _strict_bounded_json(
+                    args.d9_formal_budget,
+                    context="D9 formal budget controls",
+                    limit=_AUTHORIZATION_FILE_LIMIT,
+                )
+                if not isinstance(controls, Mapping):
+                    raise StageDCLIInputError(
+                        "D9 formal budget controls must be an object"
+                    )
+                estimate = validate_stage_d_estimate(
+                    StageDEstimate.from_dict(controls["estimate"])
+                )
+                preflight = validate_stage_d_preflight(
+                    StageDPreflight.from_dict(controls["preflight"])
+                )
+            else:
+                estimate, preflight = _estimate_and_preflight(pipeline, None)
+            if args.allow_formal_root:
+                receipt = input_api.validate_stage_d_analysis_input(
+                    args.output_root, pipeline.plan, estimate, preflight,
+                    allow_formal=True,
+                    d9_report_path=args.d9_validation_report,
+                )
+            else:
+                receipt = input_api.validate_stage_d_analysis_input(
+                    args.output_root, pipeline.plan, estimate, preflight,
+                )
             result = analysis_api.aggregate_stage_d_analysis(receipt, pipeline.plan)
             paper_api.build_stage_d_analysis_package(
                 result, args.analysis_root, repo_root=args.repo_root,
@@ -1629,6 +1705,10 @@ def main(
         if args.command in _D6_ANALYSIS_COMMANDS:
             document = _d6_control_document(
                 _run_analysis_command(args, pipeline), operation=args.command,
+                allow_formal=(
+                    getattr(args, "allow_formal_root", False)
+                    or getattr(args, "allow_formal_package", False)
+                ),
             )
             _write_json(document, output)
             return EXIT_SUCCESS

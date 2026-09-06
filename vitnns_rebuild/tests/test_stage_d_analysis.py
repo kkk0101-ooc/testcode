@@ -27,6 +27,9 @@ from vitnns.stage_d_analysis_input import (
     StageDValidatedAnalysisInput, StageDValidatedAnalysisUnit,
     _ISSUER, validate_stage_d_analysis_input,
 )
+from vitnns.stage_d_config import strict_json_bytes
+from vitnns.stage_d_d9_completion import REPORT_PATH as D9_REPORT_PATH
+import vitnns.stage_d_analysis_input as analysis_input_module
 from vitnns.stage_d_finalize import StageDRootValidation, finalize_stage_d_root
 from vitnns.stage_d_paper import (
     StageDPaperBlockedError, StageDPaperContractError,
@@ -80,7 +83,8 @@ def _l0(method: str, sample_id: str, delta: float, *, misclassified: bool) -> tu
 
 
 def _receipt(
-    deltas: np.ndarray, *, validity: str = "PASS", invalid_order: int | None = None,
+    deltas: np.ndarray, *, validity: str = "PASS",
+    invalid_order: int | None = None, formal: bool = False,
 ) -> tuple[StageDValidatedAnalysisInput, Any]:
     assert deltas.shape == (500,)
     rows: list[StageDValidatedAnalysisUnit] = []
@@ -108,7 +112,7 @@ def _receipt(
             reconciliation_rows.append({"selection_order": order, "method_id": method})
     root = StageDRootValidation(
         package_complete=True, workflow_status="PASS",
-        scientific_validity=validity, analysis_authorized=False,
+        scientific_validity=validity, analysis_authorized=formal,
         plan_digest="a" * 64, final_status_sha256="b" * 64,
         root_inventory={"file_count": 1, "total_bytes": 1, "canonical_digest": "c" * 64},
         actual_cost_audit={
@@ -147,8 +151,20 @@ def _receipt(
     # The numerical unit tests still require an issued receipt rather than a
     # serialized external aggregate.  The integration test below uses the
     # actual D5 issuer and source snapshot.
+    kwargs = {}
+    if formal:
+        report = strict_json_bytes((REPO_ROOT / D9_REPORT_PATH).read_bytes(), "D9 report")
+        kwargs = {
+            "formal": True,
+            "d9_report": report,
+            "d9_report_sha256": analysis_input_module._D9_REPORT_SHA256,
+            "d9_report_canonical_digest": (
+                analysis_input_module._D9_REPORT_CANONICAL_DIGEST
+            ),
+        }
     receipt = StageDValidatedAnalysisInput(
         root_validation=root, unit_rows=tuple(rows), _issuer=_ISSUER,
+        **kwargs,
     )
     return receipt, SimpleNamespace(canonical_digest="a" * 64)
 
@@ -344,6 +360,47 @@ def test_build_and_validate_paper_package_are_closed(
     build_stage_d_paper_package(analysis, paper, repo_root=REPO_ROOT)
     assert validate_stage_d_paper_package(paper, repo_root=REPO_ROOT)["complete"] is True
     assert closed_analysis_summary(result)["coordinate_count"] == 500
+
+
+def test_formal_result_requires_d9_authority_and_preserves_no_media_scope(
+    tmp_path: Path,
+) -> None:
+    receipt, plan = _receipt(np.full(500, 0.03), formal=True)
+    with patch.object(analysis_module, "validate_stage_d_plan", lambda value: value):
+        with patch.object(analysis_module, "_bootstrap", lambda values, material, **_kwargs: ({
+            "confidence_interval": [0.03, 0.03],
+            "draw_shape": [10000, 500],
+            "status": "PERFORMED",
+            "metric_id": _kwargs.get("metric_id", "fine_4x4_cell_delta_fid_median"),
+            "seed_material": material,
+            "seed": "18136624947342364318",
+            "seed_hash_extraction": "sha256_first_8_bytes_big_endian_unsigned",
+            "prng": "numpy.random.Generator(numpy.random.PCG64(seed))",
+            "resamples": 10000,
+            "draw_indices_dtype_and_order": "little_endian_int64_c_order",
+            "distribution_dtype_and_order": "little_endian_float64_c_order",
+            "statistic": "paired_median",
+            "even_median_rule": "arithmetic_mean_of_two_middle_order_statistics",
+            "quantile_probabilities": [0.025, 0.975],
+            "quantile_method": "linear",
+            "draw_indices_sha256": "1" * 64,
+            "distribution_sha256": "2" * 64,
+        }, np.zeros(10_000))):
+            result = aggregate_stage_d_analysis(receipt, plan)
+    assert result["provenance"]["formal_result"] is True
+    assert result["provenance"]["d9_analysis_authorization"] == "D9_AUTHORIZED_D10_FULL_ANALYSIS"
+    assert result["provenance"]["jpeg_read"] is False
+    assert result["provenance"]["model_loaded"] is False
+    assert result["provenance"]["cuda_or_gpu_used"] is False
+    root = tmp_path / "formal"
+    summary = build_stage_d_analysis_package(result, root, repo_root=REPO_ROOT)
+    assert summary["formal_result"] is True
+    report = json.loads((root / "analysis_report.json").read_text())
+    provenance = json.loads((root / "provenance.json").read_text())
+    assert report["synthetic_only"] is False
+    assert report["formal_result"] is True
+    assert provenance["execution_root_read"] is True
+    assert provenance["image_read"] is False
 
 
 def test_minimum_full_sealed_d5_root_receipt_is_closed_and_invalid_not_dropped(

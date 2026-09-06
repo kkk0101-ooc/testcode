@@ -12,10 +12,37 @@ import numpy as np
 
 from . import stage_d_finalize as _d5
 from .stage_d_artifacts import CURVES_PATH, RESULT_PATH
+from .stage_d_config import strict_json_bytes
+from .stage_d_d9_completion import (
+    C10_STATUS_PRESERVED,
+    REPORT_PATH as D9_REPORT_PATH,
+)
+from .stage_d_provenance import canonical_sha256
 from .stage_d_scientific import PRODUCTION_L0_KEYS
 
 
 _ISSUER = object()
+_TRACELESS_PRODUCTION_L0_KEYS = (
+    PRODUCTION_L0_KEYS - frozenset({"provenance_fragment", "map_execution_records"})
+) | {"trace_mode"}
+_FULL_NNS_PRODUCTION_L0_KEYS = (
+    PRODUCTION_L0_KEYS | frozenset({"trace_mode", "nns_contract", "trace"})
+)
+_D9_REPORT_SHA256 = (
+    "bbfb6b5ad879116f6849e6f0a058780fdfd5e54b656e62f0674a3c3184c810d5"
+)
+_D9_REPORT_CANONICAL_DIGEST = (
+    "50e2c1455534e5b10aeacb79fac42d128317e0e943c817addf47671f599ea206"
+)
+_D9_FINAL_STATUS_SHA256 = (
+    "9c2a7f6bbe89f393b17d39128c908b764c5481cb2ab640eea557ea87032e9f4c"
+)
+_D9_FINAL_STATUS_CANONICAL_DIGEST = (
+    "ba5c15aec4d0f8f374e376e7b1ddb28ebbdb9d8ec8ab7ceda1d34438caf9425b"
+)
+_D9_ROOT_INVENTORY_DIGEST = (
+    "76d7d532049a5c90a09c74ba56b019042d7f2f0174ccb439bd8f67713514cc5a"
+)
 
 
 def _owned_mapping(value: Mapping[str, Any], context: str) -> Mapping[str, Any]:
@@ -77,6 +104,10 @@ class StageDValidatedAnalysisInput:
 
     root_validation: _d5.StageDRootValidation
     unit_rows: tuple[StageDValidatedAnalysisUnit, ...] = field(repr=False)
+    formal: bool = False
+    d9_report: Mapping[str, Any] | None = None
+    d9_report_sha256: str | None = None
+    d9_report_canonical_digest: str | None = None
     _issuer: InitVar[object] = None
 
     def __post_init__(self, _issuer: object) -> None:
@@ -93,6 +124,24 @@ class StageDValidatedAnalysisInput:
                    for row in self.unit_rows)
         ):
             raise TypeError("unit_rows must contain exactly 1000 issued units")
+        if type(self.formal) is not bool:
+            raise TypeError("formal must be a boolean")
+        if self.formal:
+            if (
+                not isinstance(self.d9_report, Mapping)
+                or self.d9_report_sha256 != _D9_REPORT_SHA256
+                or self.d9_report_canonical_digest != _D9_REPORT_CANONICAL_DIGEST
+            ):
+                raise TypeError("formal analysis input requires the frozen D9 report")
+            object.__setattr__(
+                self, "d9_report", _owned_mapping(self.d9_report, "D9 report")
+            )
+        elif (
+            self.d9_report is not None
+            or self.d9_report_sha256 is not None
+            or self.d9_report_canonical_digest is not None
+        ):
+            raise TypeError("synthetic analysis input cannot carry a D9 report")
 
     @property
     def package_complete(self) -> bool:
@@ -120,15 +169,92 @@ class StageDValidatedAnalysisInput:
 
     def to_dict(self) -> dict[str, Any]:
         """Return control data only; never serialize numeric unit payloads."""
-        return {
+        document = {
             "package_complete": self.package_complete,
             "scientific_validity": self.scientific_validity,
             "workflow_status": self.workflow_status,
             "plan_digest": self.plan_digest,
             "final_status_sha256": self.final_status_sha256,
             "root_inventory": _d5._plain(self.root_inventory),
+            "formal": self.formal,
             "unit_count": len(self.unit_rows),
         }
+        if self.formal:
+            document["d9_report_sha256"] = self.d9_report_sha256
+            document["d9_report_canonical_digest"] = self.d9_report_canonical_digest
+        return document
+
+
+def _read_d9_report(path: Path | str) -> tuple[Mapping[str, Any], str, str]:
+    report_path = Path(path)
+    try:
+        raw = report_path.read_bytes()
+    except OSError as error:
+        raise _d5.StageDFinalizationIntegrityError(
+            f"cannot read D9 validation report: {report_path}"
+        ) from error
+    file_sha = hashlib.sha256(raw).hexdigest()
+    if file_sha != _D9_REPORT_SHA256:
+        raise _d5.StageDFinalizationIntegrityError(
+            "D9 validation report file SHA-256 drifted"
+        )
+    try:
+        report = strict_json_bytes(raw, "D9 validation report")
+    except Exception as error:
+        raise _d5.StageDFinalizationIntegrityError(
+            "D9 validation report is not strict JSON"
+        ) from error
+    if not isinstance(report, Mapping):
+        raise _d5.StageDFinalizationIntegrityError(
+            "D9 validation report must be a JSON object"
+        )
+    canonical = canonical_sha256({
+        key: value for key, value in report.items()
+        if key != "canonical_digest"
+    })
+    if (
+        canonical != _D9_REPORT_CANONICAL_DIGEST
+        or report.get("canonical_digest") != _D9_REPORT_CANONICAL_DIGEST
+    ):
+        raise _d5.StageDFinalizationIntegrityError(
+            "D9 validation report canonical digest drifted"
+        )
+    validation = report.get("validation")
+    scope = report.get("scope_boundaries")
+    final_files = report.get("final_files")
+    status_file = (
+        final_files.get("status.json")
+        if isinstance(final_files, Mapping) else None
+    )
+    root_inventory = (
+        validation.get("root_inventory")
+        if isinstance(validation, Mapping) else None
+    )
+    if (
+        report.get("status") != "PASS"
+        or report.get("analysis_authorized") is not True
+        or not isinstance(validation, Mapping)
+        or validation.get("package_complete") is not True
+        or validation.get("workflow_status") != "PASS"
+        or validation.get("scientific_validity") != "PASS"
+        or validation.get("analysis_authorized") is not True
+        or validation.get("analysis_authorization") != "D9_AUTHORIZED_D10_FULL_ANALYSIS"
+        or validation.get("d10_allowed_path") != "D10_FULL_ANALYSIS_AND_DECISION"
+        or validation.get("final_status_sha256") != _D9_FINAL_STATUS_SHA256
+        or not isinstance(root_inventory, Mapping)
+        or root_inventory.get("canonical_digest") != _D9_ROOT_INVENTORY_DIGEST
+        or not isinstance(status_file, Mapping)
+        or status_file.get("file_sha256") != _D9_FINAL_STATUS_SHA256
+        or status_file.get("canonical_digest") != _D9_FINAL_STATUS_CANONICAL_DIGEST
+        or report.get("c10_status_preserved") != C10_STATUS_PRESERVED
+        or not isinstance(scope, Mapping)
+        or scope.get("d10_aggregate_statistics_decision_run") is not False
+        or scope.get("paper_data_figures_overlays_or_contact_sheets_generated") is not False
+    ):
+        raise _d5.StageDFinalizationIntegrityError(
+            "D9 validation report does not authorize full D10 analysis"
+        )
+    return _owned_mapping(report, "D9 report"), file_sha, canonical
 
 
 def _artifact_sha(attempt: Mapping[str, Any], path: str) -> str:
@@ -172,7 +298,12 @@ def _analysis_rows(
                     "validated analysis payload is absent from the D5 snapshot"
                 ) from error
             parsed_l0 = _d5._strict_json(l0_raw, "validated analysis L0")
-            if set(parsed_l0) != PRODUCTION_L0_KEYS:
+            if not (
+                set(parsed_l0) == PRODUCTION_L0_KEYS
+                or set(parsed_l0) == (set(PRODUCTION_L0_KEYS) | {"trace_mode"})
+                or set(parsed_l0) == set(_TRACELESS_PRODUCTION_L0_KEYS)
+                or set(parsed_l0) == set(_FULL_NNS_PRODUCTION_L0_KEYS)
+            ):
                 # D5 deliberately accepts its smaller synthetic L0 envelope.
                 # Such a sealed root is a valid D5 fixture but cannot create a
                 # D6 numerical coordinate; retain it as explicit invalidity
@@ -243,9 +374,15 @@ def _analysis_rows(
 
 def validate_stage_d_analysis_input(
     output_root: Path | str, plan: Any, estimate: Any, preflight: Any,
-    *, allow_formal: bool = False,
+    *, allow_formal: bool = False, d9_report_path: Path | str | None = None,
 ) -> StageDValidatedAnalysisInput:
     """Validate one sealed root and issue same-snapshot D10 inputs."""
+
+    report = report_sha = report_digest = None
+    if allow_formal:
+        report, report_sha, report_digest = _read_d9_report(
+            D9_REPORT_PATH if d9_report_path is None else d9_report_path
+        )
 
     typed_plan, typed_estimate, typed_preflight = _d5._validate_controls(
         plan, estimate, preflight
@@ -327,17 +464,33 @@ def validate_stage_d_analysis_input(
             raise _d5.StageDFinalizationIntegrityError(
                 "D6 input requires a complete PASS-workflow D5 package"
             )
-        if root_validation.evidence_report.get("analysis_boundary") != {
+        expected_boundary = {
             "status": "NOT_PERFORMED", "analysis_performed": False,
             "bootstrap_performed": False, "decision_performed": False,
             "delta_fid_computed": False, "aggregate_effects_computed": False,
-            "d6_eligibility": "SYNTHETIC_ONLY",
-        }:
+            "d6_eligibility": (
+                "D10_FULL_ANALYSIS_ALLOWED" if allow_formal
+                else "SYNTHETIC_ONLY"
+            ),
+        }
+        if root_validation.evidence_report.get("analysis_boundary") != expected_boundary:
             raise _d5.StageDFinalizationIntegrityError(
-                "D6 input is not a synthetic-only D5 analysis boundary"
+                "D6/D10 input does not match its analysis boundary"
+            )
+        if allow_formal and (
+            root_validation.scientific_validity != "PASS"
+            or root_validation.analysis_authorized is not True
+            or root_validation.final_status_sha256 != _D9_FINAL_STATUS_SHA256
+            or root_validation.root_inventory.get("canonical_digest") != _D9_ROOT_INVENTORY_DIGEST
+        ):
+            raise _d5.StageDFinalizationIntegrityError(
+                "formal D10 input does not match the D9-authorized root"
             )
         return StageDValidatedAnalysisInput(
-            root_validation=root_validation, unit_rows=unit_rows, _issuer=_ISSUER
+            root_validation=root_validation, unit_rows=unit_rows,
+            formal=allow_formal, d9_report=report,
+            d9_report_sha256=report_sha,
+            d9_report_canonical_digest=report_digest, _issuer=_ISSUER,
         )
 
 
