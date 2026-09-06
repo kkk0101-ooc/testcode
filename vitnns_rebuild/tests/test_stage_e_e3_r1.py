@@ -206,7 +206,7 @@ def test_bulk_requires_passing_pilot_gate(tmp_path: Path, monkeypatch: pytest.Mo
     ):
         (root / name).write_bytes(r1.canonical_json_bytes(value) + b"\n")
     monkeypatch.setattr(r1, "validate_initialized", lambda _repo: {"status": "PASS"})
-    with pytest.raises(r1.StageEE3R1Error, match="not authorized"):
+    with pytest.raises(r1.StageEE3R1Error, match="authorization"):
         r1._run_orders(tmp_path, orders=(3,), device="cpu", phase="BULK")
 
 
@@ -220,3 +220,9 @@ def test_partial_union_cannot_enter_summary(tmp_path: Path, monkeypatch: pytest.
 def test_no_e4_execution_surface() -> None:
     public = {name for name in dir(r1) if name.startswith(("run_", "start_", "execute_"))}
     assert public == {"run_pilot", "run_bulk_shard"}
+
+
+def test_matched_exact_190_forward_calls_is_valid_threshold() -> None:
+    source = (REPO_ROOT / "src/vitnns/stage_e_e3_r1.py").read_text()
+    assert "minimum_forward_calls = 191 if unit[\"method\"] == e3.NNS_METHOD else 190" in source
+    assert "result.get(\"forward_calls\", 0) < minimum_forward_calls" in source

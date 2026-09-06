@@ -35,9 +35,12 @@ REPORT_ROOT_PATH = "reports/stage_e_e3_r1_20260906"
 PLAN_PATH = ROOT_PATH + "/control/recovery_plan.json"
 RUN_SPEC_PATH = ROOT_PATH + "/control/run_spec.json"
 PILOT_AUTH_PATH = ROOT_PATH + "/control/pilot_execution_authorization.json"
+PILOT_RECOVERY_AUTH_PATH = ROOT_PATH + "/control/pilot_recovery_authorization.json"
 PILOT_GATE_PATH = ROOT_PATH + "/control/pilot_continuation_gate.json"
 BULK_AUTH_PATH = ROOT_PATH + "/control/bulk_execution_authorization.json"
 TEST_REPORT_PATH = REPORT_ROOT_PATH + "/pre_pilot_test_results.json"
+RECOVERY_TEST_REPORT_PATH = REPORT_ROOT_PATH + "/pilot_recovery_test_results.json"
+INCIDENT_PATH = REPORT_ROOT_PATH + "/pilot_infrastructure_event_001.json"
 COMPLETION_PENDING_PATH = ROOT_PATH + "/completion/e3_r1_completion.pending.json"
 COMPLETION_PATH = ROOT_PATH + "/completion/e3_r1_completion.json"
 STOP_PATH = ROOT_PATH + "/control/runtime_stop.json"
@@ -350,6 +353,77 @@ def record_tests(
     })
     _write_or_verify(Path(repo_root).resolve() / TEST_REPORT_PATH, report)
     return report
+
+
+def authorize_pilot_recovery(
+    repo_root: Path | str = REPO_ROOT, *, passed: int, failed: int, command: str,
+) -> dict[str, Any]:
+    repo = Path(repo_root).resolve()
+    validate_initialized(repo)
+    if type(passed) is not int or passed <= 0 or failed != 0 or not command.strip():
+        raise StageEE3R1Error("pilot recovery requires a real zero-failure test result")
+    plan, eligible = _eligible_units(repo)
+    del plan
+    pilot_units = [unit for unit in eligible if unit["selection_order"] in PILOT_ORDERS]
+    observed = []
+    for unit in pilot_units:
+        root = _r1_attempt_paths(repo, unit["canonical_digest"])[0]
+        if root.exists():
+            attempt = _validate_r1_attempt(repo, unit)
+            if attempt["result"]["validity_status"] != "VALID":
+                raise StageEE3R1Error("pilot recovery cannot follow a terminal scientific failure")
+            observed.append({
+                "unit_digest": unit["canonical_digest"],
+                "result_canonical_digest": attempt["result"]["canonical_digest"],
+                "manifest_canonical_digest": attempt["manifest"]["canonical_digest"],
+            })
+    if len(observed) != 2:
+        raise StageEE3R1Error("pilot infrastructure event must preserve exactly two valid terminal attempts")
+    event = _signed({
+        "schema_version": 1, "document_type": "stage_e_e3_r1_pilot_infrastructure_event",
+        "recovery_id": RECOVERY_ID, "event_id": "E3_R1_PILOT_INFRA_001",
+        "status": "RECORDED", "recorded_at": _now(),
+        "selection_orders": list(PILOT_ORDERS),
+        "failure_class": "INFRASTRUCTURE_ORCHESTRATION_VALIDATOR",
+        "failure_code": "MATCHED_FORWARD_COUNT_BOUNDARY_TOO_STRICT",
+        "scientific_failure": False,
+        "description": "The first order-61 coordinate pair completed and atomically published. Immediate validation rejected the matched result because exactly 190 real fidelity forwards were incorrectly required to be greater than 190.",
+        "preserved_terminal_attempts": observed,
+        "terminal_attempt_recompute_authorized": False,
+        "remaining_pilot_units_authorized": 10,
+        "cost": {"gpu_seconds_charged": 20.0, "cpu_seconds_charged": 20.0, "accounting": "CONSERVATIVE_WALL_TIME_ROUNDED_UP"},
+        "e4_authorized": False, "e4_started": False,
+    })
+    _write_or_verify(repo / INCIDENT_PATH, event)
+    test_report = _signed({
+        "schema_version": 1, "document_type": "stage_e_e3_r1_pilot_recovery_test_results",
+        "recovery_id": RECOVERY_ID, "status": "PASS", "recorded_at": _now(),
+        "command": command, "passed": passed, "failed": failed, "e4_started": False,
+    })
+    _write_or_verify(repo / RECOVERY_TEST_REPORT_PATH, test_report)
+    status = _git(repo, "status", "--porcelain=v1")
+    allowed = (ROOT_PATH + "/", REPORT_ROOT_PATH + "/")
+    unexpected = [line for line in status.splitlines() if not any(line[3:].startswith(item) or f"/{item}" in line[3:] for item in allowed)]
+    if unexpected:
+        raise StageEE3R1Error(f"pilot recovery producer worktree is not clean: {unexpected}")
+    head = _git(repo, "rev-parse", "HEAD")
+    if _git(repo, "rev-parse", "@{u}") != head:
+        raise StageEE3R1Error("pilot recovery producer is not pushed")
+    authorization = _signed({
+        "schema_version": 1, "document_type": "stage_e_e3_r1_pilot_recovery_authorization",
+        "recovery_id": RECOVERY_ID, "status": "AUTHORIZED_PILOT_MISSING_COMPLEMENT_ONLY",
+        "issued_at": _now(), "producer_commit": head,
+        "producer_tree": _git(repo, "rev-parse", "HEAD^{tree}"),
+        "supersedes_pilot_authorization_canonical_digest": _strict_json(repo / PILOT_AUTH_PATH, "pilot authorization")[0]["canonical_digest"],
+        "incident_canonical_digest": event["canonical_digest"],
+        "test_report_canonical_digest": test_report["canonical_digest"],
+        "authorized_orders": list(PILOT_ORDERS),
+        "preserved_terminal_attempts": 2, "eligible_missing_attempts": 10,
+        "terminal_attempt_recompute": False, "bulk_authorized": False,
+        "e4_authorized": False, "e4_started": False,
+    })
+    _write_or_verify(repo / PILOT_RECOVERY_AUTH_PATH, authorization)
+    return authorization
 
 
 def initialize(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
@@ -706,7 +780,8 @@ def _validate_r1_attempt(repo: Path, unit: Mapping[str, Any]) -> dict[str, Any]:
         aggregates = e3._repeat_aggregates(curves)
         if any(result.get(key) != value for key, value in aggregates.items()):
             raise StageEE3R1Error("valid E3-R1 AUC aggregate drifted")
-        if result.get("forward_calls", 0) <= 190:
+        minimum_forward_calls = 191 if unit["method"] == e3.NNS_METHOD else 190
+        if result.get("forward_calls", 0) < minimum_forward_calls:
             raise StageEE3R1Error("valid E3-R1 attempt lacks real response evaluation")
         if result.get("source_hashes", {}).get("signed_map_sha256") != e1._array_digest(payload):
             raise StageEE3R1Error("valid E3-R1 map digest drifted")
@@ -750,12 +825,33 @@ def _eligible_units(repo: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     return plan, eligible
 
 
+def _validate_execution_code(repo: Path, phase: str) -> None:
+    recovery = phase == "PILOT" and (repo / PILOT_RECOVERY_AUTH_PATH).is_file()
+    relative = PILOT_RECOVERY_AUTH_PATH if recovery else PILOT_AUTH_PATH if phase == "PILOT" else BULK_AUTH_PATH
+    authorization, _ = _strict_json(repo / relative, "E3-R1 execution authorization")
+    _validate_signed(authorization, "E3-R1 execution authorization")
+    expected_status = "AUTHORIZED_PILOT_MISSING_COMPLEMENT_ONLY" if recovery else "AUTHORIZED_PILOT_ONLY" if phase == "PILOT" else "AUTHORIZED_BULK_COMPLEMENT_ONLY"
+    if authorization.get("status") != expected_status:
+        raise StageEE3R1Error("E3-R1 execution authorization status drifted")
+    if phase == "PILOT" and authorization.get("authorized_orders") != list(PILOT_ORDERS):
+        raise StageEE3R1Error("E3-R1 pilot order authorization drifted")
+    producer = authorization.get("producer_commit")
+    if not isinstance(producer, str) or len(producer) != 40:
+        raise StageEE3R1Error("E3-R1 execution authorization lacks producer commit")
+    if subprocess.run(("git", "merge-base", "--is-ancestor", producer, "HEAD"), cwd=repo, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
+        raise StageEE3R1Error("E3-R1 execution HEAD does not descend from producer")
+    protected = ("src/vitnns", "config", "tests", AMENDMENT_PATH)
+    if _git(repo, "diff", "--name-only", producer, "HEAD", "--", *protected):
+        raise StageEE3R1Error("E3-R1 reviewed producer source changed before execution")
+
+
 def _run_orders(
     repo: Path, *, orders: Sequence[int], device: str, phase: str,
 ) -> dict[str, Any]:
     validate_initialized(repo)
     if phase not in {"PILOT", "BULK"}:
         raise StageEE3R1Error("unknown E3-R1 execution phase")
+    _validate_execution_code(repo, phase)
     requested = tuple(orders)
     if len(set(requested)) != len(requested) or any(type(x) is not int or not 0 <= x < 500 for x in requested):
         raise StageEE3R1Error("invalid or duplicate selection orders")
@@ -972,6 +1068,15 @@ def _cumulative_cost(repo: Path) -> dict[str, Any]:
         telemetry.append(value)
     r1_elapsed = sum(float(item["elapsed_seconds"]) for item in telemetry)
     r1_cpu = sum(float(item["cpu_seconds"]) for item in telemetry)
+    infrastructure_events = []
+    for path in sorted((repo / REPORT_ROOT_PATH).glob("pilot_infrastructure_event_*.json")):
+        value, _ = _strict_json(path, "E3-R1 infrastructure event")
+        _validate_signed(value, "E3-R1 infrastructure event")
+        infrastructure_events.append(value)
+    incident_gpu_seconds = sum(float(item["cost"]["gpu_seconds_charged"]) for item in infrastructure_events)
+    incident_cpu_seconds = sum(float(item["cost"]["cpu_seconds_charged"]) for item in infrastructure_events)
+    r1_elapsed += incident_gpu_seconds
+    r1_cpu += incident_cpu_seconds
     r1_artifact = sum(
         sum(path.stat().st_size for path in item[1]["attempt_path"].iterdir() if path.is_file())
         for item in observed
@@ -994,7 +1099,9 @@ def _cumulative_cost(repo: Path) -> dict[str, Any]:
         "e3_v1_retained_bytes": v1_root_bytes,
         "r1_attempt_bytes": r1_artifact, "r1_root_and_report_bytes": root_bytes + report_bytes,
         "retained_bytes": v1_root_bytes + root_bytes + report_bytes,
-        "r1_terminal_attempts": len(observed), "gpu_invocation_count": len(telemetry),
+        "r1_terminal_attempts": len(observed),
+        "gpu_invocation_count": len(telemetry) + len(infrastructure_events),
+        "infrastructure_event_count": len(infrastructure_events),
     }
 
 
@@ -1019,8 +1126,15 @@ def evaluate_pilot(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
     groups = {row["selection_order"]: row for row in telemetry["groups"]}
     if set(groups) != set(PILOT_ORDERS):
         raise StageEE3R1Error("pilot telemetry does not cover orders 61 and 72")
-    max_gpu_group = max(float(groups[order]["elapsed_seconds"]) / 3600.0 for order in PILOT_ORDERS)
-    max_cpu_group = max(float(groups[order]["cpu_seconds"]) for order in PILOT_ORDERS)
+    incident_gpu_by_order = Counter()
+    incident_cpu_by_order = Counter()
+    for path in sorted((repo / REPORT_ROOT_PATH).glob("pilot_infrastructure_event_*.json")):
+        event, _ = _strict_json(path, "E3-R1 pilot incident")
+        for order in event["selection_orders"]:
+            incident_gpu_by_order[order] += float(event["cost"]["gpu_seconds_charged"]) / len(event["selection_orders"])
+            incident_cpu_by_order[order] += float(event["cost"]["cpu_seconds_charged"]) / len(event["selection_orders"])
+    max_gpu_group = max((float(groups[order]["elapsed_seconds"]) + incident_gpu_by_order[order]) / 3600.0 for order in PILOT_ORDERS)
+    max_cpu_group = max(float(groups[order]["cpu_seconds"]) + incident_cpu_by_order[order] for order in PILOT_ORDERS)
     group_bytes = []
     for order in PILOT_ORDERS:
         group_bytes.append(sum(
@@ -1057,6 +1171,8 @@ def evaluate_pilot(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
             "schema_version": 1, "document_type": "stage_e_e3_r1_bulk_execution_authorization",
             "recovery_id": RECOVERY_ID, "status": "AUTHORIZED_BULK_COMPLEMENT_ONLY",
             "issued_at": _now(), "pilot_gate_canonical_digest": gate["canonical_digest"],
+            "producer_commit": _git(repo, "rev-parse", "HEAD"),
+            "producer_tree": _git(repo, "rev-parse", "HEAD^{tree}"),
             "authorized_unit_count": 2472, "pilot_orders_excluded": list(PILOT_ORDERS),
             "e4_authorized": False, "e4_started": False,
         })
@@ -1480,6 +1596,11 @@ def _main() -> int:
     tests.add_argument("--passed", type=int, required=True)
     tests.add_argument("--failed", type=int, required=True)
     tests.add_argument("--test-command", required=True)
+    recovery = sub.add_parser("authorize-pilot-recovery")
+    recovery.add_argument("--repo-root", type=Path, default=REPO_ROOT)
+    recovery.add_argument("--passed", type=int, required=True)
+    recovery.add_argument("--failed", type=int, required=True)
+    recovery.add_argument("--test-command", required=True)
     pilot = sub.add_parser("run-pilot")
     pilot.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     pilot.add_argument("--device", default="cuda:0")
@@ -1497,6 +1618,8 @@ def _main() -> int:
         value = validate_initialized(args.repo_root)
     elif args.command == "record-tests":
         value = record_tests(args.repo_root, passed=args.passed, failed=args.failed, command=args.test_command)
+    elif args.command == "authorize-pilot-recovery":
+        value = authorize_pilot_recovery(args.repo_root, passed=args.passed, failed=args.failed, command=args.test_command)
     elif args.command == "run-pilot":
         value = run_pilot(args.repo_root, device=args.device)
     elif args.command == "evaluate-pilot":
