@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vitnns.local/schemas/stage_e_e4.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "document_type", "stage_id", "protocol", "run_spec", "predecessor", "scope", "outputs", "budget", "canonical_digest"],
+  "properties": {
+    "$schema": {"const": "stage_e_e4.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_e_e4_mixed_validity_sealing_contract"},
+    "stage_id": {"const": "E4"},
+    "protocol": {"const": "docs/stage_e_protocol.md"},
+    "run_spec": {"const": "config/stage_e_run_spec.json"},
+    "predecessor": {"type": "object"},
+    "scope": {"type": "object"},
+    "outputs": {"type": "object"},
+    "budget": {"type": "object"},
+    "canonical_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
