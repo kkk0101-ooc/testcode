@@ -35,6 +35,8 @@ PLAN_PATH = ROOT_PATH + "/control/recovery_plan.json"
 RUN_SPEC_PATH = ROOT_PATH + "/control/run_spec.json"
 AUTH_PATH = ROOT_PATH + "/control/execution_authorization.json"
 TEST_REPORT_PATH = REPORT_ROOT_PATH + "/pre_execution_test_results.json"
+RECOVERY_TEST_REPORT_PATH = REPORT_ROOT_PATH + "/execution_recovery_test_results.json"
+INCIDENT_PATH = REPORT_ROOT_PATH + "/execution_infrastructure_event_001.json"
 COMPLETION_PENDING_PATH = ROOT_PATH + "/completion/e3_r2_completion.pending.json"
 COMPLETION_PATH = ROOT_PATH + "/completion/e3_r2_completion.json"
 
@@ -288,6 +290,26 @@ def record_tests(repo_root: Path | str = REPO_ROOT, *, passed: int, failed: int,
     return report
 
 
+def authorize_execution_recovery(repo_root: Path | str = REPO_ROOT, *, passed: int, failed: int, command: str) -> dict[str, Any]:
+    repo=Path(repo_root).resolve(); validate_initialized(repo)
+    if type(passed) is not int or passed<=0 or failed!=0 or not command.strip(): raise StageEE3R2Error("E3-R2 recovery requires a real zero-failure test result")
+    _,eligible=_partition(repo); units={unit["canonical_digest"]:unit for unit in eligible}; observed=[]
+    for path in sorted((repo/ROOT_PATH/"units").glob("*/attempts/attempt-r2-000001")):
+        digest=path.parents[1].name
+        if digest not in units: raise StageEE3R2Error("unknown R2 recovery unit")
+        attempt=r1._validate_r1_attempt(repo,units[digest],root_path=ROOT_PATH,attempt_id=ATTEMPT_ID,recovery_id=RECOVERY_ID,origin="E3_R2_NEW")
+        if attempt["result"]["validity_status"]!="VALID": raise StageEE3R2Error("R2 recovery cannot follow scientific failure")
+        observed.append({"unit_digest":digest,"selection_order":units[digest]["selection_order"],"result_canonical_digest":attempt["result"]["canonical_digest"],"manifest_canonical_digest":attempt["manifest"]["canonical_digest"]})
+    if len(observed)!=8: raise StageEE3R2Error("R2 infrastructure event must preserve exactly eight attempts")
+    event=_signed({"schema_version":1,"document_type":"stage_e_e3_r2_infrastructure_event","recovery_id":RECOVERY_ID,"event_id":"E3_R2_INFRA_001","status":"RECORDED","recorded_at":_now(),"failure_class":"INFRASTRUCTURE_ORCHESTRATION_VALIDATOR","failure_code":"PUBLISHER_ORIGIN_VALIDATION_ARGUMENT_MISSING","scientific_failure":False,"description":"Each shard completed and atomically published its first NNS unit; immediate validation omitted the E3_R2_NEW origin argument.","preserved_terminal_attempts":observed,"terminal_attempt_recompute_authorized":False,"remaining_units_authorized":2464,"cost":{"gpu_seconds_charged":160.0,"cpu_seconds_charged":160.0,"accounting":"EIGHT_PROCESSES_CONSERVATIVE_20_SECONDS_EACH"},"e4_authorized":False,"e4_started":False}); _write_or_verify(repo/INCIDENT_PATH,event)
+    report=_signed({"schema_version":1,"document_type":"stage_e_e3_r2_execution_recovery_test_results","recovery_id":RECOVERY_ID,"status":"PASS","recorded_at":_now(),"command":command,"passed":passed,"failed":failed,"e4_started":False}); _write_or_verify(repo/RECOVERY_TEST_REPORT_PATH,report)
+    status=_git(repo,"status","--porcelain=v1"); allowed=(ROOT_PATH+"/",REPORT_ROOT_PATH+"/"); unexpected=[line for line in status.splitlines() if not any(line[3:].startswith(item) or f"/{item}" in line[3:] for item in allowed)]
+    if unexpected: raise StageEE3R2Error(f"E3-R2 recovery producer worktree is not clean: {unexpected}")
+    head=_git(repo,"rev-parse","HEAD")
+    if _git(repo,"rev-parse","@{u}")!=head: raise StageEE3R2Error("E3-R2 recovery producer is not pushed")
+    authorization=_signed({"schema_version":1,"document_type":"stage_e_e3_r2_execution_recovery_authorization","recovery_id":RECOVERY_ID,"status":"AUTHORIZED_MISSING_COMPLEMENT_ONLY","issued_at":_now(),"producer_commit":head,"producer_tree":_git(repo,"rev-parse","HEAD^{tree}"),"supersedes_authorization_canonical_digest":_strict_json(repo/AUTH_PATH,"E3-R2 original authorization")[0]["canonical_digest"],"incident_canonical_digest":event["canonical_digest"],"test_report_canonical_digest":report["canonical_digest"],"preserved_terminal_attempts":8,"eligible_missing_attempts":2464,"terminal_attempt_recompute":False,"e4_authorized":False,"e4_started":False}); _write_or_verify(repo/ROOT_PATH/"control/execution_recovery_authorization.json",authorization); return authorization
+
+
 def initialize(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
     repo = Path(repo_root).resolve()
     pre = verify_preconditions(repo)
@@ -358,7 +380,8 @@ def validate_initialized(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
 
 
 def _validate_execution_code(repo: Path) -> None:
-    authorization, _ = _strict_json(repo / AUTH_PATH, "E3-R2 execution authorization")
+    recovery_path=repo/ROOT_PATH/"control/execution_recovery_authorization.json"; selected=recovery_path if recovery_path.is_file() else repo/AUTH_PATH
+    authorization, _ = _strict_json(selected, "E3-R2 execution authorization")
     _validate_signed(authorization, "E3-R2 execution authorization")
     if authorization.get("status") != "AUTHORIZED_MISSING_COMPLEMENT_ONLY":
         raise StageEE3R2Error("E3-R2 execution is not authorized")
@@ -485,10 +508,14 @@ def _actual_cost(repo: Path) -> dict[str, Any]:
     upstream=r1.validate_completion(repo)["actual_cost"]; telemetry=[]
     for path in sorted((repo/ROOT_PATH/"telemetry").glob("shard-*-of-08.json")):
         value,_=_strict_json(path,"E3-R2 telemetry"); _validate_signed(value,"E3-R2 telemetry"); telemetry.append(value)
+    incidents=[]
+    for path in sorted((repo/REPORT_ROOT_PATH).glob("execution_infrastructure_event_*.json")):
+        value,_=_strict_json(path,"E3-R2 infrastructure event"); _validate_signed(value,"E3-R2 infrastructure event"); incidents.append(value)
+    incident_gpu_seconds=sum(float(x["cost"]["gpu_seconds_charged"]) for x in incidents); incident_cpu_seconds=sum(float(x["cost"]["cpu_seconds_charged"]) for x in incidents)
     v1_bytes=_inventory(repo/e3.ROOT_PATH)["total_bytes"]+_inventory(repo/e3.REPORT_ROOT_PATH)["total_bytes"]
     r1_bytes=_inventory(repo/R1_ROOT)["total_bytes"]+_inventory(repo/R1_REPORT_ROOT)["total_bytes"]
     r2_bytes=_inventory(repo/ROOT_PATH,exclude=("whole_root_inventory.json","status.json","completion/e3_r2_completion.pending.json","completion/e3_r2_completion.json"))["total_bytes"]+_inventory(repo/REPORT_ROOT_PATH)["total_bytes"]
-    result={"e3_v1_r1_gpu_hours":upstream["gpu_hours"],"e3_r2_gpu_hours":sum(float(x["gpu_hours"]) for x in telemetry),"gpu_hours":upstream["gpu_hours"]+sum(float(x["gpu_hours"]) for x in telemetry),"e3_v1_r1_cpu_seconds":upstream["cpu_seconds"],"e3_r2_cpu_seconds":sum(float(x["cpu_seconds"]) for x in telemetry),"cpu_seconds":upstream["cpu_seconds"]+sum(float(x["cpu_seconds"]) for x in telemetry),"retained_bytes":v1_bytes+r1_bytes+r2_bytes,"e3_r2_gpu_invocations":len(telemetry),"e3_r2_terminal_attempts":sum(int(x["completed_units"])+int(x["skipped_terminal_units"]) for x in telemetry),"gpu_hours_max":GPU_HOURS_MAX,"cpu_hours_max":512.0,"retained_bytes_max":RETAINED_BYTES_MAX}
+    result={"e3_v1_r1_gpu_hours":upstream["gpu_hours"],"e3_r2_gpu_hours":sum(float(x["gpu_hours"]) for x in telemetry)+incident_gpu_seconds/3600.0,"gpu_hours":upstream["gpu_hours"]+sum(float(x["gpu_hours"]) for x in telemetry)+incident_gpu_seconds/3600.0,"e3_v1_r1_cpu_seconds":upstream["cpu_seconds"],"e3_r2_cpu_seconds":sum(float(x["cpu_seconds"]) for x in telemetry)+incident_cpu_seconds,"cpu_seconds":upstream["cpu_seconds"]+sum(float(x["cpu_seconds"]) for x in telemetry)+incident_cpu_seconds,"retained_bytes":v1_bytes+r1_bytes+r2_bytes,"e3_r2_gpu_invocations":len(telemetry)+len(incidents),"e3_r2_infrastructure_event_count":len(incidents),"e3_r2_terminal_attempts":sum(int(x["completed_units"])+int(x["skipped_terminal_units"]) for x in telemetry),"gpu_hours_max":GPU_HOURS_MAX,"cpu_hours_max":512.0,"retained_bytes_max":RETAINED_BYTES_MAX}
     result["status"]="PASS_COST" if result["gpu_hours"]<=GPU_HOURS_MAX and result["cpu_seconds"]<=CPU_SECONDS_MAX and result["retained_bytes"]<=RETAINED_BYTES_MAX else "FAIL_COST"
     return result
 
@@ -592,12 +619,14 @@ def _main() -> int:
     for name in ("verify-preconditions","initialize","validate-initialized","validate-outputs","finalize","validate-completion"):
         child=sub.add_parser(name); child.add_argument("--repo-root",type=Path,default=REPO_ROOT)
     tests=sub.add_parser("record-tests"); tests.add_argument("--repo-root",type=Path,default=REPO_ROOT); tests.add_argument("--passed",type=int,required=True); tests.add_argument("--failed",type=int,required=True); tests.add_argument("--test-command",required=True)
+    recovery=sub.add_parser("authorize-execution-recovery"); recovery.add_argument("--repo-root",type=Path,default=REPO_ROOT); recovery.add_argument("--passed",type=int,required=True); recovery.add_argument("--failed",type=int,required=True); recovery.add_argument("--test-command",required=True)
     run=sub.add_parser("run-shard"); run.add_argument("--repo-root",type=Path,default=REPO_ROOT); run.add_argument("--shard-id",type=int,required=True); run.add_argument("--shard-count",type=int,required=True); run.add_argument("--device",default="cuda:0")
     args=parser.parse_args()
     if args.command=="verify-preconditions": value=verify_preconditions(args.repo_root)
     elif args.command=="initialize": value=initialize(args.repo_root)
     elif args.command=="validate-initialized": value=validate_initialized(args.repo_root)
     elif args.command=="record-tests": value=record_tests(args.repo_root,passed=args.passed,failed=args.failed,command=args.test_command)
+    elif args.command=="authorize-execution-recovery": value=authorize_execution_recovery(args.repo_root,passed=args.passed,failed=args.failed,command=args.test_command)
     elif args.command=="run-shard": value=run_shard(args.repo_root,shard_id=args.shard_id,shard_count=args.shard_count,device=args.device)
     elif args.command=="validate-outputs":
         output=validate_outputs(args.repo_root); value={"status":"PASS","method_rows":len(output["method_rows"]),"paired_rows":len(output["pair_rows"]),"actual_cost":output["actual_cost"]}

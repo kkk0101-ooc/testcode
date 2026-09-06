@@ -676,7 +676,7 @@ def _publish_attempt(
             shutil.rmtree(temporary)
     _validate_r1_attempt(
         repo, unit, root_path=selected_root, attempt_id=attempt_id,
-        recovery_id=recovery_id,
+        recovery_id=recovery_id, origin=result.get("origin", "E3_R1_NEW"),
     )
     return root
 

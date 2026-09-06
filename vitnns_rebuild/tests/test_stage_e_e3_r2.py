@@ -5,11 +5,15 @@ from __future__ import annotations
 import json
 from collections import Counter
 from pathlib import Path
+from types import SimpleNamespace
 
+import numpy as np
 import pytest
+import torch
 from jsonschema import Draft202012Validator
 
 import vitnns.stage_e_e3_r2 as r2
+from vitnns.attribution import IGResult
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -77,3 +81,14 @@ def test_enlarged_budget_still_has_hard_limits() -> None:
     assert r2.GPU_HOURS_MAX == 128.0
     assert r2.CPU_SECONDS_MAX == 512.0 * 3600.0
     assert r2.RETAINED_BYTES_MAX == 32 * 1024**3
+
+
+def test_cross_root_publish_validates_r2_origin(tmp_path: Path) -> None:
+    unit={"canonical_digest":"a"*64,"sample_id":"sample","selection_order":3,"stratum":"correct","block":4,"head":2,"method":r2.e3.NNS_METHOD,"target":"fixed_clean_attention_cls_head_direction","scale":"fine_4x4_cell","coordinate_comparison_identity":r2.e3.comparison_identity(4,2),"image_sha256":"b"*64}
+    attempts=tuple({"steps":step,"delta":[1.0],"sum":[0.0],"abs":[1.0],"rel":[1.0],"pass":[False]} for step in r2.COMPLETE_SCHEDULE)
+    ig=IGResult(attribution=torch.ones((1,3,224,224),dtype=torch.float32),conservation={"delta":torch.tensor([1.0]),"sum":torch.tensor([0.0]),"abs":torch.tensor([1.0]),"rel":torch.tensor([1.0]),"pass":torch.tensor([False])},steps=32768,converged=False,attempts=attempts,metadata={"step_schedule":list(r2.COMPLETE_SCHEDULE),"step_chunk_size":8,"atol":1e-4,"rtol":0.01})
+    diagnostic=np.ones((3,224,224),dtype=np.float32); target={"frozen_target":{"runtime_model_binding":{"sha256":"x"}}}; response=SimpleNamespace(to_dict=lambda:{"sigma":1})
+    result=r2.r1._failure_result(unit=unit,target_identity=target,response=response,error=SimpleNamespace(ig_result=ig),elapsed_seconds=1.0,cpu_seconds=2.0,forward_calls=7,peak_cuda_bytes=8,clean_sha256="c"*64,diagnostic=diagnostic,recovery_id=r2.RECOVERY_ID,attempt_id=r2.ATTEMPT_ID,origin="E3_R2_NEW")
+    path=r2.r1._publish_attempt(tmp_path,unit,result,diagnostic,root_path=r2.ROOT_PATH,attempt_id=r2.ATTEMPT_ID,recovery_id=r2.RECOVERY_ID)
+    observed=r2.r1._validate_r1_attempt(tmp_path,unit,root_path=r2.ROOT_PATH,attempt_id=r2.ATTEMPT_ID,recovery_id=r2.RECOVERY_ID,origin="E3_R2_NEW")
+    assert path.is_dir() and observed["result"]["origin"]=="E3_R2_NEW"
