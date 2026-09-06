@@ -9,14 +9,14 @@
     "document_type": {"const": "stage_e_e3_r2_terminal_completion"},
     "stage_id": {"const": "E3-R2"},
     "recovery_id": {"const": "STAGE-E-E3-R2-BUDGET-CONTINUATION-20260906"},
-    "status": {"const": "PASS"},
+    "status": {"enum": ["PASS", "FAIL"]},
     "started_at": {"type": "string", "format": "date-time"},
     "completed_at": {"type": "string", "format": "date-time"},
     "upstream": {"type": "object"}, "union": {"type": "object"},
-    "package_completeness": {"const": "PASS"}, "workflow_integrity": {"const": "PASS"},
-    "scientific_validity": {"const": "PASS"}, "cost_status": {"const": "PASS_COST"},
+    "package_completeness": {"enum": ["PASS", "FAIL"]}, "workflow_integrity": {"const": "PASS"},
+    "scientific_validity": {"enum": ["PASS", "FAIL"]}, "cost_status": {"enum": ["PASS_COST", "FAIL_COST"]},
     "actual_cost": {"type": "object"}, "source_validation": {"type": "object"},
-    "next_authorization": {"const": "E4_ONLY"}, "e4_started": {"const": false},
+    "next_authorization": {"enum": ["E4_ONLY", "NONE"]}, "e4_started": {"const": false},
     "canonical_digest": {"$ref": "#/$defs/sha256"}
   },
   "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}

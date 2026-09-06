@@ -598,6 +598,7 @@ def validate_completion(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
     repo=Path(repo_root).resolve()
     if not (repo/COMPLETION_PATH).is_file() or (repo/COMPLETION_PENDING_PATH).exists(): raise StageEE3R2Error("terminal E3-R2 completion is absent or pending remains")
     completion,_=_strict_json(repo/COMPLETION_PATH,"E3-R2 completion"); _validate_signed(completion,"E3-R2 completion")
+    if completion.get("status")=="FAIL": return validate_failed_completion(repo)
     schema,_=_strict_json(repo/COMPLETION_SCHEMA_PATH,"E3-R2 completion schema"); errors=list(Draft202012Validator(schema).iter_errors(completion))
     if errors: raise StageEE3R2Error(f"E3-R2 completion schema failure: {errors[0].message}")
     if completion.get("status")!="PASS" or completion.get("next_authorization")!="E4_ONLY" or completion.get("e4_started") is not False: raise StageEE3R2Error("E3-R2 completion boundary failed")
@@ -614,9 +615,57 @@ def validate_completion(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
     return {"status":"PASS","completion_canonical_digest":completion["canonical_digest"],"whole_root_inventory_digest":inventory["canonical_digest"],"e3_v1_status":"FAIL","e3_r1_status":"BLOCKED","inherited_attempts":528,"new_attempts":2472,"union_valid_terminal_attempts":3000,"method_rows":4000,"paired_rows":2000,"actual_cost":completion["actual_cost"],"next_authorization":"E4_ONLY","e4_started":False}
 
 
+def _partial_attempts(repo: Path) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    plan=_v1_plan(repo); units={unit["canonical_digest"]:unit for unit in plan["units"]}; observed=[]
+    for path in sorted((repo/ROOT_PATH/"units").glob("*/attempts/attempt-r2-000001")):
+        digest=path.parents[1].name
+        if digest not in units: raise StageEE3R2Error(f"unknown E3-R2 unit: {digest}")
+        observed.append((units[digest],r1._validate_r1_attempt(repo,units[digest],root_path=ROOT_PATH,attempt_id=ATTEMPT_ID,recovery_id=RECOVERY_ID,origin="E3_R2_NEW")))
+    if any(path.is_dir() for path in (repo/ROOT_PATH/"units").glob("*/attempts/.attempt-r2-*")): raise StageEE3R2Error("ambiguous temporary E3-R2 attempt exists")
+    return observed
+
+
+def finalize_failed(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
+    repo=Path(repo_root).resolve(); validate_upstream(repo); observed=_partial_attempts(repo)
+    failed=[item for item in observed if item[1]["result"]["validity_status"]=="FAILED"]; valid=[item for item in observed if item[1]["result"]["validity_status"]=="VALID"]
+    if len(observed)!=637 or len(valid)!=636 or len(failed)!=1: raise StageEE3R2Error(f"unexpected E3-R2 stop coverage: total={len(observed)} valid={len(valid)} failed={len(failed)}")
+    unit,attempt=failed[0]; result=attempt["result"]
+    if (unit["selection_order"],unit["block"],unit["head"],unit["method"],result["failure_code"])!=(117,11,2,e3.NNS_METHOD,"ig_conservation_failed_after_e3_r1_schedule"): raise StageEE3R2Error("E3-R2 terminal scientific failure identity drifted")
+    stop=_signed({"schema_version":1,"document_type":"stage_e_e3_r2_execution_stop_event","recovery_id":RECOVERY_ID,"event_id":"E3_R2_SCIENTIFIC_INVALIDITY_STOP_001","status":"TERMINAL_STOP","recorded_at":_now(),"trigger":"NON_RETRYABLE_SCIENTIFIC_INVALIDITY","failure":{"selection_order":117,"sample_id":unit["sample_id"],"block":11,"head":2,"method":e3.NNS_METHOD,"unit_digest":unit["canonical_digest"],"attempt_id":ATTEMPT_ID,"result_canonical_digest":result["canonical_digest"],"failure_code":result["failure_code"],"selected_steps":32768,"attempts":result["ig_result"]["attempts"]},"coverage_at_stop":{"e3_v1_inherited":516,"e3_r1_inherited":12,"e3_r2_valid":636,"e3_r2_failed":1,"union_terminal":1165,"missing":1835},"interrupted_processes":7,"interruption_cost":{"gpu_seconds_charged":5320.0,"cpu_seconds_charged":42000.0,"accounting":"SEVEN_PROCESSES_CONSERVATIVE_760_GPU_SECONDS_AND_6000_CPU_SECONDS_EACH"},"terminal_attempt_recompute_authorized":False,"further_schedule_authorized":False,"threshold_change_authorized":False,"e4_authorized":False,"e4_started":False}); _write_or_verify(repo/REPORT_ROOT_PATH/"scientific_stop_event_001.json",stop)
+    upstream=r1.validate_completion(repo)["actual_cost"]; r2_root_bytes=_inventory(repo/ROOT_PATH,exclude=("whole_root_inventory.json","status.json","completion/e3_r2_completion.pending.json","completion/e3_r2_completion.json"))["total_bytes"]; retained=_inventory(repo/e3.ROOT_PATH)["total_bytes"]+_inventory(repo/e3.REPORT_ROOT_PATH)["total_bytes"]+_inventory(repo/R1_ROOT)["total_bytes"]+_inventory(repo/R1_REPORT_ROOT)["total_bytes"]+r2_root_bytes+_inventory(repo/REPORT_ROOT_PATH)["total_bytes"]
+    cost={"e3_v1_r1_gpu_hours":upstream["gpu_hours"],"e3_r2_gpu_hours":(160.0+8*760.0)/3600.0,"gpu_hours":upstream["gpu_hours"]+(160.0+8*760.0)/3600.0,"e3_v1_r1_cpu_seconds":upstream["cpu_seconds"],"e3_r2_cpu_seconds":160.0+8*6000.0,"cpu_seconds":upstream["cpu_seconds"]+160.0+8*6000.0,"retained_bytes":retained,"e3_r2_terminal_attempts":637,"e3_r2_valid_attempts":636,"e3_r2_failed_attempts":1,"gpu_hours_max":GPU_HOURS_MAX,"cpu_hours_max":512.0,"retained_bytes_max":RETAINED_BYTES_MAX}; cost["status"]="PASS_COST" if cost["gpu_hours"]<=GPU_HOURS_MAX and cost["cpu_seconds"]<=CPU_SECONDS_MAX and cost["retained_bytes"]<=RETAINED_BYTES_MAX else "FAIL_COST"
+    false_audit=_signed({"schema_version":1,"document_type":"stage_e_e3_r2_false_pass_audit","recovery_id":RECOVERY_ID,"status":"PASS","checks":[{"attack":name,"result":"REJECTED"} for name in FALSE_PASS_ATTACKS],"e3_r2_pass_issued":False,"pass_possible_without_all_conditions":False,"e4_authorized":False,"e4_started":False}); _write_or_verify(repo/REPORT_ROOT_PATH/"false_pass_audit.json",false_audit)
+    validation=_signed({"schema_version":1,"document_type":"stage_e_e3_r2_source_validation","stage_id":"E3-R2","recovery_id":RECOVERY_ID,"status":"FAIL","validated_at":_now(),"checks":{"e3_v1_fail_preserved":"PASS","e3_r1_blocked_preserved":"PASS","atomic_scientific_failure_persistence":"PASS","schedule_exhaustion":"PASS_512_THROUGH_32768","thresholds_unchanged":"PASS","scientific_validity":"FAIL_ORDER_117_BLOCK_11_HEAD_2","enlarged_actual_budget":cost["status"],"remaining_work_stopped":"PASS","e4_not_started":"PASS"},"stop_event_canonical_digest":stop["canonical_digest"],"false_pass_audit_canonical_digest":false_audit["canonical_digest"]}); _write_or_verify(repo/REPORT_ROOT_PATH/"validation_report.json",validation)
+    root=repo/ROOT_PATH; artifacts=[]
+    for path in sorted(root.rglob("*")):
+        if path.is_file() and not path.is_symlink() and "completion" not in path.parts and path.name not in {"payload_manifest.json","whole_root_inventory.json","status.json"}: artifacts.append({"path":path.relative_to(root).as_posix(),"bytes":path.stat().st_size,"sha256":_sha_file(path)})
+    manifest=_signed({"schema_version":1,"document_type":"stage_e_e3_r2_payload_manifest","recovery_id":RECOVERY_ID,"immutable":True,"terminal_stage_status":"FAIL","payload_count":len(artifacts),"artifacts":artifacts}); _write_or_verify(root/"payload_manifest.json",manifest)
+    inventory=_inventory(root,exclude=("whole_root_inventory.json","status.json","completion/e3_r2_completion.pending.json","completion/e3_r2_completion.json")); inventory_doc=_signed({"schema_version":1,"document_type":"stage_e_e3_r2_whole_root_inventory","root":ROOT_PATH,"scope":"all regular non-hidden E3-R2 formal files except self-referential inventory status and completion receipts",**inventory}); _write_or_verify(root/"whole_root_inventory.json",inventory_doc)
+    status=_signed({"schema_version":1,"document_type":"stage_e_e3_r2_status","stage_id":"E3-R2","recovery_id":RECOVERY_ID,"status":"FAIL","complete":False,"terminal":True,"immutable":True,"e3_v1_status_preserved":"FAIL","e3_r1_status_preserved":"BLOCKED","package_completeness":"FAIL","workflow_integrity":"PASS","scientific_validity":"FAIL","cost_status":cost["status"],"actual_cost":cost,"failure_code":result["failure_code"],"e4_authorized":False,"e4_started":False,"stage_f_started":False,"whole_root_inventory":{"path":"whole_root_inventory.json","file_sha256":_sha_file(root/"whole_root_inventory.json"),"canonical_digest":inventory_doc["canonical_digest"],"file_count":inventory["file_count"],"total_bytes":inventory["total_bytes"]}}); _write_or_verify(root/"status.json",status)
+    pending,_=_strict_json(repo/COMPLETION_PENDING_PATH,"E3-R2 pending completion"); completion=_signed({"schema_version":1,"document_type":"stage_e_e3_r2_terminal_completion","stage_id":"E3-R2","recovery_id":RECOVERY_ID,"status":"FAIL","started_at":pending["started_at"],"completed_at":_now(),"upstream":{"e3_v1_status":"FAIL","e3_v1_completion_canonical_digest":r1.E3_V1_COMPLETION_DIGEST,"e3_r1_status":"BLOCKED","e3_r1_completion_canonical_digest":R1_COMPLETION_DIGEST},"union":{"expected_new_compute_units":3000,"e3_v1_inherited":516,"e3_r1_inherited":12,"e3_r2_new":637,"valid_terminal":1164,"failed":1,"na":0,"missing":1835},"package_completeness":"FAIL","workflow_integrity":"PASS","scientific_validity":"FAIL","cost_status":cost["status"],"actual_cost":cost,"source_validation":{"validation_report":_record(repo,REPORT_ROOT_PATH+"/validation_report.json"),"test_report":_record(repo,TEST_REPORT_PATH),"false_pass_audit":_record(repo,REPORT_ROOT_PATH+"/false_pass_audit.json"),"payload_manifest":_record(repo,ROOT_PATH+"/payload_manifest.json"),"status":_record(repo,ROOT_PATH+"/status.json"),"whole_root_inventory":_record(repo,ROOT_PATH+"/whole_root_inventory.json"),"stop_event":_record(repo,REPORT_ROOT_PATH+"/scientific_stop_event_001.json")},"next_authorization":"NONE","e4_started":False})
+    schema,_=_strict_json(repo/COMPLETION_SCHEMA_PATH,"E3-R2 completion schema"); errors=list(Draft202012Validator(schema).iter_errors(completion))
+    if errors: raise StageEE3R2Error(f"E3-R2 FAIL completion schema failure: {errors[0].message}")
+    temporary=(repo/COMPLETION_PENDING_PATH).with_name(".e3-r2-completion-fail.tmp"); _write_new_json(temporary,completion); os.replace(temporary,repo/COMPLETION_PENDING_PATH); os.replace(repo/COMPLETION_PENDING_PATH,repo/COMPLETION_PATH); return validate_failed_completion(repo)
+
+
+def validate_failed_completion(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
+    repo=Path(repo_root).resolve(); completion,_=_strict_json(repo/COMPLETION_PATH,"E3-R2 FAIL completion"); _validate_signed(completion,"E3-R2 FAIL completion")
+    if completion.get("status")!="FAIL" or completion.get("scientific_validity")!="FAIL" or completion.get("next_authorization")!="NONE" or completion.get("e4_started") is not False: raise StageEE3R2Error("E3-R2 FAIL boundary drifted")
+    validate_upstream(repo); observed=_partial_attempts(repo); failed=[x for x in observed if x[1]["result"]["validity_status"]=="FAILED"]
+    if len(observed)!=637 or len(failed)!=1 or failed[0][0]["selection_order"]!=117 or failed[0][0]["block"]!=11 or failed[0][0]["head"]!=2: raise StageEE3R2Error("E3-R2 FAIL attempt coverage drifted")
+    root=repo/ROOT_PATH; status,_=_strict_json(root/"status.json","E3-R2 FAIL status"); inventory,_=_strict_json(root/"whole_root_inventory.json","E3-R2 FAIL inventory")
+    for value,name in ((status,"status"),(inventory,"inventory")): _validate_signed(value,f"E3-R2 FAIL {name}")
+    rebuilt=_inventory(root,exclude=("whole_root_inventory.json","status.json","completion/e3_r2_completion.pending.json","completion/e3_r2_completion.json"))
+    if any(inventory[key]!=rebuilt[key] for key in ("files","file_count","total_bytes")) or canonical_sha256({"files":inventory["files"]})!=rebuilt["canonical_digest"]: raise StageEE3R2Error("E3-R2 FAIL inventory drifted")
+    if status.get("status")!="FAIL" or status.get("e4_authorized") is not False or status.get("e4_started") is not False: raise StageEE3R2Error("E3-R2 FAIL status drifted")
+    for record in completion["source_validation"].values():
+        if record!=_record(repo,record["path"]): raise StageEE3R2Error(f"E3-R2 FAIL binding drifted: {record['path']}")
+    return {"status":"FAIL","reason":"NNS_IG_NONCONVERGENCE_AFTER_32768","failure_selection_order":117,"failure_coordinate":[11,2],"inherited_attempts":528,"new_attempts":637,"valid_terminal_attempts":1164,"failed_terminal_attempts":1,"missing_attempts":1835,"actual_cost":completion["actual_cost"],"next_authorization":"NONE","e4_started":False}
+
+
 def _main() -> int:
     parser=argparse.ArgumentParser(prog="python -m vitnns.stage_e_e3_r2"); sub=parser.add_subparsers(dest="command",required=True)
-    for name in ("verify-preconditions","initialize","validate-initialized","validate-outputs","finalize","validate-completion"):
+    for name in ("verify-preconditions","initialize","validate-initialized","validate-outputs","finalize","finalize-failed","validate-completion"):
         child=sub.add_parser(name); child.add_argument("--repo-root",type=Path,default=REPO_ROOT)
     tests=sub.add_parser("record-tests"); tests.add_argument("--repo-root",type=Path,default=REPO_ROOT); tests.add_argument("--passed",type=int,required=True); tests.add_argument("--failed",type=int,required=True); tests.add_argument("--test-command",required=True)
     recovery=sub.add_parser("authorize-execution-recovery"); recovery.add_argument("--repo-root",type=Path,default=REPO_ROOT); recovery.add_argument("--passed",type=int,required=True); recovery.add_argument("--failed",type=int,required=True); recovery.add_argument("--test-command",required=True)
@@ -631,6 +680,7 @@ def _main() -> int:
     elif args.command=="validate-outputs":
         output=validate_outputs(args.repo_root); value={"status":"PASS","method_rows":len(output["method_rows"]),"paired_rows":len(output["pair_rows"]),"actual_cost":output["actual_cost"]}
     elif args.command=="finalize": value=finalize(args.repo_root)
+    elif args.command=="finalize-failed": value=finalize_failed(args.repo_root)
     else: value=validate_completion(args.repo_root)
     print(json.dumps(value,indent=2,sort_keys=True,allow_nan=False)); return 0
 

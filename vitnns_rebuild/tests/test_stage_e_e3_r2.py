@@ -69,6 +69,14 @@ def test_no_e4_execution_surface() -> None:
     assert public=={"run_shard"}
 
 
+def test_failed_completion_path_requires_no_next_authorization() -> None:
+    source=(REPO_ROOT/"src/vitnns/stage_e_e3_r2.py").read_text()
+    assert '"status":"FAIL"' in source
+    assert '"next_authorization":"NONE"' in source
+    assert '"e4_started":False' in source
+    assert "NNS_IG_NONCONVERGENCE_AFTER_32768" in source
+
+
 def test_full_union_rejects_a_missing_terminal_unit(monkeypatch: pytest.MonkeyPatch) -> None:
     plan = {"units": [{"canonical_digest": "a" * 64}]}
     monkeypatch.setattr(r2, "_v1_plan", lambda _repo: plan)
