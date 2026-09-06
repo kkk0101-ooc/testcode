@@ -107,9 +107,33 @@ def _receipt(
             ))
             reconciliation_rows.append({"selection_order": order, "method_id": method})
     root = StageDRootValidation(
-        package_complete=True, scientific_validity=validity, workflow_status="PASS",
+        package_complete=True, workflow_status="PASS",
+        scientific_validity=validity, analysis_authorized=False,
         plan_digest="a" * 64, final_status_sha256="b" * 64,
         root_inventory={"file_count": 1, "total_bytes": 1, "canonical_digest": "c" * 64},
+        actual_cost_audit={
+            "evaluated": True,
+            "actual_cost_includes_all_attempts_and_audit_repeats": True,
+            "projection_source": (
+                "D9_RECOMPUTED_FROM_VALIDATED_ATTEMPT_RESOURCES_AND_ROOT_INVENTORY"
+            ),
+            "resource_totals": {
+                "elapsed_seconds": 0.0, "forward_calls": 0, "backward_calls": 0,
+                "l0_l1_payload_bytes": 0, "l2_payload_bytes": 0,
+                "control_and_provenance_bytes": 0, "cuda_peak_reserved_bytes": 0,
+            },
+            "limits": {
+                "stage_d_total_retained_regular_file_bytes_max": 68719476736,
+                "stage_d_total_h20_gpu_hours_max": 2000.0,
+                "stage_d_h20_gpu_hours_per_image_group_max": 4.0,
+            },
+            "total_h20_gpu_hours": 0.0,
+            "h20_gpu_hours_per_image_group_max": 0.0,
+            "total_retained_regular_file_bytes": 1,
+            "source_file_count": 1,
+            "gate_failures": [],
+            "status": "PASS_COST",
+        },
         evidence_report={}, reconciliation={
             "expected_image_count": 500, "expected_unit_count": 1000,
             "image_count": 500, "unit_count": 1000,

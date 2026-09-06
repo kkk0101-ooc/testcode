@@ -2,9 +2,9 @@
 
 > 创建日期：2026-08-25。
 > 文档性质：阶段 D 的路线图、任务状态表、数据访问边界和跨对话追加式交接日志。
-> 当前状态：recovery-v2 已完成 canonical salvage C8、recovery C9、recovery C10 和 D0→D6。D7-R4 是 current base execution gate PASS。D8.0 首次 root 因缺少第 0 张 reserve JPEG 而 `SUBTASK_BLOCKED` 并保留；fresh-root rebind 后 `formal_r2` 完成 D8.0 `SUBTASK_PASS`。D8-S00、D8-S01、D8-S02、D8-S03、D8-S04、D8-S05、D8-S06 与 D8-S07 均已在 `formal_r2` 完成并通过 control/receipt source-recompute：累计 500/500 image groups、1,000/1,000 units terminal succeeded。D8 campaign completion sealing 已独立核验 S00-S07 receipt/completion 和 generation-3016 final checkpoint，并以 `PASS` 封存 D8 raw execution completeness。D9、D10 均未启动，scientific validity/effect/cost 均未评估，analysis 未授权。
+> 当前状态：recovery-v2 已完成 canonical salvage C8、recovery C9、recovery C10 和 D0→D6。D7-R4 是 current base execution gate PASS。D8.0 首次 root 因缺少第 0 张 reserve JPEG 而 `SUBTASK_BLOCKED` 并保留；fresh-root rebind 后 `formal_r2` 完成 D8.0 `SUBTASK_PASS`。D8-S00、D8-S01、D8-S02、D8-S03、D8-S04、D8-S05、D8-S06 与 D8-S07 均已在 `formal_r2` 完成并通过 control/receipt source-recompute：累计 500/500 image groups、1,000/1,000 units terminal succeeded。D8 campaign completion sealing 已独立核验 S00-S07 receipt/completion 和 generation-3016 final checkpoint，并以 `PASS` 封存 D8 raw execution completeness。D9 已 CPU-only 封存并独立复验 `formal_r2`，package/workflow/scientific validity 均 `PASS`，actual cost `PASS_COST`，analysis 已授权给 D10；D10 未启动，fidelity aggregate/statistics/decision 和 paper package 均未生成。
 > Recovery override（2026-09-04）：[`recovery_stage_d_d0_d6_amendment_20260904.md`](recovery_stage_d_d0_d6_amendment_20260904.md) 与 `config/stage_d_recovery_v2_binding_20260904.json` 是当前 pre-reserve identity overlay；历史 D0–D2 PASS 仅为 stale history，历史 D3–D6 PASS 仅为 synthetic/implementation evidence。
-> 当前 next task：`D9`。只能执行 CPU-only formal-root finalize、独立 source-recomputing validation、QC、scientific validity、audit repeatability 和 actual cost audit；不得执行 D10 aggregate/statistics/decision 或 paper export。
+> 当前 next task：`D10`。只能在重跑 D9 validator 并确认 `analysis_authorized=true` 后，CPU-only 消费 sealed D9 root 做预注册 aggregate/statistics/decision；不得读取 JPEG、加载模型、使用 GPU/CUDA、修改 D9 root、重跑 D8 shard/retry，或生成 qualitative overlay/contact sheet/Stage F display material。
 > D7 勘误：首个 pre-execution authority `0036dd8d...` 因 strict guard 发现通用 model loader 会对历史 Stage A calibration JPEG 做不必要的 `lstat` 而被 supersede；它未访问 Stage D reserve、未运行 inference、未创建 D8 root，不得用于 launch。D7-v2 producer/authority `e337f8ca...` / `fe9a7f29...` 已重新签发并通过 strict guard。
 > 当前权威交接：`reports/stage_d_d8_recovery_v2_20260904_r4/d8_campaign_completion.json` 和本文最新 D8 campaign completion record；[`recovery_stage_d_d7_r4_handoff_20260904.md`](recovery_stage_d_d7_r4_handoff_20260904.md) 与 `reports/stage_d_d7_recovery_v2_20260904_r4/d7_to_future_d8_handoff.json` 是 D7 上游 authority chain；旧 D7/R3 handoff 只作历史审计。
 > 使用规则：每个新对话先读文首状态、第 7 节执行协议、第 9 节最新权威记录和当前提示词，再读提示词列出的章节与上游证据；一次只执行一个 `D_i` 或一个明确编号的 `D8-Sxx` shard。未更新本文、未追加 completion record、未给出下一任务完整提示词的任务，不算完成。
@@ -217,7 +217,7 @@ D10 建议固定生成以下 machine-readable paper data 和数值图；只有 v
 | D6 | PASS | 实现 aggregation、statistics、decision、paper export | synthetic fixtures only | synthetic decision only | D5 PASS |
 | D7 | PASS | 真实已知样本 smoke、预算、冻结 producer 并签发授权 | Stage C 已知 calibration/audit；禁止 reserve 图像 | `AUTHORIZED_STAGE_D_FIDELITY_SCOPE` 或 BLOCKED | D6 PASS |
 | D8 | PASS（D8.0、D8-S00、D8-S01、D8-S02、D8-S03、D8-S04、D8-S05、D8-S06、D8-S07 与 D8 campaign completion sealing 均已完成） | 初始化并逐 shard 运行 500 图/1,000 units | 首次允许 reserve 图像、模型和原始结果 | unit terminal state；禁止科学汇总 | D7 PASS |
-| D9 | NOT_STARTED | 封存并独立验证 formal evidence | D8 root；CPU-only；禁止 JPEG/模型 | evidence/QC/validity readiness | D8 `PASS` 且所有 frozen shards terminal |
+| D9 | PASS | 封存并独立验证 formal evidence | D8 root；CPU-only；禁止 JPEG/模型 | package/workflow/scientific validity `PASS`；actual cost `PASS_COST`；analysis authorized | D8 `PASS` 且所有 frozen shards terminal |
 | D10 | NOT_STARTED | 唯一正式统计决策与 paper artifact package | sealed D9 root、C10 reports；CPU-only | Stage D fidelity-scope decision | D9 authorizes analysis |
 
 ### 5.1 每个任务的 completion 总结与下一提示词重点
@@ -2182,4 +2182,70 @@ D8.0 只能创建 fresh formal root、durable `ACCESS_STARTED` lifecycle、appen
 
 完成与交接：
 更新本文 D9 状态并追加完整 D9 completion record。D9 完成后只有 `analysis_authorized=true` 才允许生成 D10 提示词；否则生成精确诊断/修复提示词。commit 并 push `stage-d-d3-pass`，创建/验证 D9 对应 archive ref，最终复核 local/tracking/remote SHA、clean status 和 LFS status。
+```
+
+### 2026-09-06 11:44 +0800 — D9 formal-root finalize and independent validation completion record
+
+- status: `PASS`
+- objective_completed: CPU-only sealed `formal_r2` as the D9 formal evidence source, then independently source-recomputed and byte-compared the sealed final controls. Package completeness, workflow integrity, scientific validity, audit repeatability and actual cost audit all passed. No D10 aggregate/statistics/decision or paper package was generated.
+- authority_and_scope: D9 started from the frozen D8 completion anchor `refs/archive/stage-d-fidelity-v1-d8-completion` -> `fafcae85e94137933fbacf3b3819cdc461f23855`; `origin/stage-d-d3-pass` and remote `refs/heads/stage-d-d3-pass` were both `fafcae85e94137933fbacf3b3819cdc461f23855` before D9 support work. D9 producer/support ref `refs/archive/stage-d-fidelity-v1-d9-producer` -> `f8611f1f98af50f9fa6d4cd9e5ed1afcd1196576`.
+- git_sha_before: `fafcae85e94137933fbacf3b3819cdc461f23855` for D8 completion input; D9 validator producer commit `f8611f1f98af50f9fa6d4cd9e5ed1afcd1196576`.
+- git_sha_producer: `f8611f1f98af50f9fa6d4cd9e5ed1afcd1196576` (`refs/archive/stage-d-fidelity-v1-d9-producer`).
+- git_sha_postprocessor: `SELF` (D9 completion/report/docs commit; exact SHA fixed by Git after commit).
+- upstream_commits_and_refs: D7-R4 producer/ref `d7c88df66f3e55ec31ad4c6ea34a3002ca6d1a4d` / `refs/archive/stage-d-fidelity-v1-d7-r4-producer`; D7-R4 authority/ref `61214b808b75cf804763078479d1b96f7418db32` / `refs/archive/stage-d-fidelity-v1-d7-r4-authority`; D8.0 rebind producer/ref `4c4dd4af010afdc72e26f10cb8e6519e2448cf40` / `refs/archive/stage-d-fidelity-v1-d8-0-rebind-r1-producer`; D8.0 rebind authority/ref `fb27b2526d55861489c19069b3a5665cede757e3` / `refs/archive/stage-d-fidelity-v1-d8-0-rebind-r1-authority`; R7 producer/ref `3fdf2e1f30d5038679b4dd47afdabd9eb5d0528a` / `refs/archive/stage-d-fidelity-v1-d8-continuation-r7-producer`; R7 authority/ref `c58f8ba4f8b2cbba15b08def615f0d3989682b4e` / `refs/archive/stage-d-fidelity-v1-d8-continuation-r7-authority`; S07 completion/ref `1474b103124c5f68187960e305410e114718a350` / `refs/archive/stage-d-fidelity-v1-d8-s07-completion`; D8 completion/ref `fafcae85e94137933fbacf3b3819cdc461f23855` / `refs/archive/stage-d-fidelity-v1-d8-completion`.
+- frozen_inputs_and_sha256: D8 campaign completion report `reports/stage_d_d8_recovery_v2_20260904_r4/d8_campaign_completion.json`, file SHA-256 `530f9973a62ef87dfa3fb347e63c5f78cfabc0e9d040f37f323cda5b4d53741c`, canonical digest `50fa9276fbd3dcc9684dc0482b1be639cfd59aa111bbfb30ce0aec5b676333c1`; final runtime checkpoint generation `3016`, file SHA-256 `d71f331e536359c0bbbb6a513b5eaeac060f53c5c294143c9595b96bce2c0af9`, canonical digest `3c0951e07ef1ed10446188c0ebd56e141a26218962fd147a7ce2f13a5d426fc9`; D8 plan/coordinate digests `5a40051ac17a7bfd6663640b1d2478c69d45eea07d3182653b90d2c7ca760443` / `cc560e2a2d4e1220ccd812c073119a2b679de213f9770358f7decf51824661fb`; D8.0 rebind authorization canonical `3479f9457aa924fe189591e836e38bb1a65cce8543e3a879477025782659afc9`; access lifecycle/journal/live-assets digests `56b3f3cdb3a72bd72bdaa3f93f15cdb1043f362691a1b24089382862b935cf50` / `293f46d8a1421607a547171b3ed78be21aebab4461c00762fdba4fa68d50ddc8` / `489aa2a9a16e4f84046df8ebdf910a5adf04d9525a1aa901915fe778c6ad1d40`.
+- files_added_or_changed: `src/vitnns/stage_d_finalize.py`, `src/vitnns/stage_d_cli.py`, `src/vitnns/stage_d_analysis_input.py`, `src/vitnns/stage_d_scientific.py`, `src/vitnns/stage_d_d9_completion.py`, `tests/test_stage_d_finalize.py`, `tests/test_stage_d_finalize_schema.py`, `tests/test_stage_d_cli.py`, `tests/test_stage_d_analysis.py`, `tests/test_stage_d_scientific.py`, `tests/test_stage_d_d9_completion.py`, `reports/stage_d_d9_recovery_v2_20260906/d9_formal_validation.json`, and this document. The ignored local evidence root gained only `formal_r2/final/{evidence_report.json,reconciliation.json,source_inventory.json,payload_manifest.json,status.json}`.
+- D9_final_artifacts: `formal_r2/final/evidence_report.json` file SHA-256 `80450fe4463cefe5fa8645761bf7acbc4d9af92230bb9b9748837fbe7579636c`, canonical digest `82598824f409fc67a7a7b193938aa5180aa9194e113e399d5886e2b2ea91db5f`; `reconciliation.json` file SHA-256 `de5e690e2b0bf2df6939f67f30b5da80f9701c936eb64087e7aa889437cadcd7`, canonical digest `97b7f1fb96aaa8c8885ac0bbe6b4ce075fc0390fdf61ae20fdb32524e8ccac42`; `source_inventory.json` file SHA-256 `68dce31e0641b947cdbc16d4dd74c59745b5c133134dfd1b3c51f192d455f914`, canonical digest `7c3acf46b2f26100f0e3e91a6248d6e93a199fd7a9a026e42e6555dd22bf07f0`; `payload_manifest.json` file SHA-256 `25ba95a08da56392a72d7dcc70cb646924929d9fb14a32cbb4b4efead8a73272`, canonical digest `060987c1ed53aabd66156aa17686b58537f473897855dd99dc843293d113de0e`; `status.json` file SHA-256 `9c2a7f6bbe89f393b17d39128c908b764c5481cb2ab640eea557ea87032e9f4c`, canonical digest `ba5c15aec4d0f8f374e376e7b1ddb28ebbdb9d8ec8ab7ceda1d34438caf9425b`.
+- D9_report: `reports/stage_d_d9_recovery_v2_20260906/d9_formal_validation.json`, file SHA-256 `12fd8a7984a14cc3b7300712fb5593c0f4c6db5b6f3c71ac51e3477b6914ad85`, canonical digest `8787da34ad665601b995ab136aa42e3a9c78c95ed8b325c70979ce0a2d02aea0`.
+- package_complete: true
+- workflow_integrity: PASS
+- scientific_validity: PASS
+- analysis_authorized: true
+- analysis_authorization: `D9_AUTHORIZED_D10_FULL_ANALYSIS`
+- actual_cost_audit: `PASS_COST`; actual H20-GPU-hours `1.8504247143613854`; max H20-GPU-hours per image group `0.005947474809169459`; retained source bytes `130027065`; final sealed root inventory `7022` files / `137250469` bytes / digest `76d7d532049a5c90a09c74ba56b019042d7f2f0174ccb439bd8f67713514cc5a`.
+- acceptance_results: final root closed and immutable; independent validator byte-compared D9 final controls against source-recomputed outputs; reconciliation is `500/500` image groups and `1,000/1,000` units; state counts `succeeded=1000`; scientific failure rows `0`; NA rows `0`; no rows dropped; zero imputation false; attempt count `1000`; all attempts retained as `attempt-000001`; retry attempts created `false`; L0 coverage `1000`, L1 coverage `1000`, L2 audit coverage `10`, L3 file count `0`; pair bindings and audit repeatability checks passed.
+- data_access_statement: D9 read Git/ref/LFS metadata, tracked JSON configs/reports, `formal_r2` runtime checkpoint/access controls, attempt status/manifest/provenance, and retained JSON/NPY/NPZ scientific payloads needed for source recomputing validation. It did not read JPEGs, construct or load a model, use GPU/CUDA, run D8 shards, create retry attempts, run D10 aggregate/statistics/decision, compute aggregate `delta_fid`/median/positive count/bootstrap, or generate paper data/figures/overlays/contact sheets.
+- tests_executed_this_task: `python -m py_compile src/vitnns/stage_d_finalize.py src/vitnns/stage_d_cli.py src/vitnns/stage_d_analysis_input.py src/vitnns/stage_d_d9_completion.py tests/test_stage_d_finalize.py tests/test_stage_d_finalize_schema.py tests/test_stage_d_cli.py tests/test_stage_d_analysis.py tests/test_stage_d_d9_completion.py` PASS; `PYTHONPATH=src python -m pytest -q tests/test_stage_d_d9_completion.py tests/test_stage_d_cli.py -k 'd9_report or finalization or formal_finalize'` -> `16 passed, 50 deselected`; `PYTHONPATH=src python -m pytest -q tests/test_stage_d_finalize_schema.py` -> `208 passed, 1 skipped`; `PYTHONPATH=src python -m pytest -q tests/test_stage_d_scientific.py -k 'curve or source'` -> `5 passed, 27 deselected`; `PYTHONPATH=src python -m pytest -q tests/test_stage_d_analysis.py -k 'truth_table or zero_delta or validity_failure'` -> `7 passed, 10 deselected`; `PYTHONPATH=src python -m pytest -q tests/test_stage_d_finalize.py -k 'formal_root_is_rejected or checkpoint_control_accepts_formal'` -> `3 passed, 30 deselected`; D9 formal `finalize_stage_d_root(..., allow_formal=True)` completed and published final controls; D9 formal `validate_stage_d_root(..., allow_formal=True)` PASS in `103.37s`; CLI `vitnns.stage_d_cli validate --allow-formal-root --d9-formal-budget config/stage_d_d7_budget_20260904_r4.json --output-root .../formal_r2` PASS.
+- tests_not_run_and_reason: no full non-GPU suite because D9 touched the finalizer/CLI/report boundary and the focused tests cover that surface; no GPU/model/JPEG tests, no D8 shard rerun, no retry, no D10 aggregate/statistics/decision, no bootstrap and no paper export because those are outside D9.
+- deviations_or_protocol_amendments: D9 support added an explicit formal-root flag because the D5 implementation intentionally remained synthetic-only by default. D9 also corrected source recomputation of `score_sha256` to hash the flattened 3,136-cell target-oriented score vector, matching the D8 producer contract; no D8 evidence was modified. A wrapper JSON serialization failure occurred after the first successful final publish because an immutable mapping was printed directly; the formal root was then independently revalidated with JSON-safe output. Earlier slow synthetic pytest runs interrupted during pre-edit fixture execution are not counted as verification.
+- failures_and_retries_retained: initial blocked D8.0 root remains retained and unmodified; no D9 repair, D8 rerun, retry authorization, retry attempt, or evidence overwrite occurred. `formal_r2/final` was absent before D9 and is now the only D9 final subtree.
+- known_limitations_and_claim_boundaries: D9 `PASS` authorizes D10 analysis only. It is not a Stage D fidelity decision, does not state `PASS_FIDELITY` or `GO_FIDELITY_SCOPE`, and does not alter C10. C10 remains `BLOCKED` / `NO_GO_NOVELTY` / `FAIL_SPATIAL` / `HOLM_BLOCKED_UNDERSPECIFIED` with `downstream_authorized=false`.
+- next_task_authorized: true, only for D10 under the D9-authorized path.
+- authorization_issued_this_task: analysis authorization issued by D9 as `D9_AUTHORIZED_D10_FULL_ANALYSIS`; no execution/retry authorization issued.
+- execution_authorization_observed_valid: true
+- next_task: D10
+
+#### 下一对话完整提示词
+
+```text
+你在以下仓库工作：
+
+/data01/home/yeziqi.831/nxtrec_wksp/testcode/vitnns_rebuild
+
+当前有效项目只能是 `vitnns_rebuild`。
+
+本次唯一任务：执行 Stage D 的 D10 aggregate/statistics/decision on the D9-sealed `formal_r2` evidence. D10 必须 CPU-only，必须先重跑 D9 validator 并确认 `analysis_authorized=true`，然后只在新的 D10-owned postprocessing output root 中生成预注册 aggregate/statistics/decision 与允许的 machine-readable D10 paper data/numeric figures。不得读取 JPEG、不得加载模型、不得使用 GPU/CUDA、不得修改 D9 sealed root、不得重跑 D8 shards 或创建 retry attempts，不得生成 qualitative overlay、contact sheet 或 Stage F display material。
+
+开始条件：
+1. branch 必须是 `stage-d-d3-pass`，worktree/index clean。
+2. D9 completion commit/ref：用 `git rev-parse refs/archive/stage-d-fidelity-v1-d9-completion^{commit}` 得到唯一 D9 completion commit，并要求 local HEAD、tracking ref `origin/stage-d-d3-pass`、remote branch `refs/heads/stage-d-d3-pass` 全部等于该 commit。若 ref 缺失、不一致、behind/diverged、dirty 或 LFS 有待提交/待推送对象，D10 必须 BLOCKED，不得 reset、checkout、stash、覆盖或删除文件。
+3. D8 completion ref `refs/archive/stage-d-fidelity-v1-d8-completion` 必须仍解析到 `fafcae85e94137933fbacf3b3819cdc461f23855`；D9 producer ref `refs/archive/stage-d-fidelity-v1-d9-producer` 必须仍解析到 `f8611f1f98af50f9fa6d4cd9e5ed1afcd1196576`。
+4. D9 report: `reports/stage_d_d9_recovery_v2_20260906/d9_formal_validation.json`; file SHA-256 `12fd8a7984a14cc3b7300712fb5593c0f4c6db5b6f3c71ac51e3477b6914ad85`; canonical digest `8787da34ad665601b995ab136aa42e3a9c78c95ed8b325c70979ce0a2d02aea0`.
+5. D9 sealed root: `evidence/stage_d/d8_recovery_v2_20260904/formal_r2/final/status.json`; file SHA-256 `9c2a7f6bbe89f393b17d39128c908b764c5481cb2ab640eea557ea87032e9f4c`; canonical digest `ba5c15aec4d0f8f374e376e7b1ddb28ebbdb9d8ec8ab7ceda1d34438caf9425b`; sealed root inventory digest `76d7d532049a5c90a09c74ba56b019042d7f2f0174ccb439bd8f67713514cc5a`.
+
+必读：
+1. `docs/阶段D-step-by-step.md` 文首状态、§5、§6 D9/D10 边界、§7、§8 和最新 D9 completion record。
+2. `docs/阶段D_protocol.md` 的 validity、statistics、cost、interpretation 和 D10 sections。
+3. `docs/stage_d_acceptance.md` 的 D9/D10 acceptance。
+4. `reports/stage_d_d9_recovery_v2_20260906/d9_formal_validation.json`。
+
+必须完成：
+1. 重跑 D9 validator，确认 package/workflow/scientific validity 仍 PASS 且 `analysis_authorized=true`。
+2. CPU-only 执行 D10 aggregate/statistics/decision，只读 D9 sealed root 的 validated L0/L1 与 D9 QC/cost records，写入新的 D10-owned output root；D9 root 必须保持只读。
+3. 计算且仅计算 D10 允许的预注册指标：per-image `delta_fid`、positive count、mean、median、sample SD、paired image-bootstrap 95% CI、fidelity truth table、cost gate 和唯一 Stage D decision。
+4. 生成 D10 允许的 machine-readable paper data 和 numeric figures only；不得生成 qualitative overlays/contact sheets/Stage F display material。
+5. 保持 C10 历史状态不变：acceptance `BLOCKED`，primary decision `NO_GO_NOVELTY`，overall spatial `FAIL_SPATIAL`，Holm `HOLM_BLOCKED_UNDERSPECIFIED`，downstream authorized `false`。
+
+完成与交接：
+更新本文 D10 状态并追加完整 D10 completion record；记录所有 output paths、file SHA-256、canonical digest、tests、Git/LFS 状态和下一阶段建议。commit 并 push `stage-d-d3-pass`，创建/验证 D10 archive ref，最终复核 local/tracking/remote SHA、clean status 和 LFS status。
 ```

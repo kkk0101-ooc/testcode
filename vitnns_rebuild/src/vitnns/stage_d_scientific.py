@@ -627,7 +627,9 @@ def _curve_checks(
     score_hash = None
     if metric is not None:
         score_hash = _array_sha256(
-            np.maximum(metric, np.float32(0.0)).astype(np.float32, copy=False)
+            np.maximum(metric, np.float32(0.0)).astype(
+                np.float32, copy=False,
+            ).reshape(-1)
         )
     accepted: list[dict[str, Any]] = []
     expected_input_pair = (

@@ -42,6 +42,8 @@ from .stage_d_manifest import (
 )
 from .stage_d_plan import (
     StageDPlanError,
+    StageDEstimate,
+    StageDPreflight,
     build_stage_d_plan,
     estimate_stage_d_run,
     preflight_stage_d,
@@ -115,7 +117,8 @@ _SHARD_DIGEST_KEYS = frozenset({
 })
 _FINALIZATION_OUTPUT_KEYS = frozenset({
     "schema_version", "document_type", "operation", "status",
-    "package_complete", "scientific_validity", "plan_digest",
+    "package_complete", "scientific_validity", "analysis_authorized",
+    "cost_status", "plan_digest",
     "final_status_sha256", "root_inventory",
 })
 _ROOT_INVENTORY_KEYS = frozenset({
@@ -248,6 +251,18 @@ def _add_finalization_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--output-root", type=Path, required=True,
         help="initialized Stage D output root to finalize or validate",
+    )
+    parser.add_argument(
+        "--allow-formal-root", action="store_true",
+        help=(
+            "explicit D9-only authority to seal or validate a D7-authorized "
+            "formal root"
+        ),
+    )
+    parser.add_argument(
+        "--d9-formal-budget", type=Path,
+        default=REPO_ROOT / "config/stage_d_d7_budget_20260904_r4.json",
+        help="D7 final budget JSON used only with --allow-formal-root",
     )
 
 
@@ -714,6 +729,8 @@ def _finalization_document(
     status = _finalization_field(source, "status", "workflow_status")
     package_complete = _finalization_field(source, "package_complete")
     scientific_validity = _finalization_field(source, "scientific_validity")
+    analysis_authorized = _finalization_field(source, "analysis_authorized")
+    actual_cost_audit = _finalization_field(source, "actual_cost_audit")
     plan_digest = _finalization_field(source, "plan_digest")
     final_status_sha256 = _finalization_field(
         source, "final_status_sha256",
@@ -745,6 +762,9 @@ def _finalization_document(
         or package_complete is not True
         or not isinstance(scientific_validity, str)
         or scientific_validity not in {"PASS", "FAIL"}
+        or type(analysis_authorized) is not bool
+        or not isinstance(actual_cost_audit, Mapping)
+        or actual_cost_audit.get("status") not in {"PASS_COST", "FAIL_COST"}
         or not isinstance(plan_digest, str)
         or _SHA256_RE.fullmatch(plan_digest) is None
         or plan_digest
@@ -785,6 +805,8 @@ def _finalization_document(
         "status": status,
         "package_complete": package_complete,
         "scientific_validity": scientific_validity,
+        "analysis_authorized": analysis_authorized,
+        "cost_status": actual_cost_audit["status"],
         "plan_digest": plan_digest,
         "final_status_sha256": final_status_sha256,
         "root_inventory": {
@@ -804,6 +826,11 @@ def _load_pipeline(args: argparse.Namespace) -> StageDCLIPipeline:
     """Load each source once and perform full C10 verification by default."""
 
     repo_root = Path(args.repo_root)
+    command = getattr(args, "command", None)
+    verify_c10 = not (
+        command in _D5_FINALIZATION_COMMANDS
+        and getattr(args, "allow_formal_root", False)
+    )
     contracts = load_stage_d_contracts(
         config_path=args.config or repo_root / "config/stage_d.json",
         run_spec_path=args.run_spec or repo_root / "config/stage_d_run_spec.json",
@@ -814,7 +841,7 @@ def _load_pipeline(args: argparse.Namespace) -> StageDCLIPipeline:
         repo_root=args.repo_root,
     )
     manifest = verify_stage_d_manifest(
-        contracts.config, repo_root=args.repo_root, verify_c10=True,
+        contracts.config, repo_root=args.repo_root, verify_c10=verify_c10,
     )
     if args.command == "validate-contracts":
         return StageDCLIPipeline(contracts, manifest)
@@ -1366,7 +1393,22 @@ def _run_finalization_command(
 ) -> Mapping[str, Any]:
     """Run D5 from rebuilt metadata controls, without a gate or backend."""
 
-    estimate, preflight = _estimate_and_preflight(pipeline, None)
+    if args.allow_formal_root:
+        controls = _strict_bounded_json(
+            args.d9_formal_budget,
+            context="D9 formal budget controls",
+            limit=_AUTHORIZATION_FILE_LIMIT,
+        )
+        if not isinstance(controls, Mapping):
+            raise StageDCLIInputError("D9 formal budget controls must be an object")
+        estimate = validate_stage_d_estimate(
+            StageDEstimate.from_dict(controls["estimate"])
+        )
+        preflight = validate_stage_d_preflight(
+            StageDPreflight.from_dict(controls["preflight"])
+        )
+    else:
+        estimate, preflight = _estimate_and_preflight(pipeline, None)
     if args.command == "finalize":
         operation = _finalization_callable(
             finalizer, "finalize_stage_d_root",
@@ -1379,8 +1421,10 @@ def _run_finalization_command(
         raise StageDCLIIntegrityError(
             "unsupported Stage D finalization operation"
         )
+    kwargs = {"allow_formal": True} if args.allow_formal_root else {}
     result = _call_finalization(
         operation, args.output_root, pipeline.plan, estimate, preflight,
+        **kwargs,
     )
     return _finalization_document(
         result, operation=args.command, pipeline=pipeline,

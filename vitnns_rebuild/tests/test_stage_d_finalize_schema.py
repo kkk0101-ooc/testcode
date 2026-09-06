@@ -423,8 +423,9 @@ def _documents() -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
     evidence = _sign({
         "schema_version": 1,
         "document_type": "stage_d_final_evidence_report",
-        "package_complete": True, "scientific_validity": "FAIL",
-        "workflow_status": "PASS", "plan_digest": plan_digest,
+        "package_complete": True, "workflow_status": "PASS",
+        "scientific_validity": "FAIL", "analysis_authorized": False,
+        "plan_digest": plan_digest,
         "estimate_digest": _sha("estimate"),
         "preflight_digest": _sha("preflight"),
         "execution_context_digest": _sha("execution-context"),
@@ -449,6 +450,27 @@ def _documents() -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
             "delta_fid_computed": False,
             "aggregate_effects_computed": False,
             "d6_eligibility": "SYNTHETIC_ONLY",
+        },
+        "actual_cost_audit": {
+            "evaluated": True,
+            "actual_cost_includes_all_attempts_and_audit_repeats": True,
+            "projection_source": (
+                "D9_RECOMPUTED_FROM_VALIDATED_ATTEMPT_RESOURCES_AND_ROOT_INVENTORY"
+            ),
+            "resource_totals": reconciliation["resources"],
+            "limits": {
+                "stage_d_total_retained_regular_file_bytes_max": 68719476736,
+                "stage_d_total_h20_gpu_hours_max": 2000.0,
+                "stage_d_h20_gpu_hours_per_image_group_max": 4.0,
+            },
+            "total_h20_gpu_hours": (
+                reconciliation["resources"]["elapsed_seconds"] / 3600.0
+            ),
+            "h20_gpu_hours_per_image_group_max": 0.0,
+            "total_retained_regular_file_bytes": source_row["bytes"],
+            "source_file_count": 1,
+            "gate_failures": [],
+            "status": "PASS_COST",
         },
         "analysis_performed": False, "bootstrap_performed": False,
         "decision_performed": False,
@@ -525,8 +547,9 @@ def _documents() -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
         key=lambda item: item["path"],
     )
     root_validation = {
-        "package_complete": True, "scientific_validity": "FAIL",
-        "workflow_status": "PASS", "plan_digest": plan_digest,
+        "package_complete": True, "workflow_status": "PASS",
+        "scientific_validity": "FAIL", "analysis_authorized": False,
+        "plan_digest": plan_digest,
         "final_status_sha256": hashlib.sha256(
             _json_bytes(status)
         ).hexdigest(),
@@ -537,6 +560,7 @@ def _documents() -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
                 "files": whole_inventory,
             }),
         },
+        "actual_cost_audit": evidence["actual_cost_audit"],
         "evidence_report": evidence,
         "reconciliation": reconciliation,
         "source_inventory": source_inventory,
@@ -601,7 +625,7 @@ FAMILIES = (
     Family("audit-artifact-dtype", "reconciliation.json", ("rows", 0, "attempts", 1, "artifacts", 3, "dtype"), "repeat_clean_metric_ready_map", 7, "float64"),
     Family("audit-artifact-shape", "reconciliation.json", ("rows", 0, "attempts", 1, "artifacts", 3, "shape"), "repeat_clean_metric_ready_map", 7, [14, 14]),
     Family("attempt-resources", "reconciliation.json", ("rows", 0, "attempts", 1, "resources"), "forward_calls", True, -1),
-    Family("provenance-projection", "reconciliation.json", ("rows", 0, "attempts", 1, "provenance"), "mode", 0, "formal"),
+    Family("provenance-projection", "reconciliation.json", ("rows", 0, "attempts", 1, "provenance"), "mode", 0, "unknown-formal"),
     Family("provenance-execution", "reconciliation.json", ("rows", 0, "attempts", 1, "provenance", "execution"), "attempt", [], {"number": 3, "id": "attempt-000003"}),
     Family("attempt-binding", "reconciliation.json", ("rows", 0, "attempts", 1, "provenance", "execution", "attempt"), "number", True, 3),
     Family("retry-authorization", "reconciliation.json", ("rows", 0, "attempts", 1, "provenance", "execution", "retry"), "status", 7, "RETRY_PENDING"),

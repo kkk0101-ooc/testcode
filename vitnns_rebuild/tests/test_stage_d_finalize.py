@@ -50,8 +50,9 @@ FINAL_FILES = {
     "status.json",
 }
 RESULT_KEYS = {
-    "package_complete", "scientific_validity", "workflow_status",
-    "plan_digest", "final_status_sha256", "root_inventory",
+    "package_complete", "workflow_status", "scientific_validity",
+    "analysis_authorized", "plan_digest", "final_status_sha256",
+    "root_inventory", "actual_cost_audit",
     "evidence_report", "reconciliation", "source_inventory",
     "payload_manifest", "whole_root_ordered_inventory",
 }
@@ -456,6 +457,140 @@ def _formal_checkpoint_only_root(
     return root
 
 
+def _authorized_formal_checkpoint_only_root(
+    controls: tuple[Any, Any, Any], root: Path,
+) -> tuple[Path, dict[str, str]]:
+    plan, estimate, preflight = controls
+    context, _gate = _issue_synthetic_d4_test_context(
+        plan, estimate, preflight, shard_count=8,
+    )
+    synthetic = stage_d_runtime_module._normalize_execution_context(
+        context, plan=plan, estimate=estimate, preflight=preflight,
+    )
+    slot = {
+        "status": "AUTHORIZED_STAGE_D_FIDELITY_SCOPE",
+        "authorization_canonical_digest": "3479f9457aa924fe189591e836e38bb1a65cce8543e3a879477025782659afc9",
+        "authority_ref": "refs/archive/stage-d-fidelity-v1-d8-0-rebind-r1-authority",
+        "authority_commit": "SELF",
+    }
+    producer = {
+        "commit": "4c4dd4af010afdc72e26f10cb8e6519e2448cf40",
+        "tree": "a27651064facd955f78ef3f517a0934f3e1ace58",
+        "clean": True,
+    }
+    dependencies = {
+        "path": "requirements.lock.txt",
+        "lock_sha256": "81beabd6aba9ede777e973e2ee5f0c60ce2aa88ce55b29d025e95d67ab175984",
+    }
+    model = {
+        "path": "assets/models/vit_base_patch16_224_weights.semantic_candidate.pth",
+        "state_dict_sha256": "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d",
+        "lfs_oid_sha256": "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d",
+        "canonical_tensor_digest": "150234d8117a50057f62aa14a97f46bbf1da92b00b386c10c71cc7000c5d51dd",
+        "parameter_count": 86567656,
+        "key_count": 152,
+        "identity": "RECOVERY_V2_NEW_ARTIFACT_NOT_HISTORICAL_2E718",
+    }
+    source_bindings = {
+        "d0": {
+            "status": "RECOVERY_V2_R3_PASS",
+            "canonical_digest": "124b404297c99e5a1913511a51caedec241ce05804949b390a14719814eb6c11",
+        },
+        "d1": {
+            "status": "RECOVERY_V2_R3_METADATA_PASS",
+            "canonical_digest": "00ad4968256606e95022f22d7502990223274738ca8066526134cae1945cbf40",
+        },
+        "d2": {
+            "status": "RECOVERY_V2_R3_PASS",
+            "canonical_digest": "5b3c8497dccda450b1b2682364c4f07bcf017e657d999ccb1d765aae9eec224c",
+        },
+        "c10": {
+            "status": "BLOCKED_NO_GO_NOVELTY_HISTORICAL_SOURCE",
+            "canonical_digest": "efc4e880793166fdf2e7869396cc0d0df9699e27c53071aa83c83ddce472e849",
+            "downstream_authorized": False,
+        },
+    }
+    access = {
+        "reserve_image_bytes_accessed": False,
+        "model_loaded_for_identity_verification": True,
+        "model_used_for_inference": False,
+        "cuda_accessed": False,
+        "outcome_accessed": False,
+    }
+    gate_payload = {
+        "formal": True,
+        "authorization_scope": "D7_RECOVERY_V2_FIDELITY_ONLY",
+        "execution_authorization": "AUTHORIZED_STAGE_D_FIDELITY_SCOPE",
+        "authorization_slot": slot,
+        "shard_count": 8,
+        "shard_mapping": [index % 8 for index in range(500)],
+        "plan_digest": plan.canonical_digest,
+        "budget_digest": estimate.canonical_digest,
+        "preflight_digest": preflight.canonical_digest,
+        "code_binding": producer,
+        "dependency_binding": dependencies,
+        "model_binding": model,
+        "source_bindings": source_bindings,
+        "access_attestation": access,
+    }
+    provenance_bindings = {
+        "d7_authorization": {
+            "status": "AUTHORIZED_STAGE_D_FIDELITY_SCOPE",
+            "digest": canonical_sha256(slot),
+        },
+        "producer": producer,
+        "dependencies": dependencies,
+        "model": model,
+        "source_bindings": source_bindings,
+    }
+    context_binding = {
+        "formal": True,
+        "authorization_scope": "D7_RECOVERY_V2_FIDELITY_ONLY",
+        "execution_authorization": "AUTHORIZED_STAGE_D_FIDELITY_SCOPE",
+        "authorization_slot_digest": canonical_sha256(slot),
+        "shard_count": 8,
+        "shard_mapping": [index % 8 for index in range(500)],
+        "plan_digest": plan.canonical_digest,
+        "budget_digest": estimate.canonical_digest,
+        "preflight_digest": preflight.canonical_digest,
+        "code_binding_digest": canonical_sha256(producer),
+        "dependency_binding_digest": canonical_sha256(dependencies),
+        "model_binding_digest": canonical_sha256(model),
+        "source_bindings_digest": canonical_sha256(source_bindings),
+        "access_attestation": access,
+        "gate_context_digest": canonical_sha256(gate_payload),
+        "provenance_bindings": provenance_bindings,
+    }
+    context_binding["runtime_binding_digest"] = canonical_sha256(context_binding)
+    checkpoint = stage_d_runtime_module._initial_checkpoint(
+        plan, estimate, preflight, synthetic,
+    )
+    checkpoint["execution_context"] = context_binding
+    checkpoint["canonical_digest"] = canonical_sha256({
+        key: value for key, value in checkpoint.items()
+        if key != "canonical_digest"
+    })
+    root.mkdir()
+    for name in (
+        stage_d_runtime_module.LIFECYCLE_LOCK_FILENAME,
+        stage_d_runtime_module.CHECKPOINT_LOCK_FILENAME,
+        stage_d_runtime_module.ARTIFACT_ACTIVITY_LOCK_FILENAME,
+    ):
+        (root / name).write_bytes(b"")
+    (root / stage_d_runtime_module.RUNTIME_CHECKPOINT_FILENAME).write_bytes(
+        canonical_json_bytes(checkpoint) + b"\n"
+    )
+    return root, {
+        "authorization_slot_digest": context_binding["authorization_slot_digest"],
+        "gate_context_digest": context_binding["gate_context_digest"],
+        "runtime_binding_digest": context_binding["runtime_binding_digest"],
+        "code_binding_digest": context_binding["code_binding_digest"],
+        "dependency_binding_digest": context_binding["dependency_binding_digest"],
+        "model_binding_digest": context_binding["model_binding_digest"],
+        "source_bindings_digest": context_binding["source_bindings_digest"],
+    }
+
+
 @pytest.fixture(scope="module")
 def formal_checkpoint_root(
     controls, tmp_path_factory: pytest.TempPathFactory,
@@ -655,6 +790,7 @@ def test_full_500_1000_root_finalizes_and_independently_validates(
     assert set(finalized) == set(validated) == RESULT_KEYS
     assert finalized.to_dict() == validated.to_dict()
     assert finalized.package_complete is True
+    assert finalized.analysis_authorized is False
     assert finalized.scientific_validity == "PASS"
     assert finalized.workflow_status == "PASS"
     assert finalized.plan_digest == controls[0].canonical_digest
@@ -689,14 +825,20 @@ def test_full_500_1000_root_finalizes_and_independently_validates(
     assert finalized.evidence_report["decision_performed"] is False
     assert set(finalized.evidence_report) == {
         "schema_version", "document_type", "package_complete",
-        "scientific_validity", "workflow_status", "plan_digest",
-        "estimate_digest", "preflight_digest",
+        "workflow_status", "scientific_validity", "analysis_authorized",
+        "plan_digest", "estimate_digest", "preflight_digest",
         "execution_context_digest", "counts", "scientific_failures",
-        "authorization", "analysis_boundary",
+        "authorization", "analysis_boundary", "actual_cost_audit",
         "analysis_performed", "bootstrap_performed",
         "decision_performed", "reconciliation_digest",
         "source_inventory_digest", "canonical_digest",
     }
+    cost = finalized.actual_cost_audit
+    assert cost["status"] == "PASS_COST"
+    assert cost["evaluated"] is True
+    assert cost["actual_cost_includes_all_attempts_and_audit_repeats"] is True
+    assert cost["resource_totals"] == finalized.reconciliation["resources"]
+    assert cost["source_file_count"] == finalized.source_inventory["file_count"]
     assert set(finalized.reconciliation) == {
         "schema_version", "document_type", "plan_digest",
         "expected_image_count", "expected_unit_count", "image_count",
@@ -774,6 +916,7 @@ def test_complete_scientific_failure_seals_complete_but_invalid(
     independently_validated = validate_stage_d_root(root, *controls)
 
     assert finalized.package_complete is True
+    assert finalized.analysis_authorized is False
     assert finalized.scientific_validity == "FAIL"
     assert finalized.workflow_status == "PASS"
     assert independently_validated.to_dict() == finalized.to_dict()
@@ -821,6 +964,29 @@ def test_complete_scientific_failure_seals_complete_but_invalid(
     assert "synthetic_endpoint_parity_failed" not in reasons
     assert finalized.reconciliation["no_rows_dropped"] is True
     assert finalized.reconciliation["zero_imputation_performed"] is False
+
+
+def test_checkpoint_control_accepts_formal_only_with_d9_authority(
+    controls, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root, digests = _authorized_formal_checkpoint_only_root(
+        controls, tmp_path / "formal-control",
+    )
+
+    with pytest.raises(StageDFinalizationBlockedError, match="formal roots"):
+        stage_d_finalize_module._checkpoint_control(root, *controls)
+
+    for name, digest in digests.items():
+        monkeypatch.setattr(
+            stage_d_finalize_module, "_FORMAL_" + name.upper(), digest,
+        )
+    checkpoint = stage_d_finalize_module._checkpoint_control(
+        root, *controls, allow_formal=True,
+    )
+    assert checkpoint["execution_context"]["formal"] is True
+    assert checkpoint["execution_context"]["execution_authorization"] == (
+        "AUTHORIZED_STAGE_D_FIDELITY_SCOPE"
+    )
 
 
 def test_authorized_infrastructure_retry_finalizes_and_validates_exactly(
@@ -1005,11 +1171,10 @@ def test_final_controls_are_closed_and_never_overwritten(
         validate_stage_d_root(root, *controls)
 
 
-@pytest.mark.parametrize("allow_formal", [False, True])
 @pytest.mark.parametrize("operation", ["finalize", "validate"])
 def test_formal_root_is_rejected_before_source_traversal_and_never_published(
     controls, formal_checkpoint_root: Path,
-    monkeypatch: pytest.MonkeyPatch, allow_formal: bool, operation: str,
+    monkeypatch: pytest.MonkeyPatch, operation: str,
 ) -> None:
     root = formal_checkpoint_root
     final_root = root / "final"
@@ -1031,7 +1196,7 @@ def test_formal_root_is_rejected_before_source_traversal_and_never_published(
         (
             finalize_stage_d_root if operation == "finalize"
             else validate_stage_d_root
-        )(root, *controls, allow_formal=allow_formal)
+        )(root, *controls)
     assert not final_root.exists()
     assert _staging_entries(root) == []
 

@@ -243,8 +243,9 @@ def _analysis_rows(
 
 def validate_stage_d_analysis_input(
     output_root: Path | str, plan: Any, estimate: Any, preflight: Any,
+    *, allow_formal: bool = False,
 ) -> StageDValidatedAnalysisInput:
-    """Validate a sealed synthetic root and issue same-snapshot D6 inputs."""
+    """Validate one sealed root and issue same-snapshot D10 inputs."""
 
     typed_plan, typed_estimate, typed_preflight = _d5._validate_controls(
         plan, estimate, preflight
@@ -255,7 +256,8 @@ def validate_stage_d_analysis_input(
     ), _d5._root_locks(root):
         _d5._verify_root_binding(named_root, root_descriptor, root_identity)
         prechecked = _d5._checkpoint_control(
-            root, typed_plan, typed_estimate, typed_preflight
+            root, typed_plan, typed_estimate, typed_preflight,
+            allow_formal=allow_formal,
         )
         _d5._reject_active_checkpoint_control(prechecked)
         (
@@ -267,6 +269,7 @@ def validate_stage_d_analysis_input(
         prechecked = _d5._checkpoint_control(
             root, typed_plan, typed_estimate, typed_preflight,
             raw_bytes=captured_bytes[_d5._runtime.RUNTIME_CHECKPOINT_FILENAME],
+            allow_formal=allow_formal,
         )
         _d5._validate_source_directories(
             source_records, captured_directories, typed_plan, prechecked
@@ -277,7 +280,7 @@ def validate_stage_d_analysis_input(
         try:
             expected, documents = _d5._build_source_documents(
                 snapshot_root, typed_plan, typed_estimate, typed_preflight,
-                allow_formal=False, sealed=False, source_records=source_records,
+                allow_formal=allow_formal, sealed=False, source_records=source_records,
                 prechecked_checkpoint=prechecked, captured_bytes=captured_bytes,
                 logical_root=named_root,
             )

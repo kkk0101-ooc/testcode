@@ -705,6 +705,7 @@ def _finalization_result(**changes) -> _Document:
     document = {
         "package_complete": True,
         "scientific_validity": "PASS",
+        "analysis_authorized": False,
         "workflow_status": "PASS",
         "plan_digest": "2" * 64,
         "final_status_sha256": "8" * 64,
@@ -712,6 +713,12 @@ def _finalization_result(**changes) -> _Document:
             "file_count": 7005,
             "total_bytes": 123456,
             "canonical_digest": "9" * 64,
+        },
+        "actual_cost_audit": {
+            "status": "PASS_COST",
+            "total_h20_gpu_hours": 1.0,
+            "h20_gpu_hours_per_image_group_max": 0.01,
+            "total_retained_regular_file_bytes": 123456,
         },
         # Rich core data must never escape the closed CLI projection.
         "evidence_report": {"prediction": 0.91},
@@ -769,6 +776,8 @@ def test_finalize_and_validate_emit_only_closed_control_summary(
         "status": "PASS",
         "package_complete": True,
         "scientific_validity": "PASS",
+        "analysis_authorized": False,
+        "cost_status": "PASS_COST",
         "plan_digest": "2" * 64,
         "final_status_sha256": "8" * 64,
         "root_inventory": {
@@ -782,6 +791,109 @@ def test_finalize_and_validate_emit_only_closed_control_summary(
         token not in rendered
         for token in ("prediction", "delta_fid", "secret", "artifact")
     )
+
+
+@pytest.mark.parametrize("command, hook_name", [
+    ("finalize", "finalizer"), ("validate", "root_validator"),
+])
+def test_finalize_and_validate_require_explicit_formal_root_flag(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    command: str, hook_name: str,
+) -> None:
+    _install_estimate_pipeline(monkeypatch)
+    root = tmp_path / "formal-root"
+    budget_path = tmp_path / "d7-budget.json"
+    formal_estimate = _estimate(status="PASS").to_dict()
+    formal_preflight = _preflight(status="READY_FOR_D7_AUTHORIZATION").to_dict()
+    budget_path.write_text(
+        json.dumps({
+            "estimate": formal_estimate,
+            "preflight": formal_preflight,
+        }, sort_keys=True, separators=(",", ":")) + "\n",
+        encoding="utf-8",
+    )
+    pipeline = _pipeline()
+    calls: list[tuple[tuple, dict]] = []
+
+    def operation(*args, **kwargs):
+        calls.append((args, kwargs))
+        return _finalization_result()
+
+    code, output, error = _invoke(
+        [
+            command, "--allow-formal-root",
+            "--d9-formal-budget", str(budget_path),
+            "--output-root", str(root),
+        ],
+        pipeline_provider=lambda _args: pipeline,
+        **{hook_name: operation},
+    )
+
+    assert code == cli.EXIT_SUCCESS
+    assert error is None
+    assert output is not None
+    assert calls == [
+        (
+            (root, pipeline.plan, formal_estimate, formal_preflight),
+            {"allow_formal": True},
+        )
+    ]
+
+
+def test_formal_finalize_skips_full_historical_c10_path_verification(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    estimate, preflight = _install_estimate_pipeline(monkeypatch)
+    root = tmp_path / "formal-root"
+    budget_path = tmp_path / "d7-budget.json"
+    budget_path.write_text("{}\n", encoding="utf-8")
+    pipeline = _pipeline()
+    calls: list[bool] = []
+
+    def load(**_kwargs):
+        return pipeline.contracts
+
+    def verify(_config, **kwargs):
+        calls.append(kwargs["verify_c10"])
+        return pipeline.manifest
+
+    monkeypatch.setattr(cli, "load_stage_d_contracts", load)
+    monkeypatch.setattr(cli, "verify_stage_d_manifest", verify)
+    monkeypatch.setattr(cli, "build_stage_d_plan", lambda *_args: pipeline.plan)
+    monkeypatch.setattr(cli, "validate_stage_d_plan", lambda value: value)
+    monkeypatch.setattr(
+        cli, "_strict_bounded_json",
+        lambda *_args, **_kwargs: {
+            "estimate": estimate.to_dict(),
+            "preflight": preflight.to_dict(),
+        },
+    )
+    monkeypatch.setattr(
+        cli.StageDEstimate, "from_dict", staticmethod(lambda _value: estimate),
+    )
+    monkeypatch.setattr(
+        cli.StageDPreflight, "from_dict", staticmethod(lambda _value: preflight),
+    )
+    monkeypatch.setattr(cli, "validate_stage_d_estimate", lambda value: value)
+    monkeypatch.setattr(cli, "validate_stage_d_preflight", lambda value: value)
+
+    code, output, error = _invoke(
+        [
+            "finalize", "--allow-formal-root",
+            "--d9-formal-budget", str(budget_path),
+            "--output-root", str(root),
+        ],
+        finalizer=lambda *args, **kwargs: _finalization_result(
+            plan_digest=pipeline.plan.canonical_digest,
+        ),
+    )
+
+    assert code == cli.EXIT_SUCCESS
+    assert error is None
+    assert output is not None
+    assert calls == [False]
+    assert estimate.document_type == "stage_d_preflight_estimate"
+    assert preflight.document_type == "stage_d_metadata_preflight"
 
 
 @pytest.mark.parametrize("scientific_validity", ["PASS", "FAIL"])
@@ -801,6 +913,8 @@ def test_finalization_complete_result_allows_independent_scientific_status(
     assert output["status"] == "PASS"
     assert output["package_complete"] is True
     assert output["scientific_validity"] == scientific_validity
+    assert output["analysis_authorized"] is False
+    assert output["cost_status"] == "PASS_COST"
 
 
 def test_canonical_finalization_blocked_subclass_is_redacted(
@@ -890,6 +1004,8 @@ def test_same_named_noncanonical_blocked_exception_is_integrity_failure(
             workflow_status="PASS", package_complete=True,
             scientific_validity="NOT_EVALUATED",
         ),
+        lambda: _finalization_result(analysis_authorized=1),
+        lambda: _finalization_result(actual_cost_audit={"status": "NOT_EVALUATED"}),
     ],
 )
 def test_finalization_malformed_control_is_integrity_error_without_leak(

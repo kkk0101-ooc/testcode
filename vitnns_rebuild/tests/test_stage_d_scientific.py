@@ -288,7 +288,9 @@ def _curve_records(
     actual_fractions = [count / 3136 for count in unit_counts]
     metric_hash = _array_sha256(metric)
     score_hash = _array_sha256(
-        np.maximum(metric, np.float32(0.0)).astype(np.float32, copy=False)
+        np.maximum(metric, np.float32(0.0)).astype(
+            np.float32, copy=False,
+        ).reshape(-1)
     )
     target_digest = _identity_sha256(target_identity)
     clean_sha256 = target_identity["clean_input_sha256"]
@@ -567,7 +569,9 @@ def _refresh_target_digest(l0: dict[str, Any]) -> None:
 def _refresh_metric_digests(l0: dict[str, Any], metric: np.ndarray) -> None:
     metric_digest = _array_sha256(metric)
     score_digest = _array_sha256(
-        np.maximum(metric, np.float32(0.0)).astype(np.float32, copy=False)
+        np.maximum(metric, np.float32(0.0)).astype(
+            np.float32, copy=False,
+        ).reshape(-1)
     )
     for record in l0["fidelity_curves"]:
         record["source_unit_map_sha256"] = metric_digest

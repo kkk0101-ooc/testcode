@@ -8,10 +8,11 @@ four published payload documents from those source bytes.
 
 The retained L0 contract has two closed forms: D4's deliberately small
 synthetic fixture and the production envelope checked by
-``stage_d_scientific``.  An otherwise intact terminal package with an
-explicitly recorded scientific failure remains package-complete but has
-scientific validity ``FAIL``; malformed successful evidence fails closed as
-an integrity error.
+``stage_d_scientific``.  D5 tests use the synthetic path by default; D9 must
+explicitly opt into a D7-authorized formal root.  An otherwise intact terminal
+package with an explicitly recorded scientific failure remains package-complete
+but has scientific validity ``FAIL``; malformed successful evidence fails
+closed as an integrity error.
 """
 
 from __future__ import annotations
@@ -75,8 +76,9 @@ _SCIENTIFIC_FAILURE_CODES = frozenset({
     "matched_token_conservation_failed",
 })
 _RESULT_KEYS = frozenset({
-    "package_complete", "scientific_validity", "workflow_status",
-    "plan_digest", "final_status_sha256", "root_inventory",
+    "package_complete", "workflow_status", "scientific_validity",
+    "analysis_authorized", "plan_digest", "final_status_sha256",
+    "root_inventory", "actual_cost_audit",
     "evidence_report", "reconciliation", "source_inventory",
     "payload_manifest", "whole_root_ordered_inventory",
 })
@@ -96,13 +98,20 @@ _RECONCILIATION_KEYS = frozenset({
 })
 _EVIDENCE_KEYS = frozenset({
     "schema_version", "document_type", "package_complete",
-    "scientific_validity", "workflow_status", "plan_digest",
-    "estimate_digest", "preflight_digest",
+    "workflow_status", "scientific_validity", "analysis_authorized",
+    "plan_digest", "estimate_digest", "preflight_digest",
     "execution_context_digest", "counts", "scientific_failures",
-    "authorization", "analysis_boundary", "analysis_performed",
-    "bootstrap_performed", "decision_performed",
+    "authorization", "analysis_boundary", "actual_cost_audit",
+    "analysis_performed", "bootstrap_performed", "decision_performed",
     "reconciliation_digest", "source_inventory_digest",
     "canonical_digest",
+})
+_COST_AUDIT_KEYS = frozenset({
+    "evaluated", "actual_cost_includes_all_attempts_and_audit_repeats",
+    "projection_source", "resource_totals", "limits",
+    "total_h20_gpu_hours", "h20_gpu_hours_per_image_group_max",
+    "total_retained_regular_file_bytes", "source_file_count",
+    "gate_failures", "status",
 })
 _PAYLOAD_MANIFEST_KEYS = frozenset({
     "schema_version", "document_type", "immutable",
@@ -159,6 +168,53 @@ _RUNTIME_CONTEXT_KEYS = frozenset({
     "access_attestation", "gate_context_digest",
     "runtime_binding_digest", "provenance_bindings",
 })
+_SYNTHETIC_SCOPE = "SYNTHETIC_D4_TEST_ONLY"
+_FORMAL_SCOPE = "D7_RECOVERY_V2_FIDELITY_ONLY"
+_NOT_ISSUED = "NOT_ISSUED"
+_ANALYSIS_NOT_EVALUATED = "NOT_EVALUATED"
+_FORMAL_EXECUTION_AUTHORIZATION = "AUTHORIZED_STAGE_D_FIDELITY_SCOPE"
+_SYNTHETIC_ACCESS_ATTESTATION = {
+    "reserve_image_bytes_accessed": False,
+    "model_accessed": False,
+    "cuda_accessed": False,
+    "outcome_accessed": False,
+}
+_FORMAL_ACCESS_ATTESTATION = {
+    "reserve_image_bytes_accessed": False,
+    "model_loaded_for_identity_verification": True,
+    "model_used_for_inference": False,
+    "cuda_accessed": False,
+    "outcome_accessed": False,
+}
+_FORMAL_ANALYSIS_AUTHORIZATION = {
+    "PASS": "D9_AUTHORIZED_D10_FULL_ANALYSIS",
+    "FAIL": "D9_AUTHORIZED_D10_NO_GO_VALIDITY_ONLY",
+}
+_FORMAL_D10_ELIGIBILITY = {
+    "PASS": "D10_FULL_ANALYSIS_ALLOWED",
+    "FAIL": "D10_NO_GO_VALIDITY_ONLY",
+}
+_FORMAL_AUTHORIZATION_SLOT_DIGEST = (
+    "896a751c43ca1cac2aa99e68fbe606a5a97a31baa17bad717906e0f72bcd7bcc"
+)
+_FORMAL_GATE_CONTEXT_DIGEST = (
+    "67e1b2f1e6934f8d9ea63bd39261d653f6ef4bfc03e314dfd5e25ff690ec3686"
+)
+_FORMAL_RUNTIME_BINDING_DIGEST = (
+    "77cd650163499cc4527eb92467284f505e125ab0c3765ca04c2312d5a06359f1"
+)
+_FORMAL_CODE_BINDING_DIGEST = (
+    "695b434a9c6ea5d1c3dd155cd00c9bf70896f9fccd73fd98057e4c150d0d5582"
+)
+_FORMAL_DEPENDENCY_BINDING_DIGEST = (
+    "cfa75c15a1adbc24e307a6843e15ffc5a92c6e72d2854b3300cc6bf05a07fa18"
+)
+_FORMAL_MODEL_BINDING_DIGEST = (
+    "f7c05d25fa4b035290e64a8421b60de1c109f17744a5f174ee8baa72e87367ff"
+)
+_FORMAL_SOURCE_BINDINGS_DIGEST = (
+    "6b039a528b3642fa2a1714d50f775e7bec2e1365058214a485c8e4acb8569587"
+)
 
 
 class StageDFinalizationError(ValueError):
@@ -1284,6 +1340,7 @@ def _validate_controls(plan: Any, estimate: Any, preflight: Any) -> tuple[StageD
 def _checkpoint_control(
     root: Path, plan: StageDExecutionPlan, estimate: StageDEstimate,
     preflight: StageDPreflight, *, raw_bytes: bytes | None = None,
+    allow_formal: bool = False,
 ) -> dict[str, Any]:
     try:
         raw = (
@@ -1295,9 +1352,8 @@ def _checkpoint_control(
             )
         )
         # This narrow preflight intentionally precedes runtime checkpoint
-        # validation because that validator walks every attempt.  D5 must
-        # reject formal roots from checkpoint control bytes alone and must not
-        # inspect their outcome tree.
+        # validation because that validator walks every attempt.  Formal roots
+        # still require an explicit D9 switch before any outcome tree traversal.
         if set(raw) != {
             "schema_version", "document_type", "generation",
             "previous_checkpoint_digest", "plan_digest", "estimate_digest",
@@ -1327,11 +1383,12 @@ def _checkpoint_control(
         context = raw.get("execution_context")
         if not isinstance(context, Mapping):
             raise StageDFinalizeIntegrityError("checkpoint execution context is invalid")
-        if context.get("formal") is True:
+        formal = context.get("formal")
+        if formal is True and not allow_formal:
             raise StageDFinalizationBlockedError(
-                "D5 unconditionally refuses formal roots; formal sealing is outside D5 authority"
+                "formal roots require explicit D9 finalization authority"
             )
-        if context.get("formal") is not False:
+        if type(formal) is not bool:
             raise StageDFinalizationIntegrityError(
                 "checkpoint execution context formal flag is invalid"
             )
@@ -1347,45 +1404,93 @@ def _checkpoint_control(
             }
         ):
             raise StageDFinalizationIntegrityError(
-                "synthetic checkpoint provenance bindings are not closed"
+                "checkpoint provenance bindings are not closed"
             )
+        for field, source in (
+            ("code_binding_digest", provenance_bindings["producer"]),
+            ("dependency_binding_digest", provenance_bindings["dependencies"]),
+            ("model_binding_digest", provenance_bindings["model"]),
+            ("source_bindings_digest", provenance_bindings["source_bindings"]),
+        ):
+            if context_document[field] != hashlib.sha256(
+                canonical_json_bytes(source)
+            ).hexdigest():
+                raise StageDFinalizationIntegrityError(
+                    "checkpoint context control bindings drifted"
+                )
+        shard_count = context_document["shard_count"]
+        if (
+            type(shard_count) is not int
+            or shard_count < 1
+            or context_document["shard_mapping"]
+            != [index % shard_count for index in range(500)]
+        ):
+            raise StageDFinalizationIntegrityError(
+                "checkpoint shard mapping is not the frozen modulo mapping"
+            )
+        projection_without_runtime_digest = {
+            key: value for key, value in context_document.items()
+            if key != "runtime_binding_digest"
+        }
+        if context_document["runtime_binding_digest"] != hashlib.sha256(
+            canonical_json_bytes(projection_without_runtime_digest)
+        ).hexdigest():
+            raise StageDFinalizationIntegrityError(
+                "checkpoint context runtime digest mismatch"
+            )
+        if formal is True:
+            d7_binding = _exact(
+                provenance_bindings["d7_authorization"],
+                {"status", "digest"},
+                "formal checkpoint D7 authorization binding",
+            )
+            if (
+                context_document["plan_digest"] != plan.canonical_digest
+                or context_document["budget_digest"] != estimate.canonical_digest
+                or context_document["preflight_digest"] != preflight.canonical_digest
+                or context_document["authorization_scope"] != _FORMAL_SCOPE
+                or context_document["execution_authorization"]
+                != _FORMAL_EXECUTION_AUTHORIZATION
+                or context_document["authorization_slot_digest"]
+                != _FORMAL_AUTHORIZATION_SLOT_DIGEST
+                or context_document["gate_context_digest"]
+                != _FORMAL_GATE_CONTEXT_DIGEST
+                or context_document["runtime_binding_digest"]
+                != _FORMAL_RUNTIME_BINDING_DIGEST
+                or context_document["code_binding_digest"]
+                != _FORMAL_CODE_BINDING_DIGEST
+                or context_document["dependency_binding_digest"]
+                != _FORMAL_DEPENDENCY_BINDING_DIGEST
+                or context_document["model_binding_digest"]
+                != _FORMAL_MODEL_BINDING_DIGEST
+                or context_document["source_bindings_digest"]
+                != _FORMAL_SOURCE_BINDINGS_DIGEST
+                or context_document["access_attestation"]
+                != _FORMAL_ACCESS_ATTESTATION
+                or preflight.analysis_authorization != _ANALYSIS_NOT_EVALUATED
+                or d7_binding["status"] != _FORMAL_EXECUTION_AUTHORIZATION
+                or d7_binding["digest"]
+                != context_document["authorization_slot_digest"]
+            ):
+                raise StageDFinalizationIntegrityError(
+                    "formal checkpoint context is not D7-authorized for D9 sealing"
+                )
+            return raw
         synthetic_slot = {
-            "status": "NOT_ISSUED", "purpose": "SYNTHETIC_D4_TEST_ONLY",
+            "status": _NOT_ISSUED, "purpose": _SYNTHETIC_SCOPE,
         }
         if (
             context_document["plan_digest"] != plan.canonical_digest
             or context_document["budget_digest"] != estimate.canonical_digest
             or context_document["preflight_digest"] != preflight.canonical_digest
-            or context_document["authorization_scope"]
-            != "SYNTHETIC_D4_TEST_ONLY"
-            or context_document["execution_authorization"] != "NOT_ISSUED"
-            or context_document["access_attestation"] != {
-                "reserve_image_bytes_accessed": False,
-                "model_accessed": False,
-                "cuda_accessed": False,
-                "outcome_accessed": False,
-            }
+            or context_document["authorization_scope"] != _SYNTHETIC_SCOPE
+            or context_document["execution_authorization"] != _NOT_ISSUED
+            or context_document["access_attestation"] != _SYNTHETIC_ACCESS_ATTESTATION
             or provenance_bindings["d7_authorization"] != {
-                "status": "NOT_ISSUED", "digest": None,
+                "status": _NOT_ISSUED, "digest": None,
             }
             or context_document["authorization_slot_digest"]
             != hashlib.sha256(canonical_json_bytes(synthetic_slot)).hexdigest()
-            or context_document["code_binding_digest"]
-            != hashlib.sha256(
-                canonical_json_bytes(provenance_bindings["producer"])
-            ).hexdigest()
-            or context_document["dependency_binding_digest"]
-            != hashlib.sha256(
-                canonical_json_bytes(provenance_bindings["dependencies"])
-            ).hexdigest()
-            or context_document["model_binding_digest"]
-            != hashlib.sha256(
-                canonical_json_bytes(provenance_bindings["model"])
-            ).hexdigest()
-            or context_document["source_bindings_digest"]
-            != hashlib.sha256(
-                canonical_json_bytes(provenance_bindings["source_bindings"])
-            ).hexdigest()
         ):
             raise StageDFinalizationIntegrityError(
                 "synthetic checkpoint context control bindings drifted"
@@ -1412,29 +1517,14 @@ def _checkpoint_control(
             raise StageDFinalizationIntegrityError(
                 "synthetic checkpoint gate-context digest mismatch"
             )
-        projection_without_runtime_digest = {
-            key: value for key, value in context_document.items()
-            if key != "runtime_binding_digest"
-        }
-        if context_document["runtime_binding_digest"] != hashlib.sha256(
-            canonical_json_bytes(projection_without_runtime_digest)
-        ).hexdigest():
-            raise StageDFinalizationIntegrityError(
-                "synthetic checkpoint context runtime digest mismatch"
-            )
         synthetic_sha = {
             name: hashlib.sha256(
                 ("stage-d-d4-synthetic-" + name).encode("utf-8")
             ).hexdigest()
             for name in ("dependency", "model", "d0", "d1", "d2", "c10")
         }
-        shard_count = context_document["shard_count"]
         if (
-            type(shard_count) is not int
-            or shard_count < 1
-            or context_document["shard_mapping"]
-            != [index % shard_count for index in range(500)]
-            or provenance_bindings != {
+            provenance_bindings != {
                 "d7_authorization": {"status": "NOT_ISSUED", "digest": None},
                 "producer": {
                     "commit": "d" * 40, "tree": "e" * 40, "clean": True,
@@ -1786,6 +1876,160 @@ def _resource_sum(rows: Sequence[Mapping[str, Any]]) -> dict[str, int | float]:
             else:
                 result[key] += resources[key]
     return result
+
+
+def _actual_cost_audit(
+    resources: Mapping[str, Any],
+    root_inventory: Mapping[str, Any],
+    estimate: StageDEstimate,
+    unit_rows: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Evaluate completed-campaign cost gates without effect aggregation."""
+
+    totals = _validate_resources(resources, "actual cost resource totals")
+    inventory = _exact(
+        root_inventory, {"file_count", "total_bytes", "canonical_digest"},
+        "actual cost root inventory",
+    )
+    _schema_int(inventory["file_count"], "actual cost root_inventory.file_count")
+    _schema_int(inventory["total_bytes"], "actual cost root_inventory.total_bytes")
+    _schema_sha(
+        inventory["canonical_digest"],
+        "actual cost root_inventory.canonical_digest",
+    )
+    gates = _exact(
+        estimate.completed_campaign_gates, {
+            "actual_cost_includes_all_attempts_and_audit_repeats",
+            "aggregate_overrun_alone_stops_in_progress_campaign",
+            "decision_if_validity_and_fidelity_pass",
+            "evaluated_only_after_complete_campaign", "failure_status",
+            "stage_d_h20_gpu_hours_per_image_group_max",
+            "stage_d_total_h20_gpu_hours_max",
+            "stage_d_total_retained_regular_file_bytes_max",
+        },
+        "actual cost completed-campaign gates",
+    )
+    if (
+        gates["actual_cost_includes_all_attempts_and_audit_repeats"] is not True
+        or gates["aggregate_overrun_alone_stops_in_progress_campaign"] is not False
+        or gates["decision_if_validity_and_fidelity_pass"] != "NO_GO_COST"
+        or gates["evaluated_only_after_complete_campaign"] is not True
+        or gates["failure_status"] != "FAIL_COST"
+    ):
+        raise StageDFinalizationIntegrityError(
+            "completed-campaign cost gate semantics drifted"
+        )
+    total_hours = float(totals["elapsed_seconds"]) / 3600.0
+    by_group: dict[int, float] = {}
+    for row in unit_rows:
+        selection_order = row["selection_order"]
+        if type(selection_order) is not int or not 0 <= selection_order < 500:
+            raise StageDFinalizationIntegrityError(
+                "actual cost unit rows do not carry frozen selection_order"
+            )
+        by_group[selection_order] = by_group.get(selection_order, 0.0) + (
+            float(row["resources"]["elapsed_seconds"]) / 3600.0
+        )
+    if set(by_group) != set(range(500)):
+        raise StageDFinalizationIntegrityError(
+            "actual cost audit lacks exact 500 image-group coverage"
+        )
+    per_group_hours = max(by_group.values())
+    limits = {
+        "stage_d_total_retained_regular_file_bytes_max": (
+            gates["stage_d_total_retained_regular_file_bytes_max"]
+        ),
+        "stage_d_total_h20_gpu_hours_max": (
+            gates["stage_d_total_h20_gpu_hours_max"]
+        ),
+        "stage_d_h20_gpu_hours_per_image_group_max": (
+            gates["stage_d_h20_gpu_hours_per_image_group_max"]
+        ),
+    }
+    failures: list[str] = []
+    if inventory["total_bytes"] > limits["stage_d_total_retained_regular_file_bytes_max"]:
+        failures.append("stage_d_total_retained_regular_file_bytes_max")
+    if total_hours > limits["stage_d_total_h20_gpu_hours_max"]:
+        failures.append("stage_d_total_h20_gpu_hours_max")
+    if per_group_hours > limits["stage_d_h20_gpu_hours_per_image_group_max"]:
+        failures.append("stage_d_h20_gpu_hours_per_image_group_max")
+    return {
+        "evaluated": True,
+        "actual_cost_includes_all_attempts_and_audit_repeats": True,
+        "projection_source": (
+            "D9_RECOMPUTED_FROM_VALIDATED_ATTEMPT_RESOURCES_AND_ROOT_INVENTORY"
+        ),
+        "resource_totals": totals,
+        "limits": limits,
+        "total_h20_gpu_hours": total_hours,
+        "h20_gpu_hours_per_image_group_max": per_group_hours,
+        "total_retained_regular_file_bytes": inventory["total_bytes"],
+        "source_file_count": inventory["file_count"],
+        "gate_failures": failures,
+        "status": "PASS_COST" if not failures else "FAIL_COST",
+    }
+
+
+def _validate_actual_cost_audit(value: Any, context: str) -> dict[str, Any]:
+    row = _exact(value, _COST_AUDIT_KEYS, context)
+    _schema_bool(row["evaluated"], context + ".evaluated")
+    _schema_bool(
+        row["actual_cost_includes_all_attempts_and_audit_repeats"],
+        context + ".actual_cost_includes_all_attempts_and_audit_repeats",
+    )
+    if (
+        row["evaluated"] is not True
+        or row["actual_cost_includes_all_attempts_and_audit_repeats"] is not True
+        or row["projection_source"]
+        != "D9_RECOMPUTED_FROM_VALIDATED_ATTEMPT_RESOURCES_AND_ROOT_INVENTORY"
+    ):
+        _schema_error(context, "identity or inclusion policy drifted")
+    _validate_resources(row["resource_totals"], context + ".resource_totals")
+    limits = _exact(
+        row["limits"], {
+            "stage_d_total_retained_regular_file_bytes_max",
+            "stage_d_total_h20_gpu_hours_max",
+            "stage_d_h20_gpu_hours_per_image_group_max",
+        },
+        context + ".limits",
+    )
+    _schema_int(
+        limits["stage_d_total_retained_regular_file_bytes_max"],
+        context + ".limits.stage_d_total_retained_regular_file_bytes_max",
+    )
+    for name in (
+        "stage_d_total_h20_gpu_hours_max",
+        "stage_d_h20_gpu_hours_per_image_group_max",
+    ):
+        value = limits[name]
+        if (
+            type(value) not in {int, float}
+            or not math.isfinite(float(value))
+            or value < 0
+        ):
+            _schema_error(context + ".limits." + name, "must be finite and non-negative")
+    for name in ("total_h20_gpu_hours", "h20_gpu_hours_per_image_group_max"):
+        value = row[name]
+        if (
+            type(value) not in {int, float}
+            or not math.isfinite(float(value))
+            or value < 0
+        ):
+            _schema_error(context + "." + name, "must be finite and non-negative")
+    _schema_int(
+        row["total_retained_regular_file_bytes"],
+        context + ".total_retained_regular_file_bytes",
+    )
+    _schema_int(row["source_file_count"], context + ".source_file_count")
+    failures = _schema_array(row["gate_failures"], context + ".gate_failures")
+    allowed = set(limits)
+    if (
+        len(failures) != len(set(failures))
+        or any(failure not in allowed for failure in failures)
+        or row["status"] != ("PASS_COST" if not failures else "FAIL_COST")
+    ):
+        _schema_error(context, "cost status does not match gate failures")
+    return row
 
 
 def _validate_retry_history(
@@ -2175,8 +2419,8 @@ def _validate_provenance_projection(value: Any, context: str) -> dict[str, Any]:
     row = _exact(value, _PROVENANCE_PROJECTION_KEYS, context)
     for name in ("sha256", "canonical_digest", "unit_identity_sha256", "bindings_digest"):
         _schema_sha(row[name], f"{context}.{name}")
-    if row["mode"] != "SYNTHETIC_D4_TEST_ONLY":
-        _schema_error(context + ".mode", "is outside D5 synthetic scope")
+    if row["mode"] not in {_SYNTHETIC_SCOPE, "formal"}:
+        _schema_error(context + ".mode", "is outside Stage D finalization scope")
     execution = _exact(row["execution"], _EXECUTION_PROJECTION_KEYS, context + ".execution")
     attempt = _exact(execution["attempt"], {"number", "id"}, context + ".execution.attempt")
     _schema_int(attempt["number"], context + ".execution.attempt.number", minimum=1)
@@ -2425,6 +2669,7 @@ def _validate_final_document(name: str, document: Mapping[str, Any]) -> dict[str
         if value["package_complete"] is not True or any(value[field] for field in ("analysis_performed", "bootstrap_performed", "decision_performed")):
             _schema_error(name, "package/analysis boundary is invalid")
         _schema_string(value["scientific_validity"], name + ".scientific_validity", allowed={"PASS", "FAIL"})
+        _schema_bool(value["analysis_authorized"], name + ".analysis_authorized")
         if value["workflow_status"] != "PASS":
             _schema_error(name + ".workflow_status", "must be PASS")
         for field in ("plan_digest", "estimate_digest", "preflight_digest", "execution_context_digest", "reconciliation_digest", "source_inventory_digest"):
@@ -2441,11 +2686,52 @@ def _validate_final_document(name: str, document: Mapping[str, Any]) -> dict[str
             if not reasons or any(not isinstance(reason, str) or not reason for reason in reasons):
                 _schema_error(f"{name}.scientific_failures[{index}].reasons", "is invalid")
         authorization = _exact(value["authorization"], {"formal", "execution_authorization", "authorization_scope", "analysis_authorization", "stage_d_execution_started"}, name + ".authorization")
-        if authorization != {"formal": False, "execution_authorization": "NOT_ISSUED", "authorization_scope": "SYNTHETIC_D4_TEST_ONLY", "analysis_authorization": "NOT_EVALUATED", "stage_d_execution_started": False}:
-            _schema_error(name + ".authorization", "crosses the D5 authority boundary")
+        _schema_bool(authorization["formal"], name + ".authorization.formal")
+        _schema_bool(
+            authorization["stage_d_execution_started"],
+            name + ".authorization.stage_d_execution_started",
+        )
         boundary = _exact(value["analysis_boundary"], {"status", "analysis_performed", "bootstrap_performed", "decision_performed", "delta_fid_computed", "aggregate_effects_computed", "d6_eligibility"}, name + ".analysis_boundary")
-        if boundary != {"status": "NOT_PERFORMED", "analysis_performed": False, "bootstrap_performed": False, "decision_performed": False, "delta_fid_computed": False, "aggregate_effects_computed": False, "d6_eligibility": "SYNTHETIC_ONLY"}:
+        expected_authorization = (
+            {
+                "formal": False,
+                "execution_authorization": _NOT_ISSUED,
+                "authorization_scope": _SYNTHETIC_SCOPE,
+                "analysis_authorization": _ANALYSIS_NOT_EVALUATED,
+                "stage_d_execution_started": False,
+            }
+            if authorization["formal"] is False else {
+                "formal": True,
+                "execution_authorization": _FORMAL_EXECUTION_AUTHORIZATION,
+                "authorization_scope": _FORMAL_SCOPE,
+                "analysis_authorization": _FORMAL_ANALYSIS_AUTHORIZATION[
+                    value["scientific_validity"]
+                ],
+                "stage_d_execution_started": True,
+            }
+        )
+        if authorization != expected_authorization:
+            _schema_error(name + ".authorization", "crosses the D9 authority boundary")
+        if value["analysis_authorized"] is not authorization["formal"]:
+            _schema_error(name + ".analysis_authorized", "does not match D9 authorization")
+        expected_boundary = {
+            "status": "NOT_PERFORMED",
+            "analysis_performed": False,
+            "bootstrap_performed": False,
+            "decision_performed": False,
+            "delta_fid_computed": False,
+            "aggregate_effects_computed": False,
+            "d6_eligibility": (
+                "SYNTHETIC_ONLY"
+                if authorization["formal"] is False
+                else _FORMAL_D10_ELIGIBILITY[value["scientific_validity"]]
+            ),
+        }
+        if boundary != expected_boundary:
             _schema_error(name + ".analysis_boundary", "is invalid")
+        _validate_actual_cost_audit(
+            value["actual_cost_audit"], name + ".actual_cost_audit",
+        )
     elif name == "reconciliation.json":
         _validate_reconciliation(value)
     elif name == "source_inventory.json":
@@ -2484,12 +2770,16 @@ def _validate_root_validation_document(value: Mapping[str, Any]) -> dict[str, An
     if document["package_complete"] is not True or document["workflow_status"] != "PASS":
         _schema_error("root validation", "conclusion is invalid")
     _schema_string(document["scientific_validity"], "root validation.scientific_validity", allowed={"PASS", "FAIL"})
+    _schema_bool(document["analysis_authorized"], "root validation.analysis_authorized")
     _schema_sha(document["plan_digest"], "root validation.plan_digest")
     _schema_sha(document["final_status_sha256"], "root validation.final_status_sha256")
     summary = _exact(document["root_inventory"], {"file_count", "total_bytes", "canonical_digest"}, "root validation.root_inventory")
     _schema_int(summary["file_count"], "root validation.root_inventory.file_count")
     _schema_int(summary["total_bytes"], "root validation.root_inventory.total_bytes")
     _schema_sha(summary["canonical_digest"], "root validation.root_inventory.canonical_digest")
+    _validate_actual_cost_audit(
+        document["actual_cost_audit"], "root validation.actual_cost_audit",
+    )
     for field, filename in (
         ("evidence_report", "evidence_report.json"),
         ("reconciliation", "reconciliation.json"),
@@ -2497,6 +2787,32 @@ def _validate_root_validation_document(value: Mapping[str, Any]) -> dict[str, An
         ("payload_manifest", "payload_manifest.json"),
     ):
         _validate_final_document(filename, document[field])
+    evidence = document["evidence_report"]
+    reconciliation = document["reconciliation"]
+    source_inventory = document["source_inventory"]
+    if (
+        document["analysis_authorized"] is not evidence["analysis_authorized"]
+        or document["actual_cost_audit"] != evidence["actual_cost_audit"]
+        or document["actual_cost_audit"]["resource_totals"]
+        != reconciliation["resources"]
+        or document["actual_cost_audit"]["source_file_count"]
+        != source_inventory["file_count"]
+        or document["actual_cost_audit"]["total_retained_regular_file_bytes"]
+        != source_inventory["total_bytes"]
+    ):
+        _schema_error("root validation", "D9 summary fields drifted")
+    expected_mode = (
+        "formal" if evidence["authorization"]["formal"] is True
+        else _SYNTHETIC_SCOPE
+    )
+    for index, row in enumerate(reconciliation["rows"]):
+        attempt = row["attempts"][-1]
+        provenance = attempt["provenance"]
+        if isinstance(provenance, Mapping) and provenance["mode"] != expected_mode:
+            _schema_error(
+                f"root validation.reconciliation.rows[{index}].provenance.mode",
+                "differs from the evidence authorization mode",
+            )
     rows = _validate_inventory_rows(
         document["whole_root_ordered_inventory"],
         "root validation.whole_root_ordered_inventory",
@@ -2514,7 +2830,6 @@ def _build_source_documents(
     captured_bytes: Mapping[str, bytes] | None = None,
     logical_root: Path | None = None,
 ) -> tuple[dict[str, bytes], dict[str, Any]]:
-    del allow_formal  # Kept in the public signature for compatibility only.
     source_records = _plain(list(source_records), "captured source inventory")
     source_index = _inventory_index(source_records)
     checkpoint = _checkpoint(
@@ -2524,17 +2839,26 @@ def _build_source_documents(
         logical_root=logical_root,
     )
     context = checkpoint["execution_context"]
-    if context["formal"] is True:
+    if context["formal"] is True and not allow_formal:
         raise StageDFinalizationBlockedError(
-            "D5 unconditionally refuses formal roots; formal sealing is outside D5 authority"
+            "formal roots require explicit D9 finalization authority"
         )
-    if context["formal"] is False and (
-        context["execution_authorization"] != "NOT_ISSUED"
-        or context["authorization_scope"] != "SYNTHETIC_D4_TEST_ONLY"
-        or preflight.analysis_authorization != "NOT_EVALUATED"
+    if context["formal"] is False:
+        if (
+            context["execution_authorization"] != _NOT_ISSUED
+            or context["authorization_scope"] != _SYNTHETIC_SCOPE
+            or preflight.analysis_authorization != _ANALYSIS_NOT_EVALUATED
+        ):
+            raise StageDFinalizationIntegrityError(
+                "synthetic root authority boundary drifted"
+            )
+    elif (
+        context["execution_authorization"] != _FORMAL_EXECUTION_AUTHORIZATION
+        or context["authorization_scope"] != _FORMAL_SCOPE
+        or preflight.analysis_authorization != _ANALYSIS_NOT_EVALUATED
     ):
         raise StageDFinalizationIntegrityError(
-            "synthetic root authority boundary drifted"
+            "formal root authority boundary drifted"
         )
     lifecycle = checkpoint["lifecycle"]
     if lifecycle["active_shard_leases"] or lifecycle["active_group_claims"] or any(row["state"] == "claimed" for row in checkpoint["units"]):
@@ -2999,6 +3323,9 @@ def _build_source_documents(
         raise StageDFinalizationIntegrityError(
             "retention coverage or audit-only/L3 policy drifted"
         )
+    cost_audit = _actual_cost_audit(
+        recomputed_resources, source_summary, estimate, rows,
+    )
     reconciliation = _self_document(
         "stage_d_reconciliation", plan_digest=plan.canonical_digest,
         expected_image_count=500, expected_unit_count=1000,
@@ -3018,7 +3345,8 @@ def _build_source_documents(
     validity = "PASS" if not scientific_errors else "FAIL"
     evidence = _self_document(
         "stage_d_final_evidence_report", package_complete=True,
-        scientific_validity=validity, workflow_status="PASS",
+        workflow_status="PASS", scientific_validity=validity,
+        analysis_authorized=context["formal"],
         plan_digest=plan.canonical_digest, estimate_digest=estimate.canonical_digest,
         preflight_digest=preflight.canonical_digest,
         execution_context_digest=context["runtime_binding_digest"],
@@ -3033,8 +3361,11 @@ def _build_source_documents(
             "formal": context["formal"],
             "execution_authorization": context["execution_authorization"],
             "authorization_scope": context["authorization_scope"],
-            "analysis_authorization": preflight.analysis_authorization,
-            "stage_d_execution_started": False,
+            "analysis_authorization": (
+                _ANALYSIS_NOT_EVALUATED if context["formal"] is False
+                else _FORMAL_ANALYSIS_AUTHORIZATION[validity]
+            ),
+            "stage_d_execution_started": context["formal"],
         },
         analysis_boundary={
             "status": "NOT_PERFORMED", "analysis_performed": False,
@@ -3042,10 +3373,11 @@ def _build_source_documents(
             "delta_fid_computed": False, "aggregate_effects_computed": False,
             "d6_eligibility": (
                 "SYNTHETIC_ONLY" if context["formal"] is False
-                else "NOT_AUTHORIZED"
+                else _FORMAL_D10_ELIGIBILITY[validity]
             ),
         },
-        analysis_performed=False, bootstrap_performed=False, decision_performed=False,
+        actual_cost_audit=cost_audit, analysis_performed=False,
+        bootstrap_performed=False, decision_performed=False,
         reconciliation_digest=reconciliation["canonical_digest"],
         source_inventory_digest=source_inventory["canonical_digest"],
     )
@@ -3092,11 +3424,13 @@ def _build_source_documents(
 @dataclass(frozen=True, slots=True)
 class StageDRootValidation(Mapping[str, Any]):
     package_complete: bool
-    scientific_validity: str
     workflow_status: str
+    scientific_validity: str
+    analysis_authorized: bool
     plan_digest: str
     final_status_sha256: str
     root_inventory: Mapping[str, Any]
+    actual_cost_audit: Mapping[str, Any]
     evidence_report: Mapping[str, Any]
     reconciliation: Mapping[str, Any]
     source_inventory: Mapping[str, Any]
@@ -3106,8 +3440,8 @@ class StageDRootValidation(Mapping[str, Any]):
 
     def __post_init__(self) -> None:
         mapping_fields = (
-            "root_inventory", "evidence_report", "reconciliation",
-            "source_inventory", "payload_manifest",
+            "root_inventory", "actual_cost_audit", "evidence_report",
+            "reconciliation", "source_inventory", "payload_manifest",
         )
         for name in mapping_fields:
             object.__setattr__(self, name, _freeze(_plain(getattr(self, name))))
@@ -3166,9 +3500,13 @@ def _result(
             "terminal status conclusion differs from the evidence report"
         )
     return StageDRootValidation(
-        package_complete=True, scientific_validity=evidence["scientific_validity"],
-        workflow_status=evidence["workflow_status"], plan_digest=evidence["plan_digest"],
-        final_status_sha256=hashlib.sha256(status_raw).hexdigest(), root_inventory=summary,
+        package_complete=True, workflow_status=evidence["workflow_status"],
+        scientific_validity=evidence["scientific_validity"],
+        analysis_authorized=evidence["analysis_authorized"],
+        plan_digest=evidence["plan_digest"],
+        final_status_sha256=hashlib.sha256(status_raw).hexdigest(),
+        root_inventory=summary,
+        actual_cost_audit=evidence["actual_cost_audit"],
         evidence_report=documents["evidence_report"],
         reconciliation=documents["reconciliation"],
         source_inventory=documents["source_inventory"],
@@ -3198,6 +3536,7 @@ def finalize_stage_d_root(output_root: Path | str, plan: Any, estimate: Any, pre
             )
         prechecked = _checkpoint_control(
             root, typed_plan, typed_estimate, typed_preflight,
+            allow_formal=allow_formal,
         )
         _reject_active_checkpoint_control(prechecked)
         (
@@ -3209,6 +3548,7 @@ def finalize_stage_d_root(output_root: Path | str, plan: Any, estimate: Any, pre
         prechecked = _checkpoint_control(
             root, typed_plan, typed_estimate, typed_preflight,
             raw_bytes=captured_bytes[_runtime.RUNTIME_CHECKPOINT_FILENAME],
+            allow_formal=allow_formal,
         )
         _validate_source_directories(
             source_records, captured_directories, typed_plan, prechecked,
@@ -3332,6 +3672,7 @@ def validate_stage_d_root(output_root: Path | str, plan: Any, estimate: Any, pre
         _verify_root_binding(named_root, root_descriptor, root_identity)
         prechecked = _checkpoint_control(
             root, typed_plan, typed_estimate, typed_preflight,
+            allow_formal=allow_formal,
         )
         _reject_active_checkpoint_control(prechecked)
         (
@@ -3343,6 +3684,7 @@ def validate_stage_d_root(output_root: Path | str, plan: Any, estimate: Any, pre
         prechecked = _checkpoint_control(
             root, typed_plan, typed_estimate, typed_preflight,
             raw_bytes=captured_bytes[_runtime.RUNTIME_CHECKPOINT_FILENAME],
+            allow_formal=allow_formal,
         )
         _validate_source_directories(
             source_records, captured_directories, typed_plan, prechecked,
