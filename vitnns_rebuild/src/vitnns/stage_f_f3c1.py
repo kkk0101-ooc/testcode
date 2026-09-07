@@ -26,8 +26,11 @@ from . import stage_f_f3c1_kernels as kernels
 
 CONFIG_PATH = "config/stage_f_f3c1.json"
 SCHEMA_PATH = "config/stage_f_f3c1.schema.json"
-ROOT_PATH = "evidence/stage_f/f3c1_implementation_v1_20260907/formal"
-REPORT_PATH = "reports/stage_f_f3c1_implementation_v1_20260907"
+ROOT_PATH = "evidence/stage_f/f3c1_implementation_r1_20260907/formal"
+REPORT_PATH = "reports/stage_f_f3c1_implementation_r1_20260907"
+V1_ROOT_PATH = "evidence/stage_f/f3c1_implementation_v1_20260907/formal"
+V1_REPORT_PATH = "reports/stage_f_f3c1_implementation_v1_20260907"
+V1_FAILURE_PATH = V1_REPORT_PATH + "/failure_event.json"
 STARTUP_PATH = ROOT_PATH + "/startup_gate.json"
 IMPLEMENTATION_PATH = ROOT_PATH + "/implementation_binding.json"
 FIXTURE_PATH = ROOT_PATH + "/synthetic_fixture_manifest.json"
@@ -69,6 +72,7 @@ EXPECTED_FROZEN_FILES = {
     "config/stage_f_f3c.schema.json": "65191984978bb9191ca0474458f50949403e55741bcf8a8381b8e4beeecb055b",
     "manifests/stage_f_f3c_v1/sample_split.json": "b1dd0bb74f9ee0a2381eaa797c27a0365c13757b0f72ea253924fded3d8a2b09",
 }
+R1_ADDENDUM_PATH = "docs/stage_f_f3c1_r1_startup_recovery_addendum_20260907.md"
 SEALED_ROOTS = (
     ("d10", "refs/archive/stage-d-fidelity-v1-d10-completion", "evidence/stage_d/d10_recovery_v2_20260906/formal_r2"),
     ("e4", "refs/archive/stage-e-e4-completion", "evidence/stage_e/e4_recovery_v2_20260907/formal"),
@@ -210,6 +214,8 @@ def load_config(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
         "included_in_pilot_formal_or_statistics": False,
     }:
         raise StageFF3C1Error("F3C1 engineering boundary drifted")
+    if config["output_root"] != ROOT_PATH or config["report_root"] != REPORT_PATH:
+        raise StageFF3C1Error("F3C1 R1 output roots drifted")
     return config
 
 
@@ -252,6 +258,12 @@ def verify_startup_gates(repo_root: Path | str = REPO_ROOT, *, require_clean: bo
     _validate_signed(basis, "F3H basis")
     if basis.get("status") != "INSUFFICIENT_BASIS_FOR_NUMERICAL_CLASS_CONDITIONED_WEIGHTS":
         raise StageFF3C1Error("F3H basis status drifted")
+    v1_failure = repo / V1_FAILURE_PATH
+    if not v1_failure.is_file() or not (repo / V1_ROOT_PATH / "completion/f3c1.pending.json").is_file() or (repo / V1_ROOT_PATH / "completion/f3c1.json").exists():
+        raise StageFF3C1Error("blocked F3C1 v1 attempt was not preserved")
+    failure = _read(v1_failure); _validate_signed(failure, "F3C1 v1 failure")
+    if failure.get("status") != "BLOCKED" or failure.get("phase") != "order44_engineering_check":
+        raise StageFF3C1Error("blocked F3C1 v1 failure identity drifted")
     sealed = {}
     for name, ref, root in SEALED_ROOTS:
         commit = _git(repo, "rev-parse", ref + "^{commit}")
@@ -271,6 +283,11 @@ def verify_startup_gates(repo_root: Path | str = REPO_ROOT, *, require_clean: bo
         "basis_status": basis["status"], "sealed_roots": sealed,
         "config_sha256": _sha_file(repo / CONFIG_PATH),
         "config_canonical_digest": canonical_sha256(config),
+        "r1_recovery": {
+            "addendum": _file_record(repo, R1_ADDENDUM_PATH),
+            "v1_pending_preserved": True, "v1_failure": _record(repo, V1_FAILURE_PATH),
+            "failure_before_model_jpeg_or_attribution_access": True,
+        },
         "next_authorization": "F3C1_IMPLEMENTATION_AND_SYNTHETIC_PREFLIGHT_ONLY",
     })
 
@@ -463,7 +480,9 @@ def run_engineering_check(repo_root: Path | str = REPO_ROOT, *, device: str = "c
         import timm
         if not device.startswith("cuda") or not torch.cuda.is_available():
             raise StageFF3C1Error("F3C1 order-44 check requires an available CUDA device")
-        torch.cuda.reset_peak_memory_stats(device)
+        torch.cuda.set_device(torch.device(device))
+        torch.cuda.init()
+        torch.cuda.reset_peak_memory_stats(torch.device(device))
         model, clean, binding = _load_order44(repo, device)
         def count(_module: Any, _args: Any) -> None:
             nonlocal calls; calls += 1
