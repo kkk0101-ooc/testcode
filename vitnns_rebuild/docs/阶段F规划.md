@@ -604,3 +604,21 @@ F3H 最终通过 R3 atomic sealing wrapper 完成，状态 `PASS`。R1 完成全
 - 正式 payload：`evidence/stage_f/f3h_full_head_r2_cpu_reconcile_20260907/formal/` 与 `reports/stage_f_f3h_full_head_r2_cpu_reconcile_20260907/`；terminal receipts：`evidence/stage_f/f3h_full_head_r3_terminal_seal_20260907/formal/` 与 `reports/stage_f_f3h_full_head_r3_terminal_seal_20260907/`。
 
 F3H terminal PASS 只授权 `F3C0_PROTOCOL_FREEZE_ONLY`。F3C empirical compute 和 F4 均未开始。
+
+## 22. F3C0 prospective protocol-freeze completion（2026-09-07）
+
+F3C0 已在完整 F3H atlas 和预声明充分性评估之后冻结，状态 `PASS`。本里程碑只冻结方法、样本、指标、预算和执行顺序，没有启动 F3C empirical computation，也没有开始 F4。
+
+- F3H 输入：`refs/archive/stage-f-v1-f3h-completion` 精确指向 `56afedd2e73a760dc5127ab4ee9c38d72623dbbc`；F3H completion 为 PASS、288/288 valid、Grad-CAM VALID，且 `next_authorization=F3C0_PROTOCOL_FREEZE_ONLY`。
+- 决策依据：F3H basis assessment 为 `INSUFFICIENT_BASIS_FOR_NUMERICAL_CLASS_CONDITIONED_WEIGHTS`。因此 F3C 不对 144 张 F3H head-direction maps 猜测、学习或视觉选择权重。
+- 新方法：`conditional_all_blocks_fixed_clean_attention_class_logit_ig`，论文标签为 `class-targeted NNS (all-block fixed-clean-attention class-logit IG)`。它在一次 clean forward 中冻结 12 层完整 multi-head attention tensors，并让模型自身的 Value、head concatenation、output projection、residual、MLP、final norm 和 classifier head 将输入连接到 frozen predicted-class raw logit；它不是 F3H maps 的加权和，也不等同于 unmodified full-model IG。
+- 五方法集合完整冻结：class-targeted NNS、ViT Grad-CAM、full-model class-logit IG、attention rollout、block-11 raw CLS attention head mean；后两者保持 class-agnostic 标签。
+- 样本：从 D1 500 图 registry 通过 `sha256("STAGE_F_F3C_V1_20260907|" + sample_id)` 可复算排序，排除所有已在 F3/S4/F3H 展示或作为 failure slot 的 11 个 orders；冻结 5 张 pilot 和 50 张 formal cohort，二者互斥。pilot orders 为 `416, 350, 438, 411, 337`；order 44 只作已查看 continuity anchor，不进入 pilot、formal 或统计。
+- 评价：五方法共享一次冻结的 clean predicted-class raw-logit index；14×14 patch fidelity 为 primary common resolution，formal statistical unit 为 image (`n=50`)。NNS vs Grad-CAM 是单一 primary contrast，其余三项为预声明 secondary Holm family；F3C1 必须在 pilot outcome 前再冻结精确检验算法。
+- 显示：每样本五方法使用 target-oriented positive mass-one view 和共同 unclipped 色限；禁止 method-specific gain/gamma/alpha、percentile clipping 和分别自动缩放。signed NNS/full-model IG 另保留正负 audit，非负方法不得伪造 negative map。
+- 预算：5-image pilot 后必须重估；provisional total cap 8 H20-GPU-hours、每 image group 0.30、最多 8 devices、每进程 16 GiB reserved、retained artifacts 8 GiB，无自动 waiver。
+- 流程：F3C0 → F3C1 implementation/synthetic preflight → F3C2 five-image pilot → F3C3 50-image formal → F3C4 CPU analysis/seal。任何 pilot map/JPEG 外观不得进入 continuation 决策。
+- F3C0 tests：12 passed、0 failed；20/20 false-pass attacks rejected。F3C0 未读取 JPEG、未加载模型、未导入 Torch/timm、未访问 CUDA/GPU、未运行 attribution/fidelity。
+- 正式协议与合同：`docs/stage_f_f3c_class_targeted_protocol_20260907.md`、`config/stage_f_f3c.json`、`config/stage_f_f3c.schema.json`、`manifests/stage_f_f3c_v1/sample_split.json`。
+
+F3C0 terminal PASS 的唯一下一授权是 `F3C1_IMPLEMENTATION_AND_SYNTHETIC_PREFLIGHT_ONLY`。F3C pilot/formal computation 尚未开始；F4 保持 `PAUSED_PENDING_F3C`。
