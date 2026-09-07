@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {"const": "stage_f_f2.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_f_f2_config"},
+    "stage_id": {"const": "F2"},
+    "authorization": {"type": "object", "properties": {"current": {"const": "F2_ONLY"}, "on_pass": {"const": "F3_ONLY"}, "f3_started": {"const": false}, "f4_started": {"const": false}}, "required": ["current", "on_pass", "f3_started", "f4_started"], "additionalProperties": false},
+    "inputs": {"type": "object"},
+    "renderer": {"type": "object"},
+    "modules": {"type": "array", "minItems": 4, "maxItems": 4},
+    "outputs": {"type": "object"},
+    "safety": {"type": "object"},
+    "canonical_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "required": ["$schema", "schema_version", "document_type", "stage_id", "authorization", "inputs", "renderer", "modules", "outputs", "safety", "canonical_digest"]
+}

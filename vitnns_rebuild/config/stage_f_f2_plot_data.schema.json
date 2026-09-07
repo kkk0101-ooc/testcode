@@ -1,0 +1,5 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object", "additionalProperties": true,
+  "properties": {"schema_version": {"const": 1}, "document_type": {"const": "stage_f_f2_plot_data"}, "stage_id": {"const": "F2"}, "module_id": {"enum": ["F2-A", "F2-B", "F2-C", "F2-D"]}, "source_tables": {"type": "array", "minItems": 1}, "plot_data_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "canonical_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}},
+  "required": ["schema_version", "document_type", "stage_id", "module_id", "source_tables", "plot_payload", "plot_data_digest", "canonical_digest"]
+}

@@ -416,6 +416,8 @@ def _style_axis(axis: Any, panel: Mapping[str, Any]) -> None:
         axis.set_xlim(*panel["x_limits"])
     if "y_limits" in panel:
         axis.set_ylim(*panel["y_limits"])
+    if "x_ticks" in panel:
+        axis.set_xticks(panel["x_ticks"], panel.get("x_tick_labels", panel["x_ticks"]), rotation=25, ha="right")
     if panel.get("grid") is True:
         axis.grid(True, linewidth=0.35, alpha=0.35)
     axis.spines["top"].set_visible(False)
@@ -440,8 +442,8 @@ def _ecdf_panel(axis: Any, panel: Mapping[str, Any], config: Mapping[str, Any]) 
     records = []
     for series in panel["data"]["series"]:
         values = np.sort(np.asarray(series["values"], dtype=float)); y = np.arange(1, len(values) + 1) / len(values)
-        style = _item_style(config, series); axis.step(values, y, where="post", color=style["color"], linestyle=style["linestyle"], label=series["label"])
-        records.append({"method": series["method"], "n": len(values), "color": style["color"], "linestyle": style["linestyle"]})
+        style = _item_style(config, series); axis.step(values, y, where="post", color=style["color"], linestyle=style["linestyle"], marker=style["marker"], markersize=2.5, markevery=max(1, len(values) // 12), label=series["label"])
+        records.append({"method": series["method"], "n": len(values), "color": style["color"], "linestyle": style["linestyle"], "marker": style["marker"]})
     _style_axis(axis, panel); axis.set_ylim(0, 1.02); axis.legend(frameon=False)
     return {"series": records}
 
@@ -610,6 +612,8 @@ def render_panel_figure(
     plot_data_digest: str,
     stage_config_digest: str,
     stage_id: str = "F1",
+    report_document_type: str = "stage_f_f1_render_report",
+    report_flags: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Render a validated formal Stage F panel spec with the frozen F0 renderer.
 
@@ -657,7 +661,7 @@ def render_panel_figure(
     commit = renderer_commit or _git(repo, "rev-parse", "HEAD")
     report = {
         "schema_version": 1,
-        "document_type": "stage_f_f1_render_report",
+        "document_type": report_document_type,
         "stage_id": stage_id,
         "module_id": spec["module_id"],
         "figure_id": spec["figure_id"],
@@ -704,6 +708,8 @@ def render_panel_figure(
         "c10_stage_d_pooled": False,
         "final_combined_figure_2_rendered": False,
     }
+    if report_flags:
+        report.update(report_flags)
     report["canonical_digest"] = canonical_sha256(report)
     report_path = output_base.with_suffix(".report.json")
     if report_path.exists():
