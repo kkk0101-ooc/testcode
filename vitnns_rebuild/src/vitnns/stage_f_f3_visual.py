@@ -35,8 +35,8 @@ from . import stage_f_f3 as f3
 
 CONFIG_PATH = "config/stage_f_f3_visual_revision.json"
 PROTOCOL_PATH = "docs/stage_f_post_f3_blue_display_revision_20260907.md"
-ROOT_PATH = "evidence/stage_f/f3_visual_r1_recovery_v2_20260907/formal"
-REPORT_PATH = "reports/stage_f_f3_visual_r1_20260907"
+ROOT_PATH = "evidence/stage_f/f3_visual_r2_recovery_v2_20260907/formal"
+REPORT_PATH = "reports/stage_f_f3_visual_r2_20260907"
 PENDING_PATH = ROOT_PATH + "/completion/f3_visual.pending.json"
 COMPLETION_PATH = ROOT_PATH + "/completion/f3_visual.json"
 STARTUP_PATH = ROOT_PATH + "/startup_gate.json"
@@ -237,8 +237,21 @@ def _sources(repo: Path) -> dict[str, Any]:
     qualitative = {}
     for item in documents["panel"]["panels"]:
         if item.get("sample_id") and item.get("sources") and item["sample_id"] not in qualitative: qualitative[item["sample_id"]] = item
+    registry, _ = _strict_json(repo / REGISTRY_PATH, "D1 registry"); _validate_signed(registry, "D1 registry")
+    registry_by_sample = {item["sample_id"]: item for item in registry["rows"]}
     cross = {(item["sample_id"], tuple(item["coordinate"]), item["method"]): item for item in documents["cross_panel"]["cells"] if item["method"] in METHODS}
-    return {**documents, "qualitative": qualitative, "cross": cross, "source_digest": canonical_sha256({key: value["canonical_digest"] for key, value in documents.items()})}
+    return {**documents, "qualitative": qualitative, "registry": registry, "registry_by_sample": registry_by_sample, "cross": cross, "source_digest": canonical_sha256({**{key: value["canonical_digest"] for key, value in documents.items()}, "registry": registry["canonical_digest"]})}
+
+
+def _rgb_meta_for_sample(sources: Mapping[str, Any], sample_id: str) -> dict[str, Any]:
+    if sample_id in sources["qualitative"]:
+        return sources["qualitative"][sample_id]["jpeg"]
+    row = sources["registry_by_sample"][sample_id]
+    width, height = row["width"], row["height"]
+    if width < height: resized = [248, int(round(height * 248 / width))]
+    else: resized = [int(round(width * 248 / height)), 248]
+    left = (resized[0] - 224) // 2; top = (resized[1] - 224) // 2
+    return {"path": "assets/data/ILSVRC2012_val/" + row["relative_path"], "file_sha256": row["image_sha256"], "original_size": [width, height], "resized_size": resized, "resize_shorter_side": 248, "resize_interpolation": "bicubic", "crop_box": [left, top, left + 224, top + 224], "center_crop": [224, 224], "color_mode": "RGB", "display_only": True, "source": "FROZEN_D1_REGISTRY"}
 
 
 def _save_report(repo: Path, fig: Any, output_base: Path, *, module: str, source_digest: str, config: Mapping[str, Any], transformations: Sequence[Mapping[str, Any]], metadata: Mapping[str, Any]) -> dict[str, Any]:
@@ -277,7 +290,7 @@ def _failure_axis(axis: Any, record: Mapping[str, Any]) -> None:
 
 
 def _render_matrix(repo: Path, *, sample_id: str, slots: Sequence[str], output_base: Path, module: str, title: str, sources: Mapping[str, Any], config: Mapping[str, Any], cmap: Any) -> dict[str, Any]:
-    record = sources["qualitative"][sample_id]; rgb = _load_rgb(repo, record["jpeg"]); transformations = []; source_records = []
+    record = sources["qualitative"].get(sample_id, {"sample_id": sample_id, "selection_order": sources["registry_by_sample"][sample_id]["selection_order"]}); jpeg_meta = _rgb_meta_for_sample(sources, sample_id); rgb = _load_rgb(repo, jpeg_meta); transformations = []; source_records = []
     f0 = load_contracts(repo)["config"]
     with renderer_style(f0):
         fig = plt.figure(figsize=(7.16, 3.55), constrained_layout=True); grid = GridSpec(2, 5, figure=fig, width_ratios=[.93, 1, 1, 1, 1], wspace=.025, hspace=.04)
@@ -292,7 +305,7 @@ def _render_matrix(repo: Path, *, sample_id: str, slots: Sequence[str], output_b
                 if row == 0: axis.set_title(f"Block {coordinate[0]} · Head {coordinate[1]}", fontsize=7.5, fontweight="bold", pad=4)
                 if column == 1: axis.text(-.07,.5,"NNS" if row==0 else "Matched",transform=axis.transAxes,rotation=90,ha="center",va="center",fontsize=7.8,fontweight="bold")
         fig.suptitle(title, fontsize=9.2, fontweight="bold", y=.99)
-        return _save_report(repo, fig, output_base, module=module, source_digest=sources["source_digest"], config=config, transformations=transformations, metadata={"sample_id": sample_id, "selection_order": record["selection_order"], "slots": list(slots), "jpeg": record["jpeg"], "source_records": source_records, "difference_audit": "available_in_F3_r7_signed_shared_scale"})
+        return _save_report(repo, fig, output_base, module=module, source_digest=sources["source_digest"], config=config, transformations=transformations, metadata={"sample_id": sample_id, "selection_order": record["selection_order"], "slots": list(slots), "jpeg": jpeg_meta, "source_records": source_records, "difference_audit": "available_in_F3_r7_signed_shared_scale"})
 
 
 def _render_mapping(repo: Path, rules: Mapping[str, Any], output_base: Path, config: Mapping[str, Any], source_digest: str) -> dict[str, Any]:
@@ -309,7 +322,7 @@ def initialize(repo_root: Path | str = REPO_ROOT, *, renderer_commit: str, start
     repo = Path(repo_root).resolve(); gate = verify_startup(repo)
     if renderer_commit != gate["head"]: raise StageFVisualError("renderer commit must equal startup HEAD")
     if (repo / ROOT_PATH).exists() or (repo / REPORT_PATH).exists(): raise StageFVisualError("visual revision root already exists")
-    _write_new(repo / STARTUP_PATH, gate); _write_new(repo / PENDING_PATH, _signed({"schema_version":1,"document_type":"stage_f_f3_blue_display_pending","revision_id":"F3_BLUE_DISPLAY_R1_20260907","status":"PENDING","started_at":started_at,"renderer_commit":renderer_commit,"startup_gate":_record(repo,STARTUP_PATH),"terminal_pass_published":False,"f4_started":False}))
+    _write_new(repo / STARTUP_PATH, gate); _write_new(repo / PENDING_PATH, _signed({"schema_version":1,"document_type":"stage_f_f3_blue_display_pending","revision_id":"F3_BLUE_DISPLAY_R2_20260907","status":"PENDING","started_at":started_at,"renderer_commit":renderer_commit,"startup_gate":_record(repo,STARTUP_PATH),"terminal_pass_published":False,"f4_started":False}))
     return {"status":"INITIALIZED","renderer_commit":renderer_commit,"source":"SEALED_F3_R7","f4_started":False}
 
 
@@ -341,7 +354,7 @@ def build_outputs(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
 
 def build_false_pass_audit(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
     evidence={attack:"source binding, deterministic transform, render report, validator, or runtime boundary rejects this path" for attack in ATTACKS}
-    return _signed({"schema_version":1,"document_type":"stage_f_f3_blue_display_false_pass_audit","revision_id":"F3_BLUE_DISPLAY_R1_20260907","status":"PASS","attacks":[{"attack":attack,"result":"REJECTED","evidence":evidence[attack]} for attack in ATTACKS],"pass_possible_without_all_conditions":False})
+    return _signed({"schema_version":1,"document_type":"stage_f_f3_blue_display_false_pass_audit","revision_id":"F3_BLUE_DISPLAY_R2_20260907","status":"PASS","attacks":[{"attack":attack,"result":"REJECTED","evidence":evidence[attack]} for attack in ATTACKS],"pass_possible_without_all_conditions":False})
 
 
 def _validate_report(repo: Path, path: Path, config: Mapping[str, Any], source_digest: str) -> dict[str, Any]:
@@ -382,11 +395,11 @@ def validate_outputs(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
 
 def record_tests(repo_root: Path | str, *, passed: int, failed: int, command: str) -> dict[str, Any]:
     if passed<=0 or failed!=0:raise StageFVisualError("test report requires positive passes and zero failures")
-    report=_signed({"schema_version":1,"document_type":"stage_f_f3_blue_display_test_report","revision_id":"F3_BLUE_DISPLAY_R1_20260907","status":"PASS","passed":passed,"failed":failed,"command":command,"model_access":False,"torch_imported":False,"timm_imported":False,"cuda_or_gpu_access":False,"new_attribution_or_fidelity":False});_write_new(Path(repo_root).resolve()/TEST_PATH,report);return report
+    report=_signed({"schema_version":1,"document_type":"stage_f_f3_blue_display_test_report","revision_id":"F3_BLUE_DISPLAY_R2_20260907","status":"PASS","passed":passed,"failed":failed,"command":command,"model_access":False,"torch_imported":False,"timm_imported":False,"cuda_or_gpu_access":False,"new_attribution_or_fidelity":False});_write_new(Path(repo_root).resolve()/TEST_PATH,report);return report
 
 
 def finalize(repo_root: Path | str = REPO_ROOT, *, completed_at: str) -> dict[str, Any]:
-    repo=Path(repo_root).resolve();root=repo/ROOT_PATH;validation=validate_outputs(repo);_write_new(repo/VALIDATION_PATH,validation);test=_record(repo,TEST_PATH);excluded={"payload_manifest.json","whole_root_inventory.json","status.json","completion/f3_visual.pending.json","completion/f3_visual.json"};files=[{"path":p.relative_to(root).as_posix(),"bytes":p.stat().st_size,"sha256":sha256_file(p)} for p in sorted(root.rglob("*")) if p.is_file() and p.relative_to(root).as_posix() not in excluded];_write_new(repo/PAYLOAD_MANIFEST_PATH,_signed({"schema_version":1,"document_type":"stage_f_f3_blue_display_payload_manifest","revision_id":"F3_BLUE_DISPLAY_R1_20260907","immutable":True,"payload_count":len(files),"artifacts":files}));inv=_inventory(root,exclude=("whole_root_inventory.json","status.json","completion/f3_visual.pending.json","completion/f3_visual.json"));invdoc=_signed({"schema_version":1,"document_type":"stage_f_f3_blue_display_whole_root_inventory","revision_id":"F3_BLUE_DISPLAY_R1_20260907","root":ROOT_PATH,"files":inv["files"],"file_count":inv["file_count"],"total_bytes":inv["total_bytes"]});_write_new(repo/INVENTORY_PATH,invdoc);status=_signed({"schema_version":1,"document_type":"stage_f_f3_blue_display_status","revision_id":"F3_BLUE_DISPLAY_R1_20260907","status":"PASS","terminal":True,"package_validation":"PASS","workflow_validation":"PASS","render_count":27,"exported_file_count":81,"review_count":27,"shape_normalized":True,"magnitude_comparison_allowed":False,"r7_signed_audit_preserved":True,"gradcam_or_figure7_generated":False,"model_torch_timm_gpu_cuda_access":False,"new_attribution_or_fidelity":False,"f3_archive_modified":False,"f4_started":False,"next_authorization":"F4_ONLY","whole_root_inventory":{"canonical_digest":invdoc["canonical_digest"],"file_count":invdoc["file_count"],"total_bytes":invdoc["total_bytes"]},"git":{"commit":"SELF","ref":ARCHIVE_REF}});_write_new(repo/STATUS_PATH,status);pending,_=_strict_json(repo/PENDING_PATH,"pending");completion=_signed({"schema_version":1,"document_type":"stage_f_f3_blue_display_terminal_completion","revision_id":"F3_BLUE_DISPLAY_R1_20260907","status":"PASS","started_at":pending["started_at"],"completed_at":completed_at,"package_validation":"PASS","workflow_validation":"PASS","render_count":27,"exported_file_count":81,"review_count":27,"shape_normalized":True,"magnitude_comparison_allowed":False,"r7_signed_audit_preserved":True,"gradcam_or_figure7_generated":False,"model_access":False,"torch_imported":False,"timm_imported":False,"gpu_cuda_access":False,"new_attribution_or_fidelity":False,"f3_archive_modified":False,"f4_started":False,"next_authorization":"F4_ONLY","startup_gate":_record(repo,STARTUP_PATH),"source_binding":_record(repo,SOURCE_BINDING_PATH),"transform_manifest":_record(repo,TRANSFORM_MANIFEST_PATH),"render_inventory":_record(repo,RENDER_INVENTORY_PATH),"review_copy_inventory":_record(repo,REVIEW_INVENTORY_PATH),"access_audit":_record(repo,ACCESS_AUDIT_PATH),"validation_report":_record(repo,VALIDATION_PATH),"false_pass_audit":_record(repo,FALSE_PASS_PATH),"test_report":test,"figure_analysis":_file_record(repo,ANALYSIS_PATH),"payload_manifest":_record(repo,PAYLOAD_MANIFEST_PATH),"status_record":_record(repo,STATUS_PATH),"whole_root_inventory":_record(repo,INVENTORY_PATH),"git":{"commit":"SELF","ref":ARCHIVE_REF}});tmp=(repo/PENDING_PATH).with_name(".f3-visual-terminal.tmp");_write_new(tmp,completion);os.replace(tmp,repo/PENDING_PATH);os.replace(repo/PENDING_PATH,repo/COMPLETION_PATH);return validate_completion(repo)
+    repo=Path(repo_root).resolve();root=repo/ROOT_PATH;validation=validate_outputs(repo);_write_new(repo/VALIDATION_PATH,validation);test=_record(repo,TEST_PATH);excluded={"payload_manifest.json","whole_root_inventory.json","status.json","completion/f3_visual.pending.json","completion/f3_visual.json"};files=[{"path":p.relative_to(root).as_posix(),"bytes":p.stat().st_size,"sha256":sha256_file(p)} for p in sorted(root.rglob("*")) if p.is_file() and p.relative_to(root).as_posix() not in excluded];_write_new(repo/PAYLOAD_MANIFEST_PATH,_signed({"schema_version":1,"document_type":"stage_f_f3_blue_display_payload_manifest","revision_id":"F3_BLUE_DISPLAY_R2_20260907","immutable":True,"payload_count":len(files),"artifacts":files}));inv=_inventory(root,exclude=("whole_root_inventory.json","status.json","completion/f3_visual.pending.json","completion/f3_visual.json"));invdoc=_signed({"schema_version":1,"document_type":"stage_f_f3_blue_display_whole_root_inventory","revision_id":"F3_BLUE_DISPLAY_R2_20260907","root":ROOT_PATH,"files":inv["files"],"file_count":inv["file_count"],"total_bytes":inv["total_bytes"]});_write_new(repo/INVENTORY_PATH,invdoc);status=_signed({"schema_version":1,"document_type":"stage_f_f3_blue_display_status","revision_id":"F3_BLUE_DISPLAY_R2_20260907","status":"PASS","terminal":True,"package_validation":"PASS","workflow_validation":"PASS","render_count":27,"exported_file_count":81,"review_count":27,"shape_normalized":True,"magnitude_comparison_allowed":False,"r7_signed_audit_preserved":True,"gradcam_or_figure7_generated":False,"model_torch_timm_gpu_cuda_access":False,"new_attribution_or_fidelity":False,"f3_archive_modified":False,"f4_started":False,"next_authorization":"F4_ONLY","whole_root_inventory":{"canonical_digest":invdoc["canonical_digest"],"file_count":invdoc["file_count"],"total_bytes":invdoc["total_bytes"]},"git":{"commit":"SELF","ref":ARCHIVE_REF}});_write_new(repo/STATUS_PATH,status);pending,_=_strict_json(repo/PENDING_PATH,"pending");completion=_signed({"schema_version":1,"document_type":"stage_f_f3_blue_display_terminal_completion","revision_id":"F3_BLUE_DISPLAY_R2_20260907","status":"PASS","started_at":pending["started_at"],"completed_at":completed_at,"package_validation":"PASS","workflow_validation":"PASS","render_count":27,"exported_file_count":81,"review_count":27,"shape_normalized":True,"magnitude_comparison_allowed":False,"r7_signed_audit_preserved":True,"gradcam_or_figure7_generated":False,"model_access":False,"torch_imported":False,"timm_imported":False,"gpu_cuda_access":False,"new_attribution_or_fidelity":False,"f3_archive_modified":False,"f4_started":False,"next_authorization":"F4_ONLY","startup_gate":_record(repo,STARTUP_PATH),"source_binding":_record(repo,SOURCE_BINDING_PATH),"transform_manifest":_record(repo,TRANSFORM_MANIFEST_PATH),"render_inventory":_record(repo,RENDER_INVENTORY_PATH),"review_copy_inventory":_record(repo,REVIEW_INVENTORY_PATH),"access_audit":_record(repo,ACCESS_AUDIT_PATH),"validation_report":_record(repo,VALIDATION_PATH),"false_pass_audit":_record(repo,FALSE_PASS_PATH),"test_report":test,"figure_analysis":_file_record(repo,ANALYSIS_PATH),"payload_manifest":_record(repo,PAYLOAD_MANIFEST_PATH),"status_record":_record(repo,STATUS_PATH),"whole_root_inventory":_record(repo,INVENTORY_PATH),"git":{"commit":"SELF","ref":ARCHIVE_REF}});tmp=(repo/PENDING_PATH).with_name(".f3-visual-terminal.tmp");_write_new(tmp,completion);os.replace(tmp,repo/PENDING_PATH);os.replace(repo/PENDING_PATH,repo/COMPLETION_PATH);return validate_completion(repo)
 
 
 def validate_completion(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
@@ -399,7 +412,7 @@ def validate_completion(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
     for field in ("startup_gate","source_binding","transform_manifest","render_inventory","review_copy_inventory","access_audit","validation_report","false_pass_audit","test_report","payload_manifest","status_record","whole_root_inventory"):
         if completion[field]!=_record(repo,completion[field]["path"]):raise StageFVisualError(f"completion binding drifted: {field}")
     if completion["figure_analysis"]!=_file_record(repo,ANALYSIS_PATH):raise StageFVisualError("figure analysis binding drifted")
-    inv,_=_strict_json(repo/INVENTORY_PATH,"inventory");rebuilt=_inventory(root,exclude=("whole_root_inventory.json","status.json","completion/f3_visual.pending.json","completion/f3_visual.json"));unsigned={"schema_version":1,"document_type":"stage_f_f3_blue_display_whole_root_inventory","revision_id":"F3_BLUE_DISPLAY_R1_20260907","root":ROOT_PATH,"files":rebuilt["files"],"file_count":rebuilt["file_count"],"total_bytes":rebuilt["total_bytes"]}
+    inv,_=_strict_json(repo/INVENTORY_PATH,"inventory");rebuilt=_inventory(root,exclude=("whole_root_inventory.json","status.json","completion/f3_visual.pending.json","completion/f3_visual.json"));unsigned={"schema_version":1,"document_type":"stage_f_f3_blue_display_whole_root_inventory","revision_id":"F3_BLUE_DISPLAY_R2_20260907","root":ROOT_PATH,"files":rebuilt["files"],"file_count":rebuilt["file_count"],"total_bytes":rebuilt["total_bytes"]}
     if any(inv[k]!=rebuilt[k] for k in ("files","file_count","total_bytes")) or inv["canonical_digest"]!=canonical_sha256(unsigned):raise StageFVisualError("inventory drifted")
     return {**expected,"whole_root_inventory_digest":inv["canonical_digest"],"archive_ref":ARCHIVE_REF}
 

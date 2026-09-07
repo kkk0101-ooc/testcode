@@ -41,7 +41,7 @@ Because each panel is independently shape-normalized, color intensity in this re
 
 ## 5. Outputs and boundaries
 
-Outputs are evidence/stage_f/f3_visual_r1_recovery_v2_20260907/formal/ and reports/stage_f_f3_visual_r1_20260907/.
+Outputs are evidence/stage_f/f3_visual_r2_recovery_v2_20260907/formal/ and reports/stage_f_f3_visual_r2_20260907/. Visual r1 is retained as a blocked source-adapter attempt.
 
 The revision produces Figure 5, Figure 6, S1, S2, and S4 replacement modules plus source/transform/render/review inventories, validation, false-pass audit, and completion. It does not modify the F3 r7 archive ref and does not start F4.
 
