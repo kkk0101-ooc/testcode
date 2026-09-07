@@ -47,8 +47,8 @@ F3_COMPLETION_SCHEMA_PATH = "config/stage_f_f3_completion.schema.json"
 F3_FALSE_PASS_SCHEMA_PATH = "config/stage_f_f3_false_pass_audit.schema.json"
 F3_VALIDATION_SCHEMA_PATH = "config/stage_f_f3_validation_report.schema.json"
 
-F3_ROOT_PATH = "evidence/stage_f/f3_r6_recovery_v2_20260907/formal"
-F3_REPORT_PATH = "reports/stage_f_f3_r6_20260907"
+F3_ROOT_PATH = "evidence/stage_f/f3_r7_recovery_v2_20260907/formal"
+F3_REPORT_PATH = "reports/stage_f_f3_r7_20260907"
 PENDING_PATH = F3_ROOT_PATH + "/completion/f3.pending.json"
 COMPLETION_PATH = F3_ROOT_PATH + "/completion/f3.json"
 STARTUP_PATH = F3_ROOT_PATH + "/startup_gate.json"
@@ -755,7 +755,6 @@ def _render_cross_sample(repo: Path, record: Mapping[str, Any], rgb: np.ndarray,
             for row_index, method in enumerate(METHODS):
                 axis = fig.add_subplot(grid[row_index, column]); source = sources[method]; _map_axis(axis, source["map"], limit=scale["nns_color_limit"][1] if scale["nns_color_limit"] else None, cmap="RdBu_r", title=f"{row_labels[row_index]}\n({layer},{head})" if row_index == 0 else row_labels[row_index], failure=source if source["validity_status"] != "VALID" else None, add_colorbar=False, morphology_contours=source["map"] is not None)
             diff_axis = fig.add_subplot(grid[2, column]); difference = sources[NNS_METHOD]["map"] - sources[MATCHED_METHOD]["map"] if all(sources[m]["validity_status"] == "VALID" for m in METHODS) else None; _map_axis(diff_axis, difference, limit=scale["difference_color_limit"][1] if scale["difference_color_limit"] else None, cmap="PuOr", title=row_labels[2], failure=sources[NNS_METHOD] if difference is None else None, add_colorbar=False)
-        fig.text(0.57, 0.008, "Shared color scale within each coordinate; local contours show shape only. Across columns compare pattern, not magnitude.", ha="center", va="bottom", fontsize=5.2, color="#4D4D4D")
         fig.suptitle(f"{module_id} module — fixed-clean-attention head-direction Value-path attribution progression\n{sample_id.split('/')[-1]} | order {record['selection_order']} | slots: {', '.join(record['slots'])}", fontsize=7.6)
         digest = canonical_sha256({"record": record, "panel_manifest": panel_manifest_digest, "config": config["canonical_digest"]})
         return _save_formal_figure(fig, output_base, content_digest=digest, module_id=module_id, panel_ids=[f"cross_{record['selection_order']}"], renderer_commit=_git(repo, "rev-parse", "HEAD"), config_digest=config["canonical_digest"], panel_manifest_digest=panel_manifest_digest, extra={"sample_id": sample_id, "selection_order": record["selection_order"], "slots": record["slots"], "caption_statement": CROSS_CAPTION, "cross_layer_term": "fixed-clean-attention head-direction Value-path attribution progression", "nns_matched_shared_scale_within_coordinate": True, "absolute_magnitude_compared_across_coordinates": False, "failed_na_retained_in_place": True})
