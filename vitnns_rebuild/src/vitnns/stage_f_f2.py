@@ -42,8 +42,8 @@ F2_VALIDATION_SCHEMA_PATH = "config/stage_f_f2_validation_report.schema.json"
 F2_COMPLETION_SCHEMA_PATH = "config/stage_f_f2_completion.schema.json"
 F2_FALSE_PASS_SCHEMA_PATH = "config/stage_f_f2_false_pass_audit.schema.json"
 
-F2_ROOT_PATH = "evidence/stage_f/f2_r3_recovery_v2_20260907/formal"
-F2_REPORT_PATH = "reports/stage_f_f2_r3_20260907"
+F2_ROOT_PATH = "evidence/stage_f/f2_r4_recovery_v2_20260907/formal"
+F2_REPORT_PATH = "reports/stage_f_f2_r4_20260907"
 PENDING_PATH = F2_ROOT_PATH + "/completion/f2.pending.json"
 COMPLETION_PATH = F2_ROOT_PATH + "/completion/f2.json"
 STARTUP_PATH = F2_ROOT_PATH + "/startup_gate.json"
@@ -583,7 +583,7 @@ def build_render_spec(module_id: str, plot_data: Mapping[str, Any], layout: str)
         waiver = payload["e2_owner_budget_waiver"]
         panels = [
             {"panel_id": "f2_d_counts", "label": "(a)", "caption_key": "f2_d_expected_valid_failed_na", "kind": "method_schematic", "title": "Resource and QC counts", "data": {"nodes": [{"id": "population", "text": "VALID-only numeric summaries\nwith simultaneous status counts", "position": [0.5, 0.82], "size": [0.82, 0.18], "facecolor": "#E6F2FA"}, {"id": "counts", "text": "\n".join(count_lines), "position": [0.5, 0.38], "size": [0.9, 0.52], "facecolor": "#F2F2F2"}], "arrows": [{"from": "population", "to": "counts"}]}},
-            {"panel_id": "f2_d_disclosure", "label": "(b)", "caption_key": "f2_d_failures_waiver", "kind": "method_schematic", "title": "Typed failures and cost disclosure", "data": {"nodes": [{"id": "mixed", "text": "E4 scientific validity: MIXED\nX = missing scientific value, not zero", "position": [0.5, 0.9], "size": [0.9, 0.14]}, {"id": "f117", "text": f"order 117 | missing\n{first_sample}\n{first_code}", "position": [0.5, 0.65], "size": [0.92, 0.25], "facecolor": "#FDE0DD"}, {"id": "f352", "text": f"order 352 | missing\n{second_sample}\n{second_code}", "position": [0.5, 0.38], "size": [0.92, 0.25], "facecolor": "#FDE0DD"}, {"id": "waiver", "text": f"E2 recorded {waiver['recorded_cost_status']}\nGPU {waiver['gpu_hours']:.3f}/{waiver['gpu_hours_max']:.1f} h; CPU {waiver['cpu_hours']:.3f}/{waiver['cpu_hours_max']:.1f} h\nPASS only with explicit owner budget waiver", "position": [0.5, 0.1], "size": [0.94, 0.2], "facecolor": "#FFF2CC"}], "arrows": [{"from": "mixed", "to": "f117"}, {"from": "f117", "to": "f352"}, {"from": "f352", "to": "waiver"}]}}
+            {"panel_id": "f2_d_disclosure", "label": "(b)", "caption_key": "f2_d_failures_waiver", "kind": "method_schematic", "title": "Typed failures and cost disclosure", "data": {"nodes": [{"id": "mixed", "text": "E4 scientific validity: MIXED\nX = missing scientific value, not zero", "position": [0.5, 0.9], "size": [0.9, 0.13]}, {"id": "f117", "text": f"order 117 | missing\n{first_sample}\n{first_code}", "position": [0.5, 0.67], "size": [0.92, 0.21], "facecolor": "#FDE0DD"}, {"id": "f352", "text": f"order 352 | missing\n{second_sample}\n{second_code}", "position": [0.5, 0.43], "size": [0.92, 0.21], "facecolor": "#FDE0DD"}, {"id": "waiver", "text": f"E2 recorded {waiver['recorded_cost_status']}\nGPU {waiver['gpu_hours']:.3f}/{waiver['gpu_hours_max']:.1f} h; CPU {waiver['cpu_hours']:.3f}/{waiver['cpu_hours_max']:.1f} h\nPASS only with explicit owner budget waiver", "position": [0.5, 0.16], "size": [0.94, 0.18], "facecolor": "#FFF2CC"}], "arrows": [{"from": "mixed", "to": "f117"}, {"from": "f117", "to": "f352"}, {"from": "f352", "to": "waiver"}]}}
         ]
     else: raise StageFF2Error(f"unknown F2 module: {module_id}")
     grid = {"rows": len(panels), "columns": 1} if layout == "single_column" else ({"rows": 1, "columns": len(panels)} if len(panels) <= 3 else {"rows": 2, "columns": 2})
