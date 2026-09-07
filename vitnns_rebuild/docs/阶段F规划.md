@@ -717,3 +717,17 @@ F3C2 已在新 root 中完成，状态 `PASS`。predecode plan 先于任何 pilo
 - 正式输出：`evidence/stage_f/f3c2_pilot_v1_20260907/formal/` 与 `reports/stage_f_f3c2_pilot_v1_20260907/`。
 
 F3C2 terminal PASS 的唯一下一授权是 `F3C3_FORMAL_ONLY`。本轮不得继续执行 F3C3。
+
+## 26. F3C3 blind 50-image formal completion（2026-09-08）
+
+F3C3 已在新的不可覆盖 root 中完成，状态 `PASS`。startup gate 在代码修改、模型加载和 formal JPEG access 前封存；随后原子冻结 exact 50-sample manifest、250-unit plan、单 shard `worker-000` / `cuda:0` assignment、exclusive image-group lease、模型/预处理/source/F3C2 authorization/resource/blind/access bindings 与 pending receipt。
+
+- formal cohort：严格按冻结顺序处理 50/50 图、250/250 sample×method terminals；`VALID=250, FAILED=0, NA=0, incomplete=0`。未混入 pilot、order 44 或其他 JPEG，未换样、删样、合并 cohort。
+- numerical gates：NNS endpoint parity `50/50 PASS`；NNS IG conservation `50/50 PASS`，均在 512 steps 首次通过；full-model IG conservation `50/50 PASS`，其中 512/1024/2048 steps 首次通过的图数分别为 39/6/5；完整冻结 schedule prefix 和 attempts 均保留。
+- integrity：每图只由同一次 clean forward 解析并冻结一个 target，五方法共享 target、clean input、common evaluator 和 tie priorities。独立 post-run validator 对 250 个 terminal 的 hash、shape、dtype、finiteness、fractions、AUC/score 公式、ranking、target identity、attention/parity 和 IG attempt prefix 做了 source-recomputing validation，但没有输出 empirical values 或执行方法间分析。
+- resources：formal elapsed `750.038462662138 s`，formal actual `0.20834401740614947` H20-GPU-hour；含 F3C1 engineering 和 F3C2 pilot 后 actual total F3C 为 `0.23176687041080893` H20-GPU-hour。单图最大 `0.006823933418038198`，observed devices `1`，peak reserved `1,436,549,120` bytes，forward/backward calls `63,034/10,034`。F3C3 sealed inventory/report accounting scope为 `69,146,777` bytes，含冻结 F3C1/F3C2 launch baseline 后为 `78,527,217` bytes；全部硬 cap PASS，无 waiver。
+- validation：preflight 与 post-run applicable regression 均为 `358 passed, 0 failed, 2 deselected`；36/36 false-pass attacks 均由 mutation/integration/validator branches `REJECTED`；pending receipt 已原子替换为 terminal completion。
+- access/scientific boundary：formal sample access 精确等于冻结 50 图；pilot access `false`，order 44 recomputed `false`；formal JPEG/maps rendered/manual inspection `false`；statistical inference、Delta、bootstrap、sign-flip、Holm、p-value、CI、scientific comparison、ranking、winner、GO/NO-GO 均未产生；F3C1 statistical-method freeze 未修改且未执行；F3C0/F3C1/F3C2/F3H 与其他 sealed evidence 未修改；F3C4/F4 未启动。
+- 正式输出：`evidence/stage_f/f3c3_formal_v1_20260908/formal/` 与 `reports/stage_f_f3c3_formal_v1_20260908/`。terminal completion 的 Git 字段为 `SELF`；交付后 `refs/archive/stage-f-v1-f3c3-formal` 必须指向同一最终提交。
+
+F3C3 terminal PASS 的唯一下一授权是 `F3C4_CPU_ANALYSIS_AND_SEAL_ONLY`。本轮不得继续执行 F3C4 或 F4。

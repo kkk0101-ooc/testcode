@@ -76,6 +76,12 @@ def _parser() -> argparse.ArgumentParser:
     f3c2_run = sub.add_parser("run-f3c2-sample"); f3c2_run.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c2_run.add_argument("--selection-order", type=int, required=True); f3c2_run.add_argument("--device", default="cuda:0")
     f3c2_tests = sub.add_parser("record-f3c2-tests"); f3c2_tests.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c2_tests.add_argument("--passed", type=int, required=True); f3c2_tests.add_argument("--failed", type=int, required=True); f3c2_tests.add_argument("--deselected", type=int, default=0); f3c2_tests.add_argument("--test-command", required=True)
     f3c2_final = sub.add_parser("finalize-f3c2"); f3c2_final.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c2_final.add_argument("--completed-at", required=True)
+    for name in ("validate-f3c3-startup", "validate-f3c3-initialized", "reconcile-f3c3", "build-f3c3-budget-blind-gate", "record-f3c3-numeric-validation", "build-f3c3-false-pass", "validate-f3c3-outputs", "validate-f3c3-completion"):
+        child = sub.add_parser(name); child.add_argument("--repo-root", type=Path, default=REPO_ROOT)
+    f3c3_init = sub.add_parser("initialize-f3c3"); f3c3_init.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c3_init.add_argument("--started-at", required=True)
+    f3c3_run = sub.add_parser("run-f3c3-sample"); f3c3_run.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c3_run.add_argument("--selection-order", type=int, required=True); f3c3_run.add_argument("--device", default="cuda:0")
+    f3c3_tests = sub.add_parser("record-f3c3-tests"); f3c3_tests.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c3_tests.add_argument("--phase", choices=("preflight", "postrun"), required=True); f3c3_tests.add_argument("--passed", type=int, required=True); f3c3_tests.add_argument("--failed", type=int, required=True); f3c3_tests.add_argument("--deselected", type=int, default=0); f3c3_tests.add_argument("--test-command", required=True)
+    f3c3_final = sub.add_parser("finalize-f3c3"); f3c3_final.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c3_final.add_argument("--completed-at", required=True)
     return parser
 
 
@@ -148,6 +154,24 @@ def run(arguments: list[str] | None = None) -> dict[str, Any]:
             "validate-f3c2-outputs": lambda: f3c2.validate_outputs(args.repo_root),
             "finalize-f3c2": lambda: f3c2.finalize(args.repo_root, completed_at=args.completed_at),
             "validate-f3c2-completion": lambda: f3c2.validate_completion(args.repo_root),
+        }
+        return commands[args.command]()
+    if "f3c3" in args.command:
+        from . import stage_f_f3c3 as f3c3
+        from . import stage_f_f3c3_validate as f3c3_validate
+        commands = {
+            "validate-f3c3-startup": lambda: f3c3.validate_startup_gate(args.repo_root),
+            "initialize-f3c3": lambda: f3c3.initialize(args.repo_root, started_at=args.started_at),
+            "validate-f3c3-initialized": lambda: f3c3.validate_initialized(args.repo_root),
+            "run-f3c3-sample": lambda: f3c3.run_sample(args.repo_root, selection_order=args.selection_order, device=args.device),
+            "reconcile-f3c3": lambda: f3c3.reconcile(args.repo_root),
+            "build-f3c3-budget-blind-gate": lambda: f3c3.build_budget_and_blind_gate(args.repo_root),
+            "record-f3c3-numeric-validation": lambda: f3c3_validate.record_validation(args.repo_root),
+            "record-f3c3-tests": lambda: f3c3.record_tests(args.repo_root, phase=args.phase, passed=args.passed, failed=args.failed, deselected=args.deselected, command=args.test_command),
+            "build-f3c3-false-pass": lambda: f3c3.build_false_pass_audit(args.repo_root),
+            "validate-f3c3-outputs": lambda: f3c3.validate_outputs(args.repo_root),
+            "finalize-f3c3": lambda: f3c3.finalize(args.repo_root, completed_at=args.completed_at),
+            "validate-f3c3-completion": lambda: f3c3.validate_completion(args.repo_root),
         }
         return commands[args.command]()
     if "f3h" in args.command:
