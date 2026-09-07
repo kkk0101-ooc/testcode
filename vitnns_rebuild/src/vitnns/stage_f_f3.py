@@ -47,8 +47,8 @@ F3_COMPLETION_SCHEMA_PATH = "config/stage_f_f3_completion.schema.json"
 F3_FALSE_PASS_SCHEMA_PATH = "config/stage_f_f3_false_pass_audit.schema.json"
 F3_VALIDATION_SCHEMA_PATH = "config/stage_f_f3_validation_report.schema.json"
 
-F3_ROOT_PATH = "evidence/stage_f/f3_r3_recovery_v2_20260907/formal"
-F3_REPORT_PATH = "reports/stage_f_f3_r3_20260907"
+F3_ROOT_PATH = "evidence/stage_f/f3_r4_recovery_v2_20260907/formal"
+F3_REPORT_PATH = "reports/stage_f_f3_r4_20260907"
 PENDING_PATH = F3_ROOT_PATH + "/completion/f3.pending.json"
 COMPLETION_PATH = F3_ROOT_PATH + "/completion/f3.json"
 STARTUP_PATH = F3_ROOT_PATH + "/startup_gate.json"
@@ -657,7 +657,7 @@ def _render_method_schematic(repo: Path, config: Mapping[str, Any], panel_manife
     f0 = load_contracts(repo)["config"]; profile = f0["layouts"]["full_width_qualitative"]
     with renderer_style(f0):
         fig, axis = plt.subplots(figsize=(profile["width_in"], 2.35), constrained_layout=True); axis.set_xlim(0, 1); axis.set_ylim(0, 1); axis.axis("off")
-        nodes = [(0.07, "Input\nimage"), (0.21, "ViT"), (0.39, "fixed block/head\n+ clean attention"), (0.57, "Value-path IG\n+ matched baseline"), (0.73, "fine 4×4\nattribution map"), (0.90, "insertion / deletion\nfidelity")]
+        nodes = [(0.075, "Input\nimage"), (0.225, "ViT"), (0.395, "fixed block/head\n+ clean attention"), (0.565, "Value-path IG\n+ matched baseline"), (0.735, "fine 4×4\nattribution map"), (0.905, "insertion / deletion\nfidelity")]
         for x, text in nodes:
             box = FancyBboxPatch((x - 0.065, 0.40), 0.13, 0.21, boxstyle="round,pad=0.012", facecolor="#F3F6F8", edgecolor="#333333", linewidth=0.8); axis.add_patch(box); axis.text(x, 0.505, text, ha="center", va="center", fontsize=7)
         for (x0, _), (x1, _) in zip(nodes, nodes[1:]): axis.add_patch(FancyArrowPatch((x0 + 0.068, 0.505), (x1 - 0.068, 0.505), arrowstyle="-|>", mutation_scale=9, linewidth=0.8, color="#333333"))
@@ -670,7 +670,9 @@ def _render_method_schematic(repo: Path, config: Mapping[str, Any], panel_manife
 def _map_axis(axis: Any, values: np.ndarray | None, *, limit: float | None, cmap: str, title: str, failure: Mapping[str, Any] | None = None, add_colorbar: bool = False) -> None:
     axis.set_xticks([]); axis.set_yticks([]); axis.set_title(title, fontsize=7, pad=2)
     if values is None:
-        axis.set_facecolor("#F2F2F2"); axis.text(0.5, 0.58, "FAILED / NA", ha="center", va="center", fontweight="bold", color="#A32020", transform=axis.transAxes, fontsize=7); axis.text(0.5, 0.38, f"order {failure['selection_order']}\n{failure['failure_code']}", ha="center", va="center", transform=axis.transAxes, fontsize=5.5, wrap=True); return
+        code = failure["failure_code"]
+        wrapped = {"ig_conservation_failed_after_e3_r1_schedule": "ig_conservation_failed\nafter_e3_r1_schedule", "ig_conservation_failed_typed_terminal": "ig_conservation_failed\ntyped_terminal"}.get(code, code)
+        axis.set_facecolor("#F2F2F2"); axis.text(0.5, 0.60, "FAILED / NA", ha="center", va="center", fontweight="bold", color="#A32020", transform=axis.transAxes, fontsize=7); axis.text(0.5, 0.34, f"order {failure['selection_order']}\n{wrapped}", ha="center", va="center", transform=axis.transAxes, fontsize=5.2); return
     if limit is None or limit <= 0: limit = float(np.finfo(np.float32).eps)
     image = axis.imshow(values, cmap=cmap, norm=TwoSlopeNorm(vmin=-limit, vcenter=0.0, vmax=limit), interpolation="nearest", rasterized=True)
     if add_colorbar: axis.figure.colorbar(image, ax=axis, fraction=0.045, pad=0.025)
@@ -682,7 +684,7 @@ def _line_axis(axis: Any, primary_pair: Mapping[str, Mapping[str, Any]]) -> None
         fidelity = primary_pair[method]["fidelity"]; x = fidelity["fractions"]
         axis.plot(x, fidelity["insertion_mean"], color=colors[method], linestyle=styles[method], linewidth=0.8, label=("NNS insertion" if method == NNS_METHOD else "matched insertion"))
         axis.plot(x, fidelity["deletion_mean"], color=colors[method], linestyle=styles[method], linewidth=0.8, alpha=0.55, label=("NNS deletion" if method == NNS_METHOD else "matched deletion"))
-    axis.set_xlabel("fraction", fontsize=7); axis.set_ylabel("normalized response", fontsize=7); axis.tick_params(labelsize=6); axis.grid(alpha=0.2, linewidth=0.35); axis.legend(frameon=False, fontsize=5.5, ncol=2, loc="best")
+    axis.set_xlabel("fraction", fontsize=7); axis.set_ylabel("normalized response", fontsize=7); axis.tick_params(labelsize=6); axis.grid(alpha=0.2, linewidth=0.35); axis.legend(frameon=False, fontsize=5.0, ncol=2, loc="upper center", bbox_to_anchor=(0.5, 1.0), borderaxespad=0.2, columnspacing=0.7, handlelength=1.4)
 
 
 def _qualitative_panel_record(sample_id: str, rule_labels: Sequence[str], drow: Mapping[str, Any], jpeg: Mapping[str, Any], primary_pair: Mapping[str, Mapping[str, Any]], config: Mapping[str, Any]) -> dict[str, Any]:
