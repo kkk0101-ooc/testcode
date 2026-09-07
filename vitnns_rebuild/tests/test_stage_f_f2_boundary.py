@@ -83,4 +83,3 @@ def test_terminal_completion_is_atomic_and_authorizes_only_f3_when_present():
     result = validate_completion(REPO)
     assert result["next_authorization"] == "F3_ONLY"
     assert result["f3_started"] is False and result["f4_started"] is False
-

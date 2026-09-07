@@ -234,4 +234,3 @@ def test_false_pass_audit_and_completion_schema_are_exact():
     assert completion_schema["properties"]["next_authorization"]["const"] == "F3_ONLY"
     assert completion_schema["properties"]["f3_started"]["const"] is False
     assert completion_schema["properties"]["f4_started"]["const"] is False
-
