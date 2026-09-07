@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "fixture_class": "SYNTHETIC_GOLDEN_ONLY",
+  "formal_scientific_figure": false,
+  "figure_id": "f0_golden_statistics",
+  "title": "Synthetic statistical modules",
+  "layout_profile": "single_column",
+  "grid": {"rows": 1, "columns": 3},
+  "caption_keys": ["synthetic_line_band", "synthetic_ecdf", "synthetic_point_interval"],
+  "panels": [
+    {"panel_id": "stat_line", "label": "(a)", "caption_key": "synthetic_line_band", "kind": "line_band", "title": "Line + band", "x_label": "Fraction", "y_label": "Response", "data": {"x": [0, 0.25, 0.5, 0.75, 1], "series": [{"method": "nns", "label": "NNS", "y": [0.1, 0.32, 0.55, 0.72, 0.84], "lower": [0.07, 0.27, 0.49, 0.65, 0.77], "upper": [0.13, 0.37, 0.61, 0.79, 0.91]}, {"method": "matched", "label": "matched", "y": [0.1, 0.24, 0.39, 0.51, 0.6], "lower": [0.06, 0.19, 0.33, 0.44, 0.52], "upper": [0.14, 0.29, 0.45, 0.58, 0.68]}]}},
+    {"panel_id": "stat_ecdf", "label": "(b)", "caption_key": "synthetic_ecdf", "kind": "ecdf", "title": "ECDF", "x_label": "Synthetic effect", "y_label": "Cumulative", "data": {"series": [{"method": "nns", "label": "NNS", "values": [-0.2, 0.1, 0.35, 0.6, 0.9, 1.1]}, {"method": "matched", "label": "matched", "values": [-0.4, -0.1, 0.05, 0.25, 0.45, 0.7]}]}},
+    {"panel_id": "stat_interval", "label": "(c)", "caption_key": "synthetic_point_interval", "kind": "point_interval", "title": "Point + interval", "x_label": "Group", "y_label": "Estimate", "data": {"points": [{"label": "A", "method": "nns", "estimate": 0.72, "lower": 0.58, "upper": 0.85}, {"label": "B", "method": "matched", "estimate": 0.41, "lower": 0.28, "upper": 0.55}]}}
+  ]
+}

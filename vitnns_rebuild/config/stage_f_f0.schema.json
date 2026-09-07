@@ -1,0 +1,528 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$defs": {
+        "layout716": {
+            "additionalProperties": false,
+            "properties": {
+                "height_in": {
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                },
+                "width_in": {
+                    "const": 7.16
+                }
+            },
+            "required": [
+                "width_in",
+                "height_in"
+            ],
+            "type": "object"
+        },
+        "method": {
+            "additionalProperties": false,
+            "properties": {
+                "color": {
+                    "pattern": "^#[0-9A-Fa-f]{6}$",
+                    "type": "string"
+                },
+                "linestyle": {
+                    "type": "string"
+                },
+                "marker": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "color",
+                "linestyle",
+                "marker"
+            ],
+            "type": "object"
+        },
+        "sha": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+        }
+    },
+    "additionalProperties": false,
+    "properties": {
+        "$schema": {
+            "const": "stage_f_f0.schema.json"
+        },
+        "authorization": {
+            "additionalProperties": false,
+            "properties": {
+                "current": {
+                    "const": "F0_ONLY"
+                },
+                "f1_started": {
+                    "const": false
+                },
+                "f2_started": {
+                    "const": false
+                },
+                "f3_started": {
+                    "const": false
+                },
+                "f4_started": {
+                    "const": false
+                },
+                "on_pass": {
+                    "const": "F1_ONLY"
+                }
+            },
+            "required": [
+                "current",
+                "on_pass",
+                "f1_started",
+                "f2_started",
+                "f3_started",
+                "f4_started"
+            ],
+            "type": "object"
+        },
+        "canonical_digest": {
+            "$ref": "#/$defs/sha"
+        },
+        "determinism": {
+            "additionalProperties": false,
+            "properties": {
+                "backend": {
+                    "const": "Agg"
+                },
+                "machine_reports_byte_stable": {
+                    "const": true
+                },
+                "pdf_metadata_normalized": {
+                    "const": true
+                },
+                "png_pixel_stable": {
+                    "const": true
+                },
+                "svg_byte_stable": {
+                    "const": true
+                },
+                "svg_hashsalt": {
+                    "minLength": 1,
+                    "type": "string"
+                }
+            },
+            "required": [
+                "backend",
+                "machine_reports_byte_stable",
+                "pdf_metadata_normalized",
+                "png_pixel_stable",
+                "svg_byte_stable",
+                "svg_hashsalt"
+            ],
+            "type": "object"
+        },
+        "document_type": {
+            "const": "stage_f_f0_renderer_config"
+        },
+        "export": {
+            "additionalProperties": false,
+            "properties": {
+                "author": {
+                    "minLength": 1,
+                    "type": "string"
+                },
+                "cropping": {
+                    "const": "exact_profile_canvas_constrained_layout"
+                },
+                "formats": {
+                    "const": [
+                        "png",
+                        "pdf",
+                        "svg"
+                    ]
+                },
+                "heatmaps_may_rasterize": {
+                    "const": true
+                },
+                "pdf_fonttype": {
+                    "const": 42
+                },
+                "png_dpi": {
+                    "const": 600
+                },
+                "producer": {
+                    "minLength": 1,
+                    "type": "string"
+                },
+                "text_and_axes_remain_vector": {
+                    "const": true
+                }
+            },
+            "required": [
+                "formats",
+                "png_dpi",
+                "pdf_fonttype",
+                "heatmaps_may_rasterize",
+                "text_and_axes_remain_vector",
+                "cropping",
+                "producer",
+                "author"
+            ],
+            "type": "object"
+        },
+        "inputs": {
+            "additionalProperties": false,
+            "properties": {
+                "d10_archive_commit": {
+                    "pattern": "^[0-9a-f]{40}$",
+                    "type": "string"
+                },
+                "d10_archive_ref": {
+                    "const": "refs/archive/stage-d-fidelity-v1-d10-completion"
+                },
+                "d10_recipe_sha256": {
+                    "$ref": "#/$defs/sha"
+                },
+                "display_protocol_sha256": {
+                    "$ref": "#/$defs/sha"
+                },
+                "e4_archive_commit": {
+                    "pattern": "^[0-9a-f]{40}$",
+                    "type": "string"
+                },
+                "e4_archive_ref": {
+                    "const": "refs/archive/stage-e-e4-completion"
+                },
+                "e4_completion_sha256": {
+                    "$ref": "#/$defs/sha"
+                },
+                "e4_inventory_canonical_digest": {
+                    "$ref": "#/$defs/sha"
+                },
+                "e4_recipe_sha256": {
+                    "$ref": "#/$defs/sha"
+                },
+                "reference_pdf_sha256": {
+                    "$ref": "#/$defs/sha"
+                },
+                "start_commit": {
+                    "pattern": "^[0-9a-f]{40}$",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "start_commit",
+                "e4_archive_commit",
+                "e4_archive_ref",
+                "e4_completion_sha256",
+                "e4_inventory_canonical_digest",
+                "d10_archive_commit",
+                "d10_archive_ref",
+                "d10_recipe_sha256",
+                "e4_recipe_sha256",
+                "display_protocol_sha256",
+                "reference_pdf_sha256"
+            ],
+            "type": "object"
+        },
+        "layouts": {
+            "additionalProperties": false,
+            "properties": {
+                "double_column": {
+                    "$ref": "#/$defs/layout716"
+                },
+                "full_width_qualitative": {
+                    "$ref": "#/$defs/layout716"
+                },
+                "single_column": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "height_in": {
+                            "exclusiveMinimum": 0,
+                            "type": "number"
+                        },
+                        "width_in": {
+                            "const": 3.5
+                        }
+                    },
+                    "required": [
+                        "width_in",
+                        "height_in"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "single_column",
+                "double_column",
+                "full_width_qualitative"
+            ],
+            "type": "object"
+        },
+        "reference_declaration": {
+            "additionalProperties": false,
+            "properties": {
+                "content_or_graphics_copied": {
+                    "const": false
+                },
+                "reference_values_entered_results": {
+                    "const": false
+                },
+                "scientific_input": {
+                    "const": false
+                },
+                "style_reference_only": {
+                    "const": true
+                }
+            },
+            "required": [
+                "style_reference_only",
+                "scientific_input",
+                "content_or_graphics_copied",
+                "reference_values_entered_results"
+            ],
+            "type": "object"
+        },
+        "renderer_contract_version": {
+            "const": "stage-f-renderer-v1"
+        },
+        "safety": {
+            "additionalProperties": false,
+            "properties": {
+                "attribution_or_fidelity_compute_allowed": {
+                    "const": false
+                },
+                "formal_scientific_figures_allowed": {
+                    "const": false
+                },
+                "gpu_or_cuda_allowed": {
+                    "const": false
+                },
+                "jpeg_access_allowed": {
+                    "const": false
+                },
+                "model_or_checkpoint_allowed": {
+                    "const": false
+                },
+                "scientific_endpoint_recomputation_allowed": {
+                    "const": false
+                },
+                "synthetic_golden_only": {
+                    "const": true
+                },
+                "torch_or_timm_allowed": {
+                    "const": false
+                }
+            },
+            "required": [
+                "formal_scientific_figures_allowed",
+                "synthetic_golden_only",
+                "model_or_checkpoint_allowed",
+                "torch_or_timm_allowed",
+                "gpu_or_cuda_allowed",
+                "jpeg_access_allowed",
+                "attribution_or_fidelity_compute_allowed",
+                "scientific_endpoint_recomputation_allowed"
+            ],
+            "type": "object"
+        },
+        "schema_version": {
+            "const": 1
+        },
+        "scientific_state": {
+            "type": "object"
+        },
+        "style": {
+            "additionalProperties": false,
+            "properties": {
+                "confidence_band_alpha": {
+                    "exclusiveMaximum": 1,
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                },
+                "difference_colormap": {
+                    "not": {
+                        "enum": [
+                            "jet",
+                            "rainbow"
+                        ]
+                    },
+                    "type": "string"
+                },
+                "font": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "bold_file": {
+                            "type": "string"
+                        },
+                        "bold_sha256": {
+                            "$ref": "#/$defs/sha"
+                        },
+                        "family": {
+                            "const": "STIXGeneral"
+                        },
+                        "regular_file": {
+                            "type": "string"
+                        },
+                        "regular_sha256": {
+                            "$ref": "#/$defs/sha"
+                        },
+                        "silent_fallback_allowed": {
+                            "const": false
+                        }
+                    },
+                    "required": [
+                        "family",
+                        "regular_file",
+                        "regular_sha256",
+                        "bold_file",
+                        "bold_sha256",
+                        "silent_fallback_allowed"
+                    ],
+                    "type": "object"
+                },
+                "methods": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "matched": {
+                            "$ref": "#/$defs/method"
+                        },
+                        "nns": {
+                            "$ref": "#/$defs/method"
+                        }
+                    },
+                    "required": [
+                        "nns",
+                        "matched"
+                    ],
+                    "type": "object"
+                },
+                "minimum_font_pt": {
+                    "minimum": 7,
+                    "type": "number"
+                },
+                "minimum_linewidth_pt": {
+                    "minimum": 0.75,
+                    "type": "number"
+                },
+                "overlay": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "alpha": {
+                            "exclusiveMaximum": 1,
+                            "exclusiveMinimum": 0,
+                            "type": "number"
+                        },
+                        "colormap": {
+                            "type": "string"
+                        },
+                        "map_interpolation": {
+                            "enum": [
+                                "nearest",
+                                "bilinear",
+                                "bicubic"
+                            ]
+                        },
+                        "normalization": {
+                            "const": "symmetric_about_zero"
+                        },
+                        "percentile_clip": {
+                            "items": {
+                                "type": "number"
+                            },
+                            "maxItems": 2,
+                            "minItems": 2,
+                            "type": "array"
+                        },
+                        "resize_order": {
+                            "maximum": 5,
+                            "minimum": 0,
+                            "type": "integer"
+                        },
+                        "rgb_clip": {
+                            "const": [
+                                0.0,
+                                1.0
+                            ]
+                        },
+                        "rgb_interpolation": {
+                            "const": "nearest"
+                        }
+                    },
+                    "required": [
+                        "resize_order",
+                        "percentile_clip",
+                        "rgb_clip",
+                        "alpha",
+                        "colormap",
+                        "map_interpolation",
+                        "rgb_interpolation",
+                        "normalization"
+                    ],
+                    "type": "object"
+                },
+                "panel_label_font_pt": {
+                    "minimum": 9,
+                    "type": "number"
+                },
+                "sequential_colormap": {
+                    "not": {
+                        "enum": [
+                            "jet",
+                            "rainbow"
+                        ]
+                    },
+                    "type": "string"
+                },
+                "signed_colormap": {
+                    "not": {
+                        "enum": [
+                            "jet",
+                            "rainbow"
+                        ]
+                    },
+                    "type": "string"
+                },
+                "title_font_pt": {
+                    "minimum": 7,
+                    "type": "number"
+                }
+            },
+            "required": [
+                "font",
+                "minimum_font_pt",
+                "title_font_pt",
+                "panel_label_font_pt",
+                "minimum_linewidth_pt",
+                "methods",
+                "signed_colormap",
+                "difference_colormap",
+                "sequential_colormap",
+                "confidence_band_alpha",
+                "overlay"
+            ],
+            "type": "object"
+        },
+        "visual_prohibitions": {
+            "additionalProperties": {
+                "const": true
+            },
+            "minProperties": 6,
+            "type": "object"
+        }
+    },
+    "required": [
+        "$schema",
+        "schema_version",
+        "document_type",
+        "renderer_contract_version",
+        "authorization",
+        "inputs",
+        "scientific_state",
+        "reference_declaration",
+        "layouts",
+        "style",
+        "export",
+        "determinism",
+        "safety",
+        "visual_prohibitions",
+        "canonical_digest"
+    ],
+    "type": "object"
+}

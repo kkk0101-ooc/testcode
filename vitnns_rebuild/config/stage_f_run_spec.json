@@ -1,0 +1,40 @@
+{
+    "$schema": "stage_f_run_spec.schema.json",
+    "authorization": {
+        "current_stage": "F0",
+        "next_authorization_on_pass": "F1_ONLY",
+        "terminal_pass_before_validator_allowed": false
+    },
+    "canonical_digest": "ef386ea04c53d556c6c0f353344408ecc070eb3e1e5fd3e83edf56cd05e6d9c2",
+    "document_type": "stage_f_f0_run_spec",
+    "inputs": {
+        "config_path": "config/stage_f_f0.json",
+        "fixture_root": "tests/fixtures/stage_f",
+        "recipes_parse_only": [
+            "evidence/stage_d/d10_recovery_v2_20260906/formal_r2/analysis/figure_recipes.json",
+            "evidence/stage_e/e4_recovery_v2_20260907/formal/figure_recipes.json"
+        ]
+    },
+    "operations": [
+        "validate frozen upstream identities and scientific states",
+        "parse D10 and E4 recipes without rendering or statistics",
+        "render versioned synthetic fixtures to PNG PDF SVG",
+        "validate deterministic content provenance fonts dimensions boundaries and tamper rejection",
+        "publish reports manifest inventory status and pending-to-terminal receipt"
+    ],
+    "outputs": {
+        "evidence_root": "evidence/stage_f/f0_recovery_v2_20260907/formal",
+        "formal_scientific_figures_rendered": 0,
+        "report_root": "reports/stage_f_f0_20260907"
+    },
+    "prohibited_operations": [
+        "F1 F2 F3 or F4 execution",
+        "formal scientific result rendering",
+        "scientific statistic recomputation",
+        "model checkpoint Torch timm CUDA or JPEG access",
+        "D10 or E4 evidence mutation",
+        "reference article content extraction or reuse"
+    ],
+    "schema_version": 1,
+    "stage_id": "F0"
+}

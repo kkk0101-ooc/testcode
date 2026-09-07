@@ -1,0 +1,277 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$defs": {
+        "font": {
+            "additionalProperties": false,
+            "properties": {
+                "family": {
+                    "const": "STIXGeneral"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "sha256": {
+                    "$ref": "#/$defs/sha"
+                }
+            },
+            "required": [
+                "path",
+                "sha256",
+                "family"
+            ],
+            "type": "object"
+        },
+        "output": {
+            "properties": {
+                "bytes": {
+                    "minimum": 1,
+                    "type": "integer"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "sha256": {
+                    "$ref": "#/$defs/sha"
+                }
+            },
+            "required": [
+                "path",
+                "sha256",
+                "bytes"
+            ],
+            "type": "object"
+        },
+        "sha": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+        }
+    },
+    "additionalProperties": false,
+    "properties": {
+        "canonical_digest": {
+            "$ref": "#/$defs/sha"
+        },
+        "caption_keys": {
+            "items": {
+                "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+        },
+        "config_digest": {
+            "$ref": "#/$defs/sha"
+        },
+        "content_digest": {
+            "$ref": "#/$defs/sha"
+        },
+        "cuda_used": {
+            "const": false
+        },
+        "display_only": {
+            "const": true
+        },
+        "document_type": {
+            "const": "stage_f_render_artifact_report"
+        },
+        "dpi": {
+            "const": 600
+        },
+        "environment": {
+            "additionalProperties": false,
+            "properties": {
+                "backend": {
+                    "const": "Agg"
+                },
+                "matplotlib": {
+                    "type": "string"
+                },
+                "numpy": {
+                    "type": "string"
+                },
+                "pillow": {
+                    "type": "string"
+                },
+                "python": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "python",
+                "matplotlib",
+                "pillow",
+                "numpy",
+                "backend"
+            ],
+            "type": "object"
+        },
+        "figure_id": {
+            "pattern": "^f0_golden_",
+            "type": "string"
+        },
+        "fixture_class": {
+            "const": "SYNTHETIC_GOLDEN_ONLY"
+        },
+        "fonts": {
+            "additionalProperties": false,
+            "properties": {
+                "bold": {
+                    "$ref": "#/$defs/font"
+                },
+                "regular": {
+                    "$ref": "#/$defs/font"
+                }
+            },
+            "required": [
+                "regular",
+                "bold"
+            ],
+            "type": "object"
+        },
+        "formal_scientific_figure": {
+            "const": false
+        },
+        "format_content_digests": {
+            "additionalProperties": false,
+            "properties": {
+                "pdf": {
+                    "$ref": "#/$defs/sha"
+                },
+                "png": {
+                    "$ref": "#/$defs/sha"
+                },
+                "svg": {
+                    "$ref": "#/$defs/sha"
+                }
+            },
+            "required": [
+                "png",
+                "pdf",
+                "svg"
+            ],
+            "type": "object"
+        },
+        "input_fixture_sha256": {
+            "$ref": "#/$defs/sha"
+        },
+        "jpeg_read": {
+            "const": false
+        },
+        "layout_profile": {
+            "enum": [
+                "single_column",
+                "double_column",
+                "full_width_qualitative"
+            ]
+        },
+        "model_loaded": {
+            "const": false
+        },
+        "outputs": {
+            "additionalProperties": false,
+            "properties": {
+                "pdf": {
+                    "$ref": "#/$defs/output"
+                },
+                "png": {
+                    "$ref": "#/$defs/output"
+                },
+                "svg": {
+                    "$ref": "#/$defs/output"
+                }
+            },
+            "required": [
+                "png",
+                "pdf",
+                "svg"
+            ],
+            "type": "object"
+        },
+        "panel_ids": {
+            "items": {
+                "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+        },
+        "panels": {
+            "items": {
+                "required": [
+                    "panel_id",
+                    "label",
+                    "caption_key",
+                    "kind"
+                ],
+                "type": "object"
+            },
+            "minItems": 1,
+            "type": "array"
+        },
+        "primary_decision_modified": {
+            "const": false
+        },
+        "renderer_commit": {
+            "pattern": "^[0-9a-f]{40}$",
+            "type": "string"
+        },
+        "schema_version": {
+            "const": 1
+        },
+        "size_inches": {
+            "items": {
+                "exclusiveMinimum": 0,
+                "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+        },
+        "stage_d_statistics_modified": {
+            "const": false
+        },
+        "style": {
+            "type": "object"
+        },
+        "timm_imported": {
+            "const": false
+        },
+        "title": {
+            "type": "string"
+        },
+        "torch_imported": {
+            "const": false
+        }
+    },
+    "required": [
+        "schema_version",
+        "document_type",
+        "figure_id",
+        "title",
+        "fixture_class",
+        "formal_scientific_figure",
+        "panel_ids",
+        "caption_keys",
+        "input_fixture_sha256",
+        "renderer_commit",
+        "config_digest",
+        "content_digest",
+        "format_content_digests",
+        "environment",
+        "fonts",
+        "layout_profile",
+        "size_inches",
+        "dpi",
+        "style",
+        "panels",
+        "outputs",
+        "display_only",
+        "primary_decision_modified",
+        "stage_d_statistics_modified",
+        "model_loaded",
+        "torch_imported",
+        "timm_imported",
+        "cuda_used",
+        "jpeg_read",
+        "canonical_digest"
+    ],
+    "type": "object"
+}

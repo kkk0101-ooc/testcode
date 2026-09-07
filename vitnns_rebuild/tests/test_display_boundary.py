@@ -5,7 +5,10 @@ from vitnns.display import (
     DisplayBoundaryError,
     DisplayTransform,
     metric_ready,
+    raw,
+    validate_display_input,
     validate_metric_input,
+    validate_raw_input,
 )
 from vitnns.retention import ArtifactArray, ArtifactKind, array_sha256
 
@@ -138,3 +141,20 @@ def test_invalid_display_configuration_fails_early(kwargs):
 def test_metric_ready_rejects_non_2d_or_non_finite_data(bad):
     with pytest.raises((TypeError, ValueError)):
         metric_ready(bad)
+
+
+def test_raw_metric_ready_and_display_identities_cannot_be_retagged():
+    raw_rgb = raw(np.zeros((8, 9, 3), dtype=np.float32))
+    metric = metric_ready(np.ones((3, 4), dtype=np.float32))
+    display = DisplayTransform()(metric)
+
+    assert validate_raw_input(raw_rgb).shape == (8, 9, 3)
+    assert validate_display_input(display).shape == (3, 4)
+    with pytest.raises(DisplayBoundaryError, match="cannot relabel display"):
+        metric_ready(display)
+    with pytest.raises(DisplayBoundaryError, match="cannot relabel raw"):
+        metric_ready(raw_rgb)
+    with pytest.raises(DisplayBoundaryError, match="requires display"):
+        validate_display_input(metric)
+    with pytest.raises(DisplayBoundaryError, match="requires raw"):
+        validate_raw_input(display)

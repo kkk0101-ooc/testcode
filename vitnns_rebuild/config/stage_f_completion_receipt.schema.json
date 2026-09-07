@@ -1,0 +1,162 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+        "access_scope": {
+            "const": "FORMAL_F0_PRODUCER_AFTER_STARTUP_GATE"
+        },
+        "canonical_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+        },
+        "completed_at": {
+            "format": "date-time",
+            "type": "string"
+        },
+        "document_type": {
+            "const": "stage_f_f0_terminal_completion"
+        },
+        "f2_started": {
+            "const": false
+        },
+        "f3_started": {
+            "const": false
+        },
+        "f4_started": {
+            "const": false
+        },
+        "false_pass_audit": {
+            "$ref": "#/$defs/record"
+        },
+        "formal_scientific_figures_rendered": {
+            "const": 0
+        },
+        "git": {
+            "additionalProperties": false,
+            "properties": {
+                "commit": {
+                    "const": "SELF"
+                },
+                "ref": {
+                    "const": "refs/archive/stage-f-v1-f0-completion"
+                }
+            },
+            "required": [
+                "commit",
+                "ref"
+            ],
+            "type": "object"
+        },
+        "jpeg_access": {
+            "const": false
+        },
+        "model_gpu_access": {
+            "const": false
+        },
+        "next_authorization": {
+            "const": "F1_ONLY"
+        },
+        "package_validation": {
+            "const": "PASS"
+        },
+        "payload_manifest": {
+            "$ref": "#/$defs/record"
+        },
+        "primary_decision_modified": {
+            "const": false
+        },
+        "schema_version": {
+            "const": 1
+        },
+        "source_validation": {
+            "$ref": "#/$defs/record"
+        },
+        "stage_d_statistics_modified": {
+            "const": false
+        },
+        "stage_id": {
+            "const": "F0"
+        },
+        "started_at": {
+            "format": "date-time",
+            "type": "string"
+        },
+        "startup_gate": {
+            "$ref": "#/$defs/record"
+        },
+        "status": {
+            "const": "PASS"
+        },
+        "status_record": {
+            "$ref": "#/$defs/record"
+        },
+        "test_report": {
+            "$ref": "#/$defs/record"
+        },
+        "whole_root_inventory": {
+            "$ref": "#/$defs/record"
+        },
+        "workflow_validation": {
+            "const": "PASS"
+        }
+    },
+    "required": [
+        "schema_version",
+        "document_type",
+        "stage_id",
+        "status",
+        "started_at",
+        "completed_at",
+        "package_validation",
+        "workflow_validation",
+        "access_scope",
+        "formal_scientific_figures_rendered",
+        "model_gpu_access",
+        "jpeg_access",
+        "primary_decision_modified",
+        "stage_d_statistics_modified",
+        "startup_gate",
+        "source_validation",
+        "test_report",
+        "false_pass_audit",
+        "payload_manifest",
+        "status_record",
+        "whole_root_inventory",
+        "git",
+        "next_authorization",
+        "f2_started",
+        "f3_started",
+        "f4_started",
+        "canonical_digest"
+    ],
+    "type": "object",
+    "$defs": {
+        "record": {
+            "additionalProperties": false,
+            "properties": {
+                "bytes": {
+                    "minimum": 1,
+                    "type": "integer"
+                },
+                "canonical_digest": {
+                    "pattern": "^[0-9a-f]{64}$",
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "sha256": {
+                    "pattern": "^[0-9a-f]{64}$",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "path",
+                "bytes",
+                "sha256",
+                "canonical_digest"
+            ],
+            "type": "object"
+        }
+    }
+}

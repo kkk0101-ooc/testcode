@@ -252,10 +252,28 @@ class DisplayTransform:
 def metric_ready(value: Any) -> ArtifactArray:
     """Explicitly tag a finite 2D numeric array as metric-ready."""
 
+    _reject_retagged_artifact(value, target=ArtifactKind.METRIC_READY)
     array = _validate_numeric_2d(value, name="metric_ready")
     return ArtifactArray(
         array,
         ArtifactKind.METRIC_READY,
+        metadata={"native_shape": list(array.shape), "dtype": str(array.dtype)},
+    )
+
+
+def raw(value: Any) -> ArtifactArray:
+    """Explicitly tag an unmodified finite RGB array as raw.
+
+    Raw, metric-ready, and display identities are intentionally not
+    interchangeable.  In particular, this constructor cannot be used to
+    relabel a display result and thereby bypass the metric boundary.
+    """
+
+    _reject_retagged_artifact(value, target=ArtifactKind.RAW)
+    array = _validate_rgb(value, name="raw")
+    return ArtifactArray(
+        array,
+        ArtifactKind.RAW,
         metadata={"native_shape": list(array.shape), "dtype": str(array.dtype)},
     )
 
@@ -296,6 +314,36 @@ def require_metric_ready(value: Any, *, name: str = "metric input") -> np.ndarra
     return validate_metric_input(value, name=name)
 
 
+def validate_raw_input(value: Any, *, name: str = "raw input") -> np.ndarray:
+    """Return a tagged raw RGB array and reject every other identity."""
+
+    kind = getattr(value, "kind", None)
+    if kind is None or ArtifactKind.parse(kind) is not ArtifactKind.RAW:
+        observed = "untagged" if kind is None else ArtifactKind.parse(kind).value
+        raise DisplayBoundaryError(f"{name} requires raw input, got {observed}")
+    return _validate_rgb(getattr(value, "data", value), name=name)
+
+
+def validate_display_input(value: Any, *, name: str = "display input") -> np.ndarray:
+    """Return a tagged display array and reject raw/metric-ready inputs."""
+
+    kind = getattr(value, "kind", None)
+    if kind is None or ArtifactKind.parse(kind) is not ArtifactKind.DISPLAY:
+        observed = "untagged" if kind is None else ArtifactKind.parse(kind).value
+        raise DisplayBoundaryError(f"{name} requires display input, got {observed}")
+    return _validate_numeric_2d(getattr(value, "data", value), name=name)
+
+
+def _reject_retagged_artifact(value: Any, *, target: ArtifactKind) -> None:
+    kind = getattr(value, "kind", None)
+    if kind is not None:
+        parsed = ArtifactKind.parse(kind)
+        raise DisplayBoundaryError(
+            f"cannot relabel {parsed.value} data as {target.value}; "
+            "artifact identities are immutable"
+        )
+
+
 def _validate_numeric_2d(value: Any, *, name: str) -> np.ndarray:
     if hasattr(value, "detach") and hasattr(value, "cpu"):
         value = value.detach().cpu().numpy()
@@ -304,6 +352,19 @@ def _validate_numeric_2d(value: Any, *, name: str) -> np.ndarray:
         raise ValueError(f"{name} must be a 2D map, got shape {array.shape}")
     if not np.issubdtype(array.dtype, np.number) or np.issubdtype(array.dtype, np.complexfloating):
         raise TypeError(f"{name} must be a real numeric map")
+    if not np.all(np.isfinite(array)):
+        raise ValueError(f"{name} must contain only finite values")
+    return array
+
+
+def _validate_rgb(value: Any, *, name: str) -> np.ndarray:
+    if hasattr(value, "detach") or hasattr(value, "cpu"):
+        raise TypeError(f"{name} must be a NumPy-compatible RGB array, not a tensor")
+    array = np.asarray(value)
+    if array.ndim != 3 or array.shape[2] not in (3, 4):
+        raise ValueError(f"{name} must be an HxWx3 or HxWx4 RGB(A) array")
+    if not np.issubdtype(array.dtype, np.number):
+        raise TypeError(f"{name} must be numeric")
     if not np.all(np.isfinite(array)):
         raise ValueError(f"{name} must contain only finite values")
     return array
@@ -324,6 +385,9 @@ __all__ = [
     "DisplayResult",
     "DisplayTransform",
     "metric_ready",
+    "raw",
     "require_metric_ready",
+    "validate_display_input",
     "validate_metric_input",
+    "validate_raw_input",
 ]
