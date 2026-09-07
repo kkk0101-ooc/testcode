@@ -1,9 +1,9 @@
 # 阶段 E：必要消融与敏感性分析规划
 
-> 创建日期：2026-09-06。
-> 当前状态：`NOT_STARTED`；当前唯一下一任务为 `E0`。
+> 创建日期：2026-09-06；完成状态更新：2026-09-07。
+> 当前状态：`COMPLETE`；E4 completion ref 为 `refs/archive/stage-e-e4-completion`，当前唯一下一任务为 `F0`。
 > 前置状态：Stage D D10 已完成并封存，正式决策为 `GO_FIDELITY_SCOPE`。
-> 文档性质：定义 E0–E4 的职责、边界、依赖、交付物和验收顺序；不是执行授权，也不是已经完成 Stage E 的声明。
+> 文档性质：定义 E0–E4 的职责、边界、依赖、交付物和验收顺序；不是执行授权。完成状态只由已封存的 E4 completion/ref 证明。
 
 ## 1. 当前检查点与主流程
 
@@ -184,7 +184,7 @@ E4 至少应交付：
 
 ## 11. Stage F 交接条件
 
-只有 E4 完成封存并通过验证，才进入 Stage F：
+只有 E4 完成封存并通过验证，才进入 Stage F。Stage F 的权威规划、输入绑定、图形目录、F0–F4 门禁与验收合同见 [阶段 F 规划](阶段F规划.md)：
 
 - F0：实现并验证 display renderer；
 - F1：渲染 D10 主结果统计图；
@@ -194,6 +194,8 @@ E4 至少应交付：
 
 Stage F 必须分开两类图：完整 cohort 数据驱动的科学主图，以及按冻结规则选择的定性展示图。后者可以统一美化和排版，但不能改变任何统计结论。定性选择继续受 [阶段 F 展示选择协议 v1](stage_f_display_protocol_v1.md) 约束。
 
-## 12. 当前下一步
+## 12. 历史启动说明与当前下一步
 
-当前只执行 `E0`。E0 应先验证 D10 completion ref/report/paper package 与工作区 clean state，再完成 reuse inventory 和整个 E1–E4 合同冻结。不得重跑 D8、D9、D10，不得在 E0 读取新增 Stage E outcome，不得生成正式论文图片。
+以下是 Stage E 启动时的历史执行边界：E0 先验证 D10 completion ref/report/paper package 与工作区 clean state，再完成 reuse inventory 和整个 E1–E4 合同冻结；不得重跑 D8、D9、D10，不得在 E0 读取新增 Stage E outcome，不得生成正式论文图片。
+
+截至 2026-09-07，E0–E4 已全部完成并封存，E4 package/workflow `PASS`、scientific validity `MIXED`，下一任务为 [阶段 F 规划](阶段F规划.md) 中的 `F0_ONLY`。
