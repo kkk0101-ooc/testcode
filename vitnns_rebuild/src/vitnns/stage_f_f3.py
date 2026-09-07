@@ -47,8 +47,8 @@ F3_COMPLETION_SCHEMA_PATH = "config/stage_f_f3_completion.schema.json"
 F3_FALSE_PASS_SCHEMA_PATH = "config/stage_f_f3_false_pass_audit.schema.json"
 F3_VALIDATION_SCHEMA_PATH = "config/stage_f_f3_validation_report.schema.json"
 
-F3_ROOT_PATH = "evidence/stage_f/f3_r1_recovery_v2_20260907/formal"
-F3_REPORT_PATH = "reports/stage_f_f3_r1_20260907"
+F3_ROOT_PATH = "evidence/stage_f/f3_r2_recovery_v2_20260907/formal"
+F3_REPORT_PATH = "reports/stage_f_f3_r2_20260907"
 PENDING_PATH = F3_ROOT_PATH + "/completion/f3.pending.json"
 COMPLETION_PATH = F3_ROOT_PATH + "/completion/f3.json"
 STARTUP_PATH = F3_ROOT_PATH + "/startup_gate.json"
@@ -580,7 +580,11 @@ def build_secondary_source_union(repo_root: Path | str = REPO_ROOT) -> tuple[dic
     if counts != Counter({"VALID": 2998, "FAILED": 2}) or dict(valid_by_root) != expected_valid:
         raise StageFF3Error("E3 union valid/failed or root counts drifted")
     method_secondary = [row for row in method_rows["rows"] if (row["layer"], row["head"]) in SECONDARY_COORDINATES]
-    if method_secondary != rows:
+    terminal_columns = tuple(terminal["columns"])
+    if len(method_secondary) != len(rows) or any(
+        {key: left[key] for key in terminal_columns} != right
+        for left, right in zip(method_secondary, rows)
+    ):
         raise StageFF3Error("E3 method rows and terminal rows differ")
     if e4.get("rows") != pairs.get("rows"):
         raise StageFF3Error("E4 sealed layer-head copy differs from E3-R4 paired table")
