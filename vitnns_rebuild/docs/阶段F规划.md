@@ -475,3 +475,19 @@ F3 最终在不可覆盖的 r7 root 完成；r1 因 E3 两张表误作整对象�
 - 正式输出：`evidence/stage_f/f3_r7_recovery_v2_20260907/formal/` 与 `reports/stage_f_f3_r7_20260907/`。最终 commit/push、archive ref 和 Git/LFS 状态由提交后核验。
 
 F3 terminal receipt 只授权 `F4_ONLY`；F4 尚未开始。
+
+## 15. Post-F3 blue-display visual revision completion record（2026-09-07）
+
+Owner review rejected the sealed F3 r7 white-background presentation because the hotspot structure was visually weak, matched attribution was difficult to inspect, and earlier revision attempts had title/row-label layout defects. The scientific F3 r7 package and archive ref remain unchanged; the final display-only replacement is the independently sealed r4 root. Visual r1–r3 remain immutable `BLOCKED` attempts with failure events and no terminal PASS.
+
+- Style contract: valid signed maps are shown as `abs(raw_signed_map)`, normalized by that panel's own maximum, squared (`gamma=2`), and bilinearly resized from 56x56 to 224x224. The fixed palette runs from deep blue through cyan/yellow/orange to red. There is no percentile clipping, smoothing, max pooling, or source-map modification.
+- Interpretation: r4 is a shape-only presentation view. Color magnitude cannot be compared between methods, coordinates, or samples. F3 r7 signed maps with shared symmetric scales remain the authoritative magnitude audit.
+- Layout correction: case modules use separate title and panel bands plus a compact fidelity legend. Cross-layer matrices use a dedicated header row and a dedicated horizontal row-label column (`NNS`, `Matched patch`); no row label is rotated, clipped, or attached outside a heatmap axis. Typed-failure titles no longer repeat the order.
+- Method label: `Matched patch` is the frozen `matched_fixed_clean_attention_patch_token_contribution` baseline for the same fixed-clean-attention head-direction Value-path scalar. It is not Grad-CAM.
+- Outputs: `evidence/stage_f/f3_visual_r4_recovery_v2_20260907/formal/` and `reports/stage_f_f3_visual_r4_20260907/`; 27 render instances, 81 PNG/PDF/SVG exports, and 27 report-side PNG review copies. Module counts are Figure 5 = 4, Figure 6 = 1, S1 = 5, S2 = 6, and S4 = 11.
+- Figure 6: unchanged frozen median-effect sample `ILSVRC2012_val/ILSVRC2012_val_00002287.JPEG`, order 44. S4 remains 12 slots / 11 unique samples; order 117 and 352 `(11,2)` NNS failures remain in place while matched and all other valid cells are shown.
+- Validation: all 27 review copies passed manual visual QC; 9 focused tests passed with 0 failures; all 16 false-pass attacks were rejected. Terminal completion SHA-256 is `0231b38a6886ab8e3b46b56e1d93928490fbe4dc3a858aa0c92781826177547d`; whole-root canonical digest is `26aaa04bef8df84c83d33198ccb2d51f8b4731a711cfbfd45273110d63778e30`.
+- Boundaries: no model/checkpoint, Torch, timm, CUDA/GPU, forward/backward, attribution, or fidelity execution; no source, selection, slot, statistic, decision, or F3 archive modification; no Grad-CAM/Figure 7 was fabricated because no sealed Grad-CAM source exists; F4 was not started.
+- Delivery: terminal commit is recorded as `SELF`; the independent archive ref is `refs/archive/stage-f-v1-f3-blue-display-revision`. Final local/tracking/remote/ref/worktree/LFS checks are performed after the delivery commit.
+
+The only next authorization remains `F4_ONLY`.
