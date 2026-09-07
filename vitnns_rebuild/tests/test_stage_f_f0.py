@@ -8,7 +8,7 @@ import pytest
 from jsonschema import Draft202012Validator
 
 from vitnns.stage_f_f0 import (
-    ATTACKS, StageFF0Error, validate_runtime_isolation, verify_upstream,
+    ATTACKS, StageFF0Error, _signed, validate_runtime_isolation, verify_upstream,
 )
 from vitnns.stage_f_renderer import (
     COMPLETION_SCHEMA_PATH, FALSE_PASS_SCHEMA_PATH, VALIDATION_SCHEMA_PATH,
@@ -36,6 +36,11 @@ def test_formal_runtime_isolation_requires_hidden_cuda(monkeypatch: pytest.Monke
     monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "0")
     with pytest.raises(StageFF0Error, match="CUDA_VISIBLE_DEVICES"):
         validate_runtime_isolation()
+
+
+def test_signing_replaces_preexisting_canonical_digest():
+    document = _signed({"value": 1, "canonical_digest": "stale"})
+    assert document == {"value": 1, "canonical_digest": "48208f9428d64634bd8e28ff345bf0eab60d53c18fa2fbdb0b9bc1e84df2b5f6"}
 
 
 def test_terminal_schemas_fail_closed():

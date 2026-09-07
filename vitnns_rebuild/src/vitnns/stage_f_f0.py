@@ -87,7 +87,9 @@ class StageFF0Error(StageFRendererError):
 
 
 def _signed(value: Mapping[str, Any]) -> dict[str, Any]:
-    document = dict(value); document["canonical_digest"] = canonical_sha256(document); return document
+    document = {key: item for key, item in value.items() if key != "canonical_digest"}
+    document["canonical_digest"] = canonical_sha256(document)
+    return document
 
 
 def _write_new(path: Path, value: Mapping[str, Any]) -> None:
