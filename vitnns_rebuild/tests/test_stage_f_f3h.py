@@ -167,3 +167,9 @@ def test_class_conditioned_basis_rule_cannot_use_visual_head_selection() -> None
 def test_f3h_completion_if_present_is_atomic() -> None:
     if not (REPO / f3h.COMPLETION_PATH).exists(): return
     result=f3h.validate_completion(REPO);assert result["status"]=="PASS";assert result["next_authorization"]=="F3C0_PROTOCOL_FREEZE_ONLY"
+
+
+def test_cli_dispatch_contains_every_f3h_lifecycle_command() -> None:
+    source = (REPO / "src/vitnns/stage_f_f3h.py").read_text(encoding="utf-8")
+    for command in ("freeze-implementation", "initialize", "run-pilot", "authorize-bulk", "run-shard", "run-gradcam", "reconcile", "build-components", "build-consensus", "assess-basis", "render", "build-audits", "record-tests", "validate-outputs", "finalize", "validate-completion"):
+        assert f'"{command}":lambda:' in source
