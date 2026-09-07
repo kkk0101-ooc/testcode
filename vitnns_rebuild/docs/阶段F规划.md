@@ -1,7 +1,7 @@
 # 阶段 F：正式成图、定性展示与论文交付
 
 > 建立日期：2026-09-07。
-> 当前状态：Stage F F2 已完成并封存；当前唯一下一任务为 `F3_ONLY`。
+> 当前状态：Stage F F3 已完成并封存；当前唯一下一任务为 `F4_ONLY`。
 > 文档性质：Stage F 的权威规划、阶段边界和验收合同；不是一次性跳过阶段门禁的总授权。
 > 选择规则：定性案例继续受 [阶段 F 展示选择协议 v1](stage_f_display_protocol_v1.md) 约束；跨层/头归因矩阵同时受 [Stage F 跨层/头归因展示补充协议](stage_f_cross_layer_display_addendum_20260907.md) 约束。
 
@@ -417,7 +417,7 @@ F0 terminal receipt 只授权 `F1_ONLY`；F2、F3、F4 均未开始。
 
 ## 11. 当前下一步
 
-当前只授权 `F3_ONLY`。F3 必须按冻结展示选择协议完成规则选例、方法示意与定性面板，并继续提供 report-side PNG review copies 和逐图 `figure_analysis.md`；同时必须按 [跨层/头归因展示补充协议](stage_f_cross_layer_display_addendum_20260907.md) 生成 Figure 6 和 Supplement S4 的模块、source union/selection/panel/scale manifests。不得启动 F4 或组合最终论文 Figure 1/5/6/S1/S2/S4。
+当前只授权 `F4_ONLY`。F4 只能消费已经通过验收的 F1–F3 模块，完成最终组合图、图注、论文写作和反向 source audit；不得改变 F3 样本、panel 数据、色限、failure/NA 或 selection mapping。
 
 ## 12. F1 completion record（2026-09-07）
 
@@ -457,3 +457,21 @@ F2 最终在不可覆盖的 r4 root 完成；r1 因 pending receipt 缺少 rende
 - Git/LFS：terminal completion 的 Git 字段为 `SELF`；最终交付 commit、push、`refs/archive/stage-f-v1-f2-completion` 及 local/tracking/remote/archive/worktree/LFS 状态由提交后的 final verification 记录确认。
 
 F2 terminal receipt 只授权 `F3_ONLY`；F3 与 F4 均未开始。
+
+## 14. F3 completion record（2026-09-07）
+
+F3 最终在不可覆盖的 r7 root 完成；r1 因 E3 两张表误作整对象比较、r2 因 render report 的 NumPy float 序列化、r3–r6 因人工/owner 视觉 QC 分别 fail closed。所有失败尝试均保留 pending receipt、已生成 payload 和结构化 failure event，没有覆盖、删除或伪造 PASS；唯一有效 terminal root 为 r7：
+
+- 启动和选样：F2 archive ref 精确指向 `89dee5ad25b9cf3baa3a2ffdb2261ec8343a2ef6`；F2 completion SHA-256 为 `f4deb7d7a39714165b31d4978b8179e3418340de7b10ed53e0c091c93cedd31d`。selection 和 rule mapping 在任何 JPEG/map access 前原子封存并独立重建，`jpeg_or_map_access_before_seal=false`。
+- 规则结果：best order 372、median order 44、baseline-strong order 372、weak order 281、misclassified/difficult order 387。order 372 重复命中被完整保留，5 slots 去重为 4 个样本，没有静默替换。
+- Figure 6：唯一主样本为 `ILSVRC2012_val/ILSVRC2012_val_00002287.JPEG`，order 44，严格来自 D10 `median_effect`。
+- source union：D8 primary 1,000 maps 全量验证；E3 union 为 3,000 typed terminals、2,998 valid maps、2 failures。有效 origins 为 516/12/636/1,834。orders 117/352 的 `(11,2)` NNS failures 原位保留，matched 和其他有效坐标正常显示。
+- 模块：Figure 1；Figure 5 四个去重规则案例；S1 五个 fixed audit examples；S2 完整 mapping 和五个 slots；Figure 6；S4 12 slots / 11 unique samples。共 28 render instances、84 个 PNG/PDF/SVG、28 review PNG；final combined figures rendered = false。
+- 显示合同：同例同坐标 NNS/matched 共享联合对称色限，difference 独立，不跨坐标比较 magnitude，无 clipping。r7 对两方法对称叠加各自 signed extrema 50%/80% 的 display-only local contours，使 matched 形态可读；contours 不进入 metric、selection 或跨方法 magnitude 比较。
+- 人工检查：`reports/stage_f_f3_r7_20260907/figure_analysis.md` 按 Image #1..#28 逐图记录全部视觉检查项；28/28 PASS。
+- 验证：21/21 false-pass checks PASS；79 applicable Stage F tests passed、0 failed、2 deselected。两个 deselected 是 F2 历史生命周期断言（仅在 F2 时要求 F3 root 不存在）；F0/F1/F2 completion validators 另行 PASS；`git diff --check` PASS。
+- 科学边界：没有模型/checkpoint、Torch、timm、GPU/CUDA、forward/backward/IG/attribution/fidelity；没有新统计、p-value、winner、endpoint 或 GO/NO-GO；上游 decisions/completions 未修改。
+- Grad-CAM/Figure 7：没有生成。F3 冻结协议禁止 CAM/Grad-CAM、模型加载和新 attribution，且没有 sealed Grad-CAM input；若需要该比较，必须另立前瞻性计算协议。
+- 正式输出：`evidence/stage_f/f3_r7_recovery_v2_20260907/formal/` 与 `reports/stage_f_f3_r7_20260907/`。最终 commit/push、archive ref 和 Git/LFS 状态由提交后核验。
+
+F3 terminal receipt 只授权 `F4_ONLY`；F4 尚未开始。
