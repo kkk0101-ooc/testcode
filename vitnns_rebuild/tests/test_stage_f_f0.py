@@ -7,8 +7,10 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator
 
+from vitnns.stage_d_provenance import canonical_sha256
 from vitnns.stage_f_f0 import (
-    ATTACKS, StageFF0Error, _signed, validate_runtime_isolation, verify_upstream,
+    ATTACKS, F0_ROOT_PATH, StageFF0Error, _inventory, _signed,
+    validate_runtime_isolation, verify_upstream,
 )
 from vitnns.stage_f_renderer import (
     COMPLETION_SCHEMA_PATH, FALSE_PASS_SCHEMA_PATH, VALIDATION_SCHEMA_PATH,
@@ -41,6 +43,14 @@ def test_formal_runtime_isolation_requires_hidden_cuda(monkeypatch: pytest.Monke
 def test_signing_replaces_preexisting_canonical_digest():
     document = _signed({"value": 1, "canonical_digest": "stale"})
     assert document == {"value": 1, "canonical_digest": "48208f9428d64634bd8e28ff345bf0eab60d53c18fa2fbdb0b9bc1e84df2b5f6"}
+
+
+def test_whole_root_document_digest_excludes_files_only_helper_digest(tmp_path: Path):
+    (tmp_path / "payload.txt").write_text("synthetic")
+    rebuilt = _inventory(tmp_path)
+    unsigned = {"schema_version":1,"document_type":"stage_f_f0_whole_root_inventory","root":F0_ROOT_PATH,"scope":"all regular F0 files except self-referential inventory status and completion receipts","files":rebuilt["files"],"file_count":rebuilt["file_count"],"total_bytes":rebuilt["total_bytes"]}
+    document = _signed({**unsigned, "canonical_digest": rebuilt["canonical_digest"]})
+    assert document["canonical_digest"] == canonical_sha256(unsigned)
 
 
 def test_terminal_schemas_fail_closed():

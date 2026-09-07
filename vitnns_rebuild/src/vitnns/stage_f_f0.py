@@ -330,7 +330,8 @@ def validate_completion(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
     for field in ("startup_gate","source_validation","test_report","false_pass_audit","payload_manifest","status_record","whole_root_inventory"):
         if completion[field] != _record(repo,completion[field]["path"]): raise StageFF0Error(f"completion binding drifted: {field}")
     inventory=_strict(repo/INVENTORY_PATH,"inventory"); _validate_signed(inventory,"inventory"); rebuilt=_inventory(root,exclude=("whole_root_inventory.json","status.json","completion/f0.pending.json","completion/f0.json"))
-    if any(inventory[key]!=rebuilt[key] for key in ("files","file_count","total_bytes")) or inventory["canonical_digest"]!=canonical_sha256({"schema_version":1,"document_type":"stage_f_f0_whole_root_inventory","root":F0_ROOT_PATH,"scope":"all regular F0 files except self-referential inventory status and completion receipts",**rebuilt}): raise StageFF0Error("whole-root inventory drifted")
+    unsigned_inventory={"schema_version":1,"document_type":"stage_f_f0_whole_root_inventory","root":F0_ROOT_PATH,"scope":"all regular F0 files except self-referential inventory status and completion receipts","files":rebuilt["files"],"file_count":rebuilt["file_count"],"total_bytes":rebuilt["total_bytes"]}
+    if any(inventory[key]!=rebuilt[key] for key in ("files","file_count","total_bytes")) or inventory["canonical_digest"]!=canonical_sha256(unsigned_inventory): raise StageFF0Error("whole-root inventory drifted")
     validate_runtime_isolation(); verify_upstream(repo); _validate_golden(repo)
     return {"status":"PASS","package_validation":"PASS","workflow_validation":"PASS","formal_scientific_figures_rendered":0,"model_gpu_jpeg_access":False,"next_authorization":"F1_ONLY","whole_root_inventory_digest":inventory["canonical_digest"]}
 

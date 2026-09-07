@@ -55,8 +55,8 @@ E4_INVENTORY_PATH = "evidence/stage_e/e4_recovery_v2_20260907/formal/whole_root_
 DISPLAY_PROTOCOL_PATH = "docs/stage_f_display_protocol_v1.md"
 REFERENCE_PDF_PATH = "../论文1/参考文章.pdf"
 
-F0_ROOT_PATH = "evidence/stage_f/f0_r3_recovery_v2_20260907/formal"
-F0_REPORT_PATH = "reports/stage_f_f0_r3_20260907"
+F0_ROOT_PATH = "evidence/stage_f/f0_r4_recovery_v2_20260907/formal"
+F0_REPORT_PATH = "reports/stage_f_f0_r4_20260907"
 ARCHIVE_REF = "refs/archive/stage-f-v1-f0-completion"
 
 EXPECTED_E4_REF = "7c82eca4e7de488f4537eff2b3fdb59feb3413ab"
