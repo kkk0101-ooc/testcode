@@ -569,3 +569,19 @@ F3H v1 formal root 初始化后，首次四坐标 pilot 在模型反序列化、
 - 完整 12×12 atlas 完成后才依据预声明判据评估 head 信息是否足以定义 class-conditioned 聚合。不得凭视觉效果指定权重。
 
 F3C0 只能在 F3H terminal 后冻结，候选集必须全部包含 class-targeted NNS、ViT Grad-CAM、full-model class-logit IG、attention rollout 和 block-11 raw CLS attention head mean。F3C 计算和 F4 均未开始，F4 状态保持 `PAUSED_PENDING_F3H_AND_F3C`。
+
+## 20. F3H-R1 compute completion 与 R2 CPU reconciliation recovery（2026-09-07）
+
+F3H-R1 按冻结顺序完成正式计算：四坐标 pilot 为 8/8 VALID、0 FAILED、0 NA，pilot telemetry 为 0.009995 H20-GPU-hour，按冻结公式投影总成本 0.599830 H20-GPU-hour，低于 40 小时硬上限；随后 8 个 pair-preserving shards 完成其余 272/272 VALID units。连同四个 sealed inherited pairs，完整 atlas 输入为 288/288 valid Value-path terminals。冻结的 class-713 / `blocks[11].norm1` Grad-CAM 也为 1/1 VALID。
+
+首次 CPU reconciliation 在写 `terminal_union.json` 前 fail closed：实现错误地假定所有 inherited result 都有顶层 `target_identity`。D8 两个 terminals 确有该字段；E3 六个 terminals 则使用 `target_response.target_identity`，并在 `source_hashes.target_semantic_digest` 与 `pair_binding.target_semantic_digest` 中双重封存同一 digest。R1 的 280 个新 maps、Grad-CAM、9 份 telemetry 和 pending receipt 全部保留；没有重跑或覆盖。
+
+前瞻性 [F3H-R2 CPU reconciliation recovery](stage_f_f3h_r2_cpu_reconciliation_addendum_20260907.md) 因此冻结：
+
+- R1 compute root 由 1,139-file inventory 整体绑定；R2 只引用其 maps 和 telemetry，不复制、不修改、不重新计算；
+- D8 adapter 从顶层 `target_identity` 计算 semantic digest；E3 adapter 必须验证 `source_hashes`、`pair_binding` 和 `target_response.target_identity` 三方 digest 完全一致；
+- R2 的 pilot、bulk shard 和 Grad-CAM 入口均 fail closed；模型、Torch/timm、CUDA/GPU 和 attribution 访问为零；
+- R1 telemetry 必须恰好 9 份且只计一次；Grad-CAM CLI 曾在参数解析阶段拒绝 `--device`，未执行计算，随后通过同一 sealed Python API 与冻结参数完成唯一 Grad-CAM unit；
+- R2 使用新 evidence/report root，终态仍只能授权 `F3C0_PROTOCOL_FREEZE_ONLY`。
+
+F4 继续 `PAUSED_PENDING_F3H_AND_F3C`。

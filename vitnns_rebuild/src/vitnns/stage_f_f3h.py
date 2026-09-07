@@ -45,12 +45,22 @@ F3H_R1_ADDENDUM_SHA256 = "2fc0b34b2bce84a02290604cc77b6304c5df5ccef4c64904848d37
 F3H_V1_ROOT = "evidence/stage_f/f3h_full_head_v1_20260907/formal"
 F3H_V1_FAILURE = "reports/stage_f_f3h_full_head_v1_20260907/failure_event.json"
 F3H_V1_FAILURE_SHA256 = "42352afb0ff8a246f054d38c025e05a450dbee98d61e410b2c98267685362596"
-ROOT_PATH = "evidence/stage_f/f3h_full_head_r1_recovery_v2_20260907/formal"
-REPORT_PATH = "reports/stage_f_f3h_full_head_r1_20260907"
+F3H_R1_COMPUTE_ROOT = "evidence/stage_f/f3h_full_head_r1_recovery_v2_20260907/formal"
+COMPUTE_SOURCE_ROOT = F3H_R1_COMPUTE_ROOT
+F3H_R1_REPORT = "reports/stage_f_f3h_full_head_r1_20260907"
+F3H_R1_FAILURE = F3H_R1_REPORT + "/failure_event.json"
+F3H_R1_FAILURE_SHA256 = "ad10e3a29b32b758d223e06a9ef69d207277c961ec5a9318b1efb53c759ee0b1"
+F3H_R1_COMPUTE_INVENTORY = F3H_R1_REPORT + "/compute_source_inventory.json"
+F3H_R2_ADDENDUM = "docs/stage_f_f3h_r2_cpu_reconciliation_addendum_20260907.md"
+F3H_R2_ADDENDUM_SHA256 = "506e535326a45694be349a0ef401aa3a340a03960cf449d7dad4b2d8c0f40dd9"
+ROOT_PATH = "evidence/stage_f/f3h_full_head_r2_cpu_reconcile_20260907/formal"
+REPORT_PATH = "reports/stage_f_f3h_full_head_r2_cpu_reconcile_20260907"
 PLAN_PATH = ROOT_PATH + "/control/plan.json"
 RUN_SPEC_PATH = ROOT_PATH + "/control/run_spec.json"
 PILOT_AUTH_PATH = ROOT_PATH + "/control/pilot_authorization.json"
 BULK_AUTH_PATH = ROOT_PATH + "/control/bulk_authorization.json"
+R2_AUTH_PATH = ROOT_PATH + "/control/cpu_reconciliation_authorization.json"
+R1_COMPUTE_INVENTORY_PATH = ROOT_PATH + "/r1_compute_source_inventory.json"
 SOURCE_BINDING_PATH = ROOT_PATH + "/source_binding.json"
 PENDING_PATH = ROOT_PATH + "/completion/f3h.pending.json"
 COMPLETION_PATH = ROOT_PATH + "/completion/f3h.json"
@@ -75,6 +85,8 @@ CONSENSUS_PATH = ROOT_PATH + "/equal_head_consensus_manifest.json"
 REVIEW_ROOT_PATH = REPORT_PATH + "/figures_png"
 F3H_ARCHIVE_REF = "refs/archive/stage-f-v1-f3h-completion"
 F3H_R1_PRODUCER_REF = "refs/archive/stage-f-v1-f3h-r1-producer"
+F3H_R2_PRODUCER_REF = "refs/archive/stage-f-v1-f3h-r2-producer"
+F3H_R1_COMPUTE_REF = "refs/archive/stage-f-v1-f3h-r1-compute-blocked"
 F3H_RENDER_COUNT = 20
 F3H_EXPORT_COUNT = 60
 
@@ -112,6 +124,9 @@ FINAL_ATTACKS = f3h0.ATTACKS + (
     "incomplete_consensus_uses_complete_case_average",
     "atlas_appearance_used_to_define_class_weights",
     "f3c_empirical_compute_started_before_protocol_freeze",
+    "r1_compute_payload_drift_or_recompute",
+    "e3_inherited_target_digest_schema_conflict",
+    "r1_telemetry_double_counted",
 )
 
 
@@ -306,11 +321,11 @@ def validate_implementation_completion(repo_root: Path | str = REPO_ROOT) -> dic
 
 
 def _attempt_root(repo: Path, unit: Mapping[str, Any]) -> Path:
-    return repo / ROOT_PATH / "units" / unit["canonical_digest"] / "attempts" / ATTEMPT_ID
+    return repo / COMPUTE_SOURCE_ROOT / "units" / unit["canonical_digest"] / "attempts" / ATTEMPT_ID
 
 
 def _gradcam_root(repo: Path) -> Path:
-    return repo / ROOT_PATH / "gradcam" / "attempts" / ATTEMPT_ID
+    return repo / COMPUTE_SOURCE_ROOT / "gradcam" / "attempts" / ATTEMPT_ID
 
 
 def _write_npy(path: Path, array: np.ndarray) -> None:
@@ -446,7 +461,7 @@ def _runtime(repo: Path, device: str) -> tuple[Any, Mapping[str, Any], Any, str,
 
 def _completed_gpu_hours(repo: Path) -> float:
     total = 0.0
-    units_root = repo / ROOT_PATH / "units"
+    units_root = repo / COMPUTE_SOURCE_ROOT / "units"
     if units_root.exists():
         for path in units_root.glob("*/attempts/*/result.json"):
             value = _strict_json(path, "completed unit resource")
@@ -499,51 +514,65 @@ def _execute_coordinates(repo: Path, coordinates: Sequence[tuple[int, int]], *, 
         if device.startswith("cuda") and torch.cuda.is_available(): torch.cuda.empty_cache()
 
 
+def seal_r1_compute_failure(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
+    repo=Path(repo_root).resolve(); target=repo/F3H_R1_COMPUTE_INVENTORY
+    if target.exists(): raise StageFF3HError("R1 compute inventory already exists")
+    if _sha_file(repo/F3H_R1_FAILURE)!=F3H_R1_FAILURE_SHA256: raise StageFF3HError("R1 failure receipt drifted")
+    if not (repo/F3H_R1_COMPUTE_ROOT/"completion/f3h.pending.json").is_file() or (repo/F3H_R1_COMPUTE_ROOT/"completion/f3h.json").exists() or (repo/F3H_R1_COMPUTE_ROOT/"terminal_union.json").exists(): raise StageFF3HError("R1 blocked lifecycle drifted")
+    plan=_strict_json(repo/F3H_R1_COMPUTE_ROOT/"control/plan.json","R1 plan");_validate_signed(plan,"R1 plan")
+    if plan!=build_plan(repo): raise StageFF3HError("R1 plan drifted")
+    statuses=Counter()
+    for unit in plan["value_path_units"]:
+        if unit["mode"]=="NEW_MAP_ONLY_COMPUTE": statuses.update([validate_attempt(repo,unit)["result"]["validity_status"]])
+    grad=validate_gradcam(repo)
+    telemetry=[]
+    for path in sorted((repo/F3H_R1_COMPUTE_ROOT/"telemetry").glob("*.json")):
+        value=_strict_json(path,"R1 telemetry");_validate_signed(value,"R1 telemetry");telemetry.append(value)
+    if len(telemetry)!=9 or sum(int(row["completed_units"]) for row in telemetry)!=280 or statuses!={"VALID":280} or grad["status"]!="VALID": raise StageFF3HError("R1 compute coverage drifted")
+    inv=_inventory(repo/F3H_R1_COMPUTE_ROOT)
+    document=_signed({"schema_version":1,"document_type":"stage_f_f3h_r1_compute_source_inventory","status":"BLOCKED_CPU_RECONCILIATION_AFTER_COMPLETE_GPU_COMPUTE","root":F3H_R1_COMPUTE_ROOT,"files":inv["files"],"file_count":inv["file_count"],"total_bytes":inv["total_bytes"],"value_path_status_counts":dict(statuses),"new_value_path_terminals":280,"gradcam_status":"VALID","telemetry_count":9,"terminal_union_written":False,"f4_started":False})
+    _write_new(target,document);return document
+
+
+def _validate_r1_compute_inventory(repo:Path)->dict[str,Any]:
+    document=_strict_json(repo/F3H_R1_COMPUTE_INVENTORY,"R1 compute inventory");_validate_signed(document,"R1 compute inventory")
+    inv=_inventory(repo/F3H_R1_COMPUTE_ROOT)
+    if document["files"]!=inv["files"] or document["file_count"]!=inv["file_count"] or document["total_bytes"]!=inv["total_bytes"] or document["new_value_path_terminals"]!=280 or document["value_path_status_counts"]!={"VALID":280} or document["gradcam_status"]!="VALID" or document["terminal_union_written"]: raise StageFF3HError("R1 compute inventory drifted")
+    return document
+
+
 def initialize(repo_root: Path | str = REPO_ROOT, *, started_at: str) -> dict[str, Any]:
-    repo = Path(repo_root).resolve(); config = _config(repo); implementation = validate_implementation_completion(repo)
-    if (repo / ROOT_PATH).exists() or (repo / REPORT_PATH).exists(): raise StageFF3HError("F3H formal root already exists")
-    if _git(repo, "status", "--porcelain=v1"): raise StageFF3HError("F3H initialization requires clean worktree")
-    head = _git(repo, "rev-parse", "HEAD"); tracking = _git(repo, "rev-parse", "origin/stage-d-d3-pass")
-    if head != tracking: raise StageFF3HError("F3H initialization requires local/tracking equality")
-    if _git(repo, "rev-parse", F3H1_ARCHIVE_REF + "^{commit}") != "9ea95a6b23979a1d2da1d83658f7353ac0096ad9": raise StageFF3HError("sealed F3H1 archive ref drifted")
-    if _git(repo, "rev-parse", F3H_R1_PRODUCER_REF + "^{commit}") != head: raise StageFF3HError("F3H-R1 producer ref must equal execution HEAD")
-    if not (repo/F3H_V1_ROOT/"completion/f3h.pending.json").is_file() or (repo/F3H_V1_ROOT/"completion/f3h.json").exists(): raise StageFF3HError("F3H v1 blocked root state drifted")
-    if _sha_file(repo/F3H_V1_FAILURE) != F3H_V1_FAILURE_SHA256: raise StageFF3HError("F3H v1 failure receipt drifted")
-    if _sha_file(repo/F3H_R1_ADDENDUM) != F3H_R1_ADDENDUM_SHA256: raise StageFF3HError("F3H-R1 recovery addendum drifted")
-    plan = build_plan(repo)
-    source_binding = _signed({"schema_version": 1, "document_type": "stage_f_f3h_source_binding", "status": "PASS", "attempt": "F3H_R1_RECOVERY_V2_20260907", "protocol_config": _record(repo, CONFIG_PATH), "implementation_addendum":_file_record(repo,F3H1_ADDENDUM), "startup_recovery_addendum":_file_record(repo,F3H_R1_ADDENDUM), "blocked_v1_failure":_file_record(repo,F3H_V1_FAILURE), "f3h0_completion": _record(repo, f3h0.COMPLETION_PATH), "f3h1_completion": _record(repo, F3H1_COMPLETION), "f3_completion": _record(repo, config["upstream"]["f3_completion_path"]), "blue_display_completion": _record(repo, config["upstream"]["blue_display_completion_path"]), "sample": config["sample"], "model": config["model"], "loader_adapter": {"id": "F3H_R1_DIRECT_PIN", "generic_recovery_binding_used": False, "model_bytes_or_scientific_kernel_changed": False}, "selection_changed": False, "f4_started": False})
-    run_spec = _signed({"schema_version": 1, "document_type": "stage_f_f3h_run_spec", "status": "FROZEN_BEFORE_FORMAL_OUTCOME_ACCESS", "plan_digest": plan["canonical_digest"], "pilot_coordinates": [list(item) for item in PILOT_COORDINATES], "bulk_shards": 8, "formal_device_type": "cuda", "run_fidelity": False, "run_stability": False, "run_sanity": False, "render_before_terminal_reconciliation": False, "f4_started": False})
-    pilot = _signed({"schema_version": 1, "document_type": "stage_f_f3h_pilot_authorization", "status": "AUTHORIZED", "scope": "F3H2_PILOT_ONLY", "coordinates": [list(item) for item in PILOT_COORDINATES], "methods": list(METHODS), "expected_terminals": 8, "jpeg_or_map_visual_access_before_bulk_gate_allowed": False, "bulk_authorized": False, "gradcam_authorized": False, "f4_started": False})
-    pending = _signed({"schema_version": 1, "document_type": "stage_f_f3h_pending", "status": "PENDING", "started_at": started_at, "execution_commit": head, "plan_digest": plan["canonical_digest"], "expected_value_path_terminals": 288, "expected_gradcam_terminals": 1, "terminal_pass_published": False, "f4_status": "PAUSED_PENDING_F3H_AND_F3C", "f4_started": False})
-    for relative, document in ((PLAN_PATH, plan), (RUN_SPEC_PATH, run_spec), (PILOT_AUTH_PATH, pilot), (SOURCE_BINDING_PATH, source_binding), (PENDING_PATH, pending)): _write_new(repo / relative, document)
-    return {"status": "INITIALIZED", "plan_digest": plan["canonical_digest"], "implementation_commit": implementation["implementation_commit"], "pilot_only": True, "f4_status": "PAUSED_PENDING_F3H_AND_F3C"}
+    repo=Path(repo_root).resolve();config=_config(repo);validate_implementation_completion(repo)
+    if (repo/ROOT_PATH).exists() or (repo/REPORT_PATH).exists(): raise StageFF3HError("F3H-R2 root already exists")
+    if _git(repo,"status","--porcelain=v1"): raise StageFF3HError("F3H-R2 initialization requires clean worktree")
+    head=_git(repo,"rev-parse","HEAD");tracking=_git(repo,"rev-parse","origin/stage-d-d3-pass")
+    if head!=tracking or _git(repo,"rev-parse",F3H_R2_PRODUCER_REF+"^{commit}")!=head: raise StageFF3HError("F3H-R2 producer/local/tracking drifted")
+    if _git(repo,"rev-parse",F3H_R1_COMPUTE_REF+"^{commit}")!=head: raise StageFF3HError("R1 compute archive ref drifted")
+    if _git(repo,"rev-parse",F3H_R1_PRODUCER_REF+"^{commit}")!="679399252988b1ba4346c90b98262e7748e2b302": raise StageFF3HError("R1 producer ref drifted")
+    if _sha_file(repo/F3H_R2_ADDENDUM)!=F3H_R2_ADDENDUM_SHA256 or _sha_file(repo/F3H_R1_FAILURE)!=F3H_R1_FAILURE_SHA256: raise StageFF3HError("R2 protocol or R1 failure receipt drifted")
+    inventory=_validate_r1_compute_inventory(repo);plan=build_plan(repo)
+    source_binding=_signed({"schema_version":1,"document_type":"stage_f_f3h_r2_source_binding","status":"PASS","r1_compute_inventory":_record(repo,F3H_R1_COMPUTE_INVENTORY),"r1_failure":_file_record(repo,F3H_R1_FAILURE),"r2_addendum":_file_record(repo,F3H_R2_ADDENDUM),"f3h0_completion":_record(repo,f3h0.COMPLETION_PATH),"f3h1_completion":_record(repo,F3H1_COMPLETION),"sample":config["sample"],"model":config["model"],"r1_source_file_count":inventory["file_count"],"model_or_jpeg_access_before_reconciliation":False,"f4_started":False})
+    run_spec=_signed({"schema_version":1,"document_type":"stage_f_f3h_r2_run_spec","status":"FROZEN_BEFORE_R2_OUTPUT","plan_digest":plan["canonical_digest"],"mode":"CPU_ONLY_RECONCILIATION_AND_DISPLAY","model_load":False,"torch_or_timm":False,"cuda_or_gpu":False,"attribution":False,"fidelity":False,"r1_recompute":False,"f4_started":False})
+    authorization=_signed({"schema_version":1,"document_type":"stage_f_f3h_r2_cpu_authorization","status":"AUTHORIZED","scope":"RECONCILE_RENDER_VALIDATE_ONLY","expected_value_path_terminals":288,"expected_gradcam_terminals":1,"f4_started":False})
+    pending=_signed({"schema_version":1,"document_type":"stage_f_f3h_pending","status":"PENDING","started_at":started_at,"execution_commit":head,"plan_digest":plan["canonical_digest"],"expected_value_path_terminals":288,"expected_gradcam_terminals":1,"terminal_pass_published":False,"f4_status":"PAUSED_PENDING_F3H_AND_F3C","f4_started":False})
+    for relative,document in ((PLAN_PATH,plan),(RUN_SPEC_PATH,run_spec),(R2_AUTH_PATH,authorization),(SOURCE_BINDING_PATH,source_binding),(PENDING_PATH,pending)):_write_new(repo/relative,document)
+    return {"status":"INITIALIZED_CPU_ONLY","plan_digest":plan["canonical_digest"],"r1_value_path_terminals":280,"r1_gradcam_status":"VALID","f4_status":"PAUSED_PENDING_F3H_AND_F3C"}
 
 
 def validate_initialized(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
-    repo = Path(repo_root).resolve(); plan = _strict_json(repo / PLAN_PATH, "plan"); run_spec = _strict_json(repo / RUN_SPEC_PATH, "run spec"); pilot = _strict_json(repo / PILOT_AUTH_PATH, "pilot auth"); source = _strict_json(repo / SOURCE_BINDING_PATH, "source binding"); pending = _strict_json(repo / PENDING_PATH, "pending")
-    for value, name in ((plan, "plan"), (run_spec, "run spec"), (pilot, "pilot auth"), (source, "source binding"), (pending, "pending")): _validate_signed(value, name)
-    if plan != build_plan(repo) or plan["counts"]["value_path_terminals"] != 288 or run_spec["plan_digest"] != plan["canonical_digest"]: raise StageFF3HError("initialized plan/run spec drifted")
-    if pilot["status"] != "AUTHORIZED" or pilot["bulk_authorized"] or pilot["gradcam_authorized"] or pending["status"] != "PENDING": raise StageFF3HError("initial authorization state drifted")
-    if pending["execution_commit"] != _git(repo,"rev-parse","HEAD") or pending["execution_commit"] != _git(repo,"rev-parse","origin/stage-d-d3-pass") or pending["execution_commit"] != _git(repo,"rev-parse",F3H_R1_PRODUCER_REF+"^{commit}"):raise StageFF3HError("F3H-R1 execution commit/ref drifted")
-    return {"status": "PASS", "plan_digest": plan["canonical_digest"], "pilot_terminals": 8, "bulk_authorized": False, "f4_started": False}
+    repo=Path(repo_root).resolve();plan=_strict_json(repo/PLAN_PATH,"plan");run_spec=_strict_json(repo/RUN_SPEC_PATH,"run spec");auth=_strict_json(repo/R2_AUTH_PATH,"R2 auth");source=_strict_json(repo/SOURCE_BINDING_PATH,"source binding");pending=_strict_json(repo/PENDING_PATH,"pending")
+    for value,name in ((plan,"plan"),(run_spec,"run spec"),(auth,"R2 auth"),(source,"source binding"),(pending,"pending")):_validate_signed(value,name)
+    if plan!=build_plan(repo) or run_spec["mode"]!="CPU_ONLY_RECONCILIATION_AND_DISPLAY" or run_spec["model_load"] or run_spec["torch_or_timm"] or run_spec["cuda_or_gpu"] or run_spec["attribution"] or auth["status"]!="AUTHORIZED" or pending["status"]!="PENDING": raise StageFF3HError("R2 initialization state drifted")
+    if pending["execution_commit"]!=_git(repo,"rev-parse","HEAD") or pending["execution_commit"]!=_git(repo,"rev-parse","origin/stage-d-d3-pass") or pending["execution_commit"]!=_git(repo,"rev-parse",F3H_R2_PRODUCER_REF+"^{commit}"):raise StageFF3HError("F3H-R2 execution commit/ref drifted")
+    _validate_r1_compute_inventory(repo);return {"status":"PASS","plan_digest":plan["canonical_digest"],"cpu_only":True,"f4_started":False}
 
 
 def run_pilot(repo_root: Path | str = REPO_ROOT, *, device: str = "cuda:0") -> dict[str, Any]:
-    repo = Path(repo_root).resolve(); validate_initialized(repo); telemetry_path = repo / ROOT_PATH / "telemetry/pilot.json"
-    if telemetry_path.exists():
-        value = _strict_json(telemetry_path, "pilot telemetry"); _validate_signed(value, "pilot telemetry"); return value
-    telemetry = _execute_coordinates(repo, PILOT_COORDINATES, device=device); _write_new(telemetry_path, telemetry); return telemetry
+    raise StageFF3HError("F3H-R2 is CPU-only and forbids pilot recomputation")
 
 
 def authorize_bulk(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
-    repo = Path(repo_root).resolve(); validate_initialized(repo); config = _config(repo); plan = _strict_json(repo / PLAN_PATH, "plan"); pilot = _strict_json(repo / ROOT_PATH / "telemetry/pilot.json", "pilot telemetry"); _validate_signed(pilot, "pilot telemetry")
-    by_key = {(u["block"], u["head"], u["method"]): u for u in plan["value_path_units"]}
-    results = [validate_attempt(repo, by_key[(block, head, method)])["result"] for block, head in PILOT_COORDINATES for method in METHODS]
-    if len(results) != 8 or any(row["validity_status"] not in {"VALID", "FAILED", "NA"} for row in results): raise StageFF3HError("pilot terminal coverage failed")
-    projected = float(pilot["gpu_hours"]) / 4.0 * 140.0 + float(config["budget"]["gradcam_and_control_reserve_gpu_hours"])
-    if pilot["gpu_hours"] > config["budget"]["hard_h20_gpu_hours_max"] or projected > config["budget"]["hard_h20_gpu_hours_max"]: raise StageFF3HError("pilot projection exceeded hard budget")
-    authorization = _signed({"schema_version": 1, "document_type": "stage_f_f3h_bulk_authorization", "status": "AUTHORIZED", "authorized_at": _now(), "plan_digest": plan["canonical_digest"], "pilot_terminal_count": 8, "pilot_status_counts": dict(Counter(row["validity_status"] for row in results)), "pilot_gpu_hours": pilot["gpu_hours"], "projected_total_gpu_hours_from_pilot":projected, "pilot_visual_accessed": False, "bulk_coordinates": 136, "bulk_value_path_units": 272, "gradcam_units": 1, "hard_gpu_hours_max": config["budget"]["hard_h20_gpu_hours_max"], "f4_started": False})
-    _write_new(repo / BULK_AUTH_PATH, authorization); return authorization
+    raise StageFF3HError("F3H-R2 forbids new bulk authorization")
 
 
 def _bulk_coordinates(shard_id: int, shard_count: int) -> tuple[tuple[int, int], ...]:
@@ -553,15 +582,11 @@ def _bulk_coordinates(shard_id: int, shard_count: int) -> tuple[tuple[int, int],
 
 
 def run_shard(repo_root: Path | str = REPO_ROOT, *, shard_id: int, shard_count: int = 8, device: str = "cuda:0") -> dict[str, Any]:
-    repo = Path(repo_root).resolve(); validate_initialized(repo); authorization = _strict_json(repo / BULK_AUTH_PATH, "bulk authorization"); _validate_signed(authorization, "bulk authorization")
-    if authorization["status"] != "AUTHORIZED" or authorization["f4_started"]: raise StageFF3HError("bulk is not authorized")
-    coordinates = _bulk_coordinates(shard_id, shard_count); telemetry_path = repo / ROOT_PATH / "telemetry" / f"shard-{shard_id:02d}-of-08.json"
-    if telemetry_path.exists():
-        value = _strict_json(telemetry_path, "shard telemetry"); _validate_signed(value, "shard telemetry"); return value
-    telemetry = _execute_coordinates(repo, coordinates, device=device); telemetry["shard_id"] = shard_id; telemetry["shard_count"] = 8; telemetry = _signed({key: value for key, value in telemetry.items() if key != "canonical_digest"}); _write_new(telemetry_path, telemetry); return telemetry
+    raise StageFF3HError("F3H-R2 is CPU-only and forbids shard recomputation")
 
 
 def run_gradcam(repo_root: Path | str = REPO_ROOT, *, device: str = "cuda:0") -> dict[str, Any]:
+    if ROOT_PATH!=F3H_R1_COMPUTE_ROOT: raise StageFF3HError("F3H-R2 is CPU-only and forbids Grad-CAM recomputation")
     repo = Path(repo_root).resolve(); validate_initialized(repo); authorization = _strict_json(repo / BULK_AUTH_PATH, "bulk authorization"); _validate_signed(authorization, "bulk authorization"); plan = _strict_json(repo / PLAN_PATH, "plan"); unit = plan["gradcam_unit"]; root = _gradcam_root(repo)
     if authorization["status"] != "AUTHORIZED": raise StageFF3HError("Grad-CAM is not authorized")
     if root.exists(): return validate_gradcam(repo)
@@ -603,20 +628,49 @@ def validate_gradcam(repo: Path) -> dict[str, Any]:
     return {"status":"VALID","result":result,"manifest":manifest,"root":root.as_posix()}
 
 
+def _target_semantic_digest_cpu(identity: Mapping[str, Any]) -> str:
+    value=json.loads(json.dumps(identity,allow_nan=False))
+    try: value["frozen_target"]["runtime_model_binding"]["sha256"]="LIVE_RUNTIME_EXCLUDED"
+    except (KeyError,TypeError) as error: raise StageFF3HError("target identity lacks runtime binding") from error
+    return canonical_sha256(value)
+
+
+def _inherited_target_semantic_digest(source_result: Mapping[str, Any], unit: Mapping[str, Any], config: Mapping[str, Any]) -> tuple[str, str]:
+    if source_result.get("sample_id")!=unit["sample_id"]: raise StageFF3HError("inherited result sample drifted")
+    if "target_identity" in source_result:
+        identity=source_result["target_identity"];digest=_target_semantic_digest_cpu(identity);schema="D8_TOP_LEVEL_TARGET_IDENTITY"
+        if identity.get("clean_input_sha256")!=config["sample"]["clean_input_sha256"] or identity.get("target_ref")!=unit["target"] or identity.get("frozen_target",{}).get("candidate")!={"block_index":unit["block"],"head_index":unit["head"]}: raise StageFF3HError("D8 inherited target identity drifted")
+        if source_result.get("method_id")!=unit["method"] or source_result.get("status")!="OK": raise StageFF3HError("D8 inherited method/status drifted")
+        return digest,schema
+    try:
+        source_digest=source_result["source_hashes"]["target_semantic_digest"]
+        pair_digest=source_result["pair_binding"]["target_semantic_digest"]
+        identity=source_result["target_response"]["target_identity"]
+        computed=_target_semantic_digest_cpu(identity)
+    except (KeyError,TypeError) as error:
+        raise StageFF3HError("E3 inherited target binding is incomplete") from error
+    if len({source_digest,pair_digest,computed})!=1: raise StageFF3HError("E3 inherited target semantic digests conflict")
+    binding=source_result["pair_binding"]
+    expected={"selection_order":44,"block":unit["block"],"head":unit["head"],"method":unit["method"],"target":unit["target"],"sample_id":unit["sample_id"],"image_sha256":unit["image_sha256"],"model_sha256":MODEL_SHA256}
+    if any(binding.get(key)!=value for key,value in expected.items()) or source_result.get("validity_status")!="VALID" or source_result.get("target")!=unit["target"]: raise StageFF3HError("E3 inherited pair binding drifted")
+    hashes=source_result["source_hashes"]
+    if hashes.get("image_sha256")!=unit["image_sha256"] or hashes.get("clean_input_sha256")!=config["sample"]["clean_input_sha256"] or hashes.get("model_sha256")!=MODEL_SHA256 or hashes.get("model_canonical_tensor_digest")!=MODEL_TENSOR_DIGEST: raise StageFF3HError("E3 inherited source identity drifted")
+    return computed,"E3_TRIPLE_BOUND_TARGET_IDENTITY"
+
+
 def reconcile_terminals(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
-    repo = Path(repo_root).resolve(); config = _config(repo); plan = _strict_json(repo / PLAN_PATH, "plan"); sources = _cross_sources(repo, config); rows = []; maps = []
+    repo = Path(repo_root).resolve(); validate_initialized(repo); config = _config(repo); plan = _strict_json(repo / PLAN_PATH, "plan"); sources = _cross_sources(repo, config); rows = []; maps = []
     for unit in plan["value_path_units"]:
         key = (unit["block"], unit["head"], unit["method"])
         if unit["mode"] == "INHERITED_READ_ONLY":
             source = sources[key]; path = repo / source["source_path"]; array = np.load(path, allow_pickle=False)
             result_path=repo/unit["source"]["source_result_path"];source_result=_strict_json(result_path,"inherited result")
             if _sha_file(path) != source["source_file_sha256"] or _array_digest(array) != source["signed_map_sha256"] or _sha_file(result_path)!=source["source_result_sha256"]: raise StageFF3HError("inherited source drifted during reconciliation")
-            from .stage_e_e1 import _target_semantic_digest
-            target_semantic=_target_semantic_digest(source_result["target_identity"])
-            row = {"unit_digest": unit["canonical_digest"], "sample_id": unit["sample_id"], "selection_order": 44, "block": unit["block"], "head": unit["head"], "method": unit["method"], "validity_status": "VALID", "failure_code": None, "na_reason": None, "origin": "INHERITED_SEALED_F3", "attempt_id": source["attempt_id"], "source_path": source["source_path"], "source_file_sha256": source["source_file_sha256"], "signed_map_sha256": source["signed_map_sha256"], "source_result_sha256": source["source_result_sha256"], "target_semantic_digest": target_semantic, "resources": {"gpu_hours": 0.0, "elapsed_seconds": 0.0, "inherited": True}}
+            target_semantic,target_schema=_inherited_target_semantic_digest(source_result,unit,config)
+            row = {"unit_digest": unit["canonical_digest"], "sample_id": unit["sample_id"], "selection_order": 44, "block": unit["block"], "head": unit["head"], "method": unit["method"], "validity_status": "VALID", "failure_code": None, "na_reason": None, "origin": "INHERITED_SEALED_F3", "attempt_id": source["attempt_id"], "source_path": source["source_path"], "source_file_sha256": source["source_file_sha256"], "signed_map_sha256": source["signed_map_sha256"], "source_result_sha256": source["source_result_sha256"], "target_semantic_digest": target_semantic, "target_binding_schema":target_schema, "resources": {"gpu_hours": 0.0, "elapsed_seconds": 0.0, "inherited": True}}
         else:
             attempt = validate_attempt(repo, unit); result = attempt["result"]; path = attempt["root"] / "map.npy"
-            row = {"unit_digest": unit["canonical_digest"], "sample_id": unit["sample_id"], "selection_order": 44, "block": unit["block"], "head": unit["head"], "method": unit["method"], "validity_status": result["validity_status"], "failure_code": result.get("failure_code"), "na_reason": result.get("na_reason"), "origin": "F3H_NEW", "attempt_id": result["attempt_id"], "source_path": path.relative_to(repo).as_posix() if path.exists() else None, "source_file_sha256": _sha_file(path) if path.exists() else None, "signed_map_sha256": result["source_hashes"]["signed_map_sha256"], "source_result_sha256": _sha_file(attempt["root"] / "result.json"), "target_semantic_digest": result["target_semantic_digest"], "resources": result["resources"]}
+            row = {"unit_digest": unit["canonical_digest"], "sample_id": unit["sample_id"], "selection_order": 44, "block": unit["block"], "head": unit["head"], "method": unit["method"], "validity_status": result["validity_status"], "failure_code": result.get("failure_code"), "na_reason": result.get("na_reason"), "origin": "F3H_R1_NEW", "attempt_id": result["attempt_id"], "source_path": path.relative_to(repo).as_posix() if path.exists() else None, "source_file_sha256": _sha_file(path) if path.exists() else None, "signed_map_sha256": result["source_hashes"]["signed_map_sha256"], "source_result_sha256": _sha_file(attempt["root"] / "result.json"), "target_semantic_digest": result["target_semantic_digest"], "target_binding_schema":"F3H_R1_TERMINAL", "resources": result["resources"]}
         rows.append(row)
         if row["validity_status"] == "VALID": maps.append({key: row[key] for key in ("unit_digest","block","head","method","origin","source_path","source_file_sha256","signed_map_sha256")})
     counts = Counter(row["validity_status"] for row in rows)
@@ -846,12 +900,12 @@ def _validate_render_report(repo:Path,path:Path)->dict[str,Any]:
 
 def build_final_audits(repo_root:Path|str=REPO_ROOT)->dict[str,Any]:
     repo=Path(repo_root).resolve();config=_config(repo);telemetry=[]
-    for path in sorted((repo/ROOT_PATH/"telemetry").glob("*.json")):
+    for path in sorted((repo/F3H_R1_COMPUTE_ROOT/"telemetry").glob("*.json")):
         value=_strict_json(path,"telemetry");_validate_signed(value,"telemetry");telemetry.append(value)
     grad=validate_gradcam(repo)["result"];gpu_hours=sum(float(row.get("gpu_hours",0.0)) for row in telemetry)+float(grad["resources"]["gpu_hours"])
-    resource=_signed({"schema_version":1,"document_type":"stage_f_f3h_resource_audit","status":"PASS" if gpu_hours<=config["budget"]["hard_h20_gpu_hours_max"] else "FAIL_COST","gpu_hours":gpu_hours,"hard_h20_gpu_hours_max":config["budget"]["hard_h20_gpu_hours_max"],"waiver_used":False,"telemetry_count":len(telemetry),"forward_calls":sum(int(row.get("forward_calls",0)) for row in telemetry)+int(grad["resources"]["forward_calls"]),"gradcam_backward_calls":1})
+    resource=_signed({"schema_version":1,"document_type":"stage_f_f3h_resource_audit","status":"PASS" if gpu_hours<=config["budget"]["hard_h20_gpu_hours_max"] else "FAIL_COST","gpu_hours":gpu_hours,"hard_h20_gpu_hours_max":config["budget"]["hard_h20_gpu_hours_max"],"waiver_used":False,"telemetry_count":len(telemetry),"telemetry_source_root":F3H_R1_COMPUTE_ROOT,"telemetry_counted_exactly_once":True,"forward_calls":sum(int(row.get("forward_calls",0)) for row in telemetry)+int(grad["resources"]["forward_calls"]),"gradcam_backward_calls":1})
     if resource["status"]!="PASS":raise StageFF3HError("F3H hard GPU budget exceeded")
-    access=_signed({"schema_version":1,"document_type":"stage_f_f3h_access_audit","status":"PASS","model_loaded_for_authorized_f3h":True,"jpeg_decoded_for_frozen_order_44_only":True,"torch_timm_cuda_used_for_authorized_f3h":True,"new_value_path_map_units":280,"new_gradcam_units":1,"fidelity_executed":False,"stability_executed":False,"sanity_executed":False,"statistics_or_winner_selection_executed":False,"f3_or_blue_r4_modified":False,"f4_started":False})
+    access=_signed({"schema_version":1,"document_type":"stage_f_f3h_access_audit","status":"PASS","model_loaded_for_authorized_f3h":True,"jpeg_decoded_for_frozen_order_44_only":True,"torch_timm_cuda_used_for_authorized_f3h":True,"r2_model_loaded":False,"r2_torch_timm_cuda_or_gpu_used":False,"r2_attribution_executed":False,"r2_jpeg_access_display_only_after_reconciliation":True,"new_value_path_map_units":280,"new_gradcam_units":1,"fidelity_executed":False,"stability_executed":False,"sanity_executed":False,"statistics_or_winner_selection_executed":False,"f3_or_blue_r4_modified":False,"f4_started":False})
     false_pass=_signed({"schema_version":1,"document_type":"stage_f_f3h_false_pass_audit","status":"PASS","attacks":[{"attack":item,"result":"REJECTED"} for item in FINAL_ATTACKS],"pass_possible_without_all_conditions":False})
     _write_new(repo/RESOURCE_AUDIT_PATH,resource);_write_new(repo/ACCESS_AUDIT_PATH,access);_write_new(repo/FALSE_PASS_PATH,false_pass);return {"status":"PASS","gpu_hours":gpu_hours,"false_pass_attacks":len(FINAL_ATTACKS)}
 
@@ -874,7 +928,8 @@ def validate_outputs(repo_root:Path|str=REPO_ROOT)->dict[str,Any]:
     for row in render["renders"]:_validate_render_report(repo,repo/row["report"]["path"])
     if review["review_count"]!=F3H_RENDER_COUNT or len(review["copies"])!=F3H_RENDER_COUNT or any(not item["exact_copy"] or _sha_file(repo/item["path"])!=item["sha256"] for item in review["copies"]):raise StageFF3HError("review inventory drifted")
     if resource["status"]!="PASS" or resource["gpu_hours"]>config["budget"]["hard_h20_gpu_hours_max"] or resource["waiver_used"]:raise StageFF3HError("resource audit drifted")
-    if access["fidelity_executed"] or access["stability_executed"] or access["sanity_executed"] or access["statistics_or_winner_selection_executed"] or access["f4_started"]:raise StageFF3HError("access boundary drifted")
+    if access["r2_model_loaded"] or access["r2_torch_timm_cuda_or_gpu_used"] or access["r2_attribution_executed"] or access["fidelity_executed"] or access["stability_executed"] or access["sanity_executed"] or access["statistics_or_winner_selection_executed"] or access["f4_started"]:raise StageFF3HError("access boundary drifted")
+    if resource["telemetry_count"]!=9 or not resource["telemetry_counted_exactly_once"]:raise StageFF3HError("R1 telemetry accounting drifted")
     if [item["attack"] for item in false_pass["attacks"]]!=list(FINAL_ATTACKS) or any(item["result"]!="REJECTED" for item in false_pass["attacks"]):raise StageFF3HError("false-pass audit drifted")
     if not (repo/ANALYSIS_PATH).is_file():raise StageFF3HError("manual visual analysis absent")
     analysis=(repo/ANALYSIS_PATH).read_text(encoding="utf-8")
@@ -884,31 +939,32 @@ def validate_outputs(repo_root:Path|str=REPO_ROOT)->dict[str,Any]:
 
 
 def finalize(repo_root:Path|str=REPO_ROOT,*,completed_at:str)->dict[str,Any]:
-    repo=Path(repo_root).resolve();validation=_signed(validate_outputs(repo));_write_new(repo/VALIDATION_PATH,validation);test=_record(repo,TEST_PATH);root=repo/ROOT_PATH;excluded={"payload_manifest.json","whole_root_inventory.json","status.json","completion/f3h.pending.json","completion/f3h.json"};files=[{"path":p.relative_to(root).as_posix(),"bytes":p.stat().st_size,"sha256":_sha_file(p)} for p in sorted(root.rglob("*")) if p.is_file() and p.relative_to(root).as_posix() not in excluded];payload=_signed({"schema_version":1,"document_type":"stage_f_f3h_payload_manifest","status":"PASS","payload_count":len(files),"artifacts":files});_write_new(repo/PAYLOAD_MANIFEST_PATH,payload);inv=_inventory(root,exclude=("whole_root_inventory.json","status.json","completion/f3h.pending.json","completion/f3h.json"));inventory=_signed({"schema_version":1,"document_type":"stage_f_f3h_whole_root_inventory","root":ROOT_PATH,"files":inv["files"],"file_count":inv["file_count"],"total_bytes":inv["total_bytes"]});_write_new(repo/INVENTORY_PATH,inventory);status=_signed({"schema_version":1,"document_type":"stage_f_f3h_status","status":"PASS","terminal":True,"scientific_validity":"PASS" if validation["value_path_counts"]["failed"]+validation["value_path_counts"]["na"]==0 else "MIXED","value_path_counts":validation["value_path_counts"],"gradcam_status":"VALID","render_count":F3H_RENDER_COUNT,"class_conditioned_basis":validation["class_conditioned_basis"],"f4_status":"PAUSED_PENDING_F3H_AND_F3C","f4_started":False,"next_authorization":"F3C0_PROTOCOL_FREEZE_ONLY","whole_root_inventory":{"canonical_digest":inventory["canonical_digest"],"file_count":inventory["file_count"],"total_bytes":inventory["total_bytes"]},"git":{"commit":"SELF","ref":F3H_ARCHIVE_REF}});_write_new(repo/STATUS_PATH,status);pending=_strict_json(repo/PENDING_PATH,"pending");completion=_signed({"schema_version":1,"document_type":"stage_f_f3h_terminal_completion","status":"PASS","completed_at":completed_at,"started_at":pending["started_at"],"scientific_validity":status["scientific_validity"],"value_path_counts":status["value_path_counts"],"gradcam_status":"VALID","render_count":F3H_RENDER_COUNT,"exported_file_count":F3H_EXPORT_COUNT,"review_count":F3H_RENDER_COUNT,"class_conditioned_basis":status["class_conditioned_basis"],"validation_report":_record(repo,VALIDATION_PATH),"false_pass_audit":_record(repo,FALSE_PASS_PATH),"test_report":test,"terminal_union":_record(repo,TERMINAL_UNION_PATH),"map_inventory":_record(repo,MAP_INVENTORY_PATH),"component_manifest":_record(repo,COMPONENT_MANIFEST_PATH),"scale_manifest":_record(repo,SCALE_MANIFEST_PATH),"consensus_manifest":_record(repo,CONSENSUS_PATH),"panel_manifest":_record(repo,PANEL_MANIFEST_PATH),"render_inventory":_record(repo,RENDER_INVENTORY_PATH),"review_inventory":_record(repo,REVIEW_INVENTORY_PATH),"access_audit":_record(repo,ACCESS_AUDIT_PATH),"resource_audit":_record(repo,RESOURCE_AUDIT_PATH),"payload_manifest":_record(repo,PAYLOAD_MANIFEST_PATH),"whole_root_inventory":_record(repo,INVENTORY_PATH),"figure_analysis":_file_record(repo,ANALYSIS_PATH),"class_conditioned_basis_assessment":_record(repo,SUFFICIENCY_PATH),"f3_r7_or_blue_r4_modified":False,"f4_status":"PAUSED_PENDING_F3H_AND_F3C","f4_started":False,"next_authorization":"F3C0_PROTOCOL_FREEZE_ONLY","git":{"commit":"SELF","ref":F3H_ARCHIVE_REF}});temporary=(repo/PENDING_PATH).with_name(".f3h-terminal.tmp");_write_new(temporary,completion);os.replace(temporary,repo/PENDING_PATH);os.replace(repo/PENDING_PATH,repo/COMPLETION_PATH);return completion
+    repo=Path(repo_root).resolve();validation=_signed(validate_outputs(repo));_write_new(repo/VALIDATION_PATH,validation);test=_record(repo,TEST_PATH);root=repo/ROOT_PATH;excluded={"payload_manifest.json","whole_root_inventory.json","status.json","completion/f3h.pending.json","completion/f3h.json"};files=[{"path":p.relative_to(root).as_posix(),"bytes":p.stat().st_size,"sha256":_sha_file(p)} for p in sorted(root.rglob("*")) if p.is_file() and p.relative_to(root).as_posix() not in excluded];payload=_signed({"schema_version":1,"document_type":"stage_f_f3h_payload_manifest","status":"PASS","payload_count":len(files),"artifacts":files});_write_new(repo/PAYLOAD_MANIFEST_PATH,payload);inv=_inventory(root,exclude=("whole_root_inventory.json","status.json","completion/f3h.pending.json","completion/f3h.json"));inventory=_signed({"schema_version":1,"document_type":"stage_f_f3h_whole_root_inventory","root":ROOT_PATH,"files":inv["files"],"file_count":inv["file_count"],"total_bytes":inv["total_bytes"]});_write_new(repo/INVENTORY_PATH,inventory);status=_signed({"schema_version":1,"document_type":"stage_f_f3h_status","status":"PASS","terminal":True,"scientific_validity":"PASS" if validation["value_path_counts"]["failed"]+validation["value_path_counts"]["na"]==0 else "MIXED","value_path_counts":validation["value_path_counts"],"gradcam_status":"VALID","render_count":F3H_RENDER_COUNT,"class_conditioned_basis":validation["class_conditioned_basis"],"f4_status":"PAUSED_PENDING_F3H_AND_F3C","f4_started":False,"next_authorization":"F3C0_PROTOCOL_FREEZE_ONLY","whole_root_inventory":{"canonical_digest":inventory["canonical_digest"],"file_count":inventory["file_count"],"total_bytes":inventory["total_bytes"]},"git":{"commit":"SELF","ref":F3H_ARCHIVE_REF}});_write_new(repo/STATUS_PATH,status);pending=_strict_json(repo/PENDING_PATH,"pending");completion=_signed({"schema_version":1,"document_type":"stage_f_f3h_terminal_completion","status":"PASS","completed_at":completed_at,"started_at":pending["started_at"],"scientific_validity":status["scientific_validity"],"value_path_counts":status["value_path_counts"],"gradcam_status":"VALID","render_count":F3H_RENDER_COUNT,"exported_file_count":F3H_EXPORT_COUNT,"review_count":F3H_RENDER_COUNT,"class_conditioned_basis":status["class_conditioned_basis"],"r1_compute_source_inventory":_record(repo,F3H_R1_COMPUTE_INVENTORY),"r1_failure":_file_record(repo,F3H_R1_FAILURE),"r2_addendum":_file_record(repo,F3H_R2_ADDENDUM),"validation_report":_record(repo,VALIDATION_PATH),"false_pass_audit":_record(repo,FALSE_PASS_PATH),"test_report":test,"terminal_union":_record(repo,TERMINAL_UNION_PATH),"map_inventory":_record(repo,MAP_INVENTORY_PATH),"component_manifest":_record(repo,COMPONENT_MANIFEST_PATH),"scale_manifest":_record(repo,SCALE_MANIFEST_PATH),"consensus_manifest":_record(repo,CONSENSUS_PATH),"panel_manifest":_record(repo,PANEL_MANIFEST_PATH),"render_inventory":_record(repo,RENDER_INVENTORY_PATH),"review_inventory":_record(repo,REVIEW_INVENTORY_PATH),"access_audit":_record(repo,ACCESS_AUDIT_PATH),"resource_audit":_record(repo,RESOURCE_AUDIT_PATH),"payload_manifest":_record(repo,PAYLOAD_MANIFEST_PATH),"whole_root_inventory":_record(repo,INVENTORY_PATH),"figure_analysis":_file_record(repo,ANALYSIS_PATH),"class_conditioned_basis_assessment":_record(repo,SUFFICIENCY_PATH),"r2_new_scientific_computation":False,"f3_r7_or_blue_r4_modified":False,"f4_status":"PAUSED_PENDING_F3H_AND_F3C","f4_started":False,"next_authorization":"F3C0_PROTOCOL_FREEZE_ONLY","git":{"commit":"SELF","ref":F3H_ARCHIVE_REF}});temporary=(repo/PENDING_PATH).with_name(".f3h-terminal.tmp");_write_new(temporary,completion);os.replace(temporary,repo/PENDING_PATH);os.replace(repo/PENDING_PATH,repo/COMPLETION_PATH);return completion
 
 
 def validate_completion(repo_root:Path|str=REPO_ROOT)->dict[str,Any]:
     repo=Path(repo_root).resolve();completion=_strict_json(repo/COMPLETION_PATH,"completion");_validate_signed(completion,"completion")
     if (repo/PENDING_PATH).exists() or completion["status"]!="PASS" or completion["render_count"]!=F3H_RENDER_COUNT or completion["next_authorization"]!="F3C0_PROTOCOL_FREEZE_ONLY" or completion["f4_started"] or completion["f4_status"]!="PAUSED_PENDING_F3H_AND_F3C":raise StageFF3HError("F3H completion state drifted")
-    for field in ("validation_report","false_pass_audit","test_report","terminal_union","map_inventory","component_manifest","scale_manifest","consensus_manifest","panel_manifest","render_inventory","review_inventory","access_audit","resource_audit","payload_manifest","whole_root_inventory","class_conditioned_basis_assessment"):
+    for field in ("r1_compute_source_inventory","validation_report","false_pass_audit","test_report","terminal_union","map_inventory","component_manifest","scale_manifest","consensus_manifest","panel_manifest","render_inventory","review_inventory","access_audit","resource_audit","payload_manifest","whole_root_inventory","class_conditioned_basis_assessment"):
         if completion[field]!=_record(repo,completion[field]["path"]):raise StageFF3HError(f"completion binding drifted: {field}")
-    if completion["figure_analysis"]!=_file_record(repo,ANALYSIS_PATH):raise StageFF3HError("figure analysis binding drifted")
+    if completion["figure_analysis"]!=_file_record(repo,ANALYSIS_PATH) or completion["r1_failure"]!=_file_record(repo,F3H_R1_FAILURE) or completion["r2_addendum"]!=_file_record(repo,F3H_R2_ADDENDUM) or completion["r2_new_scientific_computation"]:raise StageFF3HError("completion recovery binding drifted")
     return {"status":"PASS","scientific_validity":completion["scientific_validity"],"value_path_counts":completion["value_path_counts"],"gradcam_status":"VALID","render_count":F3H_RENDER_COUNT,"class_conditioned_basis":completion["class_conditioned_basis"],"next_authorization":"F3C0_PROTOCOL_FREEZE_ONLY","f4_status":"PAUSED_PENDING_F3H_AND_F3C","archive_ref":F3H_ARCHIVE_REF}
 
 
 def main(argv:Sequence[str]|None=None)->int:
     import argparse
     parser=argparse.ArgumentParser();sub=parser.add_subparsers(dest="command",required=True)
-    for name in ("validate-implementation","validate-implementation-completion","validate-initialized","authorize-bulk","run-gradcam","reconcile","build-components","build-consensus","assess-basis","render","build-audits","validate-outputs","validate-completion"):
+    for name in ("validate-implementation","validate-implementation-completion","seal-r1-compute","validate-initialized","authorize-bulk","reconcile","build-components","build-consensus","assess-basis","render","build-audits","validate-outputs","validate-completion"):
         child=sub.add_parser(name);child.add_argument("--repo-root",type=Path,default=REPO_ROOT)
     freeze=sub.add_parser("freeze-implementation");freeze.add_argument("--repo-root",type=Path,default=REPO_ROOT);freeze.add_argument("--completed-at",required=True);freeze.add_argument("--passed",type=int,required=True);freeze.add_argument("--failed",type=int,required=True);freeze.add_argument("--test-command",required=True)
     init=sub.add_parser("initialize");init.add_argument("--repo-root",type=Path,default=REPO_ROOT);init.add_argument("--started-at",required=True)
     pilot=sub.add_parser("run-pilot");pilot.add_argument("--repo-root",type=Path,default=REPO_ROOT);pilot.add_argument("--device",default="cuda:0")
     shard=sub.add_parser("run-shard");shard.add_argument("--repo-root",type=Path,default=REPO_ROOT);shard.add_argument("--shard-id",type=int,required=True);shard.add_argument("--shard-count",type=int,default=8);shard.add_argument("--device",default="cuda:0")
+    gradcam=sub.add_parser("run-gradcam");gradcam.add_argument("--repo-root",type=Path,default=REPO_ROOT);gradcam.add_argument("--device",default="cuda:0")
     tests=sub.add_parser("record-tests");tests.add_argument("--repo-root",type=Path,default=REPO_ROOT);tests.add_argument("--passed",type=int,required=True);tests.add_argument("--failed",type=int,required=True);tests.add_argument("--test-command",required=True)
     final=sub.add_parser("finalize");final.add_argument("--repo-root",type=Path,default=REPO_ROOT);final.add_argument("--completed-at",required=True);args=parser.parse_args(argv)
     try:
-        table={"validate-implementation":lambda:validate_implementation(args.repo_root),"validate-implementation-completion":lambda:validate_implementation_completion(args.repo_root),"freeze-implementation":lambda:freeze_implementation(args.repo_root,completed_at=args.completed_at,passed=args.passed,failed=args.failed,command=args.test_command),"validate-initialized":lambda:validate_initialized(args.repo_root),"initialize":lambda:initialize(args.repo_root,started_at=args.started_at),"run-pilot":lambda:run_pilot(args.repo_root,device=args.device),"authorize-bulk":lambda:authorize_bulk(args.repo_root),"run-shard":lambda:run_shard(args.repo_root,shard_id=args.shard_id,shard_count=args.shard_count,device=args.device),"run-gradcam":lambda:run_gradcam(args.repo_root,device=args.device),"reconcile":lambda:reconcile_terminals(args.repo_root),"build-components":lambda:build_components(args.repo_root),"build-consensus":lambda:build_consensus_manifest(args.repo_root),"assess-basis":lambda:assess_class_conditioned_basis(args.repo_root),"render":lambda:render_outputs(args.repo_root),"build-audits":lambda:build_final_audits(args.repo_root),"record-tests":lambda:record_tests(args.repo_root,passed=args.passed,failed=args.failed,command=args.test_command),"validate-outputs":lambda:validate_outputs(args.repo_root),"finalize":lambda:finalize(args.repo_root,completed_at=args.completed_at),"validate-completion":lambda:validate_completion(args.repo_root)};result=table[args.command]()
+        table={"validate-implementation":lambda:validate_implementation(args.repo_root),"validate-implementation-completion":lambda:validate_implementation_completion(args.repo_root),"seal-r1-compute":lambda:seal_r1_compute_failure(args.repo_root),"freeze-implementation":lambda:freeze_implementation(args.repo_root,completed_at=args.completed_at,passed=args.passed,failed=args.failed,command=args.test_command),"validate-initialized":lambda:validate_initialized(args.repo_root),"initialize":lambda:initialize(args.repo_root,started_at=args.started_at),"run-pilot":lambda:run_pilot(args.repo_root,device=args.device),"authorize-bulk":lambda:authorize_bulk(args.repo_root),"run-shard":lambda:run_shard(args.repo_root,shard_id=args.shard_id,shard_count=args.shard_count,device=args.device),"run-gradcam":lambda:run_gradcam(args.repo_root,device=args.device),"reconcile":lambda:reconcile_terminals(args.repo_root),"build-components":lambda:build_components(args.repo_root),"build-consensus":lambda:build_consensus_manifest(args.repo_root),"assess-basis":lambda:assess_class_conditioned_basis(args.repo_root),"render":lambda:render_outputs(args.repo_root),"build-audits":lambda:build_final_audits(args.repo_root),"record-tests":lambda:record_tests(args.repo_root,passed=args.passed,failed=args.failed,command=args.test_command),"validate-outputs":lambda:validate_outputs(args.repo_root),"finalize":lambda:finalize(args.repo_root,completed_at=args.completed_at),"validate-completion":lambda:validate_completion(args.repo_root)};result=table[args.command]()
     except (StageFF3HError,OSError,ValueError) as error:
         print(json.dumps({"status":"BLOCKED","error":str(error)},sort_keys=True),file=sys.stderr);return 2
     print(json.dumps(result,indent=2,sort_keys=True));return 0

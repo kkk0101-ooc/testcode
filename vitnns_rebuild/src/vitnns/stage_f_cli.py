@@ -51,7 +51,7 @@ def _parser() -> argparse.ArgumentParser:
     f3h0_check = sub.add_parser("validate-f3h0-protocol"); f3h0_check.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h0_check.add_argument("--require-clean", action="store_true")
     f3h0_freeze = sub.add_parser("freeze-f3h0-protocol"); f3h0_freeze.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h0_freeze.add_argument("--frozen-at", required=True); f3h0_freeze.add_argument("--test-passed", required=True, type=int); f3h0_freeze.add_argument("--test-failed", required=True, type=int); f3h0_freeze.add_argument("--test-command", required=True)
     f3h0_completion = sub.add_parser("validate-f3h0-completion"); f3h0_completion.add_argument("--repo-root", type=Path, default=REPO_ROOT)
-    for name in ("validate-f3h1-implementation", "validate-f3h1-completion", "validate-f3h-initialized", "authorize-f3h-bulk", "reconcile-f3h", "build-f3h-components", "build-f3h-consensus", "assess-f3h-basis", "render-f3h", "build-f3h-audits", "validate-f3h-outputs", "validate-f3h-completion"):
+    for name in ("validate-f3h1-implementation", "validate-f3h1-completion", "seal-f3h-r1-compute", "validate-f3h-initialized", "authorize-f3h-bulk", "reconcile-f3h", "build-f3h-components", "build-f3h-consensus", "assess-f3h-basis", "render-f3h", "build-f3h-audits", "validate-f3h-outputs", "validate-f3h-completion"):
         child = sub.add_parser(name); child.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     f3h1_freeze = sub.add_parser("freeze-f3h1-implementation"); f3h1_freeze.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h1_freeze.add_argument("--completed-at", required=True); f3h1_freeze.add_argument("--passed", type=int, required=True); f3h1_freeze.add_argument("--failed", type=int, required=True); f3h1_freeze.add_argument("--test-command", required=True)
     f3h_init = sub.add_parser("initialize-f3h"); f3h_init.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h_init.add_argument("--started-at", required=True)
@@ -103,6 +103,7 @@ def run(arguments: list[str] | None = None) -> dict[str, Any]:
         commands = {
             "validate-f3h1-implementation": lambda: f3h.validate_implementation(args.repo_root),
             "validate-f3h1-completion": lambda: f3h.validate_implementation_completion(args.repo_root),
+            "seal-f3h-r1-compute": lambda: f3h.seal_r1_compute_failure(args.repo_root),
             "freeze-f3h1-implementation": lambda: f3h.freeze_implementation(args.repo_root, completed_at=args.completed_at, passed=args.passed, failed=args.failed, command=args.test_command),
             "initialize-f3h": lambda: f3h.initialize(args.repo_root, started_at=args.started_at),
             "validate-f3h-initialized": lambda: f3h.validate_initialized(args.repo_root),

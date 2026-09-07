@@ -86,13 +86,55 @@ def test_implementation_validation_binds_existing_kernels_and_never_starts_f4() 
 
 
 def test_r1_uses_new_root_and_directly_pins_model_and_sample() -> None:
-    assert "f3h_full_head_r1_recovery_v2_20260907" in f3h.ROOT_PATH
+    assert "f3h_full_head_r1_recovery_v2_20260907" in f3h.F3H_R1_COMPUTE_ROOT
+    assert "f3h_full_head_r2_cpu_reconcile_20260907" in f3h.ROOT_PATH
     assert f3h.F3H_R1_PRODUCER_REF == "refs/archive/stage-f-v1-f3h-r1-producer"
     source = (REPO / "src/vitnns/stage_f_f3h.py").read_text(encoding="utf-8")
     assert "from .stage_e_e1 import _load_model_and_context" not in source
     assert "from .recovery_v2 import load_recovery_v2_binding" not in source
     for token in ("expected_state_dict_sha256=MODEL_SHA256", "expected_canonical_tensor_digest=MODEL_TENSOR_DIGEST", "tensor_sha256(clean)", "F3H_V1_FAILURE_SHA256"):
         assert token in source
+
+
+def test_r2_forbids_every_gpu_recompute_entrypoint() -> None:
+    with pytest.raises(f3h.StageFF3HError, match="CPU-only"):
+        f3h.run_pilot(REPO)
+    with pytest.raises(f3h.StageFF3HError, match="forbids new bulk"):
+        f3h.authorize_bulk(REPO)
+    with pytest.raises(f3h.StageFF3HError, match="CPU-only"):
+        f3h.run_shard(REPO, shard_id=0)
+    with pytest.raises(f3h.StageFF3HError, match="CPU-only"):
+        f3h.run_gradcam(REPO)
+
+
+def test_inherited_e3_target_digest_is_triple_bound_and_conflict_rejected() -> None:
+    config=f3h._config(REPO);unit=next(u for u in f3h.build_plan(REPO)["value_path_units"] if u["block"]==4 and u["head"]==2 and u["method"]==f3h.NNS)
+    source=f3h._strict_json(REPO/unit["source"]["source_result_path"],"test E3 source")
+    digest,schema=f3h._inherited_target_semantic_digest(source,unit,config)
+    assert schema=="E3_TRIPLE_BOUND_TARGET_IDENTITY"
+    assert digest==source["source_hashes"]["target_semantic_digest"]==source["pair_binding"]["target_semantic_digest"]
+    attacked=copy.deepcopy(source);attacked["pair_binding"]["target_semantic_digest"]="0"*64
+    with pytest.raises(f3h.StageFF3HError,match="digests conflict"):
+        f3h._inherited_target_semantic_digest(attacked,unit,config)
+
+
+def test_r2_target_digest_adapter_does_not_import_torch_or_timm() -> None:
+    source=(REPO/"src/vitnns/stage_f_f3h.py").read_text(encoding="utf-8")
+    tree=ast.parse(source);function=next(node for node in tree.body if isinstance(node,ast.FunctionDef) and node.name=="_inherited_target_semantic_digest")
+    segment=ast.get_source_segment(source,function) or ""
+    assert "stage_e_e1" not in segment and "torch" not in segment and "timm" not in segment
+
+
+def test_r1_compute_inventory_rejects_source_byte_drift(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    source_root=tmp_path/"r1";source_root.mkdir();payload=source_root/"payload.bin";payload.write_bytes(b"sealed")
+    inventory=f3h._inventory(source_root)
+    document=f3h._signed({"schema_version":1,"document_type":"stage_f_f3h_r1_compute_source_inventory","status":"BLOCKED_CPU_RECONCILIATION_AFTER_COMPLETE_GPU_COMPUTE","root":"r1","files":inventory["files"],"file_count":inventory["file_count"],"total_bytes":inventory["total_bytes"],"value_path_status_counts":{"VALID":280},"new_value_path_terminals":280,"gradcam_status":"VALID","telemetry_count":9,"terminal_union_written":False,"f4_started":False})
+    inventory_path=tmp_path/"inventory.json";f3h._write_new(inventory_path,document)
+    monkeypatch.setattr(f3h,"F3H_R1_COMPUTE_ROOT","r1");monkeypatch.setattr(f3h,"F3H_R1_COMPUTE_INVENTORY","inventory.json")
+    assert f3h._validate_r1_compute_inventory(tmp_path)["file_count"]==1
+    payload.write_bytes(b"tampered")
+    with pytest.raises(f3h.StageFF3HError,match="inventory drifted"):
+        f3h._validate_r1_compute_inventory(tmp_path)
 
 
 def test_implementation_false_pass_audit_is_complete() -> None:
@@ -131,7 +173,7 @@ def _synthetic_result(unit: dict[str, object], status: str, map_digest: str | No
 
 
 def test_atomic_valid_terminal_round_trip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(f3h, "ROOT_PATH", "formal")
+    monkeypatch.setattr(f3h, "COMPUTE_SOURCE_ROOT", "formal")
     unit = _synthetic_unit("a" * 64); array = np.arange(56 * 56, dtype=np.float32).reshape(56, 56)
     f3h._publish_terminal(tmp_path, unit, _synthetic_result(unit, "VALID", f3h._array_digest(array)), array)
     observed = f3h.validate_attempt(tmp_path, unit)
@@ -142,7 +184,7 @@ def test_atomic_valid_terminal_round_trip(tmp_path: Path, monkeypatch: pytest.Mo
 
 
 def test_failed_terminal_has_no_imputed_map(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(f3h, "ROOT_PATH", "formal")
+    monkeypatch.setattr(f3h, "COMPUTE_SOURCE_ROOT", "formal")
     unit = _synthetic_unit("b" * 64)
     f3h._publish_terminal(tmp_path, unit, _synthetic_result(unit, "FAILED", None), None)
     observed = f3h.validate_attempt(tmp_path, unit)
@@ -183,5 +225,5 @@ def test_f3h_completion_if_present_is_atomic() -> None:
 
 def test_cli_dispatch_contains_every_f3h_lifecycle_command() -> None:
     source = (REPO / "src/vitnns/stage_f_f3h.py").read_text(encoding="utf-8")
-    for command in ("freeze-implementation", "initialize", "run-pilot", "authorize-bulk", "run-shard", "run-gradcam", "reconcile", "build-components", "build-consensus", "assess-basis", "render", "build-audits", "record-tests", "validate-outputs", "finalize", "validate-completion"):
+    for command in ("freeze-implementation", "seal-r1-compute", "initialize", "run-pilot", "authorize-bulk", "run-shard", "run-gradcam", "reconcile", "build-components", "build-consensus", "assess-basis", "render", "build-audits", "record-tests", "validate-outputs", "finalize", "validate-completion"):
         assert f'"{command}":lambda:' in source
