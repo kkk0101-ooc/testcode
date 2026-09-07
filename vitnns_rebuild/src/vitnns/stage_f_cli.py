@@ -66,6 +66,7 @@ def _parser() -> argparse.ArgumentParser:
     for name in ("verify-f3c1-startup", "validate-f3c1-engineering", "build-f3c1-audits", "build-f3c1-false-pass", "validate-f3c1-outputs", "validate-f3c1-completion"):
         child = sub.add_parser(name); child.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     f3c1_init = sub.add_parser("initialize-f3c1"); f3c1_init.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c1_init.add_argument("--started-at", required=True)
+    f3c1_init_r4 = sub.add_parser("initialize-f3c1-r4"); f3c1_init_r4.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c1_init_r4.add_argument("--started-at", required=True)
     f3c1_run = sub.add_parser("run-f3c1-engineering"); f3c1_run.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c1_run.add_argument("--device", default="cuda:0")
     f3c1_tests = sub.add_parser("record-f3c1-tests"); f3c1_tests.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c1_tests.add_argument("--passed", type=int, required=True); f3c1_tests.add_argument("--failed", type=int, required=True); f3c1_tests.add_argument("--initial-failed-attempts", type=int, default=0); f3c1_tests.add_argument("--test-command", required=True)
     f3c1_final = sub.add_parser("finalize-f3c1"); f3c1_final.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c1_final.add_argument("--completed-at", required=True)
@@ -117,6 +118,7 @@ def run(arguments: list[str] | None = None) -> dict[str, Any]:
         commands = {
             "verify-f3c1-startup": lambda: f3c1.verify_startup_gates(args.repo_root),
             "initialize-f3c1": lambda: f3c1.initialize(args.repo_root, started_at=args.started_at),
+            "initialize-f3c1-r4": lambda: f3c1.initialize_r4_from_r3(args.repo_root, started_at=args.started_at),
             "run-f3c1-engineering": lambda: f3c1.run_engineering_check(args.repo_root, device=args.device),
             "validate-f3c1-engineering": lambda: f3c1.validate_engineering_terminal(args.repo_root),
             "record-f3c1-tests": lambda: f3c1.record_synthetic_tests(args.repo_root, passed=args.passed, failed=args.failed, command=args.test_command, initial_failed_attempts=args.initial_failed_attempts),

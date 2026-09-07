@@ -17,6 +17,8 @@ REPO = Path(__file__).resolve().parents[1]
 def test_f3c1_config_and_schema_freeze_exact_boundaries() -> None:
     config = f3c1.load_config(REPO)
     assert config["authorization"] == "F3C1_IMPLEMENTATION_AND_SYNTHETIC_PREFLIGHT_ONLY"
+    assert config["output_root"] == f3c1.ROOT_PATH
+    assert config["report_root"] == f3c1.REPORT_PATH
     assert config["method_id"] == kernels.METHOD_ID
     assert config["ig"]["schedule"] == [512, 1024, 2048, 4096, 8192]
     assert config["engineering_check"] == {
@@ -32,6 +34,13 @@ def test_false_pass_attack_roster_is_exactly_24_unique() -> None:
     assert len(set(f3c1.FALSE_PASS_ATTACKS)) == 24
 
 
+@pytest.mark.parametrize("attack", f3c1.FALSE_PASS_ATTACKS)
+def test_every_false_pass_precondition_is_independently_rejected(attack: str) -> None:
+    preconditions = {name: True for name in f3c1.FALSE_PASS_ATTACKS}
+    preconditions[attack] = False
+    assert f3c1.false_pass_reasons(preconditions) == (attack,)
+
+
 def test_atomic_terminal_publish_resume_conflict_and_tamper(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(f3c1, "ROOT_PATH", "formal")
     destination = tmp_path / "formal/engineering/order-44/attempts/attempt-000001"
@@ -41,7 +50,7 @@ def test_atomic_terminal_publish_resume_conflict_and_tamper(tmp_path: Path, monk
     }
     arrays = {"method.patch_mass.npy": np.ones((14, 14), dtype=np.float32)}
     f3c1._publish_terminal_directory(destination, result, arrays)
-    validated = f3c1.validate_engineering_terminal(tmp_path)
+    validated = f3c1.validate_typed_terminal_directory(destination)
     assert validated["status"] == "PASS"
     with pytest.raises(f3c1.StageFF3C1Error, match="overwrite"):
         f3c1._publish_terminal_directory(destination, result, arrays)
@@ -50,7 +59,7 @@ def test_atomic_terminal_publish_resume_conflict_and_tamper(tmp_path: Path, monk
     with path.open("wb") as stream:
         np.save(stream, changed, allow_pickle=False)
     with pytest.raises(f3c1.StageFF3C1Error, match="tamper"):
-        f3c1.validate_engineering_terminal(tmp_path)
+        f3c1.validate_typed_terminal_directory(destination)
 
 
 def test_pending_cannot_validate_as_completion(tmp_path: Path, monkeypatch) -> None:
