@@ -55,8 +55,8 @@ F1_VALIDATION_SCHEMA_PATH = "config/stage_f_f1_validation_report.schema.json"
 F1_COMPLETION_SCHEMA_PATH = "config/stage_f_f1_completion.schema.json"
 F1_FALSE_PASS_SCHEMA_PATH = "config/stage_f_f1_false_pass_audit.schema.json"
 
-F1_ROOT_PATH = "evidence/stage_f/f1_recovery_v2_20260907/formal"
-F1_REPORT_PATH = "reports/stage_f_f1_20260907"
+F1_ROOT_PATH = "evidence/stage_f/f1_r2_recovery_v2_20260907/formal"
+F1_REPORT_PATH = "reports/stage_f_f1_r2_20260907"
 PENDING_PATH = F1_ROOT_PATH + "/completion/f1.pending.json"
 COMPLETION_PATH = F1_ROOT_PATH + "/completion/f1.json"
 STARTUP_PATH = F1_ROOT_PATH + "/startup_gate.json"
@@ -1052,34 +1052,37 @@ def build_render_spec(module_id: str, plot_data: Mapping[str, Any], layout: str)
 
 
 def build_caption_data(module_id: str, plot_data: Mapping[str, Any]) -> dict[str, Any]:
-    captions = {
-        "F1-A": {
+    if module_id == "F1-A":
+        caption = {
             "caption_key": CAPTION_KEY_BY_MODULE["F1-A"],
             "caption_text": F1_A_CAPTION,
             "panel_order": ["f1_a_cohort_median_interval"],
             "required_disclosure_preserved": True,
-        },
-        "F1-B": {
+        }
+    elif module_id == "F1-B":
+        caption = {
             "caption_key": CAPTION_KEY_BY_MODULE["F1-B"],
             "caption_text": plot_data["caption_text"],
             "panel_order": ["f1_b_stage_d_delta_fid_ecdf"],
             "complete_stage_d_cohort": True,
             "misclassified_rows_retained": plot_data["plot_payload"]["misclassified_rows_retained"],
-        },
-        "F1-C": {
+        }
+    elif module_id == "F1-C":
+        caption = {
             "caption_key": CAPTION_KEY_BY_MODULE["F1-C"],
             "caption_text": plot_data["caption_text"],
             "panel_order": ["f1_c_insertion", "f1_c_deletion"],
             "band": "pointwise_non_simultaneous",
             "enters_primary_decision": False,
-        },
-    }
+        }
+    else:
+        raise StageFF1Error(f"unknown F1 module: {module_id}")
     return _signed({
         "schema_version": 1,
         "document_type": "stage_f_f1_caption_data",
         "stage_id": "F1",
         "module_id": module_id,
-        **captions[module_id],
+        **caption,
     })
 
 
