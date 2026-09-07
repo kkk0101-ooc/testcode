@@ -508,3 +508,20 @@ F3H 保持 F3 r7 和 blue-display r4 不变：
 - 保守预算 33.5 H20-GPU-hours，硬上限 40.0，无自动 waiver。
 
 F3H 原子里程碑为 F3H0 protocol freeze、F3H1 implementation/synthetic preflight、F3H2 formal GPU compute、F3H3 CPU validation/render/seal。F3H0 不加载模型、不解码 JPEG、不导入 Torch/timm、不访问 CUDA/GPU、不运行 attribution。F3H0 PASS 只能授权 `F3H1_IMPLEMENTATION_AND_SYNTHETIC_PREFLIGHT_ONLY`，不能直接授权正式 GPU 运行，也不能恢复 F4。
+
+## 17. F3H0 protocol-freeze completion record（2026-09-07）
+
+F3H0 已在独立 protocol-only root `evidence/stage_f/f3h0_protocol_v1_20260907/formal/` 完成，状态 `PASS`：
+
+- protocol ID：`STAGE_F_F3H_FULL_HEAD_GRADCAM_V1_20260907`；配置 canonical digest `e5ac9692663797a6a0f217151deedb9d61442902c2128a5a7a53483b1b72936e`；
+- 样本固定为 order 44 / `ILSVRC2012_val_00002287.JPEG`，image SHA-256 `c597ef7e061560542edbd77d2cbca6107cc44ff5e86de487a015eb47ae4620a8`，clean input digest `f901fab0e43fbbc725aff3157ef7a91604cb30b4fdd92d2cb2f1aea49f092484`，Grad-CAM class index `713`；
+- 模型固定为 recovery-v2 `489bfa2f...` / canonical tensor digest `150234d...`，历史 `2e718...` 禁用；
+- workload 固定为 144 coordinates、288 Value-path terminals，其中 8 inherited / 280 new，另有 exactly one Grad-CAM terminal；
+- pair-shared log 变换固定 `M=max(max_abs_nns,max_abs_matched)` 与 `kappa=999`，正负贡献分开；禁止 method-specific brightness/gamma/alpha 和 best-head selection；
+- 预算保守投影 33.4865 H20-GPU-hours，硬上限 40.0，无自动 waiver；
+- 预期 4 个 full atlases、12 个 block paired pages、1 个 Grad-CAM reference，共 17 renders / 17 review copies；
+- false-pass audit 20/20 attacks 均 `REJECTED`；F3H0/blue-display 联合回归 27 passed、0 failed；`git diff --check` PASS；
+- F3H0 未解码 JPEG、未反序列化或加载模型、未导入 Torch/timm、未访问 CUDA/GPU、未运行 attribution；只流式读取 checkpoint 字节用于 SHA-256 身份核验；
+- completion SHA-256 `615e668e223153f73ebe5fde732832b4f5c26024ddefae0bf14fe5cf09d2ac4a`，terminal canonical digest `32c05c18879a926195e99fd61045a86867928c0392b35b278ea2c2dbe0b0de61`。
+
+F4 保持 `PAUSED_PENDING_F3H`。当前唯一下一授权为 `F3H1_IMPLEMENTATION_AND_SYNTHETIC_PREFLIGHT_ONLY`；正式 GPU 计算尚未授权、尚未开始。
