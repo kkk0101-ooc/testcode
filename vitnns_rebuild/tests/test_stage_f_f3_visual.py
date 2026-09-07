@@ -18,6 +18,10 @@ REPO = Path(__file__).resolve().parents[1]
 
 def test_blue_display_contract_is_exact():
     config = _load_config(REPO)
+    assert config["revision_id"] == "F3_BLUE_DISPLAY_R4_20260907"
+    assert config["layout"]["matrix"]["dedicated_horizontal_row_label_column"] is True
+    assert config["layout"]["matrix"]["row_labels"] == ["NNS", "Matched patch"]
+    assert config["layout"]["failure_title_no_duplicate_order"] is True
     transform = config["transform"]
     assert transform["source"] == "ABSOLUTE_MAGNITUDE_OF_RAW_SIGNED_MAP"
     assert transform["normalization"] == "PER_PANEL_MAX_ABSOLUTE_VALUE"

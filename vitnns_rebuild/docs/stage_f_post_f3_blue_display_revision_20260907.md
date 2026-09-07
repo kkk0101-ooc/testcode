@@ -34,14 +34,14 @@ Because each panel is independently shape-normalized, color intensity in this re
 
 ## 4. Layout
 
-- Figure 5/S1/S2 cases: compact 2-row layout with Original, NNS, Matched baseline, absolute difference, two overlays, and fidelity curves. Titles are short; filenames and protocol prose stay in captions/reports.
-- Figure 6/S4: Original plus a compact 2x4 matrix, NNS first and Matched baseline second, coordinates as column headings. Difference views remain available in r7 and are omitted from the blue matrix.
+- Figure 5/S1/S2 cases: compact 2-row layout with Original, NNS, Matched patch baseline, absolute difference, two overlays, and fidelity curves. Titles are short; the fidelity panel uses a compact framed legend and no vertical axis label, while filenames and protocol prose stay in captions/reports.
+- Figure 6/S4: Original plus a compact 2x4 matrix, NNS first and Matched patch second, coordinates as column headings. `NNS` and `Matched patch` occupy a dedicated horizontal row-label column and may not be rotated, clipped, or attached outside a heatmap axis. Difference views remain available in r7 and are omitted from the blue matrix.
 - Failed/NA cells use the same deep-blue background with explicit white failure text and typed failure code. No value is imputed.
 - Panel letters are inside their panels; row/column labels remain outside matrices; no long prose is drawn inside figures.
 
 ## 5. Outputs and boundaries
 
-Outputs are evidence/stage_f/f3_visual_r3_recovery_v2_20260907/formal/ and reports/stage_f_f3_visual_r3_20260907/. Visual r1 and r2 are retained as blocked attempts.
+Outputs are evidence/stage_f/f3_visual_r4_recovery_v2_20260907/formal/ and reports/stage_f_f3_visual_r4_20260907/. Visual r1, r2, and r3 are retained as blocked attempts.
 
 The revision produces Figure 5, Figure 6, S1, S2, and S4 replacement modules plus source/transform/render/review inventories, validation, false-pass audit, and completion. It does not modify the F3 r7 archive ref and does not start F4.
 
