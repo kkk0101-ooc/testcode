@@ -1,7 +1,7 @@
 # 阶段 F：正式成图、定性展示与论文交付
 
 > 建立日期：2026-09-07。
-> 当前状态：Stage E E4 已完成并封存；当前唯一执行入口为 `F0_ONLY`。
+> 当前状态：Stage F F0 已完成并封存；当前唯一下一任务为 `F1_ONLY`。
 > 文档性质：Stage F 的权威规划、阶段边界和验收合同；不是一次性跳过阶段门禁的总授权。
 > 选择规则：定性案例继续受 [阶段 F 展示选择协议 v1](stage_f_display_protocol_v1.md) 约束。
 
@@ -384,8 +384,22 @@ C10/Stage D 对照图必须包含等价声明：
 
 固定审计案例必须标为 `fixed audit examples`，不得称为最佳、代表性或随机样本。任何逐案例色限图必须说明色限只支持案例内方法比较，不支持案例间绝对幅度比较。
 
-## 10. 当前下一步
+## 10. F0 completion record（2026-09-07）
 
-当前只执行 F0。F0 必须先验证 E4 completion ref `refs/archive/stage-e-e4-completion`、E4 formal root、D10 paper package、展示选择协议和 clean Git/LFS 状态，然后冻结并实现 Stage F renderer、配置、schemas、golden tests、provenance 和 false-pass audit。
+F0 最终在不可覆盖的 r4 root 完成：
 
-F0 不生成正式论文结果图，不读取规则选例后的 reserve JPEG，不加载模型，不使用 GPU，不执行 F1–F4。F0 terminal completion 经独立验证、commit、push 和 archive ref 核验后，下一任务才是 `F1_ONLY`。
+- 输入绑定：E4 `7c82eca4e7de488f4537eff2b3fdb59feb3413ab`，completion SHA-256 `42ad2b483e40c164b4e26e1d8d65ecfc00703a2c01c2f0589961bcbefa8d58dc`，whole-root canonical digest `75249c74e08cb5038acbc86f71051260f9d9b7b6cc80d23c517e8669f3765f67`；D10 `7520689bb031304e4789567f99d093062aa50f72`。
+- 实现：`src/vitnns/stage_f_renderer.py`、`src/vitnns/stage_f_cli.py`、`src/vitnns/stage_f_f0.py`；冻结 config/run spec/catalog/caption 和 9 个 Stage F schema。
+- 正式输出：`evidence/stage_f/f0_r4_recovery_v2_20260907/formal/` 与 `reports/stage_f_f0_r4_20260907/`；whole-root canonical digest `28eab8d914cb062ade48e781985cc7055b6cbc703731d2086e323a0b47d5fdc8`。
+- 测试：隔离环境 `CUDA_VISIBLE_DEVICES=''` 下 45 passed、0 failed；另有 13 个 Matplotlib/pyparsing deprecation warnings，不影响结果；`git diff --check` PASS。
+- golden：3 套 synthetic-only fixtures，覆盖 single-column、double-column 和 full-width qualitative；每套均导出 600 DPI PNG、PDF 和 SVG，并通过重复渲染、字体嵌入、物理尺寸、跨格式内容 identity 与视觉 sanity 检查。正式论文 scientific figures rendered = `0`。
+- false-pass audit：12/12 attacks 均 `REJECTED`。formal F0 producer 未加载模型、未导入 Torch/timm、CUDA 隐藏且无 NVIDIA device handle、未读取 JPEG；D10/E4 决策和统计未修改。
+- 参考 PDF：仅用于布局密度、方法示意、成组热图、曲线和多面板组织审计；`style_reference_only=true`、`scientific_input=false`、`content_or_graphics_copied=false`、`reference_values_entered_results=false`。
+- deviations：开发期误跑全仓测试，触发既有 Torch/CUDA 初始化后被中止；发生在 formal producer 初始化前，无模型/checkpoint/JPEG/scientific compute，已写入 r4 startup gate。r1 因单栏视觉拥挤、r2/r3 因 inventory validator 实现问题均 fail closed 并原样保留为非权威历史尝试；仅 r4 为 terminal PASS。
+- Git/LFS：terminal delivery commit 记为 `SELF`；`stage-d-d3-pass` 已按交付合同推送，`refs/archive/stage-f-v1-f0-completion` 指向同一最终 commit，local/tracking/remote 一致且 worktree/index/LFS clean；这些外部状态由提交后的 final verification 核验。
+
+F0 terminal receipt 只授权 `F1_ONLY`；F2、F3、F4 均未开始。
+
+## 11. 当前下一步
+
+当前只授权 `F1_ONLY`。F1 只允许按本规划读取 D10 `paper_data` 和已封存 recipes，渲染主结果统计模块；不得启动 F2、F3 或 F4。
