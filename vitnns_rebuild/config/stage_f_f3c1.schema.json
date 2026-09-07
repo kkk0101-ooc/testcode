@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Stage F F3C1 implementation and synthetic preflight",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "document_type", "authorization", "output_root", "report_root", "method_id", "attention", "ig", "engineering_check", "statistics", "next_authorization_on_pass"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_f_f3c1_implementation_config"},
+    "authorization": {"const": "F3C1_IMPLEMENTATION_AND_SYNTHETIC_PREFLIGHT_ONLY"},
+    "output_root": {"const": "evidence/stage_f/f3c1_implementation_v1_20260907/formal"},
+    "report_root": {"const": "reports/stage_f_f3c1_implementation_v1_20260907"},
+    "method_id": {"const": "conditional_all_blocks_fixed_clean_attention_class_logit_ig"},
+    "attention": {"type": "object"},
+    "ig": {"type": "object"},
+    "engineering_check": {"type": "object"},
+    "statistics": {"type": "object"},
+    "next_authorization_on_pass": {"const": "F3C2_PILOT_ONLY"}
+  }
+}

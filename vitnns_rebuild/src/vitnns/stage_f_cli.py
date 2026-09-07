@@ -63,6 +63,12 @@ def _parser() -> argparse.ArgumentParser:
     f3c0_check = sub.add_parser("validate-f3c0-protocol"); f3c0_check.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c0_check.add_argument("--require-clean", action="store_true")
     f3c0_freeze = sub.add_parser("freeze-f3c0-protocol"); f3c0_freeze.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c0_freeze.add_argument("--frozen-at", required=True); f3c0_freeze.add_argument("--test-passed", required=True, type=int); f3c0_freeze.add_argument("--test-failed", required=True, type=int); f3c0_freeze.add_argument("--test-command", required=True)
     f3c0_completion = sub.add_parser("validate-f3c0-completion"); f3c0_completion.add_argument("--repo-root", type=Path, default=REPO_ROOT)
+    for name in ("verify-f3c1-startup", "validate-f3c1-engineering", "build-f3c1-audits", "build-f3c1-false-pass", "validate-f3c1-outputs", "validate-f3c1-completion"):
+        child = sub.add_parser(name); child.add_argument("--repo-root", type=Path, default=REPO_ROOT)
+    f3c1_init = sub.add_parser("initialize-f3c1"); f3c1_init.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c1_init.add_argument("--started-at", required=True)
+    f3c1_run = sub.add_parser("run-f3c1-engineering"); f3c1_run.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c1_run.add_argument("--device", default="cuda:0")
+    f3c1_tests = sub.add_parser("record-f3c1-tests"); f3c1_tests.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c1_tests.add_argument("--passed", type=int, required=True); f3c1_tests.add_argument("--failed", type=int, required=True); f3c1_tests.add_argument("--initial-failed-attempts", type=int, default=0); f3c1_tests.add_argument("--test-command", required=True)
+    f3c1_final = sub.add_parser("finalize-f3c1"); f3c1_final.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c1_final.add_argument("--completed-at", required=True)
     return parser
 
 
@@ -106,6 +112,21 @@ def run(arguments: list[str] | None = None) -> dict[str, Any]:
         if args.command == "validate-f3c0-protocol": return f3c0.validate_protocol(args.repo_root, require_clean=args.require_clean)
         if args.command == "freeze-f3c0-protocol": return f3c0.freeze(args.repo_root, frozen_at=args.frozen_at, test_passed=args.test_passed, test_failed=args.test_failed, test_command=args.test_command)
         return f3c0.validate_completion(args.repo_root)
+    if "f3c1" in args.command:
+        from . import stage_f_f3c1 as f3c1
+        commands = {
+            "verify-f3c1-startup": lambda: f3c1.verify_startup_gates(args.repo_root),
+            "initialize-f3c1": lambda: f3c1.initialize(args.repo_root, started_at=args.started_at),
+            "run-f3c1-engineering": lambda: f3c1.run_engineering_check(args.repo_root, device=args.device),
+            "validate-f3c1-engineering": lambda: f3c1.validate_engineering_terminal(args.repo_root),
+            "record-f3c1-tests": lambda: f3c1.record_synthetic_tests(args.repo_root, passed=args.passed, failed=args.failed, command=args.test_command, initial_failed_attempts=args.initial_failed_attempts),
+            "build-f3c1-audits": lambda: f3c1.build_audits(args.repo_root),
+            "build-f3c1-false-pass": lambda: f3c1.build_false_pass_audit(args.repo_root),
+            "validate-f3c1-outputs": lambda: f3c1.validate_outputs(args.repo_root),
+            "finalize-f3c1": lambda: f3c1.finalize(args.repo_root, completed_at=args.completed_at),
+            "validate-f3c1-completion": lambda: f3c1.validate_completion(args.repo_root),
+        }
+        return commands[args.command]()
     if "f3h" in args.command:
         from . import stage_f_f3h as f3h
         commands = {

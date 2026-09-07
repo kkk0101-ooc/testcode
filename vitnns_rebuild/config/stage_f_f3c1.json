@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "document_type": "stage_f_f3c1_implementation_config",
+  "authorization": "F3C1_IMPLEMENTATION_AND_SYNTHETIC_PREFLIGHT_ONLY",
+  "output_root": "evidence/stage_f/f3c1_implementation_v1_20260907/formal",
+  "report_root": "reports/stage_f_f3c1_implementation_v1_20260907",
+  "method_id": "conditional_all_blocks_fixed_clean_attention_class_logit_ig",
+  "attention": {
+    "blocks": 12,
+    "heads_per_block": 12,
+    "tokens": 197,
+    "source": "same_clean_forward_attn_drop_output_actually_consumed",
+    "manual_or_learned_head_weights": false
+  },
+  "ig": {
+    "schedule": [512, 1024, 2048, 4096, 8192],
+    "chunk_size": 8,
+    "atol": 0.0001,
+    "rtol": 0.01,
+    "endpoint_logits_max_abs_error_strictly_less_than": 1e-6
+  },
+  "engineering_check": {
+    "selection_order": 44,
+    "numerical_only": true,
+    "rendering_allowed": false,
+    "manual_map_inspection_allowed": false,
+    "included_in_pilot_formal_or_statistics": false
+  },
+  "statistics": {
+    "formal_n": 50,
+    "bootstrap_resamples": 10000,
+    "paired_sign_flip_resamples": 100000,
+    "two_sided": true,
+    "primary_contrast": "class_targeted_nns_minus_vit_grad_cam",
+    "secondary_holm_family": [
+      "class_targeted_nns_minus_full_model_ig",
+      "class_targeted_nns_minus_attention_rollout",
+      "class_targeted_nns_minus_raw_cls_attention"
+    ]
+  },
+  "next_authorization_on_pass": "F3C2_PILOT_ONLY"
+}
