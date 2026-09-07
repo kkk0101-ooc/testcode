@@ -40,6 +40,14 @@ def _parser() -> argparse.ArgumentParser:
     f2_finalize = sub.add_parser("finalize-f2"); f2_finalize.add_argument("--repo-root", type=Path, default=REPO_ROOT); f2_finalize.add_argument("--completed-at", required=True)
     f2_completion = sub.add_parser("validate-f2-completion"); f2_completion.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     f2_gate = sub.add_parser("verify-f2-startup"); f2_gate.add_argument("--repo-root", type=Path, default=REPO_ROOT)
+    f3_start = sub.add_parser("initialize-f3"); f3_start.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3_start.add_argument("--renderer-commit", required=True); f3_start.add_argument("--started-at", required=True)
+    f3_build = sub.add_parser("build-f3"); f3_build.add_argument("--repo-root", type=Path, default=REPO_ROOT)
+    f3_tests = sub.add_parser("record-f3-tests"); f3_tests.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3_tests.add_argument("--passed", type=int, required=True); f3_tests.add_argument("--failed", type=int, required=True); f3_tests.add_argument("--test-command", required=True)
+    f3_finalize = sub.add_parser("finalize-f3"); f3_finalize.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3_finalize.add_argument("--completed-at", required=True)
+    f3_completion = sub.add_parser("validate-f3-completion"); f3_completion.add_argument("--repo-root", type=Path, default=REPO_ROOT)
+    f3_gate = sub.add_parser("verify-f3-startup"); f3_gate.add_argument("--repo-root", type=Path, default=REPO_ROOT)
+    f3_selection = sub.add_parser("validate-f3-selection"); f3_selection.add_argument("--repo-root", type=Path, default=REPO_ROOT)
+    f3_outputs = sub.add_parser("validate-f3-outputs"); f3_outputs.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     return parser
 
 
@@ -72,7 +80,16 @@ def run(arguments: list[str] | None = None) -> dict[str, Any]:
     if args.command == "build-f2": return f2.build_outputs(args.repo_root)
     if args.command == "record-f2-tests": return f2.record_test_report(args.repo_root, passed=args.passed, failed=args.failed, command=args.test_command)
     if args.command == "finalize-f2": return f2.finalize(args.repo_root, completed_at=args.completed_at)
-    return f2.validate_completion(args.repo_root)
+    if args.command == "validate-f2-completion": return f2.validate_completion(args.repo_root)
+    from . import stage_f_f3 as f3
+    if args.command == "verify-f3-startup": return f3.verify_startup_gates(args.repo_root)
+    if args.command == "initialize-f3": return f3.initialize(args.repo_root, renderer_commit=args.renderer_commit, started_at=args.started_at)
+    if args.command == "build-f3": return f3.build_outputs(args.repo_root)
+    if args.command == "record-f3-tests": return f3.record_test_report(args.repo_root, passed=args.passed, failed=args.failed, command=args.test_command)
+    if args.command == "finalize-f3": return f3.finalize(args.repo_root, completed_at=args.completed_at)
+    if args.command == "validate-f3-selection": return f3.validate_selection_manifests(args.repo_root)
+    if args.command == "validate-f3-outputs": return f3.validate_outputs(args.repo_root)
+    return f3.validate_completion(args.repo_root)
 
 
 def main(arguments: list[str] | None = None) -> int:

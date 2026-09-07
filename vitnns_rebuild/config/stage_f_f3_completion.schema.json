@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_f_f3_terminal_completion"},
+    "stage_id": {"const": "F3"},
+    "status": {"const": "PASS"},
+    "package_validation": {"const": "PASS"},
+    "workflow_validation": {"const": "PASS"},
+    "next_authorization": {"const": "F4_ONLY"},
+    "f4_started": {"const": false},
+    "final_combined_manuscript_figures_rendered": {"const": false},
+    "model_access": {"const": false},
+    "torch_imported": {"const": false},
+    "timm_imported": {"const": false},
+    "gpu_cuda_access": {"const": false},
+    "new_scientific_computation": {"const": false},
+    "upstream_decisions_or_completions_modified": {"const": false},
+    "canonical_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "required": ["schema_version", "document_type", "stage_id", "status", "started_at", "completed_at", "package_validation", "workflow_validation", "next_authorization", "f4_started", "final_combined_manuscript_figures_rendered", "model_access", "torch_imported", "timm_imported", "gpu_cuda_access", "new_scientific_computation", "upstream_decisions_or_completions_modified", "canonical_digest"]
+}

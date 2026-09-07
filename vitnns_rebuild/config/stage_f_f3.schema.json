@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {"const": "stage_f_f3.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_f_f3_config"},
+    "stage_id": {"const": "F3"},
+    "authorization": {"type": "object"},
+    "inputs": {"type": "object"},
+    "selection": {"type": "object"},
+    "cross_layer": {"type": "object"},
+    "display": {"type": "object"},
+    "outputs": {"type": "object"},
+    "safety": {"type": "object"},
+    "canonical_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "required": ["$schema", "schema_version", "document_type", "stage_id", "authorization", "inputs", "selection", "cross_layer", "display", "outputs", "safety", "canonical_digest"]
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_f_f3_validation_report"},
+    "stage_id": {"const": "F3"},
+    "status": {"const": "PASS"},
+    "checks": {"type": "object", "minProperties": 21},
+    "canonical_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "required": ["schema_version", "document_type", "stage_id", "status", "checks", "canonical_digest"]
+}

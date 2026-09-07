@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_f_f3_false_pass_audit"},
+    "stage_id": {"const": "F3"},
+    "status": {"const": "PASS"},
+    "attacks": {"type": "array", "minItems": 21, "uniqueItems": true},
+    "pass_possible_without_all_conditions": {"const": false},
+    "canonical_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "required": ["schema_version", "document_type", "stage_id", "status", "attacks", "pass_possible_without_all_conditions", "canonical_digest"]
+}

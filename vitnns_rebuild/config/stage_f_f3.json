@@ -1,0 +1,88 @@
+{
+  "$schema": "stage_f_f3.schema.json",
+  "schema_version": 1,
+  "document_type": "stage_f_f3_config",
+  "stage_id": "F3",
+  "authorization": {
+    "current": "F3_ONLY",
+    "on_pass": "F4_ONLY",
+    "f4_started": false
+  },
+  "inputs": {
+    "f2_archive_ref": "refs/archive/stage-f-v1-f2-completion",
+    "f2_archive_commit": "89dee5ad25b9cf3baa3a2ffdb2261ec8343a2ef6",
+    "f2_completion_path": "evidence/stage_f/f2_r4_recovery_v2_20260907/formal/completion/f2.json",
+    "f2_completion_sha256": "f4deb7d7a39714165b31d4978b8179e3418340de7b10ed53e0c091c93cedd31d",
+    "display_protocol_path": "docs/stage_f_display_protocol_v1.md",
+    "display_protocol_sha256": "de3ee8804f59e5541eb3c170110ab3b6c47f663698638e3fd668ece7f19b35e3",
+    "cross_layer_protocol_path": "docs/stage_f_cross_layer_display_addendum_20260907.md",
+    "cross_layer_protocol_sha256": "3449676703f985251b281b0c97d3c316d36ec551d4c5a80992fa63d7be0686bf",
+    "d1_registry_path": "manifests/stage_d_fidelity_v1/registry.json",
+    "d10_per_sample_path": "evidence/stage_d/d10_recovery_v2_20260906/formal_r2/analysis/paper_data/per_sample_delta.json",
+    "d8_primary_root": "evidence/stage_d/d8_recovery_v2_20260904/formal_r2",
+    "e3_union_roots": [
+      "evidence/stage_e/e3_recovery_v2_20260906/formal",
+      "evidence/stage_e/e3_r1_recovery_v2_20260906/formal",
+      "evidence/stage_e/e3_r2_recovery_v2_20260906/formal",
+      "evidence/stage_e/e3_r4_recovery_v2_20260907/formal"
+    ],
+    "reference_pdf_path": "../论文1/参考文章.pdf",
+    "reference_pdf_sha256": "33e323f8cb664864b12daad1f06b6ef0d3268bcafaea4e84ac695fd286f3855b"
+  },
+  "selection": {
+    "selection_before_jpeg_or_map_access": true,
+    "fixed_audit_count": 5,
+    "rule_slots": [
+      "best_effect",
+      "median_effect",
+      "baseline_strong_nns_stronger",
+      "weak_or_failure",
+      "misclassified_or_difficult"
+    ],
+    "render_deduplication": "first_occurrence_only_with_complete_slot_mapping"
+  },
+  "cross_layer": {
+    "required_term": "fixed-clean-attention head-direction Value-path attribution progression",
+    "coordinates": [[0, 9], [4, 2], [6, 10], [11, 2]],
+    "methods": [
+      "conditional_fixed_clean_attention_head_direction_value_path_ig",
+      "matched_fixed_clean_attention_patch_token_contribution"
+    ],
+    "expected_secondary_terminals": 3000,
+    "expected_secondary_valid_maps": 2998,
+    "failure_selection_orders": [117, 352],
+    "shared_scale_within_coordinate": true,
+    "shared_scale_across_coordinates": false,
+    "percentile_clipping": false
+  },
+  "display": {
+    "profile": "full_width_qualitative",
+    "png_dpi": 600,
+    "map_interpolation": "nearest",
+    "overlay_interpolation": "bilinear",
+    "overlay_resize_order": 1,
+    "overlay_alpha": 0.55,
+    "clipping": null,
+    "canonical_image_transform": {
+      "color_mode": "RGB",
+      "resize_shorter_side": 248,
+      "resize_interpolation": "bicubic",
+      "center_crop": [224, 224]
+    }
+  },
+  "outputs": {
+    "evidence_root": "evidence/stage_f/f3_r1_recovery_v2_20260907/formal",
+    "report_root": "reports/stage_f_f3_r1_20260907",
+    "final_combined_figures_rendered": false
+  },
+  "safety": {
+    "model_checkpoint_allowed": false,
+    "torch_timm_allowed": false,
+    "cuda_or_gpu_allowed": false,
+    "forward_backward_ig_attribution_fidelity_allowed": false,
+    "new_scientific_computation_allowed": false,
+    "sealed_source_modification_allowed": false,
+    "f4_allowed": false
+  },
+  "canonical_digest": "c2f199d8238ed49ed3dc5f96fec0bc4a8e0f06c25555e90323bc5457a2b66595"
+}
