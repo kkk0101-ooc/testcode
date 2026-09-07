@@ -585,3 +585,22 @@ F3H-R1 按冻结顺序完成正式计算：四坐标 pilot 为 8/8 VALID、0 FAI
 - R2 使用新 evidence/report root，终态仍只能授权 `F3C0_PROTOCOL_FREEZE_ONLY`。
 
 F4 继续 `PAUSED_PENDING_F3H_AND_F3C`。
+
+## 21. F3H terminal completion（2026-09-07）
+
+F3H 最终通过 R3 atomic sealing wrapper 完成，状态 `PASS`。R1 完成全部正式计算但在 CPU reconciliation 的跨代 schema adapter 处 fail closed；R2 完成 reconciliation、渲染、验证和人工 QC，但 finalizer 对已签名 validation report 二次签名，因而在 pending→terminal 替换前 fail closed。R1/R2 均作为不可覆盖 blocked attempts 保留；R3 不复制或重渲染 R2 的 1.08 GB payload，只逐文件复核并发布小型 terminal receipts。
+
+- 固定样本：order 44 / `ILSVRC2012_val/ILSVRC2012_val_00002287.JPEG`，即既有 D10 `median_effect`；没有按 atlas 或 Grad-CAM 外观换样本。
+- Value-path union：144 coordinates × 2 methods = 288 terminals；8 个 sealed inherited + 280 个 R1 new；288 VALID、0 FAILED、0 NA。
+- Grad-CAM：1/1 VALID，class 713、`blocks[11].norm1`、clean predicted-class raw logit；仅为不同 target 的定性参照。
+- 显示：576 个 signed components、144 个 pair-shared monotonic-log scale records；无 method-specific gain/gamma/alpha，无 clipping，无 best-head selection。
+- 模块：4 个完整 12×12 atlas、12 个 block paired pages、1 个 Grad-CAM reference、3 个 equal-head spatial-support consensus，共 20 renders、60 PNG/PDF/SVG exports、20 report-side review copies。
+- 人工 QC：20/20 PASS；没有标题/行标错位或裁切。matched positive 在共同尺度下可见；matched negative 多数接近深蓝来自原始相对幅度，而非人为调暗。
+- 资源：R1 9 份 telemetry 只计一次，加 Grad-CAM 后总计 0.188175 H20-GPU-hour，低于 40 小时硬上限，无 waiver。
+- 测试：最终 separate-process 回归 64 passed、0 failed（55 F3/F3H/R3 + 9 sealed visual）；R3 专项验证另覆盖 payload/inventory、atomic completion 与 no-model/no-GPU 边界。
+- false-pass：F3H 27/27 attacks 和 R3 12/12 sealing attacks 均拒绝。
+- 充分性结论：`INSUFFICIENT_BASIS_FOR_NUMERICAL_CLASS_CONDITIONED_WEIGHTS`。完整 atlas 记录了 head/depth 空间支持多样性，但没有全部 144 个 signed class-logit coupling coefficients、无遗漏/重复计数的 path-accounting identity 或预注册 class-logit conservation test，因此不得从外观、亮度、Grad-CAM overlap 或 entropy 指定 head 权重。
+- 科学边界：F3H 没有新增 fidelity、stability、p-value、winner 或 GO/NO-GO；F3 r7、blue-display r4、D10、E4 及其 refs 未修改。R2/R3 recovery 没有模型、Torch/timm、CUDA/GPU 或 attribution 重算。
+- 正式 payload：`evidence/stage_f/f3h_full_head_r2_cpu_reconcile_20260907/formal/` 与 `reports/stage_f_f3h_full_head_r2_cpu_reconcile_20260907/`；terminal receipts：`evidence/stage_f/f3h_full_head_r3_terminal_seal_20260907/formal/` 与 `reports/stage_f_f3h_full_head_r3_terminal_seal_20260907/`。
+
+F3H terminal PASS 只授权 `F3C0_PROTOCOL_FREEZE_ONLY`。F3C empirical compute 和 F4 均未开始。
