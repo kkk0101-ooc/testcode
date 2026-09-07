@@ -1,0 +1,154 @@
+{
+  "schema_version": 1,
+  "document_type": "d10_lightweight_rerun_assets",
+  "branch": "preserve-code-docs-d10-rerun-20260907",
+  "scope": {
+    "purpose": "lightweight runnable D10 rerun branch",
+    "git_tracks": [
+      "source code",
+      "tests",
+      "documentation",
+      "environment locks",
+      "configuration JSON",
+      "manifests",
+      "helper scripts",
+      "asset hash lists"
+    ],
+    "git_excludes": [
+      "model payloads",
+      "ImageNet archives",
+      "ImageNet JPEG materializations",
+      "formal evidence roots",
+      "generated reports"
+    ],
+    "d10_only_needs_model_or_jpeg": false,
+    "d10_only_description": "D10 reads the sealed D8 numeric evidence root and the D9 validation report, then regenerates analysis and paper-data packages."
+  },
+  "environment": {
+    "bootstrap_command": "scripts/bootstrap_conda.sh",
+    "conda_environment": "vitnns",
+    "python_version": "3.10.21",
+    "torch_version": "2.2.2+cu121",
+    "torchvision_version": "0.17.2+cu121",
+    "timm_version": "0.9.16",
+    "requirements_lock_path": "requirements.lock.txt",
+    "requirements_lock_sha256": "81beabd6aba9ede777e973e2ee5f0c60ce2aa88ce55b29d025e95d67ab175984",
+    "environment_yml_path": "environment.yml",
+    "environment_yml_sha256": "0aea6750fc99bafd0d6810263d0366077a6fe0f3d87ad576594a5ef0661f1cc4",
+    "pyproject_path": "pyproject.toml",
+    "pyproject_sha256": "0340d2164d7291cf32e45366eddc52737a8bc9b32d6b1374bf70c212e5df5575"
+  },
+  "d10_only_required_inputs": [
+    {
+      "role": "sealed_d8_root",
+      "path": "evidence/stage_d/d8_recovery_v2_20260904/formal_r2",
+      "source": "restore from local artifact storage or regenerate by running Stage D D8 before D9/D10",
+      "tracked_in_lightweight_git": false,
+      "file_count_observed_at_branch_creation": 7022,
+      "total_bytes_observed_at_branch_creation": 137250469,
+      "root_inventory_digest": "76d7d532049a5c90a09c74ba56b019042d7f2f0174ccb439bd8f67713514cc5a",
+      "final_status_path": "evidence/stage_d/d8_recovery_v2_20260904/formal_r2/final/status.json",
+      "final_status_sha256": "9c2a7f6bbe89f393b17d39128c908b764c5481cb2ab640eea557ea87032e9f4c",
+      "final_status_canonical_digest": "ba5c15aec4d0f8f374e376e7b1ddb28ebbdb9d8ec8ab7ceda1d34438caf9425b"
+    },
+    {
+      "role": "d9_validation_report",
+      "path": "reports/stage_d_d9_recovery_v2_20260906/d9_formal_validation.json",
+      "source": "restore from local artifact storage or regenerate from the sealed D8 root with the D9 validator",
+      "tracked_in_lightweight_git": false,
+      "file_sha256": "bbfb6b5ad879116f6849e6f0a058780fdfd5e54b656e62f0674a3c3184c810d5",
+      "canonical_digest": "50e2c1455534e5b10aeacb79fac42d128317e0e943c817addf47671f599ea206"
+    },
+    {
+      "role": "d9_formal_budget",
+      "path": "config/stage_d_d7_budget_20260904_r4.json",
+      "source": "tracked lightweight configuration",
+      "tracked_in_lightweight_git": true,
+      "file_sha256": "bb73456a0fcf4bd3b5e0c56fd2ad93931c0d83a2d3c6803ad927e14976308fbf",
+      "canonical_digest": "fa4be660c611bd03fb6bd5602f09a25e920e53c323e11264e95cc7aa90b9f06b"
+    }
+  ],
+  "d10_expected_outputs": {
+    "default_root_pattern": "evidence/stage_d/d10_recovery_v2_20260906/rerun_lightweight_<UTC_TIMESTAMP>",
+    "historical_report_path": "reports/stage_d_d10_recovery_v2_20260906/d10_formal_decision.json",
+    "historical_report_sha256": "7eac27b11b9df72a91c6e78cd0d46ea30f7d8701f0d41cbc29e9cb76695b5a08",
+    "historical_canonical_digest": "db9b235cd8cfdeb3caf99445939443b17007ca5225c710c1164e36e2593503e6",
+    "historical_output_root": "evidence/stage_d/d10_recovery_v2_20260906/formal_r2",
+    "historical_output_root_file_count": 34,
+    "historical_output_root_total_bytes": 2633700,
+    "historical_output_root_inventory_digest": "b72d36430d149598ccd9cfd8dd586297e7231be29e61b44309e9971087e46535",
+    "historical_figure_recipes_sha256": "aaa1858e5a2b0e820d4ea5cb3072a41e3cb6f4f507daefa319dc9ab66a1f0ad1"
+  },
+  "network_assets_for_upstream_d8_d9_rebuild": [
+    {
+      "role": "imagenet_2012_validation_tar",
+      "local_path": "assets/imagenet/ILSVRC2012_img_val.tar",
+      "download_url": "https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_val.tar",
+      "bytes": 6744924160,
+      "md5": "29b22e2961454d5413ddabcf34fc5622",
+      "helper": "assets/download_imagenet_val.sh",
+      "license_note": "requires ImageNet authorization"
+    },
+    {
+      "role": "imagenet_2012_validation_tar_split_parts",
+      "local_path": "assets/imagenet/ILSVRC2012_img_val.parts/",
+      "source": "local split cache or a re-split copy of the official validation tar",
+      "helper": "assets/assemble_imagenet_val.sh",
+      "sha256_manifest": "assets/imagenet/ILSVRC2012_img_val.parts.sha256"
+    },
+    {
+      "role": "imagenet_2012_devkit",
+      "local_path": "assets/imagenet/ILSVRC2012_devkit_t12.tar.gz",
+      "download_url": "https://image-net.org/data/ILSVRC/2012/ILSVRC2012_devkit_t12.tar.gz",
+      "sha256": "b59243268c0d266621fd587d2018f69e906fb22875aca0e295b48cafaa927953",
+      "license_note": "requires ImageNet authorization"
+    },
+    {
+      "role": "imagenet_validation_synset_labels",
+      "local_path": "assets/imagenet/imagenet_2012_validation_synset_labels.txt",
+      "source": "derive from the official devkit or restore from an audited local copy",
+      "sha256": "313fc3f23c864dde9183c9a368809065765dd1b657a6904fded44e3e46d34604"
+    },
+    {
+      "role": "stage_d_reserve_images",
+      "local_path": "assets/data/ILSVRC2012_val/",
+      "source": "materialize the 500 Stage D registry rows from the official validation tar after D8 authorization",
+      "registry": "manifests/stage_d_fidelity_v1/registry.json",
+      "registry_canonical_digest": "514ce4dd2e1fedc1744893e5543651ea42c053458b233ff11a45f700bb4bc028",
+      "ordered_sample_ids_sha256": "b187ff5cbacc1b595f06d12e309602b09965e01e7ee1461fd8a694354d4b8f50"
+    },
+    {
+      "role": "hf_model_safetensors",
+      "local_path": "assets/models/model.safetensors",
+      "download_url": "https://huggingface.co/timm/vit_base_patch16_224.augreg2_in21k_ft_in1k/resolve/063c6c38a5d8510b2e57df480445e94b231dad2c/model.safetensors",
+      "hf_repo_id": "timm/vit_base_patch16_224.augreg2_in21k_ft_in1k",
+      "hf_revision": "063c6c38a5d8510b2e57df480445e94b231dad2c",
+      "sha256": "32aa17d6e17b43500f531d5f6dc9bc93e56ed8841b8a75682e1bb295d722405b"
+    },
+    {
+      "role": "hf_model_pytorch_bin",
+      "local_path": "assets/models/pytorch_model.bin",
+      "download_url": "https://huggingface.co/timm/vit_base_patch16_224.augreg2_in21k_ft_in1k/resolve/063c6c38a5d8510b2e57df480445e94b231dad2c/pytorch_model.bin",
+      "hf_repo_id": "timm/vit_base_patch16_224.augreg2_in21k_ft_in1k",
+      "hf_revision": "063c6c38a5d8510b2e57df480445e94b231dad2c",
+      "sha256": "06e516abac6943dbba7b5dddfc39af6d63de8ebe6fa730240acfd32b94e74d19"
+    },
+    {
+      "role": "recovery_v2_runtime_state_dict",
+      "local_path": "assets/models/vit_base_patch16_224_weights.semantic_candidate.pth",
+      "source": "restore exact project-derived artifact or run a formal rebind; simple reserialization of the HF files is not guaranteed to match the file SHA",
+      "sha256": "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d",
+      "bytes": 346329934,
+      "canonical_tensor_digest": "150234d8117a50057f62aa14a97f46bbf1da92b00b386c10c71cc7000c5d51dd",
+      "key_count": 152,
+      "parameter_count": 86567656
+    }
+  ],
+  "commands": {
+    "bootstrap_environment": "scripts/bootstrap_conda.sh",
+    "verify_recovery_assets_after_materialization": "scripts/verify_recovery_assets.sh",
+    "download_imagenet_validation_tar": "assets/download_imagenet_val.sh",
+    "assemble_imagenet_from_split_parts": "assets/assemble_imagenet_val.sh",
+    "rerun_d10_only": "scripts/rerun_stage_d_d10_lightweight.sh"
+  }
+}

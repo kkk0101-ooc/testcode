@@ -6,13 +6,16 @@ build/
 dist/
 *.egg-info/
 
-# Local runtime products. Long-lived recovery assets are tracked from the
-# repository root via Git LFS. Formal evidence roots are retained locally by
-# default; only explicitly force-added small reports/indexes should enter Git.
+# Local runtime products. The lightweight rerun branch tracks code, docs,
+# manifests, and environment/configuration only. Large model/data payloads and
+# generated evidence/report roots stay local and can be restored from the
+# documented asset checklist.
 outputs/
 artifacts/
 evidence/
 evidence/**
+reports/
+reports/**
 
 # C0 contracts: these small manifests are evidence, not runtime artifacts.
 !manifests/stage_c_flat_val_500/manifest.csv
@@ -28,15 +31,31 @@ evidence/**
 !manifests/stage_d_fidelity_v1/registry_metadata.json
 !manifests/stage_d_fidelity_v1/manifest.json
 
+# Keep asset documentation, manifests, and helper scripts in Git.
 !assets/
-!assets/**
+!assets/README.md
+!assets/RECOVERY_STATUS.md
+!assets/assemble_imagenet_val.sh
+!assets/download_imagenet_val.sh
+!assets/manifests/
+!assets/manifests/**
 
-# `assets/assemble_imagenet_val.sh` reconstructs this local convenience copy
-# from the four versioned LFS parts.  Keep only the parts in Git/LFS.
+# Local model and ImageNet payload caches.
+assets/models/
+assets/models/**
+assets/imagenet/
+assets/imagenet/**
+!assets/imagenet/
+!assets/imagenet/ILSVRC2012_img_val.parts.sha256
+!assets/imagenet/ILSVRC2012_img_val.tar.md5
 assets/imagenet/ILSVRC2012_img_val.tar
 assets/imagenet/ILSVRC2012_img_val.complete.tar
 assets/imagenet/ILSVRC2012_img_val.parts/*.partial
+assets/imagenet/ILSVRC2012_img_val.parts/part-*
+assets/imagenet/ILSVRC2012_devkit_t12.tar.gz
+assets/imagenet/imagenet_2012_validation_synset_labels.txt
 
-# Stage D reserve JPEGs are materialized locally from the bound ImageNet tar.
-assets/data/ILSVRC2012_val/*.JPEG
+# Stage C and Stage D JPEGs are materialized locally from the bound ImageNet tar.
+assets/data/
+assets/data/**
 

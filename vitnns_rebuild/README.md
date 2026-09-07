@@ -8,9 +8,13 @@ tree. Stage A deliberately uses one model and one numerical forward path:
 - timm's real `forward` with non-mutating hooks
 - the preprocessing embedded in this checkpoint's timm metadata
 
-Recovered assets live under `assets/` and large binary files are tracked with
-Git LFS. The legacy `49_vit ` directory has been removed from the active
-checkout; use Git history only for legacy source inspection.
+Recovered asset payloads live under `assets/` only when materialized locally.
+The lightweight rerun branch tracks code, docs, configs, environment locks,
+manifests, helper scripts, and checksum lists; large model/data payloads and
+generated evidence roots are intentionally ignored by Git. See
+`docs/d10_lightweight_rerun.md` for the D10 rerun command and asset checklist.
+The legacy `49_vit ` directory has been removed from the active checkout; use
+Git history only for legacy source inspection.
 
 Stage B adds a deliberately narrow, testable method instead of patching the
 legacy scanner.  For a selected block it freezes the attention matrix actually
@@ -31,7 +35,8 @@ python -m pip install -e . --no-deps
 Core versions are pinned in `requirements.lock.txt`. The CUDA wheels for torch
 and torchvision come from `https://download.pytorch.org/whl/cu121`.
 This recovered workspace uses the local Conda environment `vitnns`. On a new
-clone, install Git LFS first and run `git lfs pull` before using `assets/`.
+clone, materialize model/data assets from the checklist before running stages
+that need them.
 
 ## Dataset manifests
 

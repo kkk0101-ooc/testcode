@@ -35,9 +35,9 @@ never be assigned to, aliased to, or claimed for a recovered candidate.
 
 ## 2. Recovered and versioned assets
 
-The following recovered assets are stored under `assets/`; the large payloads
-are tracked through Git LFS. Their remote publication is verified separately
-from this amendment's execution authority:
+The following recovered assets are stored under `assets/` when materialized
+locally. On the lightweight rerun branch, large payloads are intentionally not
+tracked by Git; their hashes remain tracked for recovery and audit:
 
 - `assets/models/model.safetensors`, SHA-256
   `32aa17d6e17b43500f531d5f6dc9bc93e56ed8841b8a75682e1bb295d722405b`;
