@@ -42,8 +42,8 @@ F2_VALIDATION_SCHEMA_PATH = "config/stage_f_f2_validation_report.schema.json"
 F2_COMPLETION_SCHEMA_PATH = "config/stage_f_f2_completion.schema.json"
 F2_FALSE_PASS_SCHEMA_PATH = "config/stage_f_f2_false_pass_audit.schema.json"
 
-F2_ROOT_PATH = "evidence/stage_f/f2_recovery_v2_20260907/formal"
-F2_REPORT_PATH = "reports/stage_f_f2_20260907"
+F2_ROOT_PATH = "evidence/stage_f/f2_r2_recovery_v2_20260907/formal"
+F2_REPORT_PATH = "reports/stage_f_f2_r2_20260907"
 PENDING_PATH = F2_ROOT_PATH + "/completion/f2.pending.json"
 COMPLETION_PATH = F2_ROOT_PATH + "/completion/f2.json"
 STARTUP_PATH = F2_ROOT_PATH + "/startup_gate.json"
@@ -623,7 +623,7 @@ def initialize(repo_root: Path | str = REPO_ROOT, *, renderer_commit: str, start
     if startup["local_head"] != renderer_commit: raise StageFF2Error("renderer commit must match clean pushed startup HEAD")
     startup["renderer_commit"] = renderer_commit; startup["formal_runtime_isolation"] = validate_runtime_isolation()
     _write_new(repo / STARTUP_PATH, _signed(startup))
-    _write_new(repo / PENDING_PATH, _signed({"schema_version": 1, "document_type": "stage_f_f2_pending_completion", "stage_id": "F2", "status": "PENDING", "started_at": started_at, "terminal_pass_published": False, "next_authorization": "NONE_PENDING_VALIDATION"}))
+    _write_new(repo / PENDING_PATH, _signed({"schema_version": 1, "document_type": "stage_f_f2_pending_completion", "stage_id": "F2", "status": "PENDING", "started_at": started_at, "renderer_commit": renderer_commit, "terminal_pass_published": False, "next_authorization": "NONE_PENDING_VALIDATION"}))
     return {"status": "PENDING", "root": F2_ROOT_PATH, "renderer_commit": renderer_commit}
 
 
