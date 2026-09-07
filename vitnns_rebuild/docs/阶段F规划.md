@@ -403,3 +403,22 @@ F0 terminal receipt 只授权 `F1_ONLY`；F2、F3、F4 均未开始。
 ## 11. 当前下一步
 
 当前只授权 `F1_ONLY`。F1 只允许按本规划读取 D10 `paper_data` 和已封存 recipes，渲染主结果统计模块；不得启动 F2、F3 或 F4。
+
+## 12. F1 completion record（2026-09-07）
+
+F1 最终在不可覆盖的 r3 root 完成；r1/r2 为非权威失败尝试，均未产生 terminal PASS：
+
+- 启动基线：当前分支 `stage-d-d3-pass`；F0 completion ref `refs/archive/stage-f-v1-f0-completion` 指向 `c4df92ff05054712406caa5524c5d129da7dab42`，且为 F1 renderer commit 的祖先；D10 completion ref `refs/archive/stage-d-fidelity-v1-d10-completion` 指向 `7520689bb031304e4789567f99d093062aa50f72`，且为当前 HEAD 的祖先。
+- F0 绑定：completion SHA-256 `83b4ce1be0bf1c0d2ef49fe60a0793975d545944218451d0e4211e5e2261f7ce`；completion canonical digest `7e56bc714033ae9b62edaef04f2bd47b4d2ad9aa7592146fbd8e52aa71a896cc`；whole-root canonical digest `28eab8d914cb062ade48e781985cc7055b6cbc703731d2086e323a0b47d5fdc8`。
+- D10 绑定：decision report SHA-256 `7eac27b11b9df72a91c6e78cd0d46ea30f7d8701f0d41cbc29e9cb76695b5a08`；canonical digest `db9b235cd8cfdeb3caf99445939443b17007ca5225c710c1164e36e2593503e6`；output-root inventory digest `b72d36430d149598ccd9cfd8dd586297e7231be29e61b44309e9971087e46535`；figure recipes SHA-256 `aaa1858e5a2b0e820d4ea5cb3072a41e3cb6f4f507daefa319dc9ab66a1f0ad1`。
+- D10 paper-data hashes：`cohort_comparison.csv` `1f3974173c772f4bf676211656f742ec5f0440654a46a384520ad00cc4bad6df`，`cohort_comparison.json` `1bc23278d79e267e50c8eb198ba41ea1f22ab2447869524f1761dcde633ea23d`，`per_sample_delta.csv` `72cececb4386eafee1dc69ae98e251b9c3707c8d8325bb7f38cfb1c43db50a86`，`per_sample_delta.json` `8bb2e36dc2b4b3895bc5688b7ab5789719995add0c26cd48608d593486ba0cd2`，`curve_summary.csv` `4607d790c10e4671ae0d1e1339311c6cc9ac3c64ea80b7f2c31eb9f6f2e12904`，`curve_summary.json` `4c71cf24f6b02513a5ccd4441fd2f2c86af58307e0091a80bca8a52b6a4887ee`，`main_fidelity_table.csv` `3522b7e787dd53fa83757c804be9656a37b52a51c3d8e295bbe06268c1ad6a6b`，`main_fidelity_table.json` `03d0df490c6166acc08645d49ef39deaed23d66a67cf1b233f49675118e0748f`，`resource_and_qc.csv` `fd1834676229744da85a358860a07b1ad4d36224ec945909a0092e273c530396`，`resource_and_qc.json` `065deeb0250942f7e153af9d8f330f4df5471b8b2b1680945cc5faee98018504`。
+- 实现：`config/stage_f_f1.json`、`config/stage_f_f1_run_spec.json`、F1 schemas、`src/vitnns/stage_f_f1.py`、`src/vitnns/stage_f_cli.py`、`src/vitnns/stage_f_renderer.py`、`tests/test_stage_f_f1.py`、`tests/test_stage_f_f1_boundary.py`。
+- 正式输出：`evidence/stage_f/f1_r3_recovery_v2_20260907/formal/` 与 `reports/stage_f_f1_r3_20260907/`；whole-root canonical digest `a32e7998ed13810f1ccd4e2f6d7f6358711add0513cdbcb5438765ce445885f0`。
+- 图形模块：F1-A cohort median + interval、F1-B Stage D 500 图 `delta_fid` ECDF、F1-C insertion/deletion median curves with pointwise bands；每个模块均有 `single_column` 和 `double_column`，共 6 个 render instances、18 个 PNG/PDF/SVG 导出文件；final combined Figure 2 rendered = `false`。
+- 测试：`CUDA_VISIBLE_DEVICES='' PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 PYTHONPATH=src /data01/home/yeziqi.831/nxtrec_wksp/testcode/.conda/envs/vitnns/bin/python -m pytest tests/test_stage_f_renderer.py tests/test_stage_f_boundary.py tests/test_stage_f_f0.py tests/test_stage_f_f1.py tests/test_stage_f_f1_boundary.py -q`，41 passed、0 failed；13 个 Matplotlib/pyparsing deprecation warnings。
+- false-pass audit：18/18 attacks 均 `REJECTED`，覆盖 F0/D10 漂移、analysis/paper parity、C10/Stage D 池化、C10 状态弱化、重新 bootstrap/CI/new endpoint、ECDF 非 500、删除 misclassified、曲线错配、跨格式不同源、Stage E/JPEG/model/Torch/timm/CUDA 访问、F2/F3/F4/最终 Figure 2 提前生成、未完成 validation/manifest/terminal 先宣称 PASS、错误授权 F3/F4、未完成 Git/archive 核验即宣称完成。
+- 科学边界：只读取 D10 `formal_r2/analysis/paper_data/` 与同一 analysis root 的 metadata；`formal_r2/paper/` 仅用于 byte/hash parity；未读取 Stage E paper data、reserve JPEG、legacy 图片、参考论文数据或人工抄录值；未使用模型、Torch、timm、GPU/CUDA；未重算 bootstrap、CI、`delta_fid` 或新 endpoint；C10 `n=15` 与 Stage D `n=500` 保持分 cohort。
+- deviations：开发期 r1 因 F1-B caption 字段访问 bug fail closed；r2 因 startup gate 签名顺序 bug fail closed；二者均未发布 terminal PASS，未覆盖或删除，唯一有效 F1 terminal root 为 r3。
+- Git/LFS：terminal completion 的 Git 字段为 `SELF`，交付后 `refs/archive/stage-f-v1-f1-completion` 必须指向同一最终提交；最终 local/tracking/remote/archive/LFS 状态由交付核验记录确认。
+
+F1 terminal receipt 只授权 `F2_ONLY`；F2、F3、F4 均未开始。
