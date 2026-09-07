@@ -525,3 +525,14 @@ F3H0 已在独立 protocol-only root `evidence/stage_f/f3h0_protocol_v1_20260907
 - completion SHA-256 `615e668e223153f73ebe5fde732832b4f5c26024ddefae0bf14fe5cf09d2ac4a`，terminal canonical digest `32c05c18879a926195e99fd61045a86867928c0392b35b278ea2c2dbe0b0de61`。
 
 F4 保持 `PAUSED_PENDING_F3H`。当前唯一下一授权为 `F3H1_IMPLEMENTATION_AND_SYNTHETIC_PREFLIGHT_ONLY`；正式 GPU 计算尚未授权、尚未开始。
+
+在 F3H0 封存后、任何 F3H pilot/outcome access 前，owner 进一步要求：F3H 完成后先冻结真正的 class-targeted study（F3C），并将所有候选参照纳入。F3H1 前瞻性 implementation addendum 因此补充冻结：
+
+- F3H 增加 per-layer、四个固定 depth bands 和 all-144-head 的 `equal-head-weighted spatial-support consensus`，但它们不是 raw attribution sum、网络级 attribution 或 class-conditioned attribution；
+- consensus 使用所有必需 heads 的等权 display-space 平均；任何所需 head FAILED/NA 时对应 consensus 原位标失败，不做 complete-case 平均；
+- atlas/consensus 外观、Grad-CAM overlap、亮度或 entropy 均不得定义 class weights；
+- 只有存在全部 144 个 signed class-logit coupling coefficients、无遗漏/重复计数的 path accounting identity 和预注册 conservation test，才足以冻结具体数值聚合；F3H 不计算这些 coupling，预期充分性结论为 `INSUFFICIENT_BASIS_FOR_NUMERICAL_CLASS_CONDITIONED_WEIGHTS`；
+- F3C 的冻结候选比较集必须全部包含：class-targeted NNS、ViT Grad-CAM、full-model class-logit IG、attention rollout、block-11 raw CLS attention head mean；后两者继续标为 class-agnostic；
+- F3H render/review 数由 17 前瞻性扩展为 20：原 17 个加 per-layer、depth-band、all-head consensus 三个模块。
+
+因此当前 F4 状态进一步收紧为 `PAUSED_PENDING_F3H_AND_F3C`。F3H terminal PASS 只能授权 `F3C0_PROTOCOL_FREEZE_ONLY`，不能直接启动 F4。

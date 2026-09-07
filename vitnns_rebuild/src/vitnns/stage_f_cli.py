@@ -51,6 +51,15 @@ def _parser() -> argparse.ArgumentParser:
     f3h0_check = sub.add_parser("validate-f3h0-protocol"); f3h0_check.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h0_check.add_argument("--require-clean", action="store_true")
     f3h0_freeze = sub.add_parser("freeze-f3h0-protocol"); f3h0_freeze.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h0_freeze.add_argument("--frozen-at", required=True); f3h0_freeze.add_argument("--test-passed", required=True, type=int); f3h0_freeze.add_argument("--test-failed", required=True, type=int); f3h0_freeze.add_argument("--test-command", required=True)
     f3h0_completion = sub.add_parser("validate-f3h0-completion"); f3h0_completion.add_argument("--repo-root", type=Path, default=REPO_ROOT)
+    for name in ("validate-f3h1-implementation", "validate-f3h1-completion", "validate-f3h-initialized", "authorize-f3h-bulk", "reconcile-f3h", "build-f3h-components", "build-f3h-consensus", "assess-f3h-basis", "render-f3h", "build-f3h-audits", "validate-f3h-outputs", "validate-f3h-completion"):
+        child = sub.add_parser(name); child.add_argument("--repo-root", type=Path, default=REPO_ROOT)
+    f3h1_freeze = sub.add_parser("freeze-f3h1-implementation"); f3h1_freeze.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h1_freeze.add_argument("--completed-at", required=True); f3h1_freeze.add_argument("--passed", type=int, required=True); f3h1_freeze.add_argument("--failed", type=int, required=True); f3h1_freeze.add_argument("--test-command", required=True)
+    f3h_init = sub.add_parser("initialize-f3h"); f3h_init.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h_init.add_argument("--started-at", required=True)
+    f3h_pilot = sub.add_parser("run-f3h-pilot"); f3h_pilot.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h_pilot.add_argument("--device", default="cuda:0")
+    f3h_shard = sub.add_parser("run-f3h-shard"); f3h_shard.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h_shard.add_argument("--shard-id", type=int, required=True); f3h_shard.add_argument("--shard-count", type=int, default=8); f3h_shard.add_argument("--device", default="cuda:0")
+    f3h_gradcam = sub.add_parser("run-f3h-gradcam"); f3h_gradcam.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h_gradcam.add_argument("--device", default="cuda:0")
+    f3h_tests = sub.add_parser("record-f3h-tests"); f3h_tests.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h_tests.add_argument("--passed", type=int, required=True); f3h_tests.add_argument("--failed", type=int, required=True); f3h_tests.add_argument("--test-command", required=True)
+    f3h_final = sub.add_parser("finalize-f3h"); f3h_final.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h_final.add_argument("--completed-at", required=True)
     return parser
 
 
@@ -89,6 +98,30 @@ def run(arguments: list[str] | None = None) -> dict[str, Any]:
         if args.command == "validate-f3h0-protocol": return f3h0.validate_protocol(args.repo_root, require_clean=args.require_clean)
         if args.command == "freeze-f3h0-protocol": return f3h0.freeze_protocol(args.repo_root, frozen_at=args.frozen_at, test_passed=args.test_passed, test_failed=args.test_failed, test_command=args.test_command)
         return f3h0.validate_completion(args.repo_root)
+    if "f3h" in args.command:
+        from . import stage_f_f3h as f3h
+        commands = {
+            "validate-f3h1-implementation": lambda: f3h.validate_implementation(args.repo_root),
+            "validate-f3h1-completion": lambda: f3h.validate_implementation_completion(args.repo_root),
+            "freeze-f3h1-implementation": lambda: f3h.freeze_implementation(args.repo_root, completed_at=args.completed_at, passed=args.passed, failed=args.failed, command=args.test_command),
+            "initialize-f3h": lambda: f3h.initialize(args.repo_root, started_at=args.started_at),
+            "validate-f3h-initialized": lambda: f3h.validate_initialized(args.repo_root),
+            "run-f3h-pilot": lambda: f3h.run_pilot(args.repo_root, device=args.device),
+            "authorize-f3h-bulk": lambda: f3h.authorize_bulk(args.repo_root),
+            "run-f3h-shard": lambda: f3h.run_shard(args.repo_root, shard_id=args.shard_id, shard_count=args.shard_count, device=args.device),
+            "run-f3h-gradcam": lambda: f3h.run_gradcam(args.repo_root, device=args.device),
+            "reconcile-f3h": lambda: f3h.reconcile_terminals(args.repo_root),
+            "build-f3h-components": lambda: f3h.build_components(args.repo_root),
+            "build-f3h-consensus": lambda: f3h.build_consensus_manifest(args.repo_root),
+            "assess-f3h-basis": lambda: f3h.assess_class_conditioned_basis(args.repo_root),
+            "render-f3h": lambda: f3h.render_outputs(args.repo_root),
+            "build-f3h-audits": lambda: f3h.build_final_audits(args.repo_root),
+            "record-f3h-tests": lambda: f3h.record_tests(args.repo_root, passed=args.passed, failed=args.failed, command=args.test_command),
+            "validate-f3h-outputs": lambda: f3h.validate_outputs(args.repo_root),
+            "finalize-f3h": lambda: f3h.finalize(args.repo_root, completed_at=args.completed_at),
+            "validate-f3h-completion": lambda: f3h.validate_completion(args.repo_root),
+        }
+        return commands[args.command]()
     from . import stage_f_f3 as f3
     if args.command == "verify-f3-startup": return f3.verify_startup_gates(args.repo_root)
     if args.command == "initialize-f3": return f3.initialize(args.repo_root, renderer_commit=args.renderer_commit, started_at=args.started_at)

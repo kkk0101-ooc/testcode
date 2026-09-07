@@ -57,7 +57,7 @@ ATTACKS = (
 )
 
 
-class StageFF3HProtocolError(RuntimeError):
+class StageFF3HProtocolError(ValueError):
     pass
 
 
