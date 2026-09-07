@@ -1,1 +1,115 @@
-{"$schema":"https://json-schema.org/draft/2020-12/schema","additionalProperties":false,"properties":{"$schema":{"const":"stage_f_run_spec.schema.json"},"authorization":{"additionalProperties":false,"properties":{"current_stage":{"const":"F0"},"next_authorization_on_pass":{"const":"F1_ONLY"},"terminal_pass_before_validator_allowed":{"const":false}},"required":["current_stage","next_authorization_on_pass","terminal_pass_before_validator_allowed"],"type":"object"},"canonical_digest":{"pattern":"^[0-9a-f]{64}$","type":"string"},"document_type":{"const":"stage_f_f0_run_spec"},"inputs":{"additionalProperties":false,"properties":{"config_path":{"const":"config/stage_f_f0.json"},"fixture_root":{"const":"tests/fixtures/stage_f"},"recipes_parse_only":{"items":{"type":"string"},"maxItems":2,"minItems":2,"type":"array","uniqueItems":true}},"required":["config_path","fixture_root","recipes_parse_only"],"type":"object"},"operations":{"items":{"type":"string"},"minItems":5,"type":"array"},"outputs":{"additionalProperties":false,"properties":{"evidence_root":{"const":"evidence/stage_f/f0_recovery_v2_20260907/formal"},"formal_scientific_figures_rendered":{"const":0},"report_root":{"const":"reports/stage_f_f0_20260907"}},"required":["evidence_root","report_root","formal_scientific_figures_rendered"],"type":"object"},"prohibited_operations":{"items":{"type":"string"},"minItems":6,"type":"array"},"schema_version":{"const":1},"stage_id":{"const":"F0"}},"required":["$schema","schema_version","document_type","stage_id","authorization","inputs","operations","prohibited_operations","outputs","canonical_digest"],"type":"object"}
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+        "$schema": {
+            "const": "stage_f_run_spec.schema.json"
+        },
+        "authorization": {
+            "additionalProperties": false,
+            "properties": {
+                "current_stage": {
+                    "const": "F0"
+                },
+                "next_authorization_on_pass": {
+                    "const": "F1_ONLY"
+                },
+                "terminal_pass_before_validator_allowed": {
+                    "const": false
+                }
+            },
+            "required": [
+                "current_stage",
+                "next_authorization_on_pass",
+                "terminal_pass_before_validator_allowed"
+            ],
+            "type": "object"
+        },
+        "canonical_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+        },
+        "document_type": {
+            "const": "stage_f_f0_run_spec"
+        },
+        "inputs": {
+            "additionalProperties": false,
+            "properties": {
+                "config_path": {
+                    "const": "config/stage_f_f0.json"
+                },
+                "fixture_root": {
+                    "const": "tests/fixtures/stage_f"
+                },
+                "recipes_parse_only": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "maxItems": 2,
+                    "minItems": 2,
+                    "type": "array",
+                    "uniqueItems": true
+                }
+            },
+            "required": [
+                "config_path",
+                "fixture_root",
+                "recipes_parse_only"
+            ],
+            "type": "object"
+        },
+        "operations": {
+            "items": {
+                "type": "string"
+            },
+            "minItems": 5,
+            "type": "array"
+        },
+        "outputs": {
+            "additionalProperties": false,
+            "properties": {
+                "evidence_root": {
+                    "const": "evidence/stage_f/f0_r2_recovery_v2_20260907/formal"
+                },
+                "formal_scientific_figures_rendered": {
+                    "const": 0
+                },
+                "report_root": {
+                    "const": "reports/stage_f_f0_r2_20260907"
+                }
+            },
+            "required": [
+                "evidence_root",
+                "report_root",
+                "formal_scientific_figures_rendered"
+            ],
+            "type": "object"
+        },
+        "prohibited_operations": {
+            "items": {
+                "type": "string"
+            },
+            "minItems": 6,
+            "type": "array"
+        },
+        "schema_version": {
+            "const": 1
+        },
+        "stage_id": {
+            "const": "F0"
+        }
+    },
+    "required": [
+        "$schema",
+        "schema_version",
+        "document_type",
+        "stage_id",
+        "authorization",
+        "inputs",
+        "operations",
+        "prohibited_operations",
+        "outputs",
+        "canonical_digest"
+    ],
+    "type": "object"
+}

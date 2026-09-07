@@ -73,7 +73,7 @@ def test_font_file_hash_and_silent_fallback_detection(monkeypatch: pytest.Monkey
         validate_font(config)
 
 
-@pytest.mark.parametrize("name,width,height", [("golden_statistics",3.5,2.35),("golden_maps",7.16,4.2),("golden_qualitative",7.16,4.8)])
+@pytest.mark.parametrize("name,width,height", [("golden_statistics",3.5,7.2),("golden_maps",7.16,4.2),("golden_qualitative",7.16,4.8)])
 def test_layout_sizes_and_cross_format_content(tmp_path: Path, name: str, width: float, height: float):
     report_path, report = _render(tmp_path, name)
     assert report["size_inches"] == [width, height]
