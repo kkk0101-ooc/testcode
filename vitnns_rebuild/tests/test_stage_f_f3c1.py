@@ -62,6 +62,17 @@ def test_atomic_terminal_publish_resume_conflict_and_tamper(tmp_path: Path, monk
         f3c1.validate_typed_terminal_directory(destination)
 
 
+@pytest.mark.parametrize("status", ["FAILED", "NA"])
+def test_failed_and_na_terminals_reject_numeric_payloads(tmp_path: Path, status: str) -> None:
+    destination = tmp_path / status.lower()
+    result = {"schema_version": 1, "document_type": "test", "status": status}
+    with pytest.raises(f3c1.StageFF3C1Error, match="must not contain numeric arrays"):
+        f3c1._publish_terminal_directory(
+            destination, result, {"fabricated.npy": np.zeros((14, 14), dtype=np.float32)}
+        )
+    assert not destination.exists()
+
+
 def test_pending_cannot_validate_as_completion(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(f3c1, "ROOT_PATH", "formal")
     monkeypatch.setattr(f3c1, "COMPLETION_PATH", "formal/completion/f3c1.json")

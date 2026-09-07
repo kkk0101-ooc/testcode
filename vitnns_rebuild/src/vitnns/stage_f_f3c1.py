@@ -26,8 +26,8 @@ from . import stage_f_f3c1_kernels as kernels
 
 CONFIG_PATH = "config/stage_f_f3c1.json"
 SCHEMA_PATH = "config/stage_f_f3c1.schema.json"
-ROOT_PATH = "evidence/stage_f/f3c1_implementation_r5_cpu_seal_20260907/formal"
-REPORT_PATH = "reports/stage_f_f3c1_implementation_r5_cpu_seal_20260907"
+ROOT_PATH = "evidence/stage_f/f3c1_implementation_r6_cpu_seal_20260907/formal"
+REPORT_PATH = "reports/stage_f_f3c1_implementation_r6_cpu_seal_20260907"
 V1_ROOT_PATH = "evidence/stage_f/f3c1_implementation_v1_20260907/formal"
 V1_REPORT_PATH = "reports/stage_f_f3c1_implementation_v1_20260907"
 V1_FAILURE_PATH = V1_REPORT_PATH + "/failure_event.json"
@@ -43,6 +43,10 @@ R3_FAILURE_PATH = R3_REPORT_PATH + "/failure_event.json"
 R4_ROOT_PATH = "evidence/stage_f/f3c1_implementation_r4_cpu_seal_20260907/formal"
 R4_REPORT_PATH = "reports/stage_f_f3c1_implementation_r4_cpu_seal_20260907"
 R4_FAILURE_PATH = R4_REPORT_PATH + "/failure_event.json"
+R5_ROOT_PATH = "evidence/stage_f/f3c1_implementation_r5_cpu_seal_20260907/formal"
+R5_REPORT_PATH = "reports/stage_f_f3c1_implementation_r5_cpu_seal_20260907"
+R5_POST_SEAL_FAILURE_PATH = R5_REPORT_PATH + "/post_seal_failure_event.json"
+R5_COMMIT = "b3ed9f78b6df816d0bf188d53ef005d4d8023462"
 STARTUP_PATH = ROOT_PATH + "/startup_gate.json"
 IMPLEMENTATION_PATH = ROOT_PATH + "/implementation_binding.json"
 SOURCE_PATH = ROOT_PATH + "/source_binding.json"
@@ -93,6 +97,7 @@ R2_ADDENDUM_PATH = "docs/stage_f_f3c1_r2_fidelity_endpoint_recovery_addendum_202
 R3_ADDENDUM_PATH = "docs/stage_f_f3c1_r3_provenance_serialization_recovery_addendum_20260907.md"
 R4_ADDENDUM_PATH = "docs/stage_f_f3c1_r4_cpu_sealing_recovery_addendum_20260907.md"
 R5_ADDENDUM_PATH = "docs/stage_f_f3c1_r5_manifest_sealing_recovery_addendum_20260907.md"
+R6_ADDENDUM_PATH = "docs/stage_f_f3c1_r6_typed_terminal_recovery_addendum_20260907.md"
 SEALED_ROOTS = (
     ("d10", "refs/archive/stage-d-fidelity-v1-d10-completion", "evidence/stage_d/d10_recovery_v2_20260906/formal_r2"),
     ("e4", "refs/archive/stage-e-e4-completion", "evidence/stage_e/e4_recovery_v2_20260907/formal"),
@@ -243,7 +248,7 @@ def load_config(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
     }:
         raise StageFF3C1Error("F3C1 engineering boundary drifted")
     if config["output_root"] != ROOT_PATH or config["report_root"] != REPORT_PATH:
-        raise StageFF3C1Error("F3C1 R5 output roots drifted")
+        raise StageFF3C1Error("F3C1 R6 output roots drifted")
     return config
 
 
@@ -316,6 +321,14 @@ def verify_startup_gates(repo_root: Path | str = REPO_ROOT, *, require_clean: bo
     r4 = _read(r4_failure); _validate_signed(r4, "F3C1 R4 failure")
     if r4.get("status") != "BLOCKED" or "attention_binding canonical digest mismatch" not in r4.get("error", ""):
         raise StageFF3C1Error("blocked F3C1 R4 failure identity drifted")
+    r5_failure = repo / R5_POST_SEAL_FAILURE_PATH
+    if not r5_failure.is_file() or not (repo / R5_ROOT_PATH / "completion/f3c1.json").is_file():
+        raise StageFF3C1Error("superseded F3C1 R5 package was not preserved")
+    r5 = _read(r5_failure); _validate_signed(r5, "F3C1 R5 post-seal failure")
+    if r5.get("status") != "BLOCKED_SUPERSEDED" or r5.get("failure_code") != "FAILED_NA_PAYLOAD_FALSE_PASS_GAP":
+        raise StageFF3C1Error("F3C1 R5 post-seal failure identity drifted")
+    if _git(repo, "rev-parse", ARCHIVE_REF + "^{commit}") != R5_COMMIT:
+        raise StageFF3C1Error("superseded F3C1 R5 archive ref drifted before R6")
     sealed = {}
     for name, ref, root in SEALED_ROOTS:
         commit = _git(repo, "rev-parse", ref + "^{commit}")
@@ -362,6 +375,14 @@ def verify_startup_gates(repo_root: Path | str = REPO_ROOT, *, require_clean: bo
             "r4_pending_and_failure_preserved": True,
             "r4_failure": _record(repo, R4_FAILURE_PATH),
             "r3_engineering_terminal_reused_without_recompute": True,
+            "cpu_only_revalidation_and_sealing": True,
+        },
+        "r6_recovery": {
+            "addendum": _file_record(repo, R6_ADDENDUM_PATH),
+            "r5_terminal_and_archive_preserved_as_superseded": True,
+            "r5_post_seal_failure": _record(repo, R5_POST_SEAL_FAILURE_PATH),
+            "r5_commit": R5_COMMIT,
+            "recovery_scope": "failed_na_terminal_payload_rejection_and_source_revalidation",
             "cpu_only_revalidation_and_sealing": True,
         },
         "next_authorization": "F3C1_IMPLEMENTATION_AND_SYNTHETIC_PREFLIGHT_ONLY",
@@ -487,6 +508,13 @@ def _publish_terminal_directory(
 ) -> None:
     if destination.exists():
         raise StageFF3C1Error("refusing to overwrite engineering terminal")
+    terminal_status = result.get("status")
+    if terminal_status not in {"VALID", "FAILED", "NA"}:
+        raise StageFF3C1Error("typed terminal status must be VALID, FAILED, or NA")
+    if terminal_status == "VALID" and not arrays:
+        raise StageFF3C1Error("VALID terminal requires numeric arrays")
+    if terminal_status in {"FAILED", "NA"} and arrays:
+        raise StageFF3C1Error("FAILED/NA terminal must not contain numeric arrays")
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = Path(tempfile.mkdtemp(prefix=".attempt-000001-", dir=destination.parent))
     try:
@@ -531,6 +559,10 @@ def validate_typed_terminal_directory(root: Path | str) -> dict[str, Any]:
         _validate_signed(value, "engineering " + name)
     if result.get("status") not in {"VALID", "FAILED", "NA"} or status.get("status") != result.get("status") or status.get("terminal") is not True:
         raise StageFF3C1Error("engineering terminal is not VALID")
+    if result["status"] == "VALID" and not manifest.get("arrays"):
+        raise StageFF3C1Error("VALID terminal lacks numeric arrays")
+    if result["status"] in {"FAILED", "NA"} and manifest.get("arrays"):
+        raise StageFF3C1Error("FAILED/NA terminal contains numeric arrays")
     if manifest["result"] != _file_record(root, "result.json") or manifest["status_record"] != _record(root, "status.json"):
         raise StageFF3C1Error("engineering terminal control file conflict")
     for record in manifest["arrays"]:
@@ -725,21 +757,21 @@ def _source_hash_snapshot(repo: Path) -> dict[str, Any]:
     return {"files": records, "canonical_digest": canonical_sha256({"files": records})}
 
 
-def initialize_r5_from_r3(
+def initialize_r6_from_r5(
     repo_root: Path | str = REPO_ROOT, *, started_at: str
 ) -> dict[str, Any]:
     repo = Path(repo_root).resolve()
     if (repo / ROOT_PATH).exists() or (repo / REPORT_PATH).exists():
-        raise StageFF3C1Error("F3C1 R5 output root already exists")
+        raise StageFF3C1Error("F3C1 R6 output root already exists")
     startup = verify_startup_gates(repo, require_clean=True)
-    source_root = repo / R3_ROOT_PATH
+    source_root = repo / R5_ROOT_PATH
     source_terminal = source_root / "engineering/order-44/attempts/attempt-000001"
     validated = validate_typed_terminal_directory(source_terminal)
     if validated["result"].get("status") != "VALID":
         raise StageFF3C1Error("R3 engineering terminal is not VALID")
     destination = repo / ROOT_PATH
     destination.parent.mkdir(parents=True, exist_ok=True)
-    temporary = Path(tempfile.mkdtemp(prefix=".f3c1-r5-", dir=destination.parent))
+    temporary = Path(tempfile.mkdtemp(prefix=".f3c1-r6-", dir=destination.parent))
     try:
         shutil.copytree(source_root, temporary / "formal", dirs_exist_ok=False)
         os.replace(temporary / "formal", destination)
@@ -767,7 +799,7 @@ def initialize_r5_from_r3(
         "protocol_config": _file_record(repo, f3c0.CONFIG_PATH),
         "kernel_files": [_file_record(repo, path) for path in ("src/vitnns/stage_f_f3c1_kernels.py", "src/vitnns/stage_f_f3c1.py", "src/vitnns/stage_c_class_logit.py", "src/vitnns/stage_c_attention.py", "src/vitnns/attribution.py")],
         "method_roster": list(kernels.METHODS), "manual_or_learned_head_weights": False,
-        "rendering_surface_present": False, "r3_numeric_terminal_reused_without_recompute": True,
+        "rendering_surface_present": False, "r5_numeric_terminal_reused_without_recompute": True,
         "next_authorization": "F3C1_CPU_VALIDATION_AND_SEAL_ONLY",
     }); _write_new(repo / IMPLEMENTATION_PATH, implementation)
     statistics = kernels.statistical_method_freeze(); _write_new(repo / STATISTICS_PATH, statistics)
@@ -777,9 +809,9 @@ def initialize_r5_from_r3(
         "startup_gate_digest": startup["canonical_digest"],
         "implementation_digest": implementation["canonical_digest"],
         "statistics_digest": statistics["canonical_digest"],
-        "r3_numeric_terminal_reused_without_recompute": True,
-        "model_loaded_in_r4": False, "jpeg_decoded_in_r4": False,
-        "gpu_cuda_access_in_r4": False, "pilot_sample_access": False,
+        "r5_numeric_terminal_reused_without_recompute": True,
+        "model_loaded_in_r6": False, "jpeg_decoded_in_r6": False,
+        "gpu_cuda_access_in_r6": False, "pilot_sample_access": False,
         "formal_sample_access": False, "f3c2_started": False,
         "f3c3_started": False, "f3c4_started": False, "f4_started": False,
     }); _write_new(repo / PENDING_PATH, pending); return pending
@@ -902,6 +934,10 @@ def validate_outputs(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
     required = (STARTUP_PATH, IMPLEMENTATION_PATH, SOURCE_PATH, MODEL_BINDING_PATH, SAMPLE_BINDING_PATH, CLEAN_INPUT_PATH, FIXTURE_PATH, ENGINEERING_PATH, ATTENTION_PATH, TARGET_PATH, ATTEMPT_PATH, RESOURCE_PATH, ACCESS_PATH, STATISTICS_PATH, TEST_PATH, FALSE_PASS_PATH, PENDING_PATH)
     for relative in required:
         value = _read(repo / relative); _validate_signed(value, relative)
+    source_binding = _read(repo / SOURCE_PATH)
+    expected_source = _source_hash_snapshot(repo)
+    if source_binding.get("files") != expected_source["files"] or source_binding.get("source_tree_digest") != expected_source["canonical_digest"]:
+        raise StageFF3C1Error("F3C1 source binding no longer matches live implementation")
     test = _read(repo / TEST_PATH); audit = _read(repo / FALSE_PASS_PATH); access = _read(repo / ACCESS_PATH); resource = _read(repo / RESOURCE_PATH)
     if test.get("status") != "PASS" or test.get("failed") != 0:
         raise StageFF3C1Error("synthetic test gate failed")
@@ -1046,7 +1082,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     for command in ("startup", "validate-engineering", "build-audits", "build-false-pass", "validate-outputs", "validate-completion"):
         child = sub.add_parser(command); child.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     init = sub.add_parser("initialize"); init.add_argument("--repo-root", type=Path, default=REPO_ROOT); init.add_argument("--started-at", required=True)
-    init_r5 = sub.add_parser("initialize-r5"); init_r5.add_argument("--repo-root", type=Path, default=REPO_ROOT); init_r5.add_argument("--started-at", required=True)
+    init_r6 = sub.add_parser("initialize-r6"); init_r6.add_argument("--repo-root", type=Path, default=REPO_ROOT); init_r6.add_argument("--started-at", required=True)
     run = sub.add_parser("run-engineering"); run.add_argument("--repo-root", type=Path, default=REPO_ROOT); run.add_argument("--device", default="cuda:0")
     tests = sub.add_parser("record-tests"); tests.add_argument("--repo-root", type=Path, default=REPO_ROOT); tests.add_argument("--passed", type=int, required=True); tests.add_argument("--failed", type=int, required=True); tests.add_argument("--initial-failed-attempts", type=int, default=0); tests.add_argument("--test-command", required=True)
     final = sub.add_parser("finalize"); final.add_argument("--repo-root", type=Path, default=REPO_ROOT); final.add_argument("--completed-at", required=True)
@@ -1055,7 +1091,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         commands = {
             "startup": lambda: verify_startup_gates(args.repo_root),
             "initialize": lambda: initialize(args.repo_root, started_at=args.started_at),
-            "initialize-r5": lambda: initialize_r5_from_r3(args.repo_root, started_at=args.started_at),
+            "initialize-r6": lambda: initialize_r6_from_r5(args.repo_root, started_at=args.started_at),
             "run-engineering": lambda: run_engineering_check(args.repo_root, device=args.device),
             "validate-engineering": lambda: validate_engineering_terminal(args.repo_root),
             "record-tests": lambda: record_synthetic_tests(args.repo_root, passed=args.passed, failed=args.failed, command=args.test_command, initial_failed_attempts=args.initial_failed_attempts),
