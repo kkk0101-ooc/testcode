@@ -1,0 +1,115 @@
+{
+  "$schema": "stage_f_f3c.schema.json",
+  "schema_version": 1,
+  "document_type": "stage_f_f3c_prospective_protocol_config",
+  "protocol_id": "STAGE_F_F3C_CLASS_TARGETED_V1_20260907",
+  "status": "FROZEN_PROTOCOL_EXECUTION_NOT_STARTED",
+  "upstream": {
+    "f3h_archive_ref": "refs/archive/stage-f-v1-f3h-completion",
+    "f3h_archive_commit": "56afedd2e73a760dc5127ab4ee9c38d72623dbbc",
+    "f3h_completion_path": "evidence/stage_f/f3h_full_head_r3_terminal_seal_20260907/formal/completion/f3h.json",
+    "f3h_completion_sha256": "26c47acc7729f20b3b22ab66f9a50ca67568fc67ecb9a939bee57c19ed6538c2",
+    "f3h_completion_canonical_digest": "5bd8ff0717362b4334864e8e8daf71d006775530be334971a5a22840732b8e93",
+    "basis_assessment_path": "reports/stage_f_f3h_full_head_r2_cpu_reconcile_20260907/class_conditioned_basis_assessment.json",
+    "basis_assessment_sha256": "d287963bd601119532fc7358a82aeb79603b1ef67126c08dca51784efb05f4e7",
+    "basis_assessment_canonical_digest": "cb14249e96633f23f305298299e72d3e10d6665015cf66b5e0f07169b5b71c4e",
+    "required_basis_status": "INSUFFICIENT_BASIS_FOR_NUMERICAL_CLASS_CONDITIONED_WEIGHTS"
+  },
+  "sample_split": {
+    "path": "manifests/stage_f_f3c_v1/sample_split.json",
+    "sha256": "b1dd0bb74f9ee0a2381eaa797c27a0365c13757b0f72ea253924fded3d8a2b09",
+    "canonical_digest": "b89be7ebf83c8e5783fd8eb12ad210c8ed6295dbfef4c9c81db1a6cd81188f71",
+    "pilot_count": 5,
+    "formal_count": 50,
+    "formal_statistical_n": 50,
+    "continuity_anchor_order": 44,
+    "continuity_anchor_in_statistics": false,
+    "visual_replacement_allowed": false
+  },
+  "model": {
+    "name": "vit_base_patch16_224.augreg2_in21k_ft_in1k",
+    "identity": "RECOVERY_V2_NEW_ARTIFACT_NOT_HISTORICAL_2E718",
+    "path": "assets/models/vit_base_patch16_224_weights.semantic_candidate.pth",
+    "state_dict_sha256": "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d",
+    "canonical_tensor_digest": "150234d8117a50057f62aa14a97f46bbf1da92b00b386c10c71cc7000c5d51dd"
+  },
+  "target": {
+    "id": "clean_predicted_class_raw_logit",
+    "class_index_rule": "single_clean_input_argmax_then_frozen_for_all_methods_and_interventions",
+    "misclassified_samples_retained": true,
+    "baseline": "normalized_zero_canonical_rgb_0_5"
+  },
+  "methods": [
+    {"id": "conditional_all_blocks_fixed_clean_attention_class_logit_ig", "label": "class-targeted NNS (all-block fixed-clean-attention class-logit IG)", "class_targeted": true, "class_agnostic": false, "conditional_functional": true, "signed": true},
+    {"id": "vit_grad_cam_block11_norm1", "label": "ViT Grad-CAM", "class_targeted": true, "class_agnostic": false, "conditional_functional": false, "signed": false},
+    {"id": "full_model_class_logit_ig", "label": "full-model class-logit IG", "class_targeted": true, "class_agnostic": false, "conditional_functional": false, "signed": true},
+    {"id": "attention_rollout_mean_head_residual_all_blocks", "label": "attention rollout", "class_targeted": false, "class_agnostic": true, "conditional_functional": false, "signed": false},
+    {"id": "direct_raw_cls_attention_last_block_head_mean", "label": "block-11 raw CLS attention head mean", "class_targeted": false, "class_agnostic": true, "conditional_functional": false, "signed": false}
+  ],
+  "class_targeted_nns": {
+    "attention_scope": "all_12_blocks_all_12_heads_full_attention_tensor",
+    "attention_source": "clean_real_forward_attention_used",
+    "attention_frozen_during_ig": true,
+    "manual_head_weights": false,
+    "f3h_head_map_weighted_sum": false,
+    "live_paths": ["values", "head_concatenation", "attention_output_projection", "residual", "mlp", "final_norm", "classifier_head"],
+    "cut_paths": ["query", "key", "attention_softmax_variation"],
+    "endpoint_logits_max_abs_error_lt": 1e-6,
+    "ig_schedule": [512, 1024, 2048, 4096, 8192],
+    "ig_step_chunk_size": 8,
+    "ig_atol": 0.0001,
+    "ig_rtol": 0.01
+  },
+  "evaluation": {
+    "common_target": "unmodified_frozen_clean_predicted_class_raw_logit",
+    "primary_grid": "14x14_patch_mass",
+    "fractions": [0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0],
+    "tie_repeats": 5,
+    "fidelity_score": "0.5*(insertion_auc-deletion_auc)",
+    "primary_contrast": "class_targeted_nns_minus_vit_grad_cam",
+    "secondary_holm_family": ["class_targeted_nns_minus_full_model_ig", "class_targeted_nns_minus_attention_rollout", "class_targeted_nns_minus_raw_cls_attention"],
+    "formal_bootstrap_resamples": 10000,
+    "formal_statistical_unit": "image",
+    "object_localization_claim_allowed": false
+  },
+  "display": {
+    "primary_view": "target_oriented_positive_mass_one",
+    "shared_scale_within_sample_all_five_methods": true,
+    "method_specific_gain_gamma_alpha_allowed": false,
+    "percentile_clipping_allowed": false,
+    "signed_audit_for_nns_and_full_model_ig": true,
+    "negative_map_for_nonnegative_methods_allowed": false
+  },
+  "budget": {
+    "pilot_samples": 5,
+    "formal_samples": 50,
+    "methods_per_sample": 5,
+    "provisional_total_h20_gpu_hours_max": 8.0,
+    "per_image_group_h20_gpu_hours_max": 0.3,
+    "max_h20_devices": 8,
+    "per_process_peak_reserved_bytes_max": 17179869184,
+    "retained_regular_file_bytes_max": 8589934592,
+    "waiver_allowed": false,
+    "pilot_reprojection_required_before_formal": true
+  },
+  "authorization": {
+    "current": "F3C0_PROTOCOL_FREEZE_ONLY",
+    "on_f3c0_pass": "F3C1_IMPLEMENTATION_AND_SYNTHETIC_PREFLIGHT_ONLY",
+    "empirical_f3c_started": false,
+    "f4_status": "PAUSED_PENDING_F3C",
+    "f4_started": false
+  },
+  "protocol": {
+    "path": "docs/stage_f_f3c_class_targeted_protocol_20260907.md",
+    "sha256": "6b0bc933b635209e1c04e2ba1d4a11a15e9827b445edbc3eb32681fccef22bf1",
+    "schema_path": "config/stage_f_f3c.schema.json",
+    "schema_sha256": "65191984978bb9191ca0474458f50949403e55741bcf8a8381b8e4beeecb055b",
+    "requirements_lock_sha256": "81beabd6aba9ede777e973e2ee5f0c60ce2aa88ce55b29d025e95d67ab175984",
+    "existing_kernel_hashes": {
+      "src/vitnns/stage_c_class_logit.py": "620993db2e528eedd54f2ebf9a87fddb9519aac2f98ae06a4c69154585228317",
+      "src/vitnns/stage_c_attention.py": "bb7d7a962b388a5e2732302da051e1d45a1038a8e37920c2ad971122ea698d7c",
+      "src/vitnns/attribution.py": "cbbe95552dd666ae94afa7bcd0a050d53a14d6756b88e978117226affdd960c0"
+    }
+  },
+  "canonical_digest": "152edb3a232c89c31c4b97324e607d98fe3692c3765c2c6d6be2aefc1c5d9f04"
+}

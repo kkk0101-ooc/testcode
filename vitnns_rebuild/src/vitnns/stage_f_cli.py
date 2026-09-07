@@ -60,6 +60,9 @@ def _parser() -> argparse.ArgumentParser:
     f3h_gradcam = sub.add_parser("run-f3h-gradcam"); f3h_gradcam.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h_gradcam.add_argument("--device", default="cuda" + ":0")
     f3h_tests = sub.add_parser("record-f3h-tests"); f3h_tests.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h_tests.add_argument("--passed", type=int, required=True); f3h_tests.add_argument("--failed", type=int, required=True); f3h_tests.add_argument("--test-command", required=True)
     f3h_final = sub.add_parser("finalize-f3h"); f3h_final.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h_final.add_argument("--completed-at", required=True)
+    f3c0_check = sub.add_parser("validate-f3c0-protocol"); f3c0_check.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c0_check.add_argument("--require-clean", action="store_true")
+    f3c0_freeze = sub.add_parser("freeze-f3c0-protocol"); f3c0_freeze.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c0_freeze.add_argument("--frozen-at", required=True); f3c0_freeze.add_argument("--test-passed", required=True, type=int); f3c0_freeze.add_argument("--test-failed", required=True, type=int); f3c0_freeze.add_argument("--test-command", required=True)
+    f3c0_completion = sub.add_parser("validate-f3c0-completion"); f3c0_completion.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     return parser
 
 
@@ -98,6 +101,11 @@ def run(arguments: list[str] | None = None) -> dict[str, Any]:
         if args.command == "validate-f3h0-protocol": return f3h0.validate_protocol(args.repo_root, require_clean=args.require_clean)
         if args.command == "freeze-f3h0-protocol": return f3h0.freeze_protocol(args.repo_root, frozen_at=args.frozen_at, test_passed=args.test_passed, test_failed=args.test_failed, test_command=args.test_command)
         return f3h0.validate_completion(args.repo_root)
+    if args.command.endswith("f3c0-protocol") or args.command == "validate-f3c0-completion":
+        from . import stage_f_f3c_protocol as f3c0
+        if args.command == "validate-f3c0-protocol": return f3c0.validate_protocol(args.repo_root, require_clean=args.require_clean)
+        if args.command == "freeze-f3c0-protocol": return f3c0.freeze(args.repo_root, frozen_at=args.frozen_at, test_passed=args.test_passed, test_failed=args.test_failed, test_command=args.test_command)
+        return f3c0.validate_completion(args.repo_root)
     if "f3h" in args.command:
         from . import stage_f_f3h as f3h
         commands = {

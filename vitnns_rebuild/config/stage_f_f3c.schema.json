@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Stage F F3C prospective class-targeted study",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "document_type", "protocol_id", "status", "upstream", "sample_split", "model", "target", "methods", "class_targeted_nns", "evaluation", "display", "budget", "authorization", "protocol", "canonical_digest"],
+  "properties": {
+    "$schema": {"const": "stage_f_f3c.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_f_f3c_prospective_protocol_config"},
+    "protocol_id": {"const": "STAGE_F_F3C_CLASS_TARGETED_V1_20260907"},
+    "status": {"const": "FROZEN_PROTOCOL_EXECUTION_NOT_STARTED"},
+    "upstream": {"type": "object"},
+    "sample_split": {"type": "object"},
+    "model": {"type": "object"},
+    "target": {"type": "object"},
+    "methods": {"type": "array", "minItems": 5, "maxItems": 5},
+    "class_targeted_nns": {"type": "object"},
+    "evaluation": {"type": "object"},
+    "display": {"type": "object"},
+    "budget": {"type": "object"},
+    "authorization": {"type": "object"},
+    "protocol": {"type": "object"},
+    "canonical_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
