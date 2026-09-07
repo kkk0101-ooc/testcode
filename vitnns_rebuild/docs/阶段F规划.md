@@ -553,3 +553,19 @@ F3H1 已在不创建 F3H formal GPU root 的条件下完成：
 - F3H1 completion canonical digest `562fc67ef48e5876695ecfec7209e3ec98f933944b5a005585c0dff0f30f3e58`。
 
 F3H1 PASS 只授权 `F3H2_PILOT_ONLY`。F4 继续为 `PAUSED_PENDING_F3H_AND_F3C`。
+
+## 19. F3H v1 启动失败与 R1 前瞻恢复（2026-09-07）
+
+F3H v1 formal root 初始化后，首次四坐标 pilot 在模型反序列化、JPEG 解码和 attribution 开始前 fail closed。通用 recovery-v2 loader 重新核验 `config/recovery_v2_binding.json` 中的原始 amendment SHA，但对应 amendment 后来发生了文档性编辑，因而报 `Recovery amendment SHA-256 drifted`。该失败不是 scientific invalidity；v1 root 保留 pending receipt，Value-path/Grad-CAM terminal 数均为 0，且没有 terminal PASS。
+
+新的 [F3H-R1 启动恢复补充协议](stage_f_f3h_r1_startup_recovery_addendum_20260907.md) 在任何 F3H outcome access 前冻结：
+
+- 不修改旧 binding、amendment、F3H0/F3H1 completion、F3H v1 failure root 或任何 sealed 上游 evidence；
+- R1 继续使用同一 recovery-v2 checkpoint 文件、架构、canonical tensor digest、order 44 JPEG、预处理和 clean-tensor digest；
+- 只将启动 adapter 改为对这些 F3H 已冻结身份逐项 direct-pin，不再调用失效的 Stage-A/C7 amendment loader；
+- R1 写入新的 `f3h_full_head_r1_recovery_v2_20260907` evidence root 与 `stage_f_f3h_full_head_r1_20260907` report root；
+- 原 `refs/archive/stage-f-v1-f3h1-implementation` 必须保持指向 `9ea95a6b23979a1d2da1d83658f7353ac0096ad9`；R1 producer 使用独立 ref `refs/archive/stage-f-v1-f3h-r1-producer`；
+- R1 仍只先执行冻结的四坐标 pilot；通过资源和完整 typed-terminal 门禁后才允许 bulk 与 sealed Grad-CAM；
+- 完整 12×12 atlas 完成后才依据预声明判据评估 head 信息是否足以定义 class-conditioned 聚合。不得凭视觉效果指定权重。
+
+F3C0 只能在 F3H terminal 后冻结，候选集必须全部包含 class-targeted NNS、ViT Grad-CAM、full-model class-logit IG、attention rollout 和 block-11 raw CLS attention head mean。F3C 计算和 F4 均未开始，F4 状态保持 `PAUSED_PENDING_F3H_AND_F3C`。

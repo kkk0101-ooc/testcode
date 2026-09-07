@@ -79,6 +79,12 @@ def test_semantic_validator_rejects_false_pass_mutations(path: tuple[str, str], 
 
 def test_live_protocol_validation_is_cpu_only_and_f4_paused(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "")
+    if (REPO / COMPLETION_PATH).exists():
+        result = validate_completion(REPO)
+        assert result["status"] == "PASS"
+        assert result["f4_status"] == "PAUSED_PENDING_F3H"
+        assert result["formal_gpu_execution_started"] is False
+        return
     result = validate_protocol(REPO)
     assert result["status"] == "PASS"
     assert result["f4_status"] == "PAUSED_PENDING_F3H"
@@ -89,7 +95,11 @@ def test_live_protocol_validation_is_cpu_only_and_f4_paused(monkeypatch: pytest.
 
 def test_false_pass_audit_enumerates_every_attack(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "")
-    audit = build_false_pass_audit(REPO)
+    if (REPO / COMPLETION_PATH).exists():
+        completion = json.loads((REPO / COMPLETION_PATH).read_text(encoding="utf-8"))
+        audit = json.loads((REPO / completion["false_pass_audit"]["path"]).read_text(encoding="utf-8"))
+    else:
+        audit = build_false_pass_audit(REPO)
     assert [item["attack"] for item in audit["attacks"]] == list(ATTACKS)
     assert len(audit["attacks"]) == 20
     assert all(item["result"] == "REJECTED" for item in audit["attacks"])

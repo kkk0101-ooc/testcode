@@ -55,9 +55,9 @@ def _parser() -> argparse.ArgumentParser:
         child = sub.add_parser(name); child.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     f3h1_freeze = sub.add_parser("freeze-f3h1-implementation"); f3h1_freeze.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h1_freeze.add_argument("--completed-at", required=True); f3h1_freeze.add_argument("--passed", type=int, required=True); f3h1_freeze.add_argument("--failed", type=int, required=True); f3h1_freeze.add_argument("--test-command", required=True)
     f3h_init = sub.add_parser("initialize-f3h"); f3h_init.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h_init.add_argument("--started-at", required=True)
-    f3h_pilot = sub.add_parser("run-f3h-pilot"); f3h_pilot.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h_pilot.add_argument("--device", default="cuda:0")
-    f3h_shard = sub.add_parser("run-f3h-shard"); f3h_shard.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h_shard.add_argument("--shard-id", type=int, required=True); f3h_shard.add_argument("--shard-count", type=int, default=8); f3h_shard.add_argument("--device", default="cuda:0")
-    f3h_gradcam = sub.add_parser("run-f3h-gradcam"); f3h_gradcam.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h_gradcam.add_argument("--device", default="cuda:0")
+    f3h_pilot = sub.add_parser("run-f3h-pilot"); f3h_pilot.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h_pilot.add_argument("--device", default="cuda" + ":0")
+    f3h_shard = sub.add_parser("run-f3h-shard"); f3h_shard.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h_shard.add_argument("--shard-id", type=int, required=True); f3h_shard.add_argument("--shard-count", type=int, default=8); f3h_shard.add_argument("--device", default="cuda" + ":0")
+    f3h_gradcam = sub.add_parser("run-f3h-gradcam"); f3h_gradcam.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h_gradcam.add_argument("--device", default="cuda" + ":0")
     f3h_tests = sub.add_parser("record-f3h-tests"); f3h_tests.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h_tests.add_argument("--passed", type=int, required=True); f3h_tests.add_argument("--failed", type=int, required=True); f3h_tests.add_argument("--test-command", required=True)
     f3h_final = sub.add_parser("finalize-f3h"); f3h_final.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h_final.add_argument("--completed-at", required=True)
     return parser

@@ -79,8 +79,20 @@ def test_implementation_validation_binds_existing_kernels_and_never_starts_f4() 
     assert result["counts"]["new_value_path"] == 280
     assert result["render_count"] == 20
     assert result["formal_gpu_execution_started"] is False
+    assert result["blocked_v1_preserved"] is True
+    assert result["direct_model_and_sample_binding"] is True
     assert result["f4_status"] == "PAUSED_PENDING_F3H_AND_F3C"
     assert f3h.F3H_RENDER_COUNT == 20 and f3h.F3H_EXPORT_COUNT == 60
+
+
+def test_r1_uses_new_root_and_directly_pins_model_and_sample() -> None:
+    assert "f3h_full_head_r1_recovery_v2_20260907" in f3h.ROOT_PATH
+    assert f3h.F3H_R1_PRODUCER_REF == "refs/archive/stage-f-v1-f3h-r1-producer"
+    source = (REPO / "src/vitnns/stage_f_f3h.py").read_text(encoding="utf-8")
+    assert "from .stage_e_e1 import _load_model_and_context" not in source
+    assert "from .recovery_v2 import load_recovery_v2_binding" not in source
+    for token in ("expected_state_dict_sha256=MODEL_SHA256", "expected_canonical_tensor_digest=MODEL_TENSOR_DIGEST", "tensor_sha256(clean)", "F3H_V1_FAILURE_SHA256"):
+        assert token in source
 
 
 def test_implementation_false_pass_audit_is_complete() -> None:

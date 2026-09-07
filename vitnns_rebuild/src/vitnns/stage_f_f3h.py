@@ -14,6 +14,7 @@ import math
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from collections import Counter
@@ -39,8 +40,13 @@ F3H1_ARCHIVE_REF = "refs/archive/stage-f-v1-f3h1-implementation"
 F3H1_ADDENDUM = "docs/stage_f_f3h1_implementation_addendum_20260907.md"
 F3H1_ADDENDUM_SHA256 = "89450b3dc711f32511a1570c7365ea714090da055cba05f32d79e56ba88516bd"
 
-ROOT_PATH = "evidence/stage_f/f3h_full_head_v1_20260907/formal"
-REPORT_PATH = "reports/stage_f_f3h_full_head_v1_20260907"
+F3H_R1_ADDENDUM = "docs/stage_f_f3h_r1_startup_recovery_addendum_20260907.md"
+F3H_R1_ADDENDUM_SHA256 = "2fc0b34b2bce84a02290604cc77b6304c5df5ccef4c64904848d37292b8be9e1"
+F3H_V1_ROOT = "evidence/stage_f/f3h_full_head_v1_20260907/formal"
+F3H_V1_FAILURE = "reports/stage_f_f3h_full_head_v1_20260907/failure_event.json"
+F3H_V1_FAILURE_SHA256 = "42352afb0ff8a246f054d38c025e05a450dbee98d61e410b2c98267685362596"
+ROOT_PATH = "evidence/stage_f/f3h_full_head_r1_recovery_v2_20260907/formal"
+REPORT_PATH = "reports/stage_f_f3h_full_head_r1_20260907"
 PLAN_PATH = ROOT_PATH + "/control/plan.json"
 RUN_SPEC_PATH = ROOT_PATH + "/control/run_spec.json"
 PILOT_AUTH_PATH = ROOT_PATH + "/control/pilot_authorization.json"
@@ -68,6 +74,7 @@ SUFFICIENCY_PATH = REPORT_PATH + "/class_conditioned_basis_assessment.json"
 CONSENSUS_PATH = ROOT_PATH + "/equal_head_consensus_manifest.json"
 REVIEW_ROOT_PATH = REPORT_PATH + "/figures_png"
 F3H_ARCHIVE_REF = "refs/archive/stage-f-v1-f3h-completion"
+F3H_R1_PRODUCER_REF = "refs/archive/stage-f-v1-f3h-r1-producer"
 F3H_RENDER_COUNT = 20
 F3H_EXPORT_COUNT = 60
 
@@ -81,6 +88,10 @@ PILOT_COORDINATES = ((0, 0), (4, 0), (8, 0), (11, 0))
 ATTEMPT_ID = "attempt-000001"
 MODEL_SHA256 = "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d"
 MODEL_TENSOR_DIGEST = "150234d8117a50057f62aa14a97f46bbf1da92b00b386c10c71cc7000c5d51dd"
+MODEL_NAME = "vit_base_patch16_224.augreg2_in21k_ft_in1k"
+MODEL_PATH = "assets/models/vit_base_patch16_224_weights.semantic_candidate.pth"
+MODEL_PROVENANCE_IDENTITY = "RECOVERY_V2_NEW_ARTIFACT_NOT_HISTORICAL_2E718"
+MODEL_DIRECT_PIN_IDENTITY = "F3H_R1_DIRECT_PIN_OF_RECOVERY_V2_BYTES"
 
 IMPLEMENTATION_ATTACKS = (
     "formal_execution_before_f3h1_completion",
@@ -258,7 +269,14 @@ def validate_implementation(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]
     for token in ("resolve_fixed_clean_attention_head_directions", "e3_r1_conditional_fixed_clean_attention_head_direction_value_path_ig", "matched_fixed_clean_attention_patch_token_contribution", "vit_grad_cam_block11_norm1", "pixel_to_fine_cell_mass", "patch_to_fine_cell_mass"):
         if token not in source: raise StageFF3HError(f"implementation does not bind required kernel: {token}")
     if _sha_file(repo/F3H1_ADDENDUM) != F3H1_ADDENDUM_SHA256: raise StageFF3HError("F3H1 addendum drifted")
-    return {"schema_version": 1, "document_type": "stage_f_f3h1_implementation_validation", "status": "PASS", "plan_digest": plan["canonical_digest"], "counts": plan["counts"], "render_count":F3H_RENDER_COUNT, "f3h1_addendum_sha256":_sha_file(repo/F3H1_ADDENDUM), "formal_gpu_execution_started": False, "model_loaded": False, "jpeg_decoded": False, "f4_status": "PAUSED_PENDING_F3H_AND_F3C", "next_authorization": "F3H2_PILOT_ONLY"}
+    if _sha_file(repo/F3H_R1_ADDENDUM) != F3H_R1_ADDENDUM_SHA256: raise StageFF3HError("F3H-R1 addendum drifted")
+    if _sha_file(repo/F3H_V1_FAILURE) != F3H_V1_FAILURE_SHA256 or not (repo/F3H_V1_ROOT/"completion/f3h.pending.json").is_file() or (repo/F3H_V1_ROOT/"completion/f3h.json").exists(): raise StageFF3HError("blocked F3H v1 evidence drifted")
+    stale_loader = "_load_model" + "_and_context"
+    stale_binding = "load_recovery" + "_v2_binding"
+    if stale_loader in source or stale_binding in source: raise StageFF3HError("F3H-R1 still depends on stale generic recovery binding")
+    for token in ("expected_state_dict_sha256=MODEL_SHA256", "expected_canonical_tensor_digest=MODEL_TENSOR_DIGEST", "tensor_sha256(clean)", "F3H_R1_PRODUCER_REF"):
+        if token not in source: raise StageFF3HError(f"F3H-R1 direct binding missing: {token}")
+    return {"schema_version": 1, "document_type": "stage_f_f3h1_implementation_validation", "status": "PASS", "plan_digest": plan["canonical_digest"], "counts": plan["counts"], "render_count":F3H_RENDER_COUNT, "f3h1_addendum_sha256":_sha_file(repo/F3H1_ADDENDUM), "f3h_r1_addendum_sha256":_sha_file(repo/F3H_R1_ADDENDUM), "blocked_v1_preserved":True, "direct_model_and_sample_binding":True, "formal_gpu_execution_started": False, "model_loaded": False, "jpeg_decoded": False, "f4_status": "PAUSED_PENDING_F3H_AND_F3C", "next_authorization": "F3H2_PILOT_ONLY"}
 
 
 def implementation_false_pass_audit() -> dict[str, Any]:
@@ -377,12 +395,53 @@ def _invalid_result(unit: Mapping[str, Any], target: Any, *, status: str, code: 
     return {"schema_version": 1, "document_type": "stage_f_f3h_value_path_terminal", "protocol_id": unit["protocol_id"], "unit_digest": unit["canonical_digest"], "sample_id": unit["sample_id"], "selection_order": 44, "block": unit["block"], "head": unit["head"], "method": unit["method"], "target": unit["target"], "validity_status": status, "failure_code": code if status == "FAILED" else None, "na_reason": code if status == "NA" else None, "failure_details": dict(details), "attempt_id": ATTEMPT_ID, "target_identity": identity, "target_semantic_digest": target_digest, "pair_binding": pair, "pair_binding_digest": canonical_sha256(pair), "source_hashes": {"image_sha256": unit["image_sha256"], "clean_input_sha256": target.clean_input_sha256, "model_sha256": MODEL_SHA256, "model_canonical_tensor_digest": MODEL_TENSOR_DIGEST, "signed_map_sha256": None}, "resources": {"elapsed_seconds": elapsed, "cpu_seconds": cpu, "gpu_hours": elapsed / 3600.0, "forward_calls": forward_calls, "backward_calls": backward_calls, "peak_cuda_memory_bytes": peak}, "map_only": True, "fidelity_executed": False, "statistics_computed": False}
 
 
-def _runtime(repo: Path, device: str) -> tuple[Any, Any, Any, str, dict[str, Any]]:
-    from .stage_e_e1 import _load_model_and_context, _load_sample
+def _runtime(repo: Path, device: str) -> tuple[Any, Mapping[str, Any], Any, str, dict[str, Any]]:
+    import torch
+    from PIL import Image
+    from torchvision.transforms import InterpolationMode
+    from torchvision.transforms import functional as transform_functional
+    from .modeling import canonical_preprocess_spec, load_canonical_model
     from .stage_c_perturbations import tensor_sha256
-    config = _config(repo); row = _registry_row(repo, config); model, binding, model_record = _load_model_and_context(repo, device); _rgb, clean, clean_sha = _load_sample(binding, row, model, device)
-    if clean_sha != config["sample"]["clean_input_sha256"] or clean_sha != tensor_sha256(clean): raise StageFF3HError("live clean tensor hash drifted")
-    return model, binding, clean, clean_sha, model_record
+
+    config = _config(repo); row = _registry_row(repo, config)
+    if config["model"] != {
+        "name": MODEL_NAME, "identity": MODEL_PROVENANCE_IDENTITY,
+        "path": MODEL_PATH, "state_dict_sha256": MODEL_SHA256,
+        "lfs_oid_sha256": MODEL_SHA256,
+        "canonical_tensor_digest": MODEL_TENSOR_DIGEST, "key_count": 152,
+        "parameter_count": 86567656, "historical_2e718_checkpoint_allowed": False,
+        "reverify_before_inference": True,
+    }:
+        raise StageFF3HError("frozen F3H model identity drifted")
+    model = load_canonical_model(
+        state_dict_path=repo / MODEL_PATH, device=device, verify_hash=True,
+        unfused_attention=True, expected_state_dict_sha256=MODEL_SHA256,
+        expected_model_name=MODEL_NAME, expected_model_identity=MODEL_DIRECT_PIN_IDENTITY,
+        expected_canonical_tensor_digest=MODEL_TENSOR_DIGEST,
+    )
+    try:
+        specification = canonical_preprocess_spec(model)
+        expected = ((3, 224, 224), 248, (224, 224), "bicubic", (0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        observed = (specification.input_size, specification.resize_shorter_side, specification.center_crop, specification.interpolation, specification.mean, specification.std)
+        if observed != expected: raise StageFF3HError("canonical preprocessing contract drifted")
+        if row["sample_id"] != config["sample"]["sample_id"] or row["relative_path"] != Path(config["sample"]["image_path"]).name or row["image_sha256"] != config["sample"]["image_sha256"]:
+            raise StageFF3HError("frozen sample registry binding drifted")
+        image_path = repo / config["sample"]["image_path"]
+        if _sha_file(image_path) != row["image_sha256"]: raise StageFF3HError("live image digest mismatch")
+        with Image.open(image_path) as source:
+            rgb = source.convert("RGB")
+            resized = transform_functional.resize(rgb, 248, interpolation=InterpolationMode.BICUBIC, antialias=True)
+            cropped = transform_functional.center_crop(resized, [224, 224])
+            canonical = transform_functional.pil_to_tensor(cropped).to(torch.float32).div(255.0).unsqueeze(0)
+        clean = ((canonical - 0.5) / 0.5).to(device); clean_sha = tensor_sha256(clean)
+        if clean_sha != config["sample"]["clean_input_sha256"] or clean_sha != tensor_sha256(clean): raise StageFF3HError("live clean tensor hash drifted")
+    except Exception:
+        del model
+        if device.startswith("cuda") and torch.cuda.is_available(): torch.cuda.empty_cache()
+        raise
+    context = {"adapter": "F3H_R1_DIRECT_PIN", "data_root": "assets/data/ILSVRC2012_val", "sample_id": row["sample_id"]}
+    model_record = {"name": MODEL_NAME, "path": MODEL_PATH, "sha256": MODEL_SHA256, "canonical_tensor_digest": MODEL_TENSOR_DIGEST, "provenance_identity": MODEL_PROVENANCE_IDENTITY, "loader_direct_pin_identity": MODEL_DIRECT_PIN_IDENTITY}
+    return model, context, clean, clean_sha, model_record
 
 
 def _completed_gpu_hours(repo: Path) -> float:
@@ -446,14 +505,18 @@ def initialize(repo_root: Path | str = REPO_ROOT, *, started_at: str) -> dict[st
     if _git(repo, "status", "--porcelain=v1"): raise StageFF3HError("F3H initialization requires clean worktree")
     head = _git(repo, "rev-parse", "HEAD"); tracking = _git(repo, "rev-parse", "origin/stage-d-d3-pass")
     if head != tracking: raise StageFF3HError("F3H initialization requires local/tracking equality")
-    if _git(repo, "rev-parse", F3H1_ARCHIVE_REF + "^{commit}") != head: raise StageFF3HError("F3H1 archive ref must equal execution HEAD")
+    if _git(repo, "rev-parse", F3H1_ARCHIVE_REF + "^{commit}") != "9ea95a6b23979a1d2da1d83658f7353ac0096ad9": raise StageFF3HError("sealed F3H1 archive ref drifted")
+    if _git(repo, "rev-parse", F3H_R1_PRODUCER_REF + "^{commit}") != head: raise StageFF3HError("F3H-R1 producer ref must equal execution HEAD")
+    if not (repo/F3H_V1_ROOT/"completion/f3h.pending.json").is_file() or (repo/F3H_V1_ROOT/"completion/f3h.json").exists(): raise StageFF3HError("F3H v1 blocked root state drifted")
+    if _sha_file(repo/F3H_V1_FAILURE) != F3H_V1_FAILURE_SHA256: raise StageFF3HError("F3H v1 failure receipt drifted")
+    if _sha_file(repo/F3H_R1_ADDENDUM) != F3H_R1_ADDENDUM_SHA256: raise StageFF3HError("F3H-R1 recovery addendum drifted")
     plan = build_plan(repo)
-    source_binding = _signed({"schema_version": 1, "document_type": "stage_f_f3h_source_binding", "status": "PASS", "protocol_config": _record(repo, CONFIG_PATH), "implementation_addendum":_file_record(repo,F3H1_ADDENDUM), "f3h0_completion": _record(repo, f3h0.COMPLETION_PATH), "f3h1_completion": _record(repo, F3H1_COMPLETION), "f3_completion": _record(repo, config["upstream"]["f3_completion_path"]), "blue_display_completion": _record(repo, config["upstream"]["blue_display_completion_path"]), "sample": config["sample"], "model": config["model"], "selection_changed": False, "f4_started": False})
+    source_binding = _signed({"schema_version": 1, "document_type": "stage_f_f3h_source_binding", "status": "PASS", "attempt": "F3H_R1_RECOVERY_V2_20260907", "protocol_config": _record(repo, CONFIG_PATH), "implementation_addendum":_file_record(repo,F3H1_ADDENDUM), "startup_recovery_addendum":_file_record(repo,F3H_R1_ADDENDUM), "blocked_v1_failure":_file_record(repo,F3H_V1_FAILURE), "f3h0_completion": _record(repo, f3h0.COMPLETION_PATH), "f3h1_completion": _record(repo, F3H1_COMPLETION), "f3_completion": _record(repo, config["upstream"]["f3_completion_path"]), "blue_display_completion": _record(repo, config["upstream"]["blue_display_completion_path"]), "sample": config["sample"], "model": config["model"], "loader_adapter": {"id": "F3H_R1_DIRECT_PIN", "generic_recovery_binding_used": False, "model_bytes_or_scientific_kernel_changed": False}, "selection_changed": False, "f4_started": False})
     run_spec = _signed({"schema_version": 1, "document_type": "stage_f_f3h_run_spec", "status": "FROZEN_BEFORE_FORMAL_OUTCOME_ACCESS", "plan_digest": plan["canonical_digest"], "pilot_coordinates": [list(item) for item in PILOT_COORDINATES], "bulk_shards": 8, "formal_device_type": "cuda", "run_fidelity": False, "run_stability": False, "run_sanity": False, "render_before_terminal_reconciliation": False, "f4_started": False})
     pilot = _signed({"schema_version": 1, "document_type": "stage_f_f3h_pilot_authorization", "status": "AUTHORIZED", "scope": "F3H2_PILOT_ONLY", "coordinates": [list(item) for item in PILOT_COORDINATES], "methods": list(METHODS), "expected_terminals": 8, "jpeg_or_map_visual_access_before_bulk_gate_allowed": False, "bulk_authorized": False, "gradcam_authorized": False, "f4_started": False})
-    pending = _signed({"schema_version": 1, "document_type": "stage_f_f3h_pending", "status": "PENDING", "started_at": started_at, "execution_commit": head, "plan_digest": plan["canonical_digest"], "expected_value_path_terminals": 288, "expected_gradcam_terminals": 1, "terminal_pass_published": False, "f4_status": "PAUSED_PENDING_F3H", "f4_started": False})
+    pending = _signed({"schema_version": 1, "document_type": "stage_f_f3h_pending", "status": "PENDING", "started_at": started_at, "execution_commit": head, "plan_digest": plan["canonical_digest"], "expected_value_path_terminals": 288, "expected_gradcam_terminals": 1, "terminal_pass_published": False, "f4_status": "PAUSED_PENDING_F3H_AND_F3C", "f4_started": False})
     for relative, document in ((PLAN_PATH, plan), (RUN_SPEC_PATH, run_spec), (PILOT_AUTH_PATH, pilot), (SOURCE_BINDING_PATH, source_binding), (PENDING_PATH, pending)): _write_new(repo / relative, document)
-    return {"status": "INITIALIZED", "plan_digest": plan["canonical_digest"], "implementation_commit": implementation["implementation_commit"], "pilot_only": True, "f4_status": "PAUSED_PENDING_F3H"}
+    return {"status": "INITIALIZED", "plan_digest": plan["canonical_digest"], "implementation_commit": implementation["implementation_commit"], "pilot_only": True, "f4_status": "PAUSED_PENDING_F3H_AND_F3C"}
 
 
 def validate_initialized(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
@@ -461,7 +524,7 @@ def validate_initialized(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
     for value, name in ((plan, "plan"), (run_spec, "run spec"), (pilot, "pilot auth"), (source, "source binding"), (pending, "pending")): _validate_signed(value, name)
     if plan != build_plan(repo) or plan["counts"]["value_path_terminals"] != 288 or run_spec["plan_digest"] != plan["canonical_digest"]: raise StageFF3HError("initialized plan/run spec drifted")
     if pilot["status"] != "AUTHORIZED" or pilot["bulk_authorized"] or pilot["gradcam_authorized"] or pending["status"] != "PENDING": raise StageFF3HError("initial authorization state drifted")
-    if pending["execution_commit"] != _git(repo,"rev-parse","HEAD") or pending["execution_commit"] != _git(repo,"rev-parse","origin/stage-d-d3-pass") or pending["execution_commit"] != _git(repo,"rev-parse",F3H1_ARCHIVE_REF+"^{commit}"):raise StageFF3HError("F3H execution commit/ref drifted")
+    if pending["execution_commit"] != _git(repo,"rev-parse","HEAD") or pending["execution_commit"] != _git(repo,"rev-parse","origin/stage-d-d3-pass") or pending["execution_commit"] != _git(repo,"rev-parse",F3H_R1_PRODUCER_REF+"^{commit}"):raise StageFF3HError("F3H-R1 execution commit/ref drifted")
     return {"status": "PASS", "plan_digest": plan["canonical_digest"], "pilot_terminals": 8, "bulk_authorized": False, "f4_started": False}
 
 
