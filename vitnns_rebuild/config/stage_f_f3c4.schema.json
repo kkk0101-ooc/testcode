@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Stage F F3C4 CPU analysis and seal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "document_type", "authorization", "protocol_id", "output_root", "report_root", "formal_sample_count", "formal_statistical_unit", "methods", "statistics", "rendering", "budget", "access", "fine_grid_fidelity", "next_authorization_on_pass"],
+  "properties": {
+    "$schema": {"const": "stage_f_f3c4.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_f_f3c4_cpu_analysis_config"},
+    "authorization": {"const": "F3C4_CPU_ANALYSIS_AND_SEAL_ONLY"},
+    "protocol_id": {"const": "STAGE_F_F3C_CLASS_TARGETED_V1_20260907"},
+    "output_root": {"const": "evidence/stage_f/f3c4_analysis_r1_20260908/formal"},
+    "report_root": {"const": "reports/stage_f_f3c4_analysis_r1_20260908"},
+    "formal_sample_count": {"const": 50},
+    "formal_statistical_unit": {"const": "image"},
+    "methods": {"type": "array", "minItems": 5, "maxItems": 5},
+    "statistics": {"type": "object"},
+    "rendering": {"type": "object"},
+    "budget": {"type": "object"},
+    "access": {"type": "object"},
+    "fine_grid_fidelity": {"const": "NOT_COMPUTED_NO_SEALED_F3C3_FINE_GRID_INTERVENTION_TERMINALS"},
+    "next_authorization_on_pass": {"const": "F4_ONLY"}
+  }
+}

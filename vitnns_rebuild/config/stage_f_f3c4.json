@@ -1,0 +1,72 @@
+{
+  "$schema": "stage_f_f3c4.schema.json",
+  "schema_version": 1,
+  "document_type": "stage_f_f3c4_cpu_analysis_config",
+  "authorization": "F3C4_CPU_ANALYSIS_AND_SEAL_ONLY",
+  "protocol_id": "STAGE_F_F3C_CLASS_TARGETED_V1_20260907",
+  "output_root": "evidence/stage_f/f3c4_analysis_r1_20260908/formal",
+  "report_root": "reports/stage_f_f3c4_analysis_r1_20260908",
+  "formal_sample_count": 50,
+  "formal_statistical_unit": "image",
+  "methods": [
+    {"id": "conditional_all_blocks_fixed_clean_attention_class_logit_ig", "label": "class-targeted NNS (all-block fixed-clean-attention class-logit IG)", "color": "#0072B2", "class_agnostic": false, "signed": true},
+    {"id": "vit_grad_cam_block11_norm1", "label": "ViT Grad-CAM", "color": "#D55E00", "class_agnostic": false, "signed": false},
+    {"id": "full_model_class_logit_ig", "label": "full-model class-logit IG", "color": "#009E73", "class_agnostic": false, "signed": true},
+    {"id": "attention_rollout_mean_head_residual_all_blocks", "label": "attention rollout (class-agnostic)", "color": "#CC79A7", "class_agnostic": true, "signed": false},
+    {"id": "direct_raw_cls_attention_last_block_head_mean", "label": "block-11 raw CLS attention head mean (class-agnostic)", "color": "#E69F00", "class_agnostic": true, "signed": false}
+  ],
+  "statistics": {
+    "tie_repeats": 5,
+    "image_score": "arithmetic_mean_of_five_repeat_0.5_times_insertion_auc_minus_deletion_auc",
+    "primary_contrast": "class_targeted_nns_minus_vit_grad_cam",
+    "primary_multiplicity_adjusted": false,
+    "secondary_holm_family": [
+      "class_targeted_nns_minus_full_model_ig",
+      "class_targeted_nns_minus_attention_rollout",
+      "class_targeted_nns_minus_raw_cls_attention"
+    ],
+    "bootstrap_resamples": 10000,
+    "bootstrap_quantiles": [0.025, 0.975],
+    "bootstrap_quantile_method": "linear",
+    "sign_flip_resamples": 100000,
+    "sign_flip_two_sided": true,
+    "sign_flip_add_one": true,
+    "holm_alpha": 0.05,
+    "float_dtype": "float64"
+  },
+  "rendering": {
+    "overlay_alpha": 0.55,
+    "atlas_samples_per_page": 5,
+    "signed_samples_per_page": 5,
+    "atlas_colormap": "viridis",
+    "signed_colormap": "RdBu_r",
+    "map_interpolation": "nearest",
+    "overlay_interpolation": "bilinear",
+    "clipping": false,
+    "method_specific_gain_gamma_alpha": false,
+    "curve_band": "pointwise_sample_sd_ddof_1_descriptive",
+    "formats": ["png", "pdf", "svg"],
+    "png_dpi": 600
+  },
+  "budget": {
+    "total_h20_gpu_hours_max": 8.0,
+    "per_image_group_h20_gpu_hours_max": 0.30,
+    "max_devices": 8,
+    "per_process_peak_reserved_bytes_max": 17179869184,
+    "total_f3c_retained_regular_file_bytes_max": 8589934592,
+    "waiver_allowed": false
+  },
+  "access": {
+    "formal_terminal_arrays_after_plan_seal": true,
+    "formal_jpeg_decode_after_plan_seal": true,
+    "pilot_outcome_or_jpeg": false,
+    "order44_outcome_or_jpeg": false,
+    "unlisted_jpeg": false,
+    "model_or_checkpoint": false,
+    "torch_or_timm": false,
+    "cuda_or_gpu": false,
+    "forward_backward_attribution_or_fidelity_evaluator": false
+  },
+  "fine_grid_fidelity": "NOT_COMPUTED_NO_SEALED_F3C3_FINE_GRID_INTERVENTION_TERMINALS",
+  "next_authorization_on_pass": "F4_ONLY"
+}

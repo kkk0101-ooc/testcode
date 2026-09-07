@@ -731,3 +731,20 @@ F3C3 已在新的不可覆盖 root 中完成，状态 `PASS`。startup gate 在�
 - 正式输出：`evidence/stage_f/f3c3_formal_v1_20260908/formal/` 与 `reports/stage_f_f3c3_formal_v1_20260908/`。terminal completion 的 Git 字段为 `SELF`；交付后 `refs/archive/stage-f-v1-f3c3-formal` 必须指向同一最终提交。
 
 F3C3 terminal PASS 的唯一下一授权是 `F3C4_CPU_ANALYSIS_AND_SEAL_ONLY`。本轮不得继续执行 F3C4 或 F4。
+
+## 27. F3C4 CPU analysis and terminal sealing completion（2026-09-08）
+
+F3C4 最终由 R3 payload-only terminal wrapper 完成，状态 `PASS`。v1 在 pre-outcome plan seal 前因 validator-development test 误用一个真实 formal terminal fixture 而 fail closed；没有 JPEG、统计或渲染。R1 重新从 fresh root 完成 plan seal、250-terminal reconciliation、冻结统计、全部 rendering 与人工 QC，但 final validator 把 canonical JSON 的对象键排序误当成显式 CSV column 顺序而 fail closed。R2 在发现 proposed validator 会越界重新哈希 F3C3 arrays/JPEG 后、实际调用前停止。v1/R1/R2 的 pending、failure event 和既有 payload 全部保留。R3 仅从 R1 roots 做 payload-only revalidation 与 terminal sealing，没有新增 F3C3 array/JPEG access、统计或渲染。
+
+- formal cohort 与 reconciliation：50/50 images；250/250 terminals VALID，FAILED/NA/incomplete 均为 0；统计单位严格为 image，五个 tie repeats 先在图内取算术平均。
+- 五方法 image-level score mean / median / sample SD / positive：class-targeted NNS `0.0696722624 / 0.0514620043 / 0.0655982304 / 45`；ViT Grad-CAM `0.1255265906 / 0.0995471654 / 0.0912929274 / 48`；full-model IG `0.0640931578 / 0.0368715956 / 0.0726053241 / 45`；attention rollout `0.0302404402 / 0.0100369789 / 0.0764351132 / 32`；raw CLS attention `0.0584075411 / 0.0387118776 / 0.0743881454 / 42`。
+- primary `NNS - ViT Grad-CAM`：mean `-0.0558543281`，median `-0.0491000428`，SD `0.0544988358`，positive `4/50`，bootstrap 95% CI `[-0.0708505871,-0.0410011760]`，unadjusted sign-flip `p=0.0000099999`；结果显著为负。
+- secondary Holm family：`NNS - full-model IG` mean `0.0055791046`、CI `[-0.0057000535,0.0166749757]`、raw `p=0.3387466125`、Holm `p=0.3472965270`，不显著；`NNS - attention rollout` mean `0.0394318222`、CI `[0.0200903340,0.0593777525]`、raw `p=0.0002599974`、Holm `p=0.0007799922`，显著为正；`NNS - raw CLS attention` mean `0.0112647213`、CI `[-0.0045168468,0.0267465794]`、raw `p=0.1736482635`、Holm `p=0.3472965270`，不显著。
+- paper-data：五张 CSV/JSON 表分别为 250/200/5/4/210 rows，R3 逐字段 parity PASS；bootstrap 10,000、sign-flip 100,000、Holm family/order 均从 R1 paper-data 复现。未生成全方法 ranking、唯一 winner 或 GO/NO-GO。
+- rendering：fidelity summary 1 页、四 contrasts summary 1 页、insertion/deletion curves 1 页、exhaustive formal atlas 10 页、signed audit 10 页；共 23 pages、69 PNG/PDF/SVG exports；atlas 覆盖全部 50 originals + 250 maps，signed audit 覆盖 100 signed maps；23/23 人工视觉 QC PASS。
+- access/resource：formal JPEG access 精确 50 张且每张 decode 前核验 SHA-256；pilot、order 44、unlisted JPEG 均未访问；未加载 model/checkpoint，未导入 Torch/timm，未访问 CUDA，forward/backward 为 `0/0`。F3C4 GPU-hours `0`；actual total F3C GPU-hours `0.23176687041080893`。CPU elapsed `297.44876121508423 s`，peak RSS `5,235,732,480` bytes。最终磁盘重算 F3C4 retained regular-file bytes `96,764,734`，actual total F3C retained bytes `176,294,545`；全部 caps PASS，无 waiver。
+- validation：R1 applicable CPU regression `93 passed, 0 failed, 1 deselected`；deselected 为已被 F3C3 unified CLI 合法 `cuda:0` surface 取代的历史 F0 lifecycle assertion。R1 false-pass `47/47 REJECTED`；R3 payload-only sealing tests `3/3 PASS`，R3 recovery attacks `4/4 REJECTED`。
+- fine 4x4 fidelity：`NOT_COMPUTED_NO_SEALED_F3C3_FINE_GRID_INTERVENTION_TERMINALS`。workflow/package PASS 与 scientific outcome 分离；没有 object-localization claim，也没有追溯修改 C10、Stage D/E、F0-F3、F3H 或 F3C0-F3C3。
+- authoritative scientific payload：`evidence/stage_f/f3c4_analysis_r1_20260908/formal/` 与 `reports/stage_f_f3c4_analysis_r1_20260908/`；terminal receipts：`evidence/stage_f/f3c4_analysis_r3_terminal_seal_20260908/formal/` 与 `reports/stage_f_f3c4_analysis_r3_terminal_seal_20260908/`。
+
+F3C4 terminal PASS 的唯一下一授权为 `F4_ONLY`。F4 尚未启动，本轮到此停止。
