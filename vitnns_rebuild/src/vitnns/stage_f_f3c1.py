@@ -26,11 +26,14 @@ from . import stage_f_f3c1_kernels as kernels
 
 CONFIG_PATH = "config/stage_f_f3c1.json"
 SCHEMA_PATH = "config/stage_f_f3c1.schema.json"
-ROOT_PATH = "evidence/stage_f/f3c1_implementation_r1_20260907/formal"
-REPORT_PATH = "reports/stage_f_f3c1_implementation_r1_20260907"
+ROOT_PATH = "evidence/stage_f/f3c1_implementation_r2_20260907/formal"
+REPORT_PATH = "reports/stage_f_f3c1_implementation_r2_20260907"
 V1_ROOT_PATH = "evidence/stage_f/f3c1_implementation_v1_20260907/formal"
 V1_REPORT_PATH = "reports/stage_f_f3c1_implementation_v1_20260907"
 V1_FAILURE_PATH = V1_REPORT_PATH + "/failure_event.json"
+R1_ROOT_PATH = "evidence/stage_f/f3c1_implementation_r1_20260907/formal"
+R1_REPORT_PATH = "reports/stage_f_f3c1_implementation_r1_20260907"
+R1_FAILURE_PATH = R1_REPORT_PATH + "/failure_event.json"
 STARTUP_PATH = ROOT_PATH + "/startup_gate.json"
 IMPLEMENTATION_PATH = ROOT_PATH + "/implementation_binding.json"
 FIXTURE_PATH = ROOT_PATH + "/synthetic_fixture_manifest.json"
@@ -73,6 +76,7 @@ EXPECTED_FROZEN_FILES = {
     "manifests/stage_f_f3c_v1/sample_split.json": "b1dd0bb74f9ee0a2381eaa797c27a0365c13757b0f72ea253924fded3d8a2b09",
 }
 R1_ADDENDUM_PATH = "docs/stage_f_f3c1_r1_startup_recovery_addendum_20260907.md"
+R2_ADDENDUM_PATH = "docs/stage_f_f3c1_r2_fidelity_endpoint_recovery_addendum_20260907.md"
 SEALED_ROOTS = (
     ("d10", "refs/archive/stage-d-fidelity-v1-d10-completion", "evidence/stage_d/d10_recovery_v2_20260906/formal_r2"),
     ("e4", "refs/archive/stage-e-e4-completion", "evidence/stage_e/e4_recovery_v2_20260907/formal"),
@@ -215,7 +219,7 @@ def load_config(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
     }:
         raise StageFF3C1Error("F3C1 engineering boundary drifted")
     if config["output_root"] != ROOT_PATH or config["report_root"] != REPORT_PATH:
-        raise StageFF3C1Error("F3C1 R1 output roots drifted")
+        raise StageFF3C1Error("F3C1 R2 output roots drifted")
     return config
 
 
@@ -264,6 +268,12 @@ def verify_startup_gates(repo_root: Path | str = REPO_ROOT, *, require_clean: bo
     failure = _read(v1_failure); _validate_signed(failure, "F3C1 v1 failure")
     if failure.get("status") != "BLOCKED" or failure.get("phase") != "order44_engineering_check":
         raise StageFF3C1Error("blocked F3C1 v1 failure identity drifted")
+    r1_failure = repo / R1_FAILURE_PATH
+    if not r1_failure.is_file() or not (repo / R1_ROOT_PATH / "completion/f3c1.pending.json").is_file() or (repo / R1_ROOT_PATH / "completion/f3c1.json").exists():
+        raise StageFF3C1Error("blocked F3C1 R1 attempt was not preserved")
+    r1 = _read(r1_failure); _validate_signed(r1, "F3C1 R1 failure")
+    if r1.get("status") != "BLOCKED" or r1.get("error") != "fidelity endpoints drifted":
+        raise StageFF3C1Error("blocked F3C1 R1 failure identity drifted")
     sealed = {}
     for name, ref, root in SEALED_ROOTS:
         commit = _git(repo, "rev-parse", ref + "^{commit}")
@@ -287,6 +297,11 @@ def verify_startup_gates(repo_root: Path | str = REPO_ROOT, *, require_clean: bo
             "addendum": _file_record(repo, R1_ADDENDUM_PATH),
             "v1_pending_preserved": True, "v1_failure": _record(repo, V1_FAILURE_PATH),
             "failure_before_model_jpeg_or_attribution_access": True,
+        },
+        "r2_recovery": {
+            "addendum": _file_record(repo, R2_ADDENDUM_PATH),
+            "r1_pending_preserved": True, "r1_failure": _record(repo, R1_FAILURE_PATH),
+            "recovery_scope": "single_image_fidelity_endpoint_evaluation_path_only",
         },
         "next_authorization": "F3C1_IMPLEMENTATION_AND_SYNTHETIC_PREFLIGHT_ONLY",
     })

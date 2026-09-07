@@ -610,9 +610,14 @@ def evaluate_common_fidelity(
                 batch = _intervention_batch(clean, baseline, ranking, direction=direction)
                 values: list[float] = []
                 with torch.no_grad():
-                    for start in range(0, batch.shape[0], eval_chunk):
-                        logits = model(batch[start:start + eval_chunk])
-                        values.extend(float(x) for x in logits[:, capture.target.class_index].cpu().tolist())
+                    # Evaluate every intervention as a single image.  The ViT
+                    # kernel can differ by a few ulps between batch sizes; a
+                    # one-image schedule keeps the two curve endpoints on the
+                    # exact same scalar path as the frozen clean/baseline
+                    # response and preserves the image-level evaluator contract.
+                    for index in range(batch.shape[0]):
+                        logits = model(batch[index:index + 1])
+                        values.append(float(logits[0, capture.target.class_index].item()))
                 normalized = [unmodified_sigma * (value - baseline_value) / abs(delta) for value in values]
                 expected_first = 0.0 if direction == "insertion" else 1.0
                 expected_last = 1.0 if direction == "insertion" else 0.0
