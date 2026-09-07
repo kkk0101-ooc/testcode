@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "document_type": "stage_f_f3c2_pilot_config",
+  "authorization": "F3C2_PILOT_ONLY",
+  "protocol_id": "STAGE_F_F3C_CLASS_TARGETED_V1_20260907",
+  "output_root": "evidence/stage_f/f3c2_pilot_v1_20260907/formal",
+  "report_root": "reports/stage_f_f3c2_pilot_v1_20260907",
+  "pilot_orders": [416, 350, 438, 411, 337],
+  "methods": [
+    "conditional_all_blocks_fixed_clean_attention_class_logit_ig",
+    "vit_grad_cam_block11_norm1",
+    "full_model_class_logit_ig",
+    "attention_rollout_mean_head_residual_all_blocks",
+    "direct_raw_cls_attention_last_block_head_mean"
+  ],
+  "attempt_id": "attempt-000001",
+  "device": "cuda:0",
+  "budget": {
+    "f3c1_engineering_gpu_hours": 0.003537431458341113,
+    "total_h20_gpu_hours_max": 8.0,
+    "per_image_group_h20_gpu_hours_max": 0.3,
+    "max_devices": 8,
+    "per_process_peak_reserved_bytes_max": 17179869184,
+    "retained_regular_file_bytes_max": 8589934592,
+    "waiver_allowed": false,
+    "formal_image_count": 50
+  },
+  "access": {
+    "pilot_jpeg_decode_allowed_after_plan_freeze": true,
+    "formal_jpeg_or_outcome_access_allowed": false,
+    "order44_recompute_allowed": false,
+    "rendering_allowed": false,
+    "manual_inspection_allowed": false,
+    "scientific_comparison_allowed": false,
+    "statistical_inference_allowed": false
+  },
+  "next_authorization_on_pass": "F3C3_FORMAL_ONLY"
+}

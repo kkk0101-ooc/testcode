@@ -70,6 +70,12 @@ def _parser() -> argparse.ArgumentParser:
     f3c1_run = sub.add_parser("run-f3c1-engineering"); f3c1_run.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c1_run.add_argument("--device", default="cuda:0")
     f3c1_tests = sub.add_parser("record-f3c1-tests"); f3c1_tests.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c1_tests.add_argument("--passed", type=int, required=True); f3c1_tests.add_argument("--failed", type=int, required=True); f3c1_tests.add_argument("--initial-failed-attempts", type=int, default=0); f3c1_tests.add_argument("--test-command", required=True)
     f3c1_final = sub.add_parser("finalize-f3c1"); f3c1_final.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c1_final.add_argument("--completed-at", required=True)
+    for name in ("validate-f3c2-initialized", "reconcile-f3c2", "build-f3c2-budget-blind-gate", "build-f3c2-false-pass", "validate-f3c2-outputs", "validate-f3c2-completion"):
+        child = sub.add_parser(name); child.add_argument("--repo-root", type=Path, default=REPO_ROOT)
+    f3c2_init = sub.add_parser("initialize-f3c2"); f3c2_init.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c2_init.add_argument("--started-at", required=True)
+    f3c2_run = sub.add_parser("run-f3c2-sample"); f3c2_run.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c2_run.add_argument("--selection-order", type=int, required=True); f3c2_run.add_argument("--device", default="cuda:0")
+    f3c2_tests = sub.add_parser("record-f3c2-tests"); f3c2_tests.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c2_tests.add_argument("--passed", type=int, required=True); f3c2_tests.add_argument("--failed", type=int, required=True); f3c2_tests.add_argument("--deselected", type=int, default=0); f3c2_tests.add_argument("--test-command", required=True)
+    f3c2_final = sub.add_parser("finalize-f3c2"); f3c2_final.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3c2_final.add_argument("--completed-at", required=True)
     return parser
 
 
@@ -127,6 +133,21 @@ def run(arguments: list[str] | None = None) -> dict[str, Any]:
             "validate-f3c1-outputs": lambda: f3c1.validate_outputs(args.repo_root),
             "finalize-f3c1": lambda: f3c1.finalize(args.repo_root, completed_at=args.completed_at),
             "validate-f3c1-completion": lambda: f3c1.validate_completion(args.repo_root),
+        }
+        return commands[args.command]()
+    if "f3c2" in args.command:
+        from . import stage_f_f3c2 as f3c2
+        commands = {
+            "initialize-f3c2": lambda: f3c2.initialize(args.repo_root, started_at=args.started_at),
+            "validate-f3c2-initialized": lambda: f3c2.validate_initialized(args.repo_root),
+            "run-f3c2-sample": lambda: f3c2.run_sample(args.repo_root, selection_order=args.selection_order, device=args.device),
+            "reconcile-f3c2": lambda: f3c2.reconcile(args.repo_root),
+            "build-f3c2-budget-blind-gate": lambda: f3c2.build_budget_and_blind_gate(args.repo_root),
+            "record-f3c2-tests": lambda: f3c2.record_tests(args.repo_root, passed=args.passed, failed=args.failed, deselected=args.deselected, command=args.test_command),
+            "build-f3c2-false-pass": lambda: f3c2.build_false_pass_audit(args.repo_root),
+            "validate-f3c2-outputs": lambda: f3c2.validate_outputs(args.repo_root),
+            "finalize-f3c2": lambda: f3c2.finalize(args.repo_root, completed_at=args.completed_at),
+            "validate-f3c2-completion": lambda: f3c2.validate_completion(args.repo_root),
         }
         return commands[args.command]()
     if "f3h" in args.command:

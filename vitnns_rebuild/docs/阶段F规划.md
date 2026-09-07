@@ -1,7 +1,7 @@
 # 阶段 F：正式成图、定性展示与论文交付
 
 > 建立日期：2026-09-07。
-> 当前状态：Stage F F0–F3、post-F3 blue-display r4、F3H 和 F3C0 已完成并封存；F4 为 `PAUSED_PENDING_F3C`。当前唯一下一授权是 `F3C1_IMPLEMENTATION_AND_SYNTHETIC_PREFLIGHT_ONLY`，不得启动 F3C2 pilot、F3C3 formal、F3C4 outcome analysis 或 F4。
+> 当前状态：Stage F F0–F3、post-F3 blue-display r4、F3H、F3C0、F3C1 和 F3C2 已完成并封存；F4 为 `PAUSED_PENDING_F3C`。当前唯一下一授权是 `F3C3_FORMAL_ONLY`，不得启动 F3C4 outcome analysis 或 F4。
 > 文档性质：Stage F 的权威规划、阶段边界和验收合同；不是一次性跳过阶段门禁的总授权。
 > 选择规则：定性案例继续受 [阶段 F 展示选择协议 v1](stage_f_display_protocol_v1.md) 约束；跨层/头归因矩阵同时受 [Stage F 跨层/头归因展示补充协议](stage_f_cross_layer_display_addendum_20260907.md) 约束。
 
@@ -701,3 +701,19 @@ F3C1 最终通过 R6 CPU-only sealing wrapper 完成，状态 `PASS`。v1 在 CU
 - 边界：pilot/formal sample access 均为 `false`；没有 scientific comparison、winner 或 GO/NO-GO；F3H/F3C0 和其他 sealed upstream evidence/ref 未修改；F3C2、F3C3、F3C4、F4 均未启动。
 
 F3C1 terminal PASS 的唯一下一授权是 `F3C2_PILOT_ONLY`。本轮不得继续执行 F3C2。
+
+## 25. F3C2 blind five-image pilot completion（2026-09-07）
+
+F3C2 已在新 root 中完成，状态 `PASS`。predecode plan 先于任何 pilot JPEG access 原子封存；之后只按冻结顺序执行 orders `416, 350, 438, 411, 337`，没有访问 formal cohort，也没有重新计算 order 44。
+
+- pilot 与 terminals：5/5 samples 完成；25/25 sample×method terminals 为 VALID，0 FAILED、0 NA、0 incomplete。每个 terminal 均通过 temp-dir、fsync 和 atomic rename 发布，并保留 native map、14×14 patch mass、target-oriented mass/rankings、5× insertion/deletion curves、attempt journal、hash 和 resource provenance。
+- 冻结 targets：各图只在同一次 clean forward 解析一次 `y*`；orders `416,350,438,411,337` 的 class indices 分别为 `369,498,597,512,517`。official truth 只记录，未参与筛样。
+- endpoint/conservation：五图 conditional endpoint 的 all-logit max absolute error 均为 `0.0`；NNS IG 五图均在 512 steps 首次 PASS；full-model IG 的 selected steps 依次为 `512,512,1024,1024,512`，五图均 PASS；失败的小 step attempts（如适用）完整保留。
+- blind continuation：只消费 identity、terminal status、endpoint/conservation、manifest/hash completeness、resource telemetry、budget projection 和 access boundary；不消费 map、logit、curve、AUC、fidelity score 或方法差值。blind continuation gate 为 PASS。
+- 资源：五图累计 elapsed `71.5875175667461 s`、CPU `214.520424379 s`、pilot actual `0.01988542154631836` H20-GPU-hour；逐图 GPU-hours 为 `0.003467071938600081, 0.0034843660727751236, 0.0048333652561026, 0.00460899964802795, 0.0034916186308126067`；peak reserved `1,436,549,120` bytes；forward/backward calls `6,201/901`。
+- 预算重投影：projected formal `0.24166826280513` H20-GPU-hour，含冻结 F3C1 engineering 后 projected total `0.2650911158097895` H20-GPU-hour；当前 retained 基数 `9,380,440` bytes，最大单图 retained `1,356,856` bytes，projected total retained `77,223,240` bytes。每图 0.30、总 8.0、8 devices、16 GiB/process 与 8 GiB retained caps 全部 PASS，无 waiver。
+- 验证：最终 applicable regression 为 286 passed、0 failed、2 deselected；32/32 false-pass attacks 均由 mutation/validator tests 拒绝；25 个 numerical terminals 另由独立 post-run validator 从 arrays/hash 重算结构、fractions、AUC/score identity 和 IG attempt prefix，但未向 continuation gate 或用户输出 empirical values。
+- 边界：pilot access 精确为五张冻结 JPEG；formal sample access `false`；order-44 recomputed `false`；maps rendered/manual inspection `false`；statistical inference/scientific comparison/winner/GO/NO-GO 均为 `false`；F3C1 statistical-method freeze 未修改且未执行；F3C0/F3C1/F3H 与其他 sealed evidence/ref 未修改；F3C3/F3C4/F4 均未启动。
+- 正式输出：`evidence/stage_f/f3c2_pilot_v1_20260907/formal/` 与 `reports/stage_f_f3c2_pilot_v1_20260907/`。
+
+F3C2 terminal PASS 的唯一下一授权是 `F3C3_FORMAL_ONLY`。本轮不得继续执行 F3C3。
