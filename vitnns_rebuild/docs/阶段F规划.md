@@ -1,7 +1,7 @@
 # 阶段 F：正式成图、定性展示与论文交付
 
 > 建立日期：2026-09-07。
-> 当前状态：Stage F F3 与 post-F3 blue-display r4 已完成并封存；owner 已在 2026-09-07 前瞻性插入 F3H full-head/Grad-CAM 补充阶段，F4 为 `PAUSED_PENDING_F3H`。当前只执行 `F3H0_PROTOCOL_FREEZE_ONLY`。
+> 当前状态：Stage F F0–F3、post-F3 blue-display r4、F3H 和 F3C0 已完成并封存；F4 为 `PAUSED_PENDING_F3C`。当前唯一下一授权是 `F3C1_IMPLEMENTATION_AND_SYNTHETIC_PREFLIGHT_ONLY`，不得启动 F3C2 pilot、F3C3 formal、F3C4 outcome analysis 或 F4。
 > 文档性质：Stage F 的权威规划、阶段边界和验收合同；不是一次性跳过阶段门禁的总授权。
 > 选择规则：定性案例继续受 [阶段 F 展示选择协议 v1](stage_f_display_protocol_v1.md) 约束；跨层/头归因矩阵同时受 [Stage F 跨层/头归因展示补充协议](stage_f_cross_layer_display_addendum_20260907.md) 约束。
 
@@ -11,7 +11,7 @@ Stage F 把已经封存的 D10 主结果和 E4 消融结果转化为可投稿、
 
 “参考”只指图形组织密度、清晰度和投稿完成度。Stage F 不复制参考文章的图片、数据、文字、网络结构或实验结论；所有本论文图形必须来自本项目已验证的输入，或来自不承载经验结果的方法定义。
 
-Stage F 不产生新的科学结论。它必须同时满足：
+原始 F0–F3 只把已封存的 D10/E4 结果转化为论文模块，不产生新的科学结论。owner 后续前瞻性插入的 F3H 仍为描述性阶段；F3C 则是独立冻结的 class-targeted empirical study，只能产生其协议明确允许的 conditional class-logit fidelity 结果，不得追溯改写 C10、Stage D、Stage E 或 F0–F3。Stage F 必须同时满足：
 
 1. 科学主图消费完整 D10 或 E4 封存数据；
 2. 定性图只使用固定审计样本或冻结规则选择的样本；
@@ -415,9 +415,9 @@ F0 最终在不可覆盖的 r4 root 完成：
 
 F0 terminal receipt 只授权 `F1_ONLY`；F2、F3、F4 均未开始。
 
-## 11. 当前下一步
+## 11. F3 后的历史调度记录
 
-F3 terminal receipt 历史上授权 `F4_ONLY`，但 owner 在 2026-09-07 以新的前瞻性协议暂停 F4，并插入 F3H full-head/Grad-CAM 补充阶段。当前调度状态为 `PAUSED_PENDING_F3H`；F3H terminal completion 前不得启动 F4。F4 恢复后只能消费已经通过验收的 F1–F3/F3H 模块，完成最终组合图、图注、论文写作和反向 source audit；不得改变冻结样本、panel 数据、failure/NA 或 selection mapping。
+F3 terminal receipt 历史上授权 `F4_ONLY`，但 owner 在 2026-09-07 以前瞻性协议暂停 F4，并依次插入 F3H full-head/Grad-CAM 与 F3C class-targeted study。本段只记录当时的调度转换；当前权威状态以第 21–23 节为准：F3H 与 F3C0 已完成，F4 为 `PAUSED_PENDING_F3C`，唯一下一授权为 `F3C1_IMPLEMENTATION_AND_SYNTHETIC_PREFLIGHT_ONLY`。F4 恢复后只能消费已经通过验收的 F1–F3/F3H/F3C 模块，完成最终组合图、图注、论文写作和反向 source audit；不得改变冻结样本、panel 数据、failure/NA、selection mapping、method target 或统计结果。
 
 ## 12. F1 completion record（2026-09-07）
 
@@ -622,3 +622,66 @@ F3C0 已在完整 F3H atlas 和预声明充分性评估之后冻结，状态 `PA
 - 正式协议与合同：`docs/stage_f_f3c_class_targeted_protocol_20260907.md`、`config/stage_f_f3c.json`、`config/stage_f_f3c.schema.json`、`manifests/stage_f_f3c_v1/sample_split.json`。
 
 F3C0 terminal PASS 的唯一下一授权是 `F3C1_IMPLEMENTATION_AND_SYNTHETIC_PREFLIGHT_ONLY`。F3C pilot/formal computation 尚未开始；F4 保持 `PAUSED_PENDING_F3C`。
+
+## 23. F3C0 后的 head 证据解释与执行总路线（2026-09-07）
+
+### 23.1 现有 head 信息能回答什么、不能回答什么
+
+F3H 的完整 12×12 atlas 不是“没有 head 信息”。它已经证明同一冻结样本内不同 block/head 的 fixed-clean-attention head-direction Value-path attribution 具有可见的空间模式和深度差异，并完整保留 NNS/matched 的正负贡献、pair-shared monotonic-log 显示以及不同 target 的 sealed Grad-CAM 参照。该结果可用于描述 head/depth diversity，也可用于解释为什么单一 head 不能代表整个模型。
+
+但 F3H atlas 不能单独定义 144 个数值化 class-conditioned head 权重，因为它缺少以下三项同时成立的证据：
+
+1. 全部 144 个 head 的 signed class-logit coupling coefficients；
+2. 覆盖 head concatenation、output projection、residual、MLP、后续 blocks、final norm 和 classifier，且无遗漏、无重复计数的 path-accounting identity；
+3. 在任何 outcome access 前冻结、能够验证聚合 attribution 与目标 class-logit 差值一致的 conservation test。
+
+因此不得从 atlas 外观、亮度、entropy、Grad-CAM overlap、物体重合程度或“最好看 head”推断权重；也不得把 144 张 F3H map 的平均、加权平均或筛选子集称为 class-conditioned attribution。order 44 只是一张已冻结的描述性样本，不足以推出跨样本或跨类别通用权重。该边界不否定 head atlas 的描述价值，只否定未经 class-logit 绑定的数值归因解释。
+
+### 23.2 已冻结的解决路径
+
+F3C 不再尝试学习、调参、排序或人工指定 head 权重，而是直接定义 `conditional_all_blocks_fixed_clean_attention_class_logit_ig`：先以 clean input 冻结 12 层实际使用的完整 multi-head attention tensors，再对 frozen predicted-class raw logit 执行 input IG。Q/K/softmax variation 被切断；Value、全部 head 的原生拼接、attention output projection、residual、MLP、final norm 和 classifier 保持活动，由模型自身的下游计算完成跨 head 信息到 class logit 的传播。
+
+该方法是 all-block、all-head、class-targeted 且 conditional 的 attribution，但不是：
+
+- F3H head-direction maps 的加权和；
+- raw attention 或 attention rollout；
+- 完整 Q/K/V attribution；
+- 未修改模型上的 full-model class-logit IG。
+
+它回答的是“在全部 clean attention 固定的条件模型中，哪些输入区域支持冻结的预测类别 raw logit”，而不是“每个 head 存在一组已由 F3H 证明的独立类别权重”。
+
+### 23.3 后续原子里程碑与门禁
+
+1. **F3C1 implementation and preflight（当前唯一授权）**
+   - 实现 all-block clean-attention capture/hash/injection、conditional class-logit IG、五方法统一 runner、immutable typed terminals、资源记录、恢复与 validator；
+   - 完成 synthetic tests、tamper tests、false-pass audit，并在任何 pilot outcome access 前冻结精确的 paired permutation/p-value 实现；
+   - 只允许使用已经查看且不进入统计的 order 44 做一次无渲染、无人工 map 检视的五方法工程/profile 检查；不得读取 5 个 pilot 或 50 个 formal 样本的 JPEG、map 或 outcome；
+   - 必须验证全部 12 层 attention 均来自同一次 clean forward，conditional endpoint 对 clean logits 的 max absolute error `<1e-6`，NNS/full-model IG conservation、固定 class index、normalized-zero baseline、14×14 projection 和 provenance 均符合冻结合同；
+   - terminal PASS 只能授权 `F3C2_PILOT_ONLY`。
+
+2. **F3C2 five-image pilot**
+   - 只执行冻结 orders `416, 350, 438, 411, 337`，每图五方法，共 25 个 typed-terminal units；
+   - continuation decision 前不得查看 JPEG、map 或 display，只能读取 identity、terminal status、endpoint parity、conservation、resource 和 budget telemetry；
+   - 只有 25/25 VALID、全部 hash/provenance 完整、NNS endpoint/conservation 和 full-model IG conservation PASS，且按 pilot telemetry 重算后满足总计 8 H20-GPU-hours、每 image group 0.30 H20-GPU-hour、每进程 16 GiB、retained artifacts 8 GiB 上限，才可授权 F3C3；
+   - 任一门禁失败即停止。预算超限只能前瞻性修订，不能删方法、减样本、换图或自动 waiver。
+
+3. **F3C3 50-image formal cohort**
+   - 仅在 F3C2 terminal PASS 后执行冻结的 50 图 × 5 方法，共 250 个正式 units；
+   - 每个 sample×method 必须不可覆盖并保留 `VALID/FAILED/NA`、native map、target、attention hashes、attempts、fidelity curves 和资源 provenance；
+   - 不因 failure/NA 换样本、补零、插值或缩小 denominator；misclassified 样本照常保留；pilot、order 44 和 formal `n=50` 不池化。
+
+4. **F3C4 CPU-only analysis and seal**
+   - 只消费 sealed F3C2/F3C3 terminals，完成 reconciliation、统计、渲染、人工 QC、false-pass audit、completion、commit/push/archive；
+   - primary contrast 固定为 class-targeted NNS versus ViT Grad-CAM；NNS versus full-model IG、attention rollout、raw CLS attention 为同一 secondary Holm family；正式统计单位为 image (`n=50`)；
+   - workflow/package PASS 与科学比较结果分离。正结果、无显著差异或负结果均不得改方法、改队列或改显示规则；
+   - 没有独立 sealed segmentation/bounding-box ground truth 时，不允许 object-localization superiority claim；
+   - 只有 F3C terminal completion 才能授权 `F4_ONLY`。
+
+5. **F4 final composition and manuscript integration**
+   - F4 继续暂停，直到 F3C4 terminal PASS；
+   - 恢复后只能组合已验收的 F1/F2/F3/F3H/F3C 模块，完成最终 figure numbering、caption、正文、source-backtrace、论文导出和 Stage F sealing；
+   - 不得在 F4 改写 F3H/F3C 样本、method target、panel data、color scale、failure/NA、统计队列或 scientific outcome。
+
+### 23.4 当前授权与执行提示词
+
+截至本记录，F3C1、F3C2、F3C3、F3C4 和 F4 均尚未开始。当前唯一允许的新工作是 `F3C1_IMPLEMENTATION_AND_SYNTHETIC_PREFLIGHT_ONLY`；不得把 F3C1 的 order-44 engineering profile 计入 pilot/formal 统计，也不得据其外观或数值修改冻结方法。下一轮完整执行提示词见 `docs/stage_f_f3c1_execution_prompt_20260907.md`。
