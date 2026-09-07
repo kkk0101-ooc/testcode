@@ -47,8 +47,8 @@ F3_COMPLETION_SCHEMA_PATH = "config/stage_f_f3_completion.schema.json"
 F3_FALSE_PASS_SCHEMA_PATH = "config/stage_f_f3_false_pass_audit.schema.json"
 F3_VALIDATION_SCHEMA_PATH = "config/stage_f_f3_validation_report.schema.json"
 
-F3_ROOT_PATH = "evidence/stage_f/f3_r2_recovery_v2_20260907/formal"
-F3_REPORT_PATH = "reports/stage_f_f3_r2_20260907"
+F3_ROOT_PATH = "evidence/stage_f/f3_r3_recovery_v2_20260907/formal"
+F3_REPORT_PATH = "reports/stage_f_f3_r3_20260907"
 PENDING_PATH = F3_ROOT_PATH + "/completion/f3.pending.json"
 COMPLETION_PATH = F3_ROOT_PATH + "/completion/f3.json"
 STARTUP_PATH = F3_ROOT_PATH + "/startup_gate.json"
@@ -648,7 +648,7 @@ def _render_context(repo: Path):
 
 def _save_formal_figure(fig: Any, output_base: Path, *, content_digest: str, module_id: str, panel_ids: Sequence[str], renderer_commit: str, config_digest: str, panel_manifest_digest: str, extra: Mapping[str, Any] | None = None) -> dict[str, Any]:
     repo = REPO_ROOT.resolve(); f0 = load_contracts(repo)["config"]; outputs = _save_figure(fig, output_base, f0); plt.close(fig)
-    report = {"schema_version": 1, "document_type": "stage_f_f3_render_report", "stage_id": "F3", "module_id": module_id, "figure_id": output_base.name, "panel_ids": list(panel_ids), "renderer_commit": renderer_commit, "config_digest": config_digest, "f0_config_digest": f0["canonical_digest"], "panel_manifest_digest": panel_manifest_digest, "content_digest": content_digest, "format_content_digests": {extension: content_digest for extension in outputs}, "outputs": outputs, "size_inches": list(fig.get_size_inches()), "dpi": f0["export"]["png_dpi"], "display_only": True, "model_loaded": False, "torch_imported": False, "timm_imported": False, "cuda_used": False, "new_attribution_or_fidelity_executed": False, "new_statistic_or_decision_computed": False, "final_combined_manuscript_figure": False}
+    report = {"schema_version": 1, "document_type": "stage_f_f3_render_report", "stage_id": "F3", "module_id": module_id, "figure_id": output_base.name, "panel_ids": list(panel_ids), "renderer_commit": renderer_commit, "config_digest": config_digest, "f0_config_digest": f0["canonical_digest"], "panel_manifest_digest": panel_manifest_digest, "content_digest": content_digest, "format_content_digests": {extension: content_digest for extension in outputs}, "outputs": outputs, "size_inches": [float(value) for value in fig.get_size_inches()], "dpi": f0["export"]["png_dpi"], "display_only": True, "model_loaded": False, "torch_imported": False, "timm_imported": False, "cuda_used": False, "new_attribution_or_fidelity_executed": False, "new_statistic_or_decision_computed": False, "final_combined_manuscript_figure": False}
     if extra: report.update(extra)
     report = _signed(report); _write_new(output_base.with_suffix(".report.json"), report); return report
 
