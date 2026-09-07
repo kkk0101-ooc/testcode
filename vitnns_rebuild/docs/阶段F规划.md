@@ -3,7 +3,7 @@
 > 建立日期：2026-09-07。
 > 当前状态：Stage F F2 已完成并封存；当前唯一下一任务为 `F3_ONLY`。
 > 文档性质：Stage F 的权威规划、阶段边界和验收合同；不是一次性跳过阶段门禁的总授权。
-> 选择规则：定性案例继续受 [阶段 F 展示选择协议 v1](stage_f_display_protocol_v1.md) 约束。
+> 选择规则：定性案例继续受 [阶段 F 展示选择协议 v1](stage_f_display_protocol_v1.md) 约束；跨层/头归因矩阵同时受 [Stage F 跨层/头归因展示补充协议](stage_f_cross_layer_display_addendum_20260907.md) 约束。
 
 ## 1. 目标
 
@@ -75,9 +75,12 @@ F3 只允许消费：
 - D1 冻结 registry：`manifests/stage_d_fidelity_v1/registry.json`；
 - D10 `per_sample_delta` 和已验证 paper data；
 - D9 封存的 Stage D L1 metric-ready maps 与 fidelity curves：`evidence/stage_d/d8_recovery_v2_20260904/formal_r2/`；
+- E3 最终验证的 secondary layer/head typed-terminal map union：`e3_recovery_v2_20260906`、`e3_r1_recovery_v2_20260906`、`e3_r2_recovery_v2_20260906` 和 `e3_r4_recovery_v2_20260907` 四个 formal roots；
+- E3-R4 union tables 与 E4 sealed `layer_head_descriptive` copy，用于把 3,000 个逻辑单元唯一解析为 2,998 个 valid maps 和 orders `117`、`352` 两个 typed failures；
 - D1 五个 audit IDs 对应的封存审计证据；
 - 被规则选中的原始图像：`assets/data/ILSVRC2012_val/`；
-- `docs/stage_f_display_protocol_v1.md`。
+- `docs/stage_f_display_protocol_v1.md`；
+- `docs/stage_f_cross_layer_display_addendum_20260907.md`。
 
 F3 可读取被选中样本的 JPEG 以生成显示图，但不得构建或加载模型，不得执行 forward/backward/attribution，不得重跑 D8，也不得创建 retry。当前 Stage F 的 GPU 预算为 `0`。
 
@@ -165,11 +168,13 @@ F1–F3 先生成可单独验证的模块；F4 只把已验证模块组成主文
 | Figure 3：尺度与上采样消融 | F2/F4 | patch-scale sensitivity、uniform/nearest equivalence、bilinear/bicubic sensitivity | 标为 post-D10 descriptive；不得选 winner |
 | Figure 4：层头与预测分层 | F2/F4 | 冻结四坐标、overall/correct/misclassified 分层、有效/失败/NA | 明示 scientific validity `MIXED`；保留 orders 117/352 |
 | Figure 5：定性对比 | F3/F4 | Original、NNS、matched、difference、NNS overlay、matched overlay、insertion/deletion curves | 样本只按冻结规则选择；共享可比色限 |
+| Figure 6：跨层/头归因矩阵 | F3/F4 | 同一 `median_effect` 样本的 Original，以及 `(0,9)`、`(4,2)`、`(6,10)`、`(11,2)` 上的 NNS/matched attribution 矩阵 | Fig. 11/13 风格；不是 raw attention；坐标内共享色限，跨坐标只比较空间模式 |
 | Supplement S1 | F3/F4 | 五个 D1 固定审计案例 | 标为 fixed audit，不得称为 best examples |
 | Supplement S2 | F3/F4 | 规则到样本映射、重复选择、weak/failure、misclassified/difficult 案例 | 不得静默替换重复样本 |
 | Supplement S3 | F1/F2/F4 | resource/QC、失败/NA、E2 budget waiver 与 E3 mixed-validity disclosure | 与科学图分开但必须随论文包交付 |
+| Supplement S4 | F3/F4 | 5 个 fixed audit IDs、5 个既有规则 slots 及 orders 117/352 failure slots 的跨层/头 NNS/matched attribution matrices | 按冻结顺序生成；重复样本可去重显示但 slot mapping 必须保留；failure/NA 原位显示 |
 
-Figure 1 的方法示意可以使用确定性声明式布局、TikZ 或等价矢量后端；不得用无法重建的手工截图作为唯一源。Figure 5 当前只比较 NNS 与 frozen matched baseline，不默认添加 CAM/Grad-CAM。
+Figure 1 的方法示意可以使用确定性声明式布局、TikZ 或等价矢量后端；不得用无法重建的手工截图作为唯一源。Figure 5 和 Figure 6 当前只比较 NNS 与 frozen matched baseline，不默认添加 CAM/Grad-CAM。Figure 6/S4 展示的是 fixed-clean-attention head-direction Value-path attribution，不是 raw self-attention，也不支持跨坐标绝对幅度比较；完整合同见 [跨层/头展示补充协议](stage_f_cross_layer_display_addendum_20260907.md)。
 
 ## 6. F0–F4 执行顺序
 
@@ -259,25 +264,31 @@ Figure 1 的方法示意可以使用确定性声明式布局、TikZ 或等价矢
 2. 按冻结规则计算 `best_effect`、`median_effect`、`baseline_strong_nns_stronger`、`weak_or_failure`、`misclassified_or_difficult`；
 3. 完整记录 tie-break、fallback、重复命中和 `NO_ELIGIBLE_EXAMPLE_FOR_RULE`；
 4. 选择 manifest 先封存，再读取所选原图和 maps 渲染；人工视觉判断不得改变 manifest。
+5. Figure 6 主样本固定复用 `median_effect` slot；不得查看 E3 maps 后另选“跨层变化更明显”的样本。
+6. Supplement S4 固定使用 D1 五个 audit IDs、五个既有规则 slots，以及 orders `117`、`352` 两个 failure slots；重复命中保留 slot-to-image mapping，渲染可去重但不得换样本。
 
 **必须生成**
 
 1. Figure 1 方法总览的矢量源和导出版本；
 2. 每个规则案例的 Original / NNS / matched / difference / overlays / curves 模块；
 3. 五个固定审计案例的 supplementary 模块；
-4. rule-to-image manifest、caption data、每个源图/map/curve 和 render 的 hash；
-5. 可供人工审阅的 contact sheet，但 contact sheet 不是正式论文源。
+4. Figure 6：`median_effect` 样本在 `(0,9)`、`(4,2)`、`(6,10)`、`(11,2)` 上的 NNS/matched attribution progression matrix；
+5. Supplement S4：五个 fixed audit IDs、五个既有规则 slots 与 orders `117`、`352` failure slots 的完整跨层/头矩阵；
+6. E3 四轮 map union manifest、rule-to-image manifest、caption data、每个源图/map/curve 和 render 的 hash；
+7. 可供人工审阅的 contact sheet，但 contact sheet 不是正式论文源。
 
 **显示约束**
 
 - 统一预处理画幅，不得为单个案例手工裁剪目标区域；
 - NNS 与 matched 同案例共享色限，difference 独立对称色限；
+- 跨层矩阵中同一样本、同一坐标的 NNS/matched 共享色限；不同坐标对应不同 target，颜色只比较空间 pattern，不比较绝对 magnitude；
 - 展示平滑、resize 和 alpha 只影响 overlay，并必须标为 display-only；
 - 弱效果、误分类、失败或重复选择不得被“更好看”的替代案例替换。
+- orders `117`、`352` 或其他 failed/NA cell 必须原位显示状态和 failure code，不得补零、复制相邻坐标或换样本。
 
-**验收与授权**：validator 必须从 D10 表独立重建选择结果，核对 D9/D1/JPEG/map identities，并证明 model/GPU 未使用；completion 只能授权 `F4_ONLY`。
+**验收与授权**：validator 必须从 D10 表独立重建选择结果，核对 D9/D1/JPEG/map identities，并从 E3/E3-R1/E3-R2/E3-R4 四个 roots 独立重建 3,000 个 typed-terminal union、2,998 个 valid maps 与 2 个原位 failures；同时证明 model/GPU 未使用。completion 只能授权 `F4_ONLY`。
 
-**预计耗时**：1–2 个工作日。
+**预计耗时**：1.5–3 个工作日；其中新增跨层/头 source-union 验证与 Figure 6/S4 约增加 0.5–1 个工作日。
 
 ### F4：组合图、图注、论文写作与最终导出
 
@@ -285,7 +296,7 @@ F4 只能消费已经通过验收的 F1–F3 模块。F4 可以调整 panel 布�
 
 **必须完成**
 
-1. 按第 5 节形成 Figure 1–5 和 Supplement S1–S3；
+1. 按第 5 节形成 Figure 1–6 和 Supplement S1–S4；
 2. 完成图注、正文交叉引用、Results、Ablation、Failure Cases、Limitations 和方法图说明；
 3. 保持 C10 与 Stage D 分 cohort 叙述，完整披露 spatial failure、E2 waiver 和 E3 mixed validity；
 4. 导出 journal-quality PDF/SVG、600 DPI PNG、预览 contact sheet；
@@ -365,6 +376,10 @@ F0–F4 每阶段都必须生成 false-pass audit，至少主动拒绝以下攻�
 16. figure caption、正文数字与 machine-readable source 不一致；
 17. 在 validator、manifest 或 terminal receipt 之前声明阶段完成；
 18. 跳过 commit/push/ref 核验后宣称可复现封存完成。
+19. 跨层图只读取 E3-R4，遗漏 E3/E3-R1/E3-R2 的历史有效 union；
+20. 把 Value-path attribution progression 写成 raw attention、完整 attention/QKV 或 class-logit attribution；
+21. 根据跨层 map 外观选择样本，或对 failed/NA cell 换样本、补零、插值；
+22. 使用不同坐标的颜色强度形成未经支持的层间绝对 magnitude 结论。
 
 任一攻击未被可靠拒绝时，对应阶段必须 `BLOCKED`，保留现场并输出诊断；不得自动换数据、换图或降低验收标准。
 
@@ -402,7 +417,7 @@ F0 terminal receipt 只授权 `F1_ONLY`；F2、F3、F4 均未开始。
 
 ## 11. 当前下一步
 
-当前只授权 `F3_ONLY`。F3 必须按冻结展示选择协议完成规则选例、方法示意与定性面板，并继续提供 report-side PNG review copies 和逐图 `figure_analysis.md`；不得启动 F4 或组合最终论文 Figure 1/5/S1/S2。
+当前只授权 `F3_ONLY`。F3 必须按冻结展示选择协议完成规则选例、方法示意与定性面板，并继续提供 report-side PNG review copies 和逐图 `figure_analysis.md`；同时必须按 [跨层/头归因展示补充协议](stage_f_cross_layer_display_addendum_20260907.md) 生成 Figure 6 和 Supplement S4 的模块、source union/selection/panel/scale manifests。不得启动 F4 或组合最终论文 Figure 1/5/6/S1/S2/S4。
 
 ## 12. F1 completion record（2026-09-07）
 
