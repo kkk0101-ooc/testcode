@@ -26,8 +26,8 @@ from . import stage_f_f3c1_kernels as kernels
 
 CONFIG_PATH = "config/stage_f_f3c1.json"
 SCHEMA_PATH = "config/stage_f_f3c1.schema.json"
-ROOT_PATH = "evidence/stage_f/f3c1_implementation_r4_cpu_seal_20260907/formal"
-REPORT_PATH = "reports/stage_f_f3c1_implementation_r4_cpu_seal_20260907"
+ROOT_PATH = "evidence/stage_f/f3c1_implementation_r5_cpu_seal_20260907/formal"
+REPORT_PATH = "reports/stage_f_f3c1_implementation_r5_cpu_seal_20260907"
 V1_ROOT_PATH = "evidence/stage_f/f3c1_implementation_v1_20260907/formal"
 V1_REPORT_PATH = "reports/stage_f_f3c1_implementation_v1_20260907"
 V1_FAILURE_PATH = V1_REPORT_PATH + "/failure_event.json"
@@ -40,6 +40,9 @@ R2_FAILURE_PATH = R2_REPORT_PATH + "/failure_event.json"
 R3_ROOT_PATH = "evidence/stage_f/f3c1_implementation_r3_20260907/formal"
 R3_REPORT_PATH = "reports/stage_f_f3c1_implementation_r3_20260907"
 R3_FAILURE_PATH = R3_REPORT_PATH + "/failure_event.json"
+R4_ROOT_PATH = "evidence/stage_f/f3c1_implementation_r4_cpu_seal_20260907/formal"
+R4_REPORT_PATH = "reports/stage_f_f3c1_implementation_r4_cpu_seal_20260907"
+R4_FAILURE_PATH = R4_REPORT_PATH + "/failure_event.json"
 STARTUP_PATH = ROOT_PATH + "/startup_gate.json"
 IMPLEMENTATION_PATH = ROOT_PATH + "/implementation_binding.json"
 SOURCE_PATH = ROOT_PATH + "/source_binding.json"
@@ -89,6 +92,7 @@ R1_ADDENDUM_PATH = "docs/stage_f_f3c1_r1_startup_recovery_addendum_20260907.md"
 R2_ADDENDUM_PATH = "docs/stage_f_f3c1_r2_fidelity_endpoint_recovery_addendum_20260907.md"
 R3_ADDENDUM_PATH = "docs/stage_f_f3c1_r3_provenance_serialization_recovery_addendum_20260907.md"
 R4_ADDENDUM_PATH = "docs/stage_f_f3c1_r4_cpu_sealing_recovery_addendum_20260907.md"
+R5_ADDENDUM_PATH = "docs/stage_f_f3c1_r5_manifest_sealing_recovery_addendum_20260907.md"
 SEALED_ROOTS = (
     ("d10", "refs/archive/stage-d-fidelity-v1-d10-completion", "evidence/stage_d/d10_recovery_v2_20260906/formal_r2"),
     ("e4", "refs/archive/stage-e-e4-completion", "evidence/stage_e/e4_recovery_v2_20260907/formal"),
@@ -239,7 +243,7 @@ def load_config(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
     }:
         raise StageFF3C1Error("F3C1 engineering boundary drifted")
     if config["output_root"] != ROOT_PATH or config["report_root"] != REPORT_PATH:
-        raise StageFF3C1Error("F3C1 R4 output roots drifted")
+        raise StageFF3C1Error("F3C1 R5 output roots drifted")
     return config
 
 
@@ -306,6 +310,12 @@ def verify_startup_gates(repo_root: Path | str = REPO_ROOT, *, require_clean: bo
     r3 = _read(r3_failure); _validate_signed(r3, "F3C1 R3 failure")
     if r3.get("status") != "BLOCKED" or r3.get("phase") != "validation":
         raise StageFF3C1Error("blocked F3C1 R3 failure identity drifted")
+    r4_failure = repo / R4_FAILURE_PATH
+    if not r4_failure.is_file() or not (repo / R4_ROOT_PATH / "completion/f3c1.pending.json").is_file() or (repo / R4_ROOT_PATH / "completion/f3c1.json").exists():
+        raise StageFF3C1Error("blocked F3C1 R4 attempt was not preserved")
+    r4 = _read(r4_failure); _validate_signed(r4, "F3C1 R4 failure")
+    if r4.get("status") != "BLOCKED" or "attention_binding canonical digest mismatch" not in r4.get("error", ""):
+        raise StageFF3C1Error("blocked F3C1 R4 failure identity drifted")
     sealed = {}
     for name, ref, root in SEALED_ROOTS:
         commit = _git(repo, "rev-parse", ref + "^{commit}")
@@ -345,6 +355,13 @@ def verify_startup_gates(repo_root: Path | str = REPO_ROOT, *, require_clean: bo
             "r3_pending_and_failure_preserved": True,
             "r3_failure": _record(repo, R3_FAILURE_PATH),
             "r3_engineering_terminal_source": _file_record(repo, R3_ROOT_PATH + "/engineering/order-44/attempts/attempt-000001/result.json"),
+            "cpu_only_revalidation_and_sealing": True,
+        },
+        "r5_recovery": {
+            "addendum": _file_record(repo, R5_ADDENDUM_PATH),
+            "r4_pending_and_failure_preserved": True,
+            "r4_failure": _record(repo, R4_FAILURE_PATH),
+            "r3_engineering_terminal_reused_without_recompute": True,
             "cpu_only_revalidation_and_sealing": True,
         },
         "next_authorization": "F3C1_IMPLEMENTATION_AND_SYNTHETIC_PREFLIGHT_ONLY",
@@ -708,12 +725,12 @@ def _source_hash_snapshot(repo: Path) -> dict[str, Any]:
     return {"files": records, "canonical_digest": canonical_sha256({"files": records})}
 
 
-def initialize_r4_from_r3(
+def initialize_r5_from_r3(
     repo_root: Path | str = REPO_ROOT, *, started_at: str
 ) -> dict[str, Any]:
     repo = Path(repo_root).resolve()
     if (repo / ROOT_PATH).exists() or (repo / REPORT_PATH).exists():
-        raise StageFF3C1Error("F3C1 R4 output root already exists")
+        raise StageFF3C1Error("F3C1 R5 output root already exists")
     startup = verify_startup_gates(repo, require_clean=True)
     source_root = repo / R3_ROOT_PATH
     source_terminal = source_root / "engineering/order-44/attempts/attempt-000001"
@@ -722,7 +739,7 @@ def initialize_r4_from_r3(
         raise StageFF3C1Error("R3 engineering terminal is not VALID")
     destination = repo / ROOT_PATH
     destination.parent.mkdir(parents=True, exist_ok=True)
-    temporary = Path(tempfile.mkdtemp(prefix=".f3c1-r4-", dir=destination.parent))
+    temporary = Path(tempfile.mkdtemp(prefix=".f3c1-r5-", dir=destination.parent))
     try:
         shutil.copytree(source_root, temporary / "formal", dirs_exist_ok=False)
         os.replace(temporary / "formal", destination)
@@ -815,7 +832,8 @@ def build_audits(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
     }); _write_new(repo / ENGINEERING_PATH, engineering)
     attention = _signed({
         "schema_version": 1, "document_type": "stage_f_f3c1_attention_binding",
-        "status": "PASS", **terminal["attention"],
+        "status": "PASS",
+        "attention_manifest": terminal["attention"],
         "q_k_softmax_variation_cut": True,
         "value_projection_residual_mlp_final_norm_classifier_live": True,
     }); _write_new(repo / ATTENTION_PATH, attention)
@@ -947,9 +965,13 @@ def finalize(repo_root: Path | str = REPO_ROOT, *, completed_at: str) -> dict[st
         "f4_started": False, "next_authorization": "F3C2_PILOT_ONLY",
         "git": {"commit": "SELF", "ref": ARCHIVE_REF},
     }); _write_new(repo / STATUS_PATH, status)
+    inventory_payload = _inventory(repo / ROOT_PATH, exclude=("whole_root_inventory.json", "completion/f3c1.json", "completion/f3c1.pending.json"))
     inventory = _signed({
         "schema_version": 1, "document_type": "stage_f_f3c1_whole_root_inventory",
-        "status": "PASS", **_inventory(repo / ROOT_PATH, exclude=("whole_root_inventory.json", "completion/f3c1.json", "completion/f3c1.pending.json")),
+        "status": "PASS", "files": inventory_payload["files"],
+        "file_count": inventory_payload["file_count"],
+        "total_bytes": inventory_payload["total_bytes"],
+        "file_inventory_digest": inventory_payload["canonical_digest"],
     }); _write_new(repo / INVENTORY_PATH, inventory)
     completion = _signed({
         "schema_version": 1, "document_type": "stage_f_f3c1_terminal_completion",
@@ -1008,7 +1030,7 @@ def validate_completion(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
         repo / ROOT_PATH,
         exclude=("whole_root_inventory.json", "completion/f3c1.json", "completion/f3c1.pending.json"),
     )
-    if any(inventory.get(key) != rebuilt[key] for key in ("files", "file_count", "total_bytes", "canonical_digest")):
+    if any(inventory.get(key) != rebuilt[key] for key in ("files", "file_count", "total_bytes")) or inventory.get("file_inventory_digest") != rebuilt["canonical_digest"]:
         raise StageFF3C1Error("F3C1 whole-root inventory drifted")
     validate_engineering_terminal(repo); _validate_no_future_outputs(repo)
     return {
@@ -1024,7 +1046,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     for command in ("startup", "validate-engineering", "build-audits", "build-false-pass", "validate-outputs", "validate-completion"):
         child = sub.add_parser(command); child.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     init = sub.add_parser("initialize"); init.add_argument("--repo-root", type=Path, default=REPO_ROOT); init.add_argument("--started-at", required=True)
-    init_r4 = sub.add_parser("initialize-r4"); init_r4.add_argument("--repo-root", type=Path, default=REPO_ROOT); init_r4.add_argument("--started-at", required=True)
+    init_r5 = sub.add_parser("initialize-r5"); init_r5.add_argument("--repo-root", type=Path, default=REPO_ROOT); init_r5.add_argument("--started-at", required=True)
     run = sub.add_parser("run-engineering"); run.add_argument("--repo-root", type=Path, default=REPO_ROOT); run.add_argument("--device", default="cuda:0")
     tests = sub.add_parser("record-tests"); tests.add_argument("--repo-root", type=Path, default=REPO_ROOT); tests.add_argument("--passed", type=int, required=True); tests.add_argument("--failed", type=int, required=True); tests.add_argument("--initial-failed-attempts", type=int, default=0); tests.add_argument("--test-command", required=True)
     final = sub.add_parser("finalize"); final.add_argument("--repo-root", type=Path, default=REPO_ROOT); final.add_argument("--completed-at", required=True)
@@ -1033,7 +1055,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         commands = {
             "startup": lambda: verify_startup_gates(args.repo_root),
             "initialize": lambda: initialize(args.repo_root, started_at=args.started_at),
-            "initialize-r4": lambda: initialize_r4_from_r3(args.repo_root, started_at=args.started_at),
+            "initialize-r5": lambda: initialize_r5_from_r3(args.repo_root, started_at=args.started_at),
             "run-engineering": lambda: run_engineering_check(args.repo_root, device=args.device),
             "validate-engineering": lambda: validate_engineering_terminal(args.repo_root),
             "record-tests": lambda: record_synthetic_tests(args.repo_root, passed=args.passed, failed=args.failed, command=args.test_command, initial_failed_attempts=args.initial_failed_attempts),
