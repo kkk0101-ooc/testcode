@@ -748,3 +748,16 @@ F3C4 最终由 R3 payload-only terminal wrapper 完成，状态 `PASS`。v1 在 
 - authoritative scientific payload：`evidence/stage_f/f3c4_analysis_r1_20260908/formal/` 与 `reports/stage_f_f3c4_analysis_r1_20260908/`；terminal receipts：`evidence/stage_f/f3c4_analysis_r3_terminal_seal_20260908/formal/` 与 `reports/stage_f_f3c4_analysis_r3_terminal_seal_20260908/`。
 
 F3C4 terminal PASS 的唯一下一授权为 `F4_ONLY`。F4 尚未启动，本轮到此停止。
+
+## 28. Post-F3C4 report-side review-copy completion（2026-09-08）
+
+Owner 在 F3C4 terminal seal 后单独授权一个最小 display-only packaging revision，用于补齐既有 F2/F3/F3H 的 `reports/.../figures_png/` 浏览惯例。正式 scientific payload、统计、render outputs 和 F3C4 archive 均保持不变。
+
+- v1 从 F3C4 R1 render manifest 冻结精确 23-PNG source-to-destination plan，并在 copy plan seal 后创建 `reports/stage_f_f3c4_report_copy_v1_20260908/figures_png/`。文件按 manifest 顺序编号 `01`–`23`：3 张统计图，之后 10 组 atlas/signed audit 页按页交替。
+- 23 张 review PNG 全部为 byte-for-byte copies；source/destination bytes 和 SHA-256 逐文件一致，总计 `33,659,071` bytes。没有重编码、重渲染、JPEG/F3C3 array access、统计、模型/checkpoint、Torch/timm、CUDA 或 forward/backward。
+- `figure_index.json` 与 `figure_index.md` 记录 review order、module、formal source path、destination path 和 SHA-256；正式 PNG/PDF/SVG 原件仍位于 F3C4 R1 evidence root。
+- v1 在完成 payload 后的独立 completion validator 中发现：pre-copy plan seal 仍引用已被 pending→terminal 原子替换的 pending receipt。v1 completion 被标为 `BLOCKED_SUPERSEDED` 并保留；23 张 review copies 未改变。
+- R1 使用 fresh terminal-seal root，逐文件复核 v1 全部 42-file payload inventory、23 对 source/destination byte parity、v1 validation/tests/false-pass/access/resource/inventory 和 failure authorization；没有新增 copy/render/scientific work。R1 sealing tests `2/2 PASS`，recovery false-pass `3/3 REJECTED`，最终 pending→terminal completion `PASS`。
+- report-side review root：`reports/stage_f_f3c4_report_copy_v1_20260908/`；authoritative terminal receipts：`evidence/stage_f/f3c4_report_copy_r1_terminal_seal_20260908/formal/` 与 `reports/stage_f_f3c4_report_copy_r1_terminal_seal_20260908/`。
+
+本 revision 不改变 F3C4 scientific outcome 或 `refs/archive/stage-f-v1-f3c4-analysis-seal`。唯一下一授权仍为 `F4_ONLY`；F4 未启动。

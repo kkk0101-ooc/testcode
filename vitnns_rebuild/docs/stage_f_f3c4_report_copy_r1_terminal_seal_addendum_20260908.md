@@ -1,0 +1,5 @@
+# Stage F F3C4 report-copy R1 terminal-seal addendum (2026-09-08)
+
+The v1 post-F3C4 report-copy revision created all 23 byte-identical review PNG copies, figure indexes, validation, tests, false-pass audit, inventories, and a completion receipt. Its independent post-completion validator then failed because the pre-copy plan seal referenced the pending receipt, which had correctly been atomically replaced by terminal completion. The v1 payload is intact, but its completion is superseded and retained with a failure event.
+
+R1 is limited to CPU-only terminal sealing in fresh roots `evidence/stage_f/f3c4_report_copy_r1_terminal_seal_20260908/formal/` and `reports/stage_f_f3c4_report_copy_r1_terminal_seal_20260908/`. It validates the immutable v1 source/destination PNG pairs, copy manifest, indexes, tests, false-pass audit, access/resource reports, and inventories; then publishes a new pending-to-terminal receipt. It does not copy, rerender, decode, recompute, or modify any v1/F3C4 file and does not start F4.
