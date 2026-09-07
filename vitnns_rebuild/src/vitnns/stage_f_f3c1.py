@@ -26,14 +26,17 @@ from . import stage_f_f3c1_kernels as kernels
 
 CONFIG_PATH = "config/stage_f_f3c1.json"
 SCHEMA_PATH = "config/stage_f_f3c1.schema.json"
-ROOT_PATH = "evidence/stage_f/f3c1_implementation_r2_20260907/formal"
-REPORT_PATH = "reports/stage_f_f3c1_implementation_r2_20260907"
+ROOT_PATH = "evidence/stage_f/f3c1_implementation_r3_20260907/formal"
+REPORT_PATH = "reports/stage_f_f3c1_implementation_r3_20260907"
 V1_ROOT_PATH = "evidence/stage_f/f3c1_implementation_v1_20260907/formal"
 V1_REPORT_PATH = "reports/stage_f_f3c1_implementation_v1_20260907"
 V1_FAILURE_PATH = V1_REPORT_PATH + "/failure_event.json"
 R1_ROOT_PATH = "evidence/stage_f/f3c1_implementation_r1_20260907/formal"
 R1_REPORT_PATH = "reports/stage_f_f3c1_implementation_r1_20260907"
 R1_FAILURE_PATH = R1_REPORT_PATH + "/failure_event.json"
+R2_ROOT_PATH = "evidence/stage_f/f3c1_implementation_r2_20260907/formal"
+R2_REPORT_PATH = "reports/stage_f_f3c1_implementation_r2_20260907"
+R2_FAILURE_PATH = R2_REPORT_PATH + "/failure_event.json"
 STARTUP_PATH = ROOT_PATH + "/startup_gate.json"
 IMPLEMENTATION_PATH = ROOT_PATH + "/implementation_binding.json"
 FIXTURE_PATH = ROOT_PATH + "/synthetic_fixture_manifest.json"
@@ -77,6 +80,7 @@ EXPECTED_FROZEN_FILES = {
 }
 R1_ADDENDUM_PATH = "docs/stage_f_f3c1_r1_startup_recovery_addendum_20260907.md"
 R2_ADDENDUM_PATH = "docs/stage_f_f3c1_r2_fidelity_endpoint_recovery_addendum_20260907.md"
+R3_ADDENDUM_PATH = "docs/stage_f_f3c1_r3_provenance_serialization_recovery_addendum_20260907.md"
 SEALED_ROOTS = (
     ("d10", "refs/archive/stage-d-fidelity-v1-d10-completion", "evidence/stage_d/d10_recovery_v2_20260906/formal_r2"),
     ("e4", "refs/archive/stage-e-e4-completion", "evidence/stage_e/e4_recovery_v2_20260907/formal"),
@@ -219,7 +223,7 @@ def load_config(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
     }:
         raise StageFF3C1Error("F3C1 engineering boundary drifted")
     if config["output_root"] != ROOT_PATH or config["report_root"] != REPORT_PATH:
-        raise StageFF3C1Error("F3C1 R2 output roots drifted")
+        raise StageFF3C1Error("F3C1 R3 output roots drifted")
     return config
 
 
@@ -274,6 +278,12 @@ def verify_startup_gates(repo_root: Path | str = REPO_ROOT, *, require_clean: bo
     r1 = _read(r1_failure); _validate_signed(r1, "F3C1 R1 failure")
     if r1.get("status") != "BLOCKED" or r1.get("error") != "fidelity endpoints drifted":
         raise StageFF3C1Error("blocked F3C1 R1 failure identity drifted")
+    r2_failure = repo / R2_FAILURE_PATH
+    if not r2_failure.is_file() or not (repo / R2_ROOT_PATH / "completion/f3c1.pending.json").is_file() or (repo / R2_ROOT_PATH / "completion/f3c1.json").exists():
+        raise StageFF3C1Error("blocked F3C1 R2 attempt was not preserved")
+    r2 = _read(r2_failure); _validate_signed(r2, "F3C1 R2 failure")
+    if r2.get("status") != "BLOCKED" or "TorchVersion" not in r2.get("error", ""):
+        raise StageFF3C1Error("blocked F3C1 R2 failure identity drifted")
     sealed = {}
     for name, ref, root in SEALED_ROOTS:
         commit = _git(repo, "rev-parse", ref + "^{commit}")
@@ -302,6 +312,11 @@ def verify_startup_gates(repo_root: Path | str = REPO_ROOT, *, require_clean: bo
             "addendum": _file_record(repo, R2_ADDENDUM_PATH),
             "r1_pending_preserved": True, "r1_failure": _record(repo, R1_FAILURE_PATH),
             "recovery_scope": "single_image_fidelity_endpoint_evaluation_path_only",
+        },
+        "r3_recovery": {
+            "addendum": _file_record(repo, R3_ADDENDUM_PATH),
+            "r2_pending_preserved": True, "r2_failure": _record(repo, R2_FAILURE_PATH),
+            "recovery_scope": "resource_version_string_serialization_only",
         },
         "next_authorization": "F3C1_IMPLEMENTATION_AND_SYNTHETIC_PREFLIGHT_ONLY",
     })
@@ -547,8 +562,8 @@ def run_engineering_check(repo_root: Path | str = REPO_ROOT, *, device: str = "c
                 "backward_chunk_calls_estimate": sum(math.ceil(int(x["steps"]) / 8) for x in nns_ig.attempts) + sum(math.ceil(int(x["steps"]) / 8) for x in full_ig["attempts"]),
                 "peak_cuda_memory_reserved_bytes": peak, "cuda_device": device,
                 "gpu_name": torch.cuda.get_device_name(torch.device(device)),
-                "torch_version": torch.__version__, "timm_version": timm.__version__,
-                "cuda_runtime_version": torch.version.cuda,
+                "torch_version": str(torch.__version__), "timm_version": str(timm.__version__),
+                "cuda_runtime_version": str(torch.version.cuda),
             },
             "numerical_only": True, "maps_rendered": False,
             "maps_manually_inspected": False, "scientific_comparison_performed": False,
