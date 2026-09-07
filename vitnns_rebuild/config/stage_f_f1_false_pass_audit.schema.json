@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "sha": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_f_f1_false_pass_audit"},
+    "stage_id": {"const": "F1"},
+    "status": {"const": "PASS"},
+    "attacks": {
+      "type": "array",
+      "minItems": 18,
+      "maxItems": 18,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "attack": {"type": "string"},
+          "result": {"const": "REJECTED"},
+          "evidence": {"type": "string", "minLength": 1}
+        },
+        "required": ["attack", "result", "evidence"]
+      }
+    },
+    "canonical_digest": {"$ref": "#/$defs/sha"}
+  },
+  "required": [
+    "schema_version",
+    "document_type",
+    "stage_id",
+    "status",
+    "attacks",
+    "canonical_digest"
+  ]
+}

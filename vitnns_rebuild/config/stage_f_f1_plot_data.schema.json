@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "sha": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_f_f1_plot_data"},
+    "stage_id": {"const": "F1"},
+    "module_id": {"enum": ["F1-A", "F1-B", "F1-C"]},
+    "source_table": {"type": "string"},
+    "source_csv_sha256": {"$ref": "#/$defs/sha"},
+    "source_json_sha256": {"$ref": "#/$defs/sha"},
+    "source_json_canonical_digest": {"$ref": "#/$defs/sha"},
+    "plot_data_digest": {"$ref": "#/$defs/sha"},
+    "canonical_digest": {"$ref": "#/$defs/sha"}
+  },
+  "required": [
+    "schema_version",
+    "document_type",
+    "stage_id",
+    "module_id",
+    "source_table",
+    "source_csv_sha256",
+    "source_json_sha256",
+    "source_json_canonical_digest",
+    "plot_data_digest",
+    "canonical_digest"
+  ]
+}

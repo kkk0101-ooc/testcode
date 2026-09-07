@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "source_pair": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "csv_sha256": {"$ref": "#/$defs/sha"},
+        "json_sha256": {"$ref": "#/$defs/sha"},
+        "json_canonical_digest": {"$ref": "#/$defs/sha"}
+      },
+      "required": ["csv_sha256", "json_sha256", "json_canonical_digest"]
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {"const": "stage_f_f1.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_f_f1_config"},
+    "stage_id": {"const": "F1"},
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "current": {"const": "F1_ONLY"},
+        "on_pass": {"const": "F2_ONLY"},
+        "f2_started": {"const": false},
+        "f3_started": {"const": false},
+        "f4_started": {"const": false}
+      },
+      "required": ["current", "on_pass", "f2_started", "f3_started", "f4_started"]
+    },
+    "renderer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "f0_config_path": {"const": "config/stage_f_f0.json"},
+        "f0_config_digest": {"$ref": "#/$defs/sha"},
+        "renderer_contract_version": {"const": "stage-f-renderer-v1"},
+        "formal_source_adapter": {"const": "stage_f_f1_d10_paper_data_adapter"}
+      },
+      "required": ["f0_config_path", "f0_config_digest", "renderer_contract_version", "formal_source_adapter"]
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "f0_archive_ref": {"const": "refs/archive/stage-f-v1-f0-completion"},
+        "f0_archive_commit": {"$ref": "#/$defs/commit"},
+        "f0_completion_path": {"const": "evidence/stage_f/f0_r4_recovery_v2_20260907/formal/completion/f0.json"},
+        "f0_completion_sha256": {"$ref": "#/$defs/sha"},
+        "f0_completion_canonical_digest": {"$ref": "#/$defs/sha"},
+        "f0_whole_root_inventory_canonical_digest": {"$ref": "#/$defs/sha"},
+        "d10_archive_ref": {"const": "refs/archive/stage-d-fidelity-v1-d10-completion"},
+        "d10_archive_commit": {"$ref": "#/$defs/commit"},
+        "d10_decision_report_path": {"const": "reports/stage_d_d10_recovery_v2_20260906/d10_formal_decision.json"},
+        "d10_decision_report_sha256": {"$ref": "#/$defs/sha"},
+        "d10_decision_report_canonical_digest": {"$ref": "#/$defs/sha"},
+        "d10_output_root": {"const": "evidence/stage_d/d10_recovery_v2_20260906/formal_r2"},
+        "d10_output_root_inventory_canonical_digest": {"$ref": "#/$defs/sha"},
+        "d10_analysis_root": {"const": "evidence/stage_d/d10_recovery_v2_20260906/formal_r2/analysis"},
+        "d10_figure_recipes_sha256": {"$ref": "#/$defs/sha"},
+        "paper_data": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cohort_comparison": {"$ref": "#/$defs/source_pair"},
+            "per_sample_delta": {"$ref": "#/$defs/source_pair"},
+            "curve_summary": {"$ref": "#/$defs/source_pair"},
+            "main_fidelity_table": {"$ref": "#/$defs/source_pair"},
+            "resource_and_qc": {"$ref": "#/$defs/source_pair"}
+          },
+          "required": ["cohort_comparison", "per_sample_delta", "curve_summary", "main_fidelity_table", "resource_and_qc"]
+        }
+      },
+      "required": [
+        "f0_archive_ref", "f0_archive_commit", "f0_completion_path",
+        "f0_completion_sha256", "f0_completion_canonical_digest",
+        "f0_whole_root_inventory_canonical_digest",
+        "d10_archive_ref", "d10_archive_commit", "d10_decision_report_path",
+        "d10_decision_report_sha256", "d10_decision_report_canonical_digest",
+        "d10_output_root", "d10_output_root_inventory_canonical_digest",
+        "d10_analysis_root", "d10_figure_recipes_sha256", "paper_data"
+      ]
+    },
+    "outputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "evidence_root": {"const": "evidence/stage_f/f1_recovery_v2_20260907/formal"},
+        "report_root": {"const": "reports/stage_f_f1_20260907"},
+        "scientific_modules": {"const": 3},
+        "layout_render_instances": {"const": 6},
+        "exported_figure_files": {"const": 18},
+        "final_combined_figure_2_rendered": {"const": false}
+      },
+      "required": ["evidence_root", "report_root", "scientific_modules", "layout_render_instances", "exported_figure_files", "final_combined_figure_2_rendered"]
+    },
+    "modules": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "module_id": {"enum": ["F1-A", "F1-B", "F1-C"]},
+          "source_table": {"type": "string"},
+          "caption_key": {"type": "string"},
+          "layouts": {"const": ["single_column", "double_column"]}
+        },
+        "required": ["module_id", "source_table", "caption_key", "layouts"]
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "stage_e_paper_data_allowed": {"const": false},
+        "reserve_jpeg_allowed": {"const": false},
+        "qualitative_selection_allowed": {"const": false},
+        "model_checkpoint_allowed": {"const": false},
+        "torch_timm_allowed": {"const": false},
+        "cuda_or_gpu_allowed": {"const": false},
+        "jpeg_access_allowed": {"const": false},
+        "bootstrap_ci_recompute_allowed": {"const": false},
+        "new_endpoint_allowed": {"const": false},
+        "c10_stage_d_pooling_allowed": {"const": false},
+        "final_figure_2_allowed": {"const": false}
+      },
+      "required": [
+        "stage_e_paper_data_allowed", "reserve_jpeg_allowed",
+        "qualitative_selection_allowed", "model_checkpoint_allowed",
+        "torch_timm_allowed", "cuda_or_gpu_allowed", "jpeg_access_allowed",
+        "bootstrap_ci_recompute_allowed", "new_endpoint_allowed",
+        "c10_stage_d_pooling_allowed", "final_figure_2_allowed"
+      ]
+    },
+    "canonical_digest": {"$ref": "#/$defs/sha"}
+  },
+  "required": [
+    "$schema", "schema_version", "document_type", "stage_id", "authorization",
+    "renderer", "inputs", "outputs", "modules", "safety", "canonical_digest"
+  ]
+}

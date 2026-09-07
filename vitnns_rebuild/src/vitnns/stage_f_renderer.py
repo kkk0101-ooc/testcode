@@ -392,10 +392,32 @@ def _method_style(config: Mapping[str, Any], method: str) -> dict[str, Any]:
     return methods[method]
 
 
+def _item_style(config: Mapping[str, Any], item: Mapping[str, Any]) -> dict[str, Any]:
+    style = item.get("style")
+    if style is None:
+        return _method_style(config, item["method"])
+    if not isinstance(style, Mapping):
+        raise StageFRendererError("inline render style must be an object")
+    result = {
+        "color": style.get("color"),
+        "linestyle": style.get("linestyle", "-"),
+        "marker": style.get("marker", "o"),
+    }
+    if not isinstance(result["color"], str) or re.fullmatch(r"#[0-9A-Fa-f]{6}", result["color"]) is None:
+        raise StageFRendererError("inline render style must provide a hex color")
+    return result
+
+
 def _style_axis(axis: Any, panel: Mapping[str, Any]) -> None:
     axis.set_title(panel["title"], pad=3)
     axis.set_xlabel(panel.get("x_label", ""))
     axis.set_ylabel(panel.get("y_label", ""))
+    if "x_limits" in panel:
+        axis.set_xlim(*panel["x_limits"])
+    if "y_limits" in panel:
+        axis.set_ylim(*panel["y_limits"])
+    if panel.get("grid") is True:
+        axis.grid(True, linewidth=0.35, alpha=0.35)
     axis.spines["top"].set_visible(False)
     axis.spines["right"].set_visible(False)
     axis.tick_params(width=0.75, length=2.5)
@@ -405,7 +427,7 @@ def _line_panel(axis: Any, panel: Mapping[str, Any], config: Mapping[str, Any]) 
     data = panel["data"]; x = np.asarray(data["x"], dtype=float)
     series_records = []
     for series in data["series"]:
-        style = _method_style(config, series["method"]); y = np.asarray(series["y"], dtype=float)
+        style = _item_style(config, series); y = np.asarray(series["y"], dtype=float)
         line, = axis.plot(x, y, color=style["color"], linestyle=style["linestyle"], marker=style["marker"], markersize=3, label=series["label"])
         if "lower" in series:
             axis.fill_between(x, series["lower"], series["upper"], color=style["color"], alpha=config["style"]["confidence_band_alpha"], linewidth=0)
@@ -418,8 +440,8 @@ def _ecdf_panel(axis: Any, panel: Mapping[str, Any], config: Mapping[str, Any]) 
     records = []
     for series in panel["data"]["series"]:
         values = np.sort(np.asarray(series["values"], dtype=float)); y = np.arange(1, len(values) + 1) / len(values)
-        style = _method_style(config, series["method"]); axis.step(values, y, where="post", color=style["color"], linestyle=style["linestyle"], label=series["label"])
-        records.append({"method": series["method"], "n": len(values), "color": style["color"]})
+        style = _item_style(config, series); axis.step(values, y, where="post", color=style["color"], linestyle=style["linestyle"], label=series["label"])
+        records.append({"method": series["method"], "n": len(values), "color": style["color"], "linestyle": style["linestyle"]})
     _style_axis(axis, panel); axis.set_ylim(0, 1.02); axis.legend(frameon=False)
     return {"series": records}
 
@@ -427,7 +449,7 @@ def _ecdf_panel(axis: Any, panel: Mapping[str, Any], config: Mapping[str, Any]) 
 def _point_panel(axis: Any, panel: Mapping[str, Any], config: Mapping[str, Any]) -> dict[str, Any]:
     points = panel["data"]["points"]; records = []
     for index, item in enumerate(points):
-        style = _method_style(config, item["method"]); estimate = item["estimate"]
+        style = _item_style(config, item); estimate = item["estimate"]
         axis.errorbar(index, estimate, yerr=[[estimate - item["lower"]], [item["upper"] - estimate]], fmt=style["marker"], color=style["color"], capsize=2, label=item["method"] if not any(record["method"] == item["method"] for record in records) else None)
         records.append({"label": item["label"], "method": item["method"], "color": style["color"]})
     axis.set_xticks(range(len(points)), [item["label"] for item in points], rotation=25, ha="right")
@@ -578,6 +600,118 @@ def render_fixture(
     return report
 
 
+def render_panel_figure(
+    spec: Mapping[str, Any],
+    output_dir: Path,
+    *,
+    repo_root: Path | str = REPO_ROOT,
+    renderer_commit: str | None = None,
+    source_input_digest: str,
+    plot_data_digest: str,
+    stage_config_digest: str,
+    stage_id: str = "F1",
+) -> dict[str, Any]:
+    """Render a validated formal Stage F panel spec with the frozen F0 renderer.
+
+    The caller owns scientific source validation and plot-data construction.
+    This function only consumes the already-built display spec and applies the
+    F0 typography, layout, panel dispatch, and export provenance path.
+    """
+
+    repo = Path(repo_root).resolve()
+    contracts = load_contracts(repo)
+    config = contracts["config"]
+    if spec.get("formal_scientific_figure") is not True:
+        raise StageFRendererError("formal panel spec must declare formal_scientific_figure=true")
+    if spec.get("stage_id") != stage_id:
+        raise StageFRendererError("formal panel spec stage_id mismatch")
+    if spec.get("layout_profile") not in {"single_column", "double_column"}:
+        raise StageFRendererError("F1 formal renders only single_column and double_column layouts")
+    _validate_fixture_semantics(spec)
+    if str(matplotlib.get_backend()).lower() != config["determinism"]["backend"].lower():
+        raise StageFRendererError("Matplotlib backend drifted from frozen Agg contract")
+    profile = config["layouts"][spec["layout_profile"]]
+    content_digest = canonical_sha256({
+        "stage_id": stage_id,
+        "figure_spec": spec,
+        "source_input_digest": source_input_digest,
+        "plot_data_digest": plot_data_digest,
+        "stage_config_digest": stage_config_digest,
+        "f0_config_digest": config["canonical_digest"],
+        "renderer_contract": config["renderer_contract_version"],
+    })
+    output_base = output_dir.resolve() / spec["figure_id"]
+    with renderer_style(config) as fonts:
+        fig, axes = plt.subplots(
+            spec["grid"]["rows"], spec["grid"]["columns"],
+            figsize=(profile["width_in"], profile["height_in"]),
+            squeeze=False, constrained_layout=True,
+        )
+        panel_records = [
+            _render_panel(axis, panel, config)
+            for axis, panel in zip(axes.flat, spec["panels"])
+        ]
+        fig.suptitle(spec["title"], fontsize=config["style"]["title_font_pt"])
+        outputs = _save_figure(fig, output_base, config)
+        plt.close(fig)
+    commit = renderer_commit or _git(repo, "rev-parse", "HEAD")
+    report = {
+        "schema_version": 1,
+        "document_type": "stage_f_f1_render_report",
+        "stage_id": stage_id,
+        "module_id": spec["module_id"],
+        "figure_id": spec["figure_id"],
+        "title": spec["title"],
+        "formal_scientific_figure": True,
+        "display_only": True,
+        "panel_ids": [panel["panel_id"] for panel in spec["panels"]],
+        "caption_keys": spec["caption_keys"],
+        "source_input_digest": source_input_digest,
+        "plot_data_digest": plot_data_digest,
+        "config_digest": stage_config_digest,
+        "f0_config_digest": config["canonical_digest"],
+        "renderer_contract_version": config["renderer_contract_version"],
+        "renderer_commit": commit,
+        "content_digest": content_digest,
+        "format_content_digests": {extension: content_digest for extension in outputs},
+        "environment": {
+            "python": platform.python_version(),
+            "matplotlib": _version("matplotlib"),
+            "pillow": _version("pillow"),
+            "numpy": _version("numpy"),
+            "backend": config["determinism"]["backend"],
+        },
+        "fonts": fonts,
+        "layout_profile": spec["layout_profile"],
+        "size_inches": [profile["width_in"], profile["height_in"]],
+        "dpi": config["export"]["png_dpi"],
+        "style": {
+            "methods": config["style"]["methods"],
+            "minimum_font_pt": config["style"]["minimum_font_pt"],
+            "minimum_linewidth_pt": config["style"]["minimum_linewidth_pt"],
+            "confidence_band_alpha": config["style"]["confidence_band_alpha"],
+            "cropping": config["export"]["cropping"],
+        },
+        "panels": panel_records,
+        "outputs": outputs,
+        "model_loaded": False,
+        "torch_imported": False,
+        "timm_imported": False,
+        "cuda_used": False,
+        "jpeg_read": False,
+        "bootstrap_or_ci_recomputed": False,
+        "new_endpoint_computed": False,
+        "c10_stage_d_pooled": False,
+        "final_combined_figure_2_rendered": False,
+    }
+    report["canonical_digest"] = canonical_sha256(report)
+    report_path = output_base.with_suffix(".report.json")
+    if report_path.exists():
+        raise StageFRendererError("refusing to overwrite an existing render report")
+    report_path.write_bytes(canonical_json_bytes(report) + b"\n")
+    return report
+
+
 def validate_render_report(report_path: Path, repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
     repo = Path(repo_root).resolve(); report, raw = _strict_json(report_path, "render report")
     _schema_validate(report, repo / RENDER_SCHEMA_PATH, "render artifact report"); _validate_signed(report, "render report")
@@ -648,6 +782,6 @@ __all__ = [
     "ARCHIVE_REF", "F0_REPORT_PATH", "F0_ROOT_PATH", "StageFRendererError",
     "assert_f0_source_boundary", "load_contracts", "load_fixture",
     "parse_upstream_recipes", "render_fixture", "sha256_file",
-    "validate_cross_format_consistency", "validate_font",
+    "render_panel_figure", "validate_cross_format_consistency", "validate_font",
     "validate_render_report", "verify_preconditions",
 ]

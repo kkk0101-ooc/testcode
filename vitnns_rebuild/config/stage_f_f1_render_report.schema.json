@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "sha": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "output": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "path": {"type": "string"},
+        "sha256": {"$ref": "#/$defs/sha"},
+        "bytes": {"type": "integer", "minimum": 1}
+      },
+      "required": ["path", "sha256", "bytes"]
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_f_f1_render_report"},
+    "stage_id": {"const": "F1"},
+    "module_id": {"enum": ["F1-A", "F1-B", "F1-C"]},
+    "layout_profile": {"enum": ["single_column", "double_column"]},
+    "figure_id": {"type": "string", "pattern": "^f1_[abc]_(single_column|double_column)$"},
+    "title": {"type": "string"},
+    "formal_scientific_figure": {"const": true},
+    "display_only": {"const": true},
+    "panel_ids": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string"}
+    },
+    "caption_keys": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string"}
+    },
+    "source_input_digest": {"$ref": "#/$defs/sha"},
+    "plot_data_digest": {"$ref": "#/$defs/sha"},
+    "config_digest": {"$ref": "#/$defs/sha"},
+    "f0_config_digest": {"$ref": "#/$defs/sha"},
+    "renderer_contract_version": {"const": "stage-f-renderer-v1"},
+    "renderer_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "content_digest": {"$ref": "#/$defs/sha"},
+    "environment": {"type": "object"},
+    "fonts": {"type": "object"},
+    "size_inches": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {"type": "number", "exclusiveMinimum": 0}
+    },
+    "dpi": {"const": 600},
+    "style": {"type": "object"},
+    "panels": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "object"}
+    },
+    "outputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "png": {"$ref": "#/$defs/output"},
+        "pdf": {"$ref": "#/$defs/output"},
+        "svg": {"$ref": "#/$defs/output"}
+      },
+      "required": ["png", "pdf", "svg"]
+    },
+    "format_content_digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "png": {"$ref": "#/$defs/sha"},
+        "pdf": {"$ref": "#/$defs/sha"},
+        "svg": {"$ref": "#/$defs/sha"}
+      },
+      "required": ["png", "pdf", "svg"]
+    },
+    "model_loaded": {"const": false},
+    "torch_imported": {"const": false},
+    "timm_imported": {"const": false},
+    "cuda_used": {"const": false},
+    "jpeg_read": {"const": false},
+    "bootstrap_or_ci_recomputed": {"const": false},
+    "new_endpoint_computed": {"const": false},
+    "c10_stage_d_pooled": {"const": false},
+    "final_combined_figure_2_rendered": {"const": false},
+    "canonical_digest": {"$ref": "#/$defs/sha"}
+  },
+  "required": [
+    "schema_version",
+    "document_type",
+    "stage_id",
+    "module_id",
+    "layout_profile",
+    "figure_id",
+    "title",
+    "formal_scientific_figure",
+    "display_only",
+    "panel_ids",
+    "caption_keys",
+    "source_input_digest",
+    "plot_data_digest",
+    "config_digest",
+    "f0_config_digest",
+    "renderer_contract_version",
+    "renderer_commit",
+    "content_digest",
+    "environment",
+    "fonts",
+    "size_inches",
+    "dpi",
+    "style",
+    "panels",
+    "outputs",
+    "format_content_digests",
+    "model_loaded",
+    "torch_imported",
+    "timm_imported",
+    "cuda_used",
+    "jpeg_read",
+    "bootstrap_or_ci_recomputed",
+    "new_endpoint_computed",
+    "c10_stage_d_pooled",
+    "final_combined_figure_2_rendered",
+    "canonical_digest"
+  ]
+}

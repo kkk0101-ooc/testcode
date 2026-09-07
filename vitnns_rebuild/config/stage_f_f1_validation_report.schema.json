@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "sha": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_f_f1_validation_report"},
+    "stage_id": {"const": "F1"},
+    "status": {"const": "PASS"},
+    "checks": {
+      "type": "object",
+      "additionalProperties": {"const": "PASS"},
+      "minProperties": 20
+    },
+    "scientific_modules_rendered": {"const": 3},
+    "layout_render_instances": {"const": 6},
+    "exported_figure_files": {"const": 18},
+    "final_combined_figure_2_rendered": {"const": false},
+    "model_torch_timm_gpu_cuda_jpeg_access": {"const": false},
+    "bootstrap_ci_new_endpoint_recomputed": {"const": false},
+    "c10_stage_d_pooled": {"const": false},
+    "d10_f0_e4_decisions_modified": {"const": false},
+    "f2_started": {"const": false},
+    "f3_started": {"const": false},
+    "f4_started": {"const": false},
+    "next_authorization": {"const": "F2_ONLY"},
+    "canonical_digest": {"$ref": "#/$defs/sha"}
+  },
+  "required": [
+    "schema_version",
+    "document_type",
+    "stage_id",
+    "status",
+    "checks",
+    "scientific_modules_rendered",
+    "layout_render_instances",
+    "exported_figure_files",
+    "final_combined_figure_2_rendered",
+    "model_torch_timm_gpu_cuda_jpeg_access",
+    "bootstrap_ci_new_endpoint_recomputed",
+    "c10_stage_d_pooled",
+    "d10_f0_e4_decisions_modified",
+    "f2_started",
+    "f3_started",
+    "f4_started",
+    "next_authorization",
+    "canonical_digest"
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "sha": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {"const": "stage_f_f1_run_spec.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_f_f1_run_spec"},
+    "stage_id": {"const": "F1"},
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "current_stage": {"const": "F1"},
+        "required_prior_authorization": {"const": "F1_ONLY"},
+        "next_authorization_on_pass": {"const": "F2_ONLY"},
+        "terminal_pass_before_validator_allowed": {"const": false}
+      },
+      "required": [
+        "current_stage",
+        "required_prior_authorization",
+        "next_authorization_on_pass",
+        "terminal_pass_before_validator_allowed"
+      ]
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "config_path": {"const": "config/stage_f_f1.json"},
+        "analysis_root": {"const": "evidence/stage_d/d10_recovery_v2_20260906/formal_r2/analysis"},
+        "paper_data_root": {"const": "evidence/stage_d/d10_recovery_v2_20260906/formal_r2/analysis/paper_data"},
+        "figure_recipes_path": {"const": "evidence/stage_d/d10_recovery_v2_20260906/formal_r2/analysis/figure_recipes.json"}
+      },
+      "required": ["config_path", "analysis_root", "paper_data_root", "figure_recipes_path"]
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string"}
+    },
+    "outputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "evidence_root": {"const": "evidence/stage_f/f1_recovery_v2_20260907/formal"},
+        "report_root": {"const": "reports/stage_f_f1_20260907"},
+        "scientific_modules": {"const": 3},
+        "layout_render_instances": {"const": 6},
+        "exported_figure_files": {"const": 18}
+      },
+      "required": ["evidence_root", "report_root", "scientific_modules", "layout_render_instances", "exported_figure_files"]
+    },
+    "prohibited_operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string"}
+    },
+    "canonical_digest": {"$ref": "#/$defs/sha"}
+  },
+  "required": [
+    "$schema",
+    "schema_version",
+    "document_type",
+    "stage_id",
+    "authorization",
+    "inputs",
+    "operations",
+    "outputs",
+    "prohibited_operations",
+    "canonical_digest"
+  ]
+}
