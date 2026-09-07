@@ -48,6 +48,9 @@ def _parser() -> argparse.ArgumentParser:
     f3_gate = sub.add_parser("verify-f3-startup"); f3_gate.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     f3_selection = sub.add_parser("validate-f3-selection"); f3_selection.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     f3_outputs = sub.add_parser("validate-f3-outputs"); f3_outputs.add_argument("--repo-root", type=Path, default=REPO_ROOT)
+    f3h0_check = sub.add_parser("validate-f3h0-protocol"); f3h0_check.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h0_check.add_argument("--require-clean", action="store_true")
+    f3h0_freeze = sub.add_parser("freeze-f3h0-protocol"); f3h0_freeze.add_argument("--repo-root", type=Path, default=REPO_ROOT); f3h0_freeze.add_argument("--frozen-at", required=True); f3h0_freeze.add_argument("--test-passed", required=True, type=int); f3h0_freeze.add_argument("--test-failed", required=True, type=int); f3h0_freeze.add_argument("--test-command", required=True)
+    f3h0_completion = sub.add_parser("validate-f3h0-completion"); f3h0_completion.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     return parser
 
 
@@ -81,6 +84,11 @@ def run(arguments: list[str] | None = None) -> dict[str, Any]:
     if args.command == "record-f2-tests": return f2.record_test_report(args.repo_root, passed=args.passed, failed=args.failed, command=args.test_command)
     if args.command == "finalize-f2": return f2.finalize(args.repo_root, completed_at=args.completed_at)
     if args.command == "validate-f2-completion": return f2.validate_completion(args.repo_root)
+    if args.command.startswith(("validate-f3h0", "freeze-f3h0")):
+        from . import stage_f_f3h_protocol as f3h0
+        if args.command == "validate-f3h0-protocol": return f3h0.validate_protocol(args.repo_root, require_clean=args.require_clean)
+        if args.command == "freeze-f3h0-protocol": return f3h0.freeze_protocol(args.repo_root, frozen_at=args.frozen_at, test_passed=args.test_passed, test_failed=args.test_failed, test_command=args.test_command)
+        return f3h0.validate_completion(args.repo_root)
     from . import stage_f_f3 as f3
     if args.command == "verify-f3-startup": return f3.verify_startup_gates(args.repo_root)
     if args.command == "initialize-f3": return f3.initialize(args.repo_root, renderer_commit=args.renderer_commit, started_at=args.started_at)

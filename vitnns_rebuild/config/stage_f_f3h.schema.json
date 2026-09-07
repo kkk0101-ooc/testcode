@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "document_type", "protocol_id", "status", "authorization", "upstream", "sample", "model", "preprocessing", "value_path", "gradcam", "display", "rendering", "budget", "execution", "acceptance", "canonical_digest"],
+  "properties": {
+    "$schema": {"const": "stage_f_f3h.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_f_f3h_prospective_protocol_config"},
+    "protocol_id": {"const": "STAGE_F_F3H_FULL_HEAD_GRADCAM_V1_20260907"},
+    "status": {"const": "FROZEN_PROTOCOL_EXECUTION_NOT_STARTED"},
+    "authorization": {"type": "object"},
+    "upstream": {"type": "object"},
+    "sample": {"type": "object"},
+    "model": {"type": "object"},
+    "preprocessing": {"type": "object"},
+    "value_path": {"type": "object"},
+    "gradcam": {"type": "object"},
+    "display": {"type": "object"},
+    "rendering": {"type": "object"},
+    "budget": {"type": "object"},
+    "execution": {"type": "object"},
+    "acceptance": {"type": "object"},
+    "canonical_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

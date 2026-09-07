@@ -1,7 +1,7 @@
 # 阶段 F：正式成图、定性展示与论文交付
 
 > 建立日期：2026-09-07。
-> 当前状态：Stage F F3 已完成并封存；当前唯一下一任务为 `F4_ONLY`。
+> 当前状态：Stage F F3 与 post-F3 blue-display r4 已完成并封存；owner 已在 2026-09-07 前瞻性插入 F3H full-head/Grad-CAM 补充阶段，F4 为 `PAUSED_PENDING_F3H`。当前只执行 `F3H0_PROTOCOL_FREEZE_ONLY`。
 > 文档性质：Stage F 的权威规划、阶段边界和验收合同；不是一次性跳过阶段门禁的总授权。
 > 选择规则：定性案例继续受 [阶段 F 展示选择协议 v1](stage_f_display_protocol_v1.md) 约束；跨层/头归因矩阵同时受 [Stage F 跨层/头归因展示补充协议](stage_f_cross_layer_display_addendum_20260907.md) 约束。
 
@@ -417,7 +417,7 @@ F0 terminal receipt 只授权 `F1_ONLY`；F2、F3、F4 均未开始。
 
 ## 11. 当前下一步
 
-当前只授权 `F4_ONLY`。F4 只能消费已经通过验收的 F1–F3 模块，完成最终组合图、图注、论文写作和反向 source audit；不得改变 F3 样本、panel 数据、色限、failure/NA 或 selection mapping。
+F3 terminal receipt 历史上授权 `F4_ONLY`，但 owner 在 2026-09-07 以新的前瞻性协议暂停 F4，并插入 F3H full-head/Grad-CAM 补充阶段。当前调度状态为 `PAUSED_PENDING_F3H`；F3H terminal completion 前不得启动 F4。F4 恢复后只能消费已经通过验收的 F1–F3/F3H 模块，完成最终组合图、图注、论文写作和反向 source audit；不得改变冻结样本、panel 数据、failure/NA 或 selection mapping。
 
 ## 12. F1 completion record（2026-09-07）
 
@@ -490,4 +490,21 @@ Owner review rejected the sealed F3 r7 white-background presentation because the
 - Boundaries: no model/checkpoint, Torch, timm, CUDA/GPU, forward/backward, attribution, or fidelity execution; no source, selection, slot, statistic, decision, or F3 archive modification; no Grad-CAM/Figure 7 was fabricated because no sealed Grad-CAM source exists; F4 was not started.
 - Delivery: terminal commit is recorded as `SELF`; the independent archive ref is `refs/archive/stage-f-v1-f3-blue-display-revision`. Final local/tracking/remote/ref/worktree/LFS checks are performed after the delivery commit.
 
-The only next authorization remains `F4_ONLY`.
+截至 blue-display r4 封存时，下一授权原为 `F4_ONLY`；下述后续 owner 授权以前瞻性 F3H 插入阶段暂停该任务。
+
+## 16. F3H prospective insertion（2026-09-07）
+
+Owner 在 F3 与 blue-display r4 封存后要求先建立新的前瞻性补充计算协议，内容为同一 `median_effect` 样本的全 12×12 head atlas、NNS/matched 正负贡献拆分、pair-shared monotonic log 显示和一个 sealed Grad-CAM class-logit 参照；F4 在 F3H terminal completion 前暂停。完整合同见 [F3H full-head/Grad-CAM 协议](stage_f_f3h_full_head_gradcam_protocol_20260907.md)。
+
+F3H 保持 F3 r7 和 blue-display r4 不变：
+
+- 唯一样本仍为 order 44 / `ILSVRC2012_val_00002287.JPEG`，不得根据新 atlas 或 Grad-CAM 外观换样本；
+- 12 blocks × 12 heads 全部保留，不选择 best/representative heads；
+- 144 coordinates × 2 Value-path methods = 288 terminals；四个已有坐标的 8 个 valid maps 严格继承，其余 280 units 才允许新计算；
+- NNS/matched 同一坐标共享一个 `M=max(max_abs_nns,max_abs_matched)` 与 `log1p(999*x/M)/log(1000)` 变换，不允许 method-specific gain、gamma、alpha 或分别自动缩放；
+- raw signed map 拆为 positive 与 negative magnitude，display-only 数组不得回流到 metric；
+- Grad-CAM 固定为 `blocks[11].norm1`、clean predicted-class raw logit、class index 713，仅一个 terminal unit；它与 Value-path 是不同 target，只作定性参照；
+- 不运行 fidelity、stability、sanity、统计、p-value、winner 或新决策；
+- 保守预算 33.5 H20-GPU-hours，硬上限 40.0，无自动 waiver。
+
+F3H 原子里程碑为 F3H0 protocol freeze、F3H1 implementation/synthetic preflight、F3H2 formal GPU compute、F3H3 CPU validation/render/seal。F3H0 不加载模型、不解码 JPEG、不导入 Torch/timm、不访问 CUDA/GPU、不运行 attribution。F3H0 PASS 只能授权 `F3H1_IMPLEMENTATION_AND_SYNTHETIC_PREFLIGHT_ONLY`，不能直接授权正式 GPU 运行，也不能恢复 F4。
