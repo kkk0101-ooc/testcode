@@ -536,3 +536,20 @@ F4 保持 `PAUSED_PENDING_F3H`。当前唯一下一授权为 `F3H1_IMPLEMENTATIO
 - F3H render/review 数由 17 前瞻性扩展为 20：原 17 个加 per-layer、depth-band、all-head consensus 三个模块。
 
 因此当前 F4 状态进一步收紧为 `PAUSED_PENDING_F3H_AND_F3C`。F3H terminal PASS 只能授权 `F3C0_PROTOCOL_FREEZE_ONLY`，不能直接启动 F4。
+
+## 18. F3H1 implementation completion record（2026-09-07）
+
+F3H1 已在不创建 F3H formal GPU root 的条件下完成：
+
+- 实现 `src/vitnns/stage_f_f3h.py`，复用既有 recovery-v2 model/sample loader、full-head direction resolver、E3 完整 IG schedule、matched token contribution 和 Stage C Grad-CAM；
+- 正式 Value-path runner 是 map-only，不调用 fidelity curves、perturbation、stability、sanity、bootstrap、统计或 winner selection；
+- 288-unit block-major plan source-recomputable；8 个 sealed inherited terminals 不进入 recompute，280 个新 units 按 coordinate 整对分配到 8 shards；
+- 原子 terminal persistence 覆盖 `VALID`/`FAILED`/`NA`，未知实现异常保持 incomplete 并阻断；
+- 显示实现覆盖 signed positive/negative 拆分、pair-shared `kappa=999` log transform、四张 12×12 atlas、十二张 block paired pages、Grad-CAM reference，以及新增的 per-layer/depth-band/all-head equal-weight spatial-support consensus，共 20 个 render instances；
+- consensus 在任何所需 pair 失败时原位失败，不做 complete-case 平均，不产生 class-conditioned 权重；
+- post-run sufficiency 判据预先固定为必须存在 144 个 signed class-logit coupling coefficients、无遗漏/重复计数的 path accounting identity 和 conservation test；atlas 外观不得参与权重定义；
+- F3C 未来候选比较集冻结为 class-targeted NNS、ViT Grad-CAM、full-model class-logit IG、attention rollout、block-11 raw CLS attention head mean；
+- 44 tests passed、0 failed；implementation false-pass 12/12 rejected；未加载模型、未解码 JPEG、未导入/使用 Torch/timm/CUDA、未运行 attribution；
+- F3H1 completion canonical digest `562fc67ef48e5876695ecfec7209e3ec98f933944b5a005585c0dff0f30f3e58`。
+
+F3H1 PASS 只授权 `F3H2_PILOT_ONLY`。F4 继续为 `PAUSED_PENDING_F3H_AND_F3C`。
