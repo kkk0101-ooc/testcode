@@ -55,8 +55,8 @@ F1_VALIDATION_SCHEMA_PATH = "config/stage_f_f1_validation_report.schema.json"
 F1_COMPLETION_SCHEMA_PATH = "config/stage_f_f1_completion.schema.json"
 F1_FALSE_PASS_SCHEMA_PATH = "config/stage_f_f1_false_pass_audit.schema.json"
 
-F1_ROOT_PATH = "evidence/stage_f/f1_r2_recovery_v2_20260907/formal"
-F1_REPORT_PATH = "reports/stage_f_f1_r2_20260907"
+F1_ROOT_PATH = "evidence/stage_f/f1_r3_recovery_v2_20260907/formal"
+F1_REPORT_PATH = "reports/stage_f_f1_r3_20260907"
 PENDING_PATH = F1_ROOT_PATH + "/completion/f1.pending.json"
 COMPLETION_PATH = F1_ROOT_PATH + "/completion/f1.json"
 STARTUP_PATH = F1_ROOT_PATH + "/startup_gate.json"
@@ -1189,12 +1189,16 @@ def initialize(repo_root: Path | str = REPO_ROOT, *, renderer_commit: str, start
         raise StageFF1Error("renderer_commit must be a full Git SHA")
     if _git(repo, "rev-parse", renderer_commit + "^{commit}") != renderer_commit:
         raise StageFF1Error("renderer commit is unavailable")
-    startup = verify_startup_gates(repo, require_clean=True, require_remote=True)
+    startup = {
+        key: value
+        for key, value in verify_startup_gates(repo, require_clean=True, require_remote=True).items()
+        if key != "canonical_digest"
+    }
     if startup["local_head"] != renderer_commit:
         raise StageFF1Error("renderer commit must match the clean pushed startup HEAD")
     startup["renderer_commit"] = renderer_commit
     startup["formal_runtime_isolation"] = validate_runtime_isolation()
-    _write_new(repo / STARTUP_PATH, startup)
+    _write_new(repo / STARTUP_PATH, _signed(startup))
     _write_new(repo / PENDING_PATH, _signed({
         "schema_version": 1,
         "document_type": "stage_f_f1_pending_completion",
