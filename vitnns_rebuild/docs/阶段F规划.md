@@ -1,7 +1,7 @@
 # 阶段 F：正式成图、定性展示与论文交付
 
 > 建立日期：2026-09-07。
-> 当前状态：Stage F F0 已完成并封存；当前唯一下一任务为 `F1_ONLY`。
+> 当前状态：Stage F F2 已完成并封存；当前唯一下一任务为 `F3_ONLY`。
 > 文档性质：Stage F 的权威规划、阶段边界和验收合同；不是一次性跳过阶段门禁的总授权。
 > 选择规则：定性案例继续受 [阶段 F 展示选择协议 v1](stage_f_display_protocol_v1.md) 约束。
 
@@ -402,7 +402,7 @@ F0 terminal receipt 只授权 `F1_ONLY`；F2、F3、F4 均未开始。
 
 ## 11. 当前下一步
 
-当前只授权 `F1_ONLY`。F1 只允许按本规划读取 D10 `paper_data` 和已封存 recipes，渲染主结果统计模块；不得启动 F2、F3 或 F4。
+当前只授权 `F3_ONLY`。F3 必须按冻结展示选择协议完成规则选例、方法示意与定性面板，并继续提供 report-side PNG review copies 和逐图 `figure_analysis.md`；不得启动 F4 或组合最终论文 Figure 1/5/S1/S2。
 
 ## 12. F1 completion record（2026-09-07）
 
@@ -422,3 +422,23 @@ F1 最终在不可覆盖的 r3 root 完成；r1/r2 为非权威失败尝试，�
 - Git/LFS：terminal completion 的 Git 字段为 `SELF`，交付后 `refs/archive/stage-f-v1-f1-completion` 必须指向同一最终提交；最终 local/tracking/remote/archive/LFS 状态由交付核验记录确认。
 
 F1 terminal receipt 只授权 `F2_ONLY`；F2、F3、F4 均未开始。
+
+## 13. F2 completion record（2026-09-07）
+
+F2 最终在不可覆盖的 r4 root 完成；r1 因 pending receipt 缺少 renderer commit、r2/r3 因人工视觉 QC 的文字/边界裁切风险而 fail closed，均保留原始 pending 和 failure event，未产生 terminal PASS：
+
+- 启动基线：分支 `stage-d-d3-pass`；F1 archive ref `refs/archive/stage-f-v1-f1-completion` 精确指向 `7a516571eabf364b7bb5d46ceb8aa74b450b3ae3` 且为 renderer commit 的祖先；E4 archive ref `refs/archive/stage-e-e4-completion` 精确指向 `7c82eca4e7de488f4537eff2b3fdb59feb3413ab`。
+- F1 绑定：completion SHA-256 `079a646e7ab613d5eda3c99ed9f24d7b1635bfe31d53d5be422b5b5073cb2df3`；completion canonical digest `cba6d26364aea25a5f8276e96b6459e40742ada69af6beaccd4cdaa37dcaf005`；whole-root canonical digest `a32e7998ed13810f1ccd4e2f6d7f6358711add0513cdbcb5438765ce445885f0`。
+- E4 绑定：completion SHA-256 `42ad2b483e40c164b4e26e1d8d65ecfc00703a2c01c2f0589961bcbefa8d58dc`；completion canonical digest `630423730c48c9ea4ae67d8b27b0ec690ee6c96f0ad36a1b3aa1312c3091a3a9`；whole-root canonical digest `75249c74e08cb5038acbc86f71051260f9d9b7b6cc80d23c517e8669f3765f67`；figure recipes SHA-256 `57306bc69e399d1ea2353d908ac0d8b22403d17ec29318a3eadf36b3b8d98a54`。
+- E4 paper-data hashes：`patch_scale_sensitivity.csv/json` 为 `4082b21cae46e97666284c9091ad4e5ddaf9fa0900360e892b13fe0cb495515c` / `79deafe6516eeb13e2064f04c28d592d12a9db2a95fbfb14aff9de19ad925f50`；`upsampling_sensitivity.csv/json` 为 `9e24b978acbb1395febaaa38e2a1f62e76099311de501133f28de1307758ff9b` / `fd2b810727ae7e5cedb419fcd5cefbb13ee6a7e3303c624db2d9288ff47b7057`；`layer_head_descriptive.csv/json` 为 `1713b991a1a20706b72b7734794cabc12a3f0a0bd06993e930b24be4c7b7f93c` / `28d247a7f1b7f0450bca0da71713d3864cd257b141473aa60dc762f7bc9c28cc`；`prediction_strata.csv/json` 为 `4fa68255bf226ef4ffa5cdaa335aa9f970bec8151b9656439200f3b86c5037fd` / `86cd86631f676b2f6345d855c85c318a13ae1dbd2f1d8f796e55c40f04476a1b`；`resource_and_qc.csv/json` 为 `48cc2c7705542aa4b73928b47939638a65c487da2e6580f65a663f4486cf320d` / `30c3af9ec4c00edba5b16d8f0783fa5de4333d9a9174a06466f0206840c7205c`；五个 JSON canonical digests 依次为 `8cadb3c4894305de46cee8889de866b8fec2d1fad4f21bad64f6916a7d5a1832`、`38a79ec578b2a46ef2a3b99a4ad99096fa234f68f476a542c5cf1e9109e1f222`、`4ea4decbab836bdfe7eeb2c75e338ac94c39538a12d05bf93b6801681797f84c`、`c17e46153d43ef04ca553c71a7edf8afab1f964db7f6966655e76c5b65f47af7`、`32c5fd33621f55034f5f518d8fb69c5d6fb25439ef08d0fea0849f443bfc583e`。
+- 实现：`config/stage_f_f2.json`、run spec 与 7 个 F2 schemas；`src/vitnns/stage_f_f2.py` source adapter/producer/validator；`src/vitnns/stage_f_cli.py`；复用并小幅扩展 `src/vitnns/stage_f_renderer.py`；`tests/test_stage_f_f2.py` 与 `tests/test_stage_f_f2_boundary.py`。
+- 正式输出：`evidence/stage_f/f2_r4_recovery_v2_20260907/formal/` 与 `reports/stage_f_f2_r4_20260907/`；terminal completion SHA-256 `f4deb7d7a39714165b31d4978b8179e3418340de7b10ed53e0c091c93cedd31d`，canonical digest `1fa18250f104c7b66dbfd0c2dc1a1fb7bb978cb4940408f09bc4765c038deccc`，whole-root canonical digest `0f16684d2ed9fda74ac0f88406ff4987799c6b76e66112307f76cbe86964a405`。
+- 图形模块：F2-A fine 4x4 anchor/native 14x14 patch-scale sensitivity；F2-B upsampling sensitivity 且 uniform/nearest 绑定同一 equivalent evidence class；F2-C 四个冻结 layer/head 坐标与 overall/correct/misclassified；F2-D expected/valid/failed/NA、typed failures 和 E2 waiver。每模块 single/double-column，共 4 modules、8 render instances、24 个 PNG/PDF/SVG；report-side review PNG 8 个；final combined Figure 3/4/S3 rendered = `false`。
+- 人工分析：`reports/stage_f_f2_r4_20260907/figure_analysis.md` 按 Image #1..#8 逐图记录“能说明什么、不能说明什么、误读风险”；8 个 review PNG 位于同 report root 的 `figures_png/`。
+- 测试：`CUDA_VISIBLE_DEVICES='' PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 PYTHONPATH=src /data01/home/yeziqi.831/nxtrec_wksp/testcode/.conda/envs/vitnns/bin/python -m pytest tests/test_stage_f_renderer.py tests/test_stage_f_boundary.py tests/test_stage_f_f1.py tests/test_stage_f_f1_boundary.py tests/test_stage_f_f2.py tests/test_stage_f_f2_boundary.py -q`，terminal 前后均为 63 passed、0 failed；13 个 Matplotlib/pyparsing deprecation warnings。`git diff --check` PASS。
+- false-pass audit：22/22 attacks 均 `REJECTED`，覆盖 F1/E4/ref/hash/inventory/manifest/paper-data 漂移、CSV/JSON parity、source-to-plotted exactness、uniform/nearest 拆分、stratum/coordinate 混淆、orders 117/352 删除或补零、E2 waiver/E4 MIXED 隐藏、p-value/winner/new decision/new endpoint、跨格式 identity、样式/画布、JPEG/model/Torch/timm/CUDA/NVIDIA、Stage E units/D8-D9 maps、F3/F4/final combined 提前生成及非原子 PASS。
+- 科学边界：F2 仅消费 E4 formal `paper_data/`、指定 metadata 和 E0-E4 completion；没有模型、checkpoint、Torch、timm、GPU/CUDA、NVIDIA handle 或 JPEG 访问；没有 forward/backward/IG/attribution/fidelity；没有 p-value、winner selection、新 GO/NO-GO 或新 endpoint。orders 117/352 以完整 sample ID、failure code 和 missing marker 保留；E4 scientific validity 保持 `MIXED`；D10/F0/F1/E4 未修改。
+- deviations：r1 在首张图渲染前因 pending 缺少 `renderer_commit` 键 fail closed；r2 完成渲染后发现 F2-D 双栏 failure-code 裁切；r3 完成渲染后发现 waiver 框贴近画布底边。三者均未发布 terminal PASS、未覆盖或删除，只有 r4 为权威 terminal PASS。
+- Git/LFS：terminal completion 的 Git 字段为 `SELF`；最终交付 commit、push、`refs/archive/stage-f-v1-f2-completion` 及 local/tracking/remote/archive/worktree/LFS 状态由提交后的 final verification 记录确认。
+
+F2 terminal receipt 只授权 `F3_ONLY`；F3 与 F4 均未开始。
