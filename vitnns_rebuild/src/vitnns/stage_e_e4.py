@@ -31,9 +31,13 @@ EXPECTED_CONFIG_DIGEST = "786889136d6d44006b141f4a47bae6978da5db86a62993cbc49afc
 ROOT_PATH = "evidence/stage_e/e4_recovery_v2_20260907/formal"
 REPORT_ROOT_PATH = "reports/stage_e_e4_20260907"
 AUTH_PATH = ROOT_PATH + "/control/execution_authorization.json"
+RECOVERY_AUTH_PATH = ROOT_PATH + "/control/sealing_recovery_authorization.json"
 PENDING_PATH = ROOT_PATH + "/completion/e4.pending.json"
 COMPLETION_PATH = ROOT_PATH + "/completion/e4.json"
 TEST_PATH = REPORT_ROOT_PATH + "/test_results.json"
+RECOVERY_TEST_PATH = REPORT_ROOT_PATH + "/sealing_recovery_test_results.json"
+INCIDENT_PATH = REPORT_ROOT_PATH + "/sealing_infrastructure_event_001.json"
+COST_PATH = ROOT_PATH + "/cost.json"
 VALIDATION_PATH = REPORT_ROOT_PATH + "/validation_report.json"
 FALSE_PASS_PATH = REPORT_ROOT_PATH + "/false_pass_audit.json"
 E3_ARCHIVE_REF = "refs/archive/stage-e-e3-r4-mixed-pass"
@@ -196,6 +200,52 @@ def validate_initialized(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
     return {"status": "PASS", "scope": "SOURCE_VALIDATION_AND_PACKAGING_ONLY", "scientific_validity": "MIXED", "stage_f_started": False}
 
 
+def authorize_recovery(repo_root: Path | str = REPO_ROOT, *, passed: int, failed: int, command: str) -> dict[str, Any]:
+    repo = Path(repo_root).resolve(); validate_initialized(repo)
+    if (repo / COMPLETION_PATH).exists() or not (repo / PENDING_PATH).is_file(): raise StageEE4Error("E4 recovery requires pending and no terminal completion")
+    if type(passed) is not int or passed <= 0 or failed != 0 or not command.strip(): raise StageEE4Error("E4 recovery requires zero-failure tests")
+    partial = _inventory(repo / ROOT_PATH, exclude=("control/execution_authorization.json", "completion/e4.pending.json"))
+    if partial["file_count"] == 0: raise StageEE4Error("E4 recovery requires recorded partial package files")
+    event = _signed({"schema_version": 1, "document_type": "stage_e_e4_sealing_infrastructure_event", "event_id": "E4_SEALING_RECOVERY_001", "status": "RECORDED", "recorded_at": _now(), "failure_class": "INFRASTRUCTURE_IMPLEMENTATION_VALIDATOR", "failure_codes": ["FAILED_UNIT_DISCLOSURE_OPTIONAL_FIELD_KEYERROR", "COMPLETION_PREDECESSOR_SCHEMA_PROJECTION", "PARTIAL_FINALIZATION_TIMESTAMP_IDEMPOTENCE"], "terminal_completion_published": False, "scientific_attempts_modified_or_rerun": False, "new_scientific_compute_performed": False, "model_loaded": False, "images_read": False, "gpu_used": False, "charged_cpu_seconds": 1200.0, "charge_basis": "CONSERVATIVE_CHARGE_FOR_TWO_FAILED_SOURCE_VALIDATION_AND_PACKAGING_INVOCATIONS", "partial_package_inventory": partial, "partial_package_policy": "DELETE_ONLY_LISTED_E4_DERIVED_FILES_THEN_SOURCE_RECOMPUTE", "stage_f_authorized": False, "stage_f_started": False})
+    tests = _signed({"schema_version": 1, "document_type": "stage_e_e4_sealing_recovery_test_results", "stage_id": "E4", "status": "PASS", "recorded_at": _now(), "command": command, "passed": passed, "failed": failed, "scientific_attempts_modified_or_rerun": False, "gpu_used": False})
+    _write_or_verify(repo / INCIDENT_PATH, event); _write_or_verify(repo / RECOVERY_TEST_PATH, tests)
+    status = _git(repo, "status", "--porcelain=v1"); allowed = (ROOT_PATH + "/", REPORT_ROOT_PATH + "/")
+    unexpected = [line for line in status.splitlines() if not any(line[3:].startswith(item) or f"/{item}" in line[3:] for item in allowed)]
+    if unexpected: raise StageEE4Error(f"E4 recovery producer worktree is not clean: {unexpected}")
+    head = _git(repo, "rev-parse", "HEAD")
+    if _git(repo, "rev-parse", "@{u}") != head: raise StageEE4Error("E4 recovery producer is not pushed")
+    original, _ = _strict_json(repo / AUTH_PATH, "E4 original authorization")
+    authorization = _signed({"schema_version": 1, "document_type": "stage_e_e4_sealing_recovery_authorization", "stage_id": "E4", "status": "AUTHORIZED_PARTIAL_PACKAGE_VALIDATION_AND_TERMINAL_PUBLICATION_ONLY", "issued_at": _now(), "producer_commit": head, "producer_tree": _git(repo, "rev-parse", "HEAD^{tree}"), "supersedes_authorization_canonical_digest": original["canonical_digest"], "incident_canonical_digest": event["canonical_digest"], "test_report_canonical_digest": tests["canonical_digest"], "partial_package_reuse_requires_source_recomputation": True, "new_scientific_compute_authorized": False, "gpu_authorized": False, "stage_f_authorized": False})
+    _write_or_verify(repo / RECOVERY_AUTH_PATH, authorization); return authorization
+
+
+def reset_partial_package(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
+    repo = Path(repo_root).resolve(); authority, _ = _strict_json(repo / RECOVERY_AUTH_PATH, "E4 recovery authority"); event, _ = _strict_json(repo / INCIDENT_PATH, "E4 recovery incident")
+    _validate_signed(authority, "E4 recovery authority"); _validate_signed(event, "E4 recovery incident")
+    if authority.get("status") != "AUTHORIZED_PARTIAL_PACKAGE_VALIDATION_AND_TERMINAL_PUBLICATION_ONLY" or authority.get("incident_canonical_digest") != event.get("canonical_digest"): raise StageEE4Error("E4 partial reset is not authorized")
+    if (repo / COMPLETION_PATH).exists(): raise StageEE4Error("refusing to reset after E4 terminal publication")
+    root = repo / ROOT_PATH; excluded = ("control/execution_authorization.json", "control/sealing_recovery_authorization.json", "completion/e4.pending.json")
+    observed = _inventory(root, exclude=excluded)
+    if observed != event.get("partial_package_inventory"): raise StageEE4Error("E4 partial package changed after recovery authorization")
+    for record in observed["files"]: (root / record["path"]).unlink()
+    for directory in sorted((path for path in root.rglob("*") if path.is_dir()), reverse=True):
+        try: directory.rmdir()
+        except OSError: pass
+    remaining = _inventory(root, exclude=excluded)
+    if remaining["file_count"] != 0: raise StageEE4Error("E4 partial package reset was incomplete")
+    return {"status": "PASS", "removed_derived_files": observed["file_count"], "removed_derived_bytes": observed["total_bytes"], "recoverable_from_sources": True}
+
+
+def _validate_execution_code(repo: Path) -> dict[str, Any]:
+    relative = RECOVERY_AUTH_PATH if (repo / RECOVERY_AUTH_PATH).is_file() else AUTH_PATH
+    authority, _ = _strict_json(repo / relative, "E4 execution authority"); _validate_signed(authority, "E4 execution authority")
+    if authority.get("status") not in {"AUTHORIZED_SEALING_ONLY", "AUTHORIZED_PARTIAL_PACKAGE_VALIDATION_AND_TERMINAL_PUBLICATION_ONLY"} or authority.get("new_scientific_compute_authorized") is not False or authority.get("gpu_authorized") is not False: raise StageEE4Error("E4 execution authority drifted")
+    producer = authority["producer_commit"]
+    if subprocess.run(("git", "merge-base", "--is-ancestor", producer, "HEAD"), cwd=repo, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode: raise StageEE4Error("E4 HEAD does not descend from authorized producer")
+    if _git(repo, "diff", "--name-only", producer, "HEAD", "--", "src/vitnns", "config", "tests"): raise StageEE4Error("E4 producer changed after authority")
+    return authority
+
+
 def _csv_bytes(rows: Sequence[Mapping[str, Any]], columns: Sequence[str] | None = None) -> bytes:
     if not rows: raise StageEE4Error("E4 cannot write an empty table")
     ordered_columns = list(rows[0]) if columns is None else list(columns)
@@ -338,14 +388,20 @@ def _minimum_copies(repo: Path) -> list[dict[str, Any]]:
     return [_copy_source(repo, source, destination) for source, destination in copies]
 
 
-def _cost(started: float, cpu_started: float, root: Path) -> dict[str, Any]:
-    elapsed = time.monotonic() - started; cpu_seconds = time.process_time() - cpu_started; retained = _inventory(root, exclude=("whole_root_inventory.json", "status.json", "completion/e4.pending.json", "completion/e4.json"))["total_bytes"]
-    result = {"elapsed_seconds": elapsed, "gpu_hours": 0.0, "cpu_seconds": cpu_seconds, "cpu_hours": cpu_seconds / 3600.0, "retained_bytes_before_status_inventory_completion": retained, "gpu_hours_max": 0.0, "cpu_hours_max": 8.0, "retained_bytes_max": 1073741824}
-    result["status"] = "PASS_COST" if result["cpu_hours"] <= 8.0 and retained <= 1073741824 else "FAIL_COST"; return result
+def _cost(repo: Path, started: float, cpu_started: float, root: Path) -> dict[str, Any]:
+    if (repo / COST_PATH).is_file():
+        value, _ = _strict_json(repo / COST_PATH, "E4 cost"); _validate_signed(value, "E4 cost"); return value
+    elapsed = time.monotonic() - started; current_cpu = time.process_time() - cpu_started; retained = _inventory(root, exclude=("whole_root_inventory.json", "status.json", "completion/e4.pending.json", "completion/e4.json"))["total_bytes"]
+    recovery_cpu = 0.0
+    if (repo / INCIDENT_PATH).is_file():
+        incident, _ = _strict_json(repo / INCIDENT_PATH, "E4 incident"); _validate_signed(incident, "E4 incident"); recovery_cpu = float(incident["charged_cpu_seconds"])
+    cpu_seconds = current_cpu + recovery_cpu
+    result = _signed({"schema_version": 1, "document_type": "stage_e_e4_cost", "elapsed_seconds": elapsed, "gpu_hours": 0.0, "cpu_seconds": cpu_seconds, "cpu_hours": cpu_seconds / 3600.0, "recovery_cpu_seconds_charged": recovery_cpu, "retained_bytes_before_status_inventory_completion": retained, "gpu_hours_max": 0.0, "cpu_hours_max": 8.0, "retained_bytes_max": 1073741824, "status": "PASS_COST" if cpu_seconds <= 8.0 * 3600.0 and retained <= 1073741824 else "FAIL_COST"})
+    _write_new_json(repo / COST_PATH, result); return result
 
 
 def finalize(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
-    repo = Path(repo_root).resolve(); started = time.monotonic(); cpu_started = time.process_time(); validate_initialized(repo); upstream = _upstream_validation(repo, full=True); package = _build_package(repo); root = repo / ROOT_PATH
+    repo = Path(repo_root).resolve(); started = time.monotonic(); cpu_started = time.process_time(); validate_initialized(repo); _validate_execution_code(repo); upstream = _upstream_validation(repo, full=True); package = _build_package(repo); root = repo / ROOT_PATH
     for name, table in package["tables"].items(): _write_or_verify(root / "paper_data" / f"{name}.json", table); _write_csv(root / "paper_data" / f"{name}.csv", table["rows"], table["columns"])
     copies = _minimum_copies(repo)
     recipes = _signed({"schema_version": 1, "document_type": "stage_e_figure_recipes", "numeric_source": "paper_data_only", "renders_png": False, "figures": [
@@ -354,7 +410,7 @@ def finalize(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
         {"figure_id": "stage_e_layer_head_prediction_strata_future", "table_path": "paper_data/prediction_strata.json", "x": "layer", "y": "median", "group": "stratum", "caption_contract": "Scientific validity is MIXED; numeric summaries use VALID rows only and failures at orders 117 and 352 are retained.", "numeric_source": "paper_data_only", "renders_png": False},
     ]})
     _write_or_verify(root / "figure_recipes.json", recipes)
-    analysis = _signed({"schema_version": 1, "document_type": "stage_e_analysis_report", "status": "PASS", "descriptive_only": True, "p_values_emitted": False, "winner_selection_performed": False, "new_go_no_go_issued": False, "variant_status_counts": {"E1": {"valid": 1500, "failed": 0, "na": 0}, "E2": {"valid": 2000, "failed": 0, "na": 0}, "E3_new_compute": {"expected": 3000, "valid": 2998, "failed": 2, "na": 0}, "E3_layer_head_pairs": {"expected": 2000, "valid": 1998, "failed": 2, "na": 0}, "not_run_with_reason": 1}, "scientific_summary": {"package_completeness": "PASS", "workflow_integrity": "PASS", "scientific_validity": "MIXED", "summary_population": "VALID_ONLY_WITH_EXPECTED_VALID_FAILED_NA_COUNTS", "failed_units": [{"selection_order": row["selection_order"], "sample_id": row["sample_id"], "coordinate": [row["layer"], row["head"]], "method": row["method"], "failure_code": row["failure_code"], "delta_fid": row["delta_fid"]} for row in package["failures"]], "d10_primary_unchanged": True, "c10_primary_decision": "NO_GO_NOVELTY", "new_stage_d_decision": None}, "limitations": ["Two frozen (11,2) NNS rows failed IG conservation after the unchanged 32768-step schedule.", "No failed row was deleted, retried, interpolated, zero-imputed, or included in numeric summaries.", "E4 PASS denotes package/workflow integrity and does not denote all-unit scientific validity.", "Stage E is post-D10 descriptive sensitivity analysis and does not replace the D10 primary result."]})
+    analysis = _signed({"schema_version": 1, "document_type": "stage_e_analysis_report", "status": "PASS", "descriptive_only": True, "p_values_emitted": False, "winner_selection_performed": False, "new_go_no_go_issued": False, "variant_status_counts": {"E1": {"valid": 1500, "failed": 0, "na": 0}, "E2": {"valid": 2000, "failed": 0, "na": 0}, "E3_new_compute": {"expected": 3000, "valid": 2998, "failed": 2, "na": 0}, "E3_layer_head_pairs": {"expected": 2000, "valid": 1998, "failed": 2, "na": 0}, "not_run_with_reason": 1}, "scientific_summary": {"package_completeness": "PASS", "workflow_integrity": "PASS", "scientific_validity": "MIXED", "summary_population": "VALID_ONLY_WITH_EXPECTED_VALID_FAILED_NA_COUNTS", "failed_units": [{"selection_order": row["selection_order"], "sample_id": row["sample_id"], "coordinate": [row["layer"], row["head"]], "method": row["method"], "failure_code": row["failure_code"], "numeric_result": None} for row in package["failures"]], "d10_primary_unchanged": True, "c10_primary_decision": "NO_GO_NOVELTY", "new_stage_d_decision": None}, "limitations": ["Two frozen (11,2) NNS rows failed IG conservation after the unchanged 32768-step schedule.", "No failed row was deleted, retried, interpolated, zero-imputed, or included in numeric summaries.", "E4 PASS denotes package/workflow integrity and does not denote all-unit scientific validity.", "Stage E is post-D10 descriptive sensitivity analysis and does not replace the D10 primary result."]})
     _write_or_verify(root / "analysis_report.json", analysis)
     provenance_sources = package["source_records"] + [_record(repo, path) for path in (e0.COMPLETION_PATH, e1.COMPLETION_PATH, e2.SUPERSEDING_COMPLETION_PATH, e3r4.COMPLETION_PATH, e1.ROOT_PATH + "/whole_root_inventory.json", e2.SUPERSEDING_INVENTORY_PATH, e3r4.ROOT_PATH + "/whole_root_inventory.json", "reports/stage_d_d9_recovery_v2_20260906/d9_formal_validation.json", "reports/stage_d_d10_recovery_v2_20260906/d10_formal_decision.json", "reports/recovery_c10_completion_20260903.json")]
     provenance = _signed({"schema_version": 1, "document_type": "stage_e_provenance", "source_files": provenance_sources, "pair_bindings": [{"selection_order": row["selection_order"], "sample_id": row["sample_id"], "coordinate": [row["layer"], row["head"]], "method": row["method"], "validity_status": "FAILED", "failure_code": row["failure_code"], "source_hashes": row["source_hashes"]} for row in package["failures"]], "operations": ["source-recompute E1 E2 and E3-R4 terminal packages", "copy validated paper tables without numeric transformation", "merge resource and QC rows with explicit analysis-family identity", "retain and disclose typed FAILED and NA rows", "seal package without model image or GPU access"], "environment": {"python": platform.python_version(), "platform": platform.platform(), "gpu_used": False, "model_loaded": False, "images_read": False}, "outcome_access": {"stage_e_outcomes_read_for_packaging": True, "new_scientific_variant_added": False, "winner_selection_performed": False, "manual_case_selection_performed": False}, "d9_d10_unchanged": True, "c10_history_unchanged": True})
@@ -362,14 +418,19 @@ def finalize(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
     false_audit = _signed({"schema_version": 1, "document_type": "stage_e_e4_false_pass_audit", "stage_id": "E4", "status": "PASS", "checks": [{"attack": name, "result": "REJECTED"} for name in FALSE_PASS_ATTACKS], "workflow_pass_is_not_scientific_pass": True, "stage_f_started": False})
     _write_or_verify(repo / FALSE_PASS_PATH, false_audit)
     validation = _signed({"schema_version": 1, "document_type": "stage_e_e4_source_validation", "stage_id": "E4", "status": "PASS", "validated_at": _now(), "checks": {"e0_e1_e2_e3_completion_chain": "PASS", "e3_r4_archive_custody": "PASS", "d9_d10_c10_unchanged": "PASS", "minimum_package_files": "PASS", "csv_json_parity": "PASS", "required_columns": "PASS", "typed_failure_disclosure": "PASS_2_OF_3000", "valid_only_summary_population": "PASS", "no_new_scientific_compute": "PASS", "no_render_artifacts": "PASS"}, "package_completeness": "PASS", "workflow_integrity": "PASS", "scientific_validity": "MIXED", "upstream_validation": {"e1": upstream["e1"]["status"], "e2": upstream["e2"]["status"], "e3": upstream["e3"]["status"], "stage_d": upstream["stage_d"]["status"]}, "false_pass_audit_canonical_digest": false_audit["canonical_digest"]})
-    _write_or_verify(repo / VALIDATION_PATH, validation)
+    if (repo / VALIDATION_PATH).is_file():
+        existing_validation, _ = _strict_json(repo / VALIDATION_PATH, "existing E4 validation"); _validate_signed(existing_validation, "existing E4 validation")
+        left = {key: value for key, value in existing_validation.items() if key not in {"validated_at", "canonical_digest"}}; right = {key: value for key, value in validation.items() if key not in {"validated_at", "canonical_digest"}}
+        if left != right: raise StageEE4Error("existing E4 validation differs semantically")
+        validation = existing_validation
+    else: _write_new_json(repo / VALIDATION_PATH, validation)
+    cost = _cost(repo, started, cpu_started, root)
+    if cost["status"] != "PASS_COST": raise StageEE4Error("E4 cost gate failed")
     artifacts = []
     for path in sorted(root.rglob("*")):
         if path.is_file() and not path.is_symlink() and path.name not in {"payload_manifest.json", "whole_root_inventory.json", "status.json", "e4.pending.json", "e4.json"}: artifacts.append({"path": path.relative_to(root).as_posix(), "bytes": path.stat().st_size, "sha256": _sha_file(path)})
     manifest = _signed({"schema_version": 1, "document_type": "stage_e_payload_manifest", "immutable": True, "artifacts": artifacts, "payload_count": len(artifacts)})
     _write_or_verify(root / "payload_manifest.json", manifest)
-    cost = _cost(started, cpu_started, root)
-    if cost["status"] != "PASS_COST": raise StageEE4Error("E4 cost gate failed")
     inventory = _inventory(root, exclude=("whole_root_inventory.json", "status.json", "completion/e4.pending.json", "completion/e4.json")); inventory_doc = _signed({"schema_version": 1, "document_type": "stage_e_e4_whole_root_inventory", "root": ROOT_PATH, "scope": "all regular non-hidden E4 formal files except self-referential inventory status and completion receipts", **inventory})
     _write_or_verify(root / "whole_root_inventory.json", inventory_doc)
     status = _signed({"schema_version": 1, "document_type": "stage_e_status", "status": "PASS", "complete": True, "terminal": True, "immutable": True, "package_completeness": "PASS", "workflow_integrity": "PASS", "scientific_validity": "MIXED", "cost_status": "PASS_COST", "d10_decision_unchanged": True, "c10_history_unchanged": True, "whole_root_inventory": {"file_count": inventory["file_count"], "total_bytes": inventory["total_bytes"], "canonical_digest": inventory_doc["canonical_digest"]}, "git": {"commit": "SELF", "ref": ARCHIVE_REF}, "next_stage": "F0"})
@@ -378,7 +439,8 @@ def finalize(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
         errors = list(Draft202012Validator(package_schema).iter_errors(document))
         if errors: raise StageEE4Error(f"E4 {name} schema failure: {errors[0].message}")
     _write_or_verify(root / "status.json", status)
-    pending, _ = _strict_json(repo / PENDING_PATH, "E4 pending"); completion = _signed({"schema_version": 1, "document_type": "stage_e_terminal_completion", "stage_id": "E4", "status": "PASS", "started_at": pending["started_at"], "completed_at": _now(), "predecessor": _record(repo, e3r4.COMPLETION_PATH), "config_canonical_digest": e0.load_stage_e_contract(repo)[0]["canonical_digest"], "run_spec_canonical_digest": e0.load_stage_e_run_spec(repo)[0]["canonical_digest"], "expected_coordinates": [{"package_file": item} for item in e0.load_stage_e_contract(repo)[0]["outputs"]["minimum_e4_files"]], "observed_coordinates": [{"package_file": item} for item in e0.load_stage_e_contract(repo)[0]["outputs"]["minimum_e4_files"]], "variant_statuses": [{"variant_id": "E1_patch_scale", "status": "PASS", "reason": "1500 source-validated rows"}, {"variant_id": "E2_upsampling", "status": "PASS", "reason": "2000 source-validated rows including equivalent ranking class"}, {"variant_id": "E3_valid_units", "status": "PASS", "reason": "2998 valid typed terminals"}, {"variant_id": "E3_failed_units", "status": "FAIL", "reason": "orders 117 and 352 retained without imputation"}, {"variant_id": "E3_clean_margin", "status": "NOT_RUN_WITH_REASON", "reason": "not frozen in E0"}], "package_completeness": "PASS", "workflow_integrity": "PASS", "scientific_validity": "MIXED", "cost_status": "PASS_COST", "source_validation": {"validation_report": _record(repo, VALIDATION_PATH), "test_report": _record(repo, TEST_PATH), "false_pass_audit": _record(repo, FALSE_PASS_PATH), "payload_manifest": _record(repo, ROOT_PATH + "/payload_manifest.json"), "status": _record(repo, ROOT_PATH + "/status.json"), "whole_root_inventory": _record(repo, ROOT_PATH + "/whole_root_inventory.json")}, "upstream_unchanged": True, "actual_cost": cost, "next_authorization": "F0_ONLY"})
+    pending, _ = _strict_json(repo / PENDING_PATH, "E4 pending"); predecessor_record = _record(repo, e3r4.COMPLETION_PATH); predecessor = {"path": predecessor_record["path"], "file_sha256": predecessor_record["sha256"], "canonical_digest": predecessor_record["canonical_digest"]}
+    completion = _signed({"schema_version": 1, "document_type": "stage_e_terminal_completion", "stage_id": "E4", "status": "PASS", "started_at": pending["started_at"], "completed_at": _now(), "predecessor": predecessor, "config_canonical_digest": e0.load_stage_e_contract(repo)[0]["canonical_digest"], "run_spec_canonical_digest": e0.load_stage_e_run_spec(repo)[0]["canonical_digest"], "expected_coordinates": [{"package_file": item} for item in e0.load_stage_e_contract(repo)[0]["outputs"]["minimum_e4_files"]], "observed_coordinates": [{"package_file": item} for item in e0.load_stage_e_contract(repo)[0]["outputs"]["minimum_e4_files"]], "variant_statuses": [{"variant_id": "E1_patch_scale", "status": "PASS", "reason": "1500 source-validated rows"}, {"variant_id": "E2_upsampling", "status": "PASS", "reason": "2000 source-validated rows including equivalent ranking class"}, {"variant_id": "E3_valid_units", "status": "PASS", "reason": "2998 valid typed terminals"}, {"variant_id": "E3_failed_units", "status": "FAIL", "reason": "orders 117 and 352 retained without imputation"}, {"variant_id": "E3_clean_margin", "status": "NOT_RUN_WITH_REASON", "reason": "not frozen in E0"}], "package_completeness": "PASS", "workflow_integrity": "PASS", "scientific_validity": "MIXED", "cost_status": "PASS_COST", "source_validation": {"validation_report": _record(repo, VALIDATION_PATH), "test_report": _record(repo, TEST_PATH), "false_pass_audit": _record(repo, FALSE_PASS_PATH), "payload_manifest": _record(repo, ROOT_PATH + "/payload_manifest.json"), "status": _record(repo, ROOT_PATH + "/status.json"), "whole_root_inventory": _record(repo, ROOT_PATH + "/whole_root_inventory.json")}, "upstream_unchanged": True, "actual_cost": cost, "next_authorization": "F0_ONLY"})
     completion_schema, _ = _strict_json(repo / "config/stage_e_stage_completion.schema.json", "Stage E completion schema"); errors = list(Draft202012Validator(completion_schema).iter_errors(completion))
     if errors: raise StageEE4Error(f"E4 completion schema failure: {errors[0].message}")
     temporary = (repo / PENDING_PATH).with_name(".e4-terminal.tmp"); _write_new_json(temporary, completion); os.replace(temporary, repo / PENDING_PATH); observed, raw = _strict_json(repo / PENDING_PATH, "E4 terminal pending")
@@ -406,7 +468,7 @@ def validate_completion(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
     _validate_signed(inventory, "E4 inventory"); rebuilt = _inventory(repo / ROOT_PATH, exclude=("whole_root_inventory.json", "status.json", "completion/e4.pending.json", "completion/e4.json"))
     if any(inventory[key] != rebuilt[key] for key in ("files", "file_count", "total_bytes")) or canonical_sha256({"files": inventory["files"]}) != rebuilt["canonical_digest"]: raise StageEE4Error("E4 whole-root inventory drifted")
     if status.get("status") != "PASS" or status.get("scientific_validity") != "MIXED" or status.get("next_stage") != "F0" or status.get("git") != {"commit": "SELF", "ref": ARCHIVE_REF}: raise StageEE4Error("E4 status drifted")
-    if analysis.get("scientific_summary", {}).get("failed_units") != [{"selection_order": row["selection_order"], "sample_id": row["sample_id"], "coordinate": [row["layer"], row["head"]], "method": row["method"], "failure_code": row["failure_code"], "delta_fid": row["delta_fid"]} for row in package["failures"]]: raise StageEE4Error("E4 failed-unit disclosure drifted")
+    if analysis.get("scientific_summary", {}).get("failed_units") != [{"selection_order": row["selection_order"], "sample_id": row["sample_id"], "coordinate": [row["layer"], row["head"]], "method": row["method"], "failure_code": row["failure_code"], "numeric_result": None} for row in package["failures"]]: raise StageEE4Error("E4 failed-unit disclosure drifted")
     required = e0.load_stage_e_contract(repo)[0]["outputs"]["minimum_e4_files"]
     if any(not (repo / ROOT_PATH / relative).is_file() for relative in required): raise StageEE4Error("E4 minimum package is incomplete")
     if any(path.suffix.lower() in FORBIDDEN_SUFFIXES for path in (repo / ROOT_PATH).rglob("*") if path.is_file()): raise StageEE4Error("E4 contains a forbidden render artifact")
@@ -415,15 +477,18 @@ def validate_completion(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
 
 def _main() -> int:
     parser = argparse.ArgumentParser(prog="python -m vitnns.stage_e_e4"); sub = parser.add_subparsers(dest="command", required=True)
-    for name in ("verify-preconditions", "verify-preconditions-full", "initialize", "validate-initialized", "validate-outputs", "validate-outputs-full", "finalize", "validate-completion"):
+    for name in ("verify-preconditions", "verify-preconditions-full", "initialize", "validate-initialized", "reset-partial-package", "validate-outputs", "validate-outputs-full", "finalize", "validate-completion"):
         child = sub.add_parser(name); child.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     tests = sub.add_parser("record-tests"); tests.add_argument("--repo-root", type=Path, default=REPO_ROOT); tests.add_argument("--passed", type=int, required=True); tests.add_argument("--failed", type=int, required=True); tests.add_argument("--test-command", required=True)
+    recovery = sub.add_parser("authorize-recovery"); recovery.add_argument("--repo-root", type=Path, default=REPO_ROOT); recovery.add_argument("--passed", type=int, required=True); recovery.add_argument("--failed", type=int, required=True); recovery.add_argument("--test-command", required=True)
     args = parser.parse_args()
     if args.command == "verify-preconditions": value = verify_preconditions(args.repo_root, full=False)
     elif args.command == "verify-preconditions-full": value = verify_preconditions(args.repo_root, full=True)
     elif args.command == "initialize": value = initialize(args.repo_root)
     elif args.command == "validate-initialized": value = validate_initialized(args.repo_root)
     elif args.command == "record-tests": value = record_tests(args.repo_root, passed=args.passed, failed=args.failed, command=args.test_command)
+    elif args.command == "authorize-recovery": value = authorize_recovery(args.repo_root, passed=args.passed, failed=args.failed, command=args.test_command)
+    elif args.command == "reset-partial-package": value = reset_partial_package(args.repo_root)
     elif args.command == "validate-outputs": value = {"status": "PASS", "tables": {name: table["row_count"] for name, table in validate_outputs(args.repo_root, full_upstream=False)["tables"].items()}, "scientific_validity": "MIXED"}
     elif args.command == "validate-outputs-full": value = {"status": "PASS", "tables": {name: table["row_count"] for name, table in validate_outputs(args.repo_root, full_upstream=True)["tables"].items()}, "scientific_validity": "MIXED"}
     elif args.command == "finalize": value = finalize(args.repo_root)

@@ -33,6 +33,7 @@ def test_e4_package_is_source_recomputable_and_complete() -> None:
         (352, 11, 2, e4.e3.NNS_METHOD, "ig_conservation_failed_typed_terminal"),
     ]
     assert all(row.get("insertion_auc_mean") is None and row.get("deletion_auc_mean") is None for row in package["failures"])
+    assert all("delta_fid" not in row for row in package["failures"])
 
 
 def test_e4_tables_conform_to_frozen_output_schema() -> None:
@@ -67,3 +68,6 @@ def test_e4_has_no_scientific_execution_surface() -> None:
     assert "torch" not in source
     assert "load_model" not in source
     assert '"renders_png": False' in source
+    assert 'predecessor_record["path"]' in source
+    assert 'predecessor_record["sha256"]' in source
+    assert "DELETE_ONLY_LISTED_E4_DERIVED_FILES_THEN_SOURCE_RECOMPUTE" in source
