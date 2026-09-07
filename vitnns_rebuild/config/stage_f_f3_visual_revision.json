@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "document_type": "stage_f_f3_blue_display_revision_config",
+  "revision_id": "F3_BLUE_DISPLAY_R1_20260907",
+  "authorization": {"scope": "POST_F3_DISPLAY_ONLY_REVISION", "f3_decision_modified": false, "f4_started": false, "next_authorization": "F4_ONLY"},
+  "inputs": {
+    "f3_archive_ref": "refs/archive/stage-f-v1-f3-completion",
+    "f3_archive_commit": "1589fc3895657ee6a8f01d843ee26b67603998cb",
+    "f3_completion_path": "evidence/stage_f/f3_r7_recovery_v2_20260907/formal/completion/f3.json",
+    "f3_completion_sha256": "f1423479cc391b729cea37f34c663db833b91e3dff1cdee576efa61ce87e56d6",
+    "f3_root": "evidence/stage_f/f3_r7_recovery_v2_20260907/formal",
+    "f3_whole_root_inventory_digest": "fe19352ef4d11ee4b173e56a0e1cd70e290fe9b34bc5f6b20f77b9394cbfc1e4",
+    "protocol_path": "docs/stage_f_post_f3_blue_display_revision_20260907.md",
+    "reference_pdf_path": "../论文1/参考文章.pdf",
+    "reference_pdf_sha256": "33e323f8cb664864b12daad1f06b6ef0d3268bcafaea4e84ac695fd286f3855b"
+  },
+  "transform": {
+    "source": "ABSOLUTE_MAGNITUDE_OF_RAW_SIGNED_MAP",
+    "normalization": "PER_PANEL_MAX_ABSOLUTE_VALUE",
+    "gamma": 2.0,
+    "resize": [224, 224],
+    "resize_order": 1,
+    "resize_interpolation": "bilinear",
+    "clipping": null,
+    "smoothing": null,
+    "max_pool": null,
+    "colormap_stops": [[0.0, "#07077F"], [0.2, "#0019C6"], [0.42, "#00AEE8"], [0.65, "#FFF000"], [0.82, "#FF6A00"], [1.0, "#D90000"]],
+    "magnitude_comparison_allowed": false,
+    "spatial_shape_comparison_only": true,
+    "authoritative_signed_audit": "F3_R7_SHARED_SCALE"
+  },
+  "outputs": {"evidence_root": "evidence/stage_f/f3_visual_r1_recovery_v2_20260907/formal", "report_root": "reports/stage_f_f3_visual_r1_20260907", "modules": ["Figure 5", "Figure 6", "Supplement S1", "Supplement S2", "Supplement S4"], "formats": ["png", "pdf", "svg"], "png_dpi": 600, "final_combined_manuscript_figures_rendered": false},
+  "prohibitions": {"model_or_checkpoint_access": true, "torch_or_timm_import": true, "cuda_or_gpu_access": true, "new_attribution_or_fidelity": true, "sample_or_slot_change": true, "failure_imputation": true, "signed_audit_replacement": true, "gradcam_or_figure_7": true, "f4_execution": true},
+  "canonical_digest": "546c5feacb25f6fe4caa54bf2a28ed1ec2fded57ed67b4fd9bb350eabaf19a01"
+}
