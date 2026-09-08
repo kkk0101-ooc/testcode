@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_x_x1_r1_dependency.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "document_type", "amendment_id", "status", "upstream", "repositories", "limits", "forbidden_suffixes", "access_boundary", "next_authorization", "canonical_digest"],
+  "properties": {
+    "$schema": {"const": "stage_x_x1_r1_dependency.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_x_x1_r1_dependency_amendment"},
+    "amendment_id": {"const": "STAGE_X_X1_R1_DEPENDENCY_MATERIALIZATION_20260908"},
+    "status": {"const": "FROZEN_BEFORE_DEPENDENCY_DOWNLOAD"},
+    "upstream": {"type": "object"},
+    "repositories": {
+      "type": "array", "minItems": 2, "maxItems": 2,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "url", "commit", "license", "destination", "allowlist"],
+        "properties": {
+          "id": {"type": "string"}, "url": {"type": "string"},
+          "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+          "license": {"type": "string"}, "destination": {"type": "string"},
+          "allowlist": {"type": "array", "minItems": 2, "items": {"type": "string"}}
+        }
+      }
+    },
+    "limits": {
+      "type": "object", "additionalProperties": false,
+      "required": ["download_bytes_max", "retained_bytes_max", "automatic_waiver"],
+      "properties": {"download_bytes_max": {"const": 67108864}, "retained_bytes_max": {"const": 67108864}, "automatic_waiver": {"const": false}}
+    },
+    "forbidden_suffixes": {"type": "array", "minItems": 10, "uniqueItems": true, "items": {"type": "string"}},
+    "access_boundary": {"type": "object"},
+    "next_authorization": {"const": "X1_R1_NNS_V2_IMPLEMENTATION_ONLY"},
+    "canonical_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
