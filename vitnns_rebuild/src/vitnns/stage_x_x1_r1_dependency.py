@@ -43,32 +43,41 @@ def load(repo):
 def _allowed(relative,patterns):return any(fnmatch.fnmatch(relative.as_posix(),pattern) for pattern in patterns)
 def materialize(repo_root=REPO_ROOT):
     repo=Path(repo_root).resolve();config=load(repo)
-    if (repo/MANIFEST).exists() or any((repo/item["destination"]).exists() for item in config["repositories"]):raise DependencyError("dependency destination exists; refusing overwrite")
+    final_root=repo/"third_party/stage_x"
+    if final_root.exists():raise DependencyError("dependency destination exists; refusing overwrite")
     forbidden={value.lower() for value in config["forbidden_suffixes"]};downloaded=0;retained=0;records=[]
-    with tempfile.TemporaryDirectory(prefix="stage-x-x1-r1-") as raw:
+    (repo/"third_party").mkdir(parents=True,exist_ok=True)
+    staged=Path(tempfile.mkdtemp(prefix=".stage-x-dependencies-",dir=repo/"third_party"))
+    try:
+      with tempfile.TemporaryDirectory(prefix="stage-x-x1-r1-") as raw:
         temporary=Path(raw)
         for item in config["repositories"]:
             clone=temporary/item["id"]
             process=subprocess.run(["git","clone","--filter=blob:none","--no-checkout",item["url"],str(clone)],text=True,capture_output=True,check=False)
             if process.returncode:raise DependencyError(process.stderr.strip() or "clone failed")
-            process=subprocess.run(["git","-C",str(clone),"checkout","--detach",item["commit"],"--",*item["allowlist"]],text=True,capture_output=True,check=False)
+            process=subprocess.run(["git","-C",str(clone),"sparse-checkout","set","--no-cone",*item["allowlist"]],text=True,capture_output=True,check=False)
+            if process.returncode:raise DependencyError(process.stderr.strip() or "sparse checkout setup failed")
+            process=subprocess.run(["git","-C",str(clone),"checkout","--detach",item["commit"]],text=True,capture_output=True,check=False)
             if process.returncode:raise DependencyError(process.stderr.strip() or "allowlisted checkout failed")
             if git(clone,"rev-parse","HEAD")!=item["commit"]:raise DependencyError("dependency commit drifted")
-            regular=[path for path in clone.rglob("*") if path.is_file() and ".git" not in path.parts];downloaded+=sum(path.stat().st_size for path in regular);selected=[]
+            downloaded+=sum(path.stat().st_size for path in clone.rglob("*") if path.is_file());regular=[path for path in clone.rglob("*") if path.is_file() and ".git" not in path.parts];selected=[]
             for path in regular:
                 relative=path.relative_to(clone)
                 if not _allowed(relative,item["allowlist"]):continue
                 if any(relative.name.lower().endswith(suffix) for suffix in forbidden):raise DependencyError(f"forbidden dependency suffix: {relative}")
                 selected.append(path)
-            destination=repo/item["destination"]
+            destination=staged/Path(item["destination"]).relative_to("third_party/stage_x")
             for source in selected:
-                relative=source.relative_to(clone);target=destination/relative;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(source,target);retained+=target.stat().st_size;records.append({"engine":item["id"],"path":target.relative_to(repo).as_posix(),"bytes":target.stat().st_size,"sha256":sha(target),"source_commit":item["commit"]})
+                relative=source.relative_to(clone);target=destination/relative;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(source,target);retained+=target.stat().st_size;records.append({"engine":item["id"],"path":(Path("third_party/stage_x")/target.relative_to(staged)).as_posix(),"bytes":target.stat().st_size,"sha256":sha(target),"source_commit":item["commit"]})
             licenses=[row for row in records if row["engine"]==item["id"] and Path(row["path"]).name.lower() in {"license","license.txt","copying"}]
             if not licenses:raise DependencyError(f"license not retained: {item['id']}")
         if downloaded>config["limits"]["download_bytes_max"] or retained>config["limits"]["retained_bytes_max"]:raise DependencyError("dependency byte cap exceeded")
         manifest=signed({"schema_version":1,"document_type":"stage_x_x1_r1_dependency_manifest","status":"PASS","repositories":[{key:item[key] for key in ("id","url","commit","license","destination")} for item in config["repositories"]],"files":sorted(records,key=lambda row:row["path"]),"file_count":len(records),"downloaded_regular_file_bytes":downloaded,"retained_bytes":retained,"download_cap":config["limits"]["download_bytes_max"],"retained_cap":config["limits"]["retained_bytes_max"],"dataset_or_checkpoint_downloaded":False,"image_or_model_file_retained":False,"torch_or_timm_imported":False,"cuda_or_gpu_accessed":False,"next_authorization":config["next_authorization"]})
-        (repo/MANIFEST).parent.mkdir(parents=True,exist_ok=True);descriptor=os.open(repo/MANIFEST,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o644)
+        staged_manifest=staged/"dependency_manifest.json";descriptor=os.open(staged_manifest,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o644)
         with os.fdopen(descriptor,"wb") as stream:stream.write(canonical(manifest)+b"\n");stream.flush();os.fsync(stream.fileno())
+        os.replace(staged,final_root)
+    finally:
+        if staged.exists():shutil.rmtree(staged)
     return manifest
 def validate_materialized(repo_root=REPO_ROOT):
     repo=Path(repo_root).resolve();config=load(repo);manifest=read(repo/MANIFEST);payload=dict(manifest);observed=payload.pop("canonical_digest",None)
