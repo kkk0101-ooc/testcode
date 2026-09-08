@@ -1,4 +1,24 @@
-# 如何用 traecli 在一周内完成一篇 SCI 初稿：研究生实操版
+# 阶段 G 论文写作指导：vitnns_rebuild SCI 初稿工作流
+
+> 当前命名：阶段 E 保留为已封存的消融与敏感性分析；阶段 F 专指 F0–F3 论文图表生成；阶段 G 专指论文写作。
+> 上位科学范围：[论文1当前实现审计、缺口与后续计划](../../论文1实现审计与后续计划.md)。
+> 执行门禁：[阶段 G 论文写作规划](阶段G规划.md)。
+> 图表输入：[阶段 F 规划](阶段F规划.md)与 [F3 工作包和产物索引](阶段F_F3工作包与产物索引.md)。
+
+## 本项目不可覆盖的写作约束
+
+这份指导由通用 traecli 写作流程改造成 `vitnns_rebuild` 的项目规范。它只指导如何组织、起草、审查和封存论文，不授权新增实验、重算统计、挑选更好看的案例或修改阶段 F 图表。
+
+1. C10 与 Stage D 必须分 cohort 报告：`n=15` 与 `n=500` 不得池化。
+2. C10 历史 `NO_GO_NOVELTY`、`FAIL_SPATIAL`、`BLOCKED` 和 `HOLM_BLOCKED_UNDERSPECIFIED` 必须原样披露。
+3. Stage D 的结论只能写成冻结模型、目标、primary `(0,9)`、matched baseline 和 fine-4×4 endpoint 下的 `GO_FIDELITY_SCOPE`。
+4. 历史消融阶段 E 是 post-D10 secondary/descriptive analysis；其 E2 owner budget waiver、E3 的两个 typed failures 和 E4 `MIXED` scientific validity 不得隐藏。
+5. F3-HeadAtlas 与 F3-ClassCompare 是阶段 F 的补充图形/比较工作包，不得写成另两个顶层阶段；不同 method target 和独立面板缩放必须在图注中披露。
+6. 不得把 fixed-clean-attention Value-path 写成完整 Q/K/V、完整 attention 或普遍 class explanation；fine-4×4-cell 也不得写成已证明的原生单像素 attribution。
+7. 图像更清晰只改善展示，不改变 fidelity、统计显著性或类别判别能力。
+8. 所有数字、图号、图注和主张都必须能反向定位到冻结 source record；缺证据时使用 `[EVIDENCE REQUIRED]`，缺文献时使用 `[REFERENCE REQUIRED]`。
+
+阶段 G 的推荐顺序不是机械的七天日历，而是 `G0` 初始化与证据绑定、`G1` scientific story/evidence matrix/figure cards、`G2` Results and Discussion、`G3` Methods and Experimental、`G4` Introduction and references、`G5` Conclusion and Abstract、`G6` 双语/审稿/QC、`G7` 编译和封存。后文的 Day 1–7 对应这些内部里程碑。
 
 如果实验基本结束、数据已经拿到，但论文一直拖着没写完，可以把 traecli 当成一个“论文项目助手”来用。
 
@@ -12,10 +32,10 @@
 
 写论文时，应分别创建中文版本和英文版本文件，不要把中英文内容混写在同一个文件中。两个版本应保持章节结构、图表编号、实验数据和核心结论一致。英文版用于正式投稿，中文版用于梳理逻辑、内部讨论和导师审阅。
 
-推荐的目录结构如下：
+本项目推荐的目录结构如下：
 
 ```text
-SCI_Paper/
+vitnns_rebuild/
 ├── AGENTS.md
 ├── manuscript/
 │   ├── zh/
@@ -32,12 +52,21 @@ SCI_Paper/
 │       ├── experimental.md
 │       ├── results_discussion.md
 │       └── conclusion.md
-├── data/
-├── figures/
-├── references/
-├── scripts/
-└── notes/
+│   ├── notes/
+│   ├── references/
+│   ├── tables/
+│   ├── figure_manifest.json
+│   └── qc/
+├── docs/
+│   ├── 阶段F规划.md
+│   ├── 阶段F_F3工作包与产物索引.md
+│   ├── 阶段G规划.md
+│   └── 阶段G论文写作指导.md
+├── evidence/stage_g_writing/
+└── reports/stage_g_writing_*/
 ```
+
+论文图片不复制进新的临时 `figures/` 目录。`manuscript/figure_manifest.json` 应通过路径、SHA-256 和 Stage F source record 引用冻结图包。
 
 ## 1. 不要把 traecli 当成“高级聊天框”
 
@@ -179,6 +208,10 @@ Classify confidence as:
 这一轮会筛掉很多典型的“AI 论文句子”：看起来非常专业，但其实没有实验支撑。
 
 ## 5. Day 2：一次整理好数据、计算和图片
+
+### 本项目覆盖规则
+
+本节下面的通用数据处理建议不构成 `vitnns_rebuild` Stage G 的执行权限。该项目的计算、统计和图片在 Stage A–F 完成；Stage G 不读取 raw JPEG/模型、不重新运行数据处理、统计、attribution、fidelity 或绘图。Day 2 在本项目中改为：核验 Stage F figure inventory、建立 Figure Cards，并把已经封存的数字绑定到 manuscript source table。发现缺图或 source mismatch 时回到 Stage F 的新 revision 处理，不能在写作目录内临时修图。
 
 论文最浪费时间的地方之一，就是写到一半不断回去找 Excel、重新计算、找原图、修改百分比，或者确认某个数据到底是多少。
 
@@ -371,6 +404,10 @@ notes/results_review.md
 很多时候，AI 最有价值的用途不是替你写，而是帮你找漏洞。
 
 ## 11. Day 4：写 Experimental
+
+### 本项目覆盖规则
+
+这里的 “Materials” 模板是通用示例。`vitnns_rebuild` 应写成 Dataset and cohort、Model and preprocessing、Attribution methods、Intervention-based fidelity evaluation、Statistical analysis、Resource accounting 和 Reproducibility/provenance。所有参数从冻结 config、manifest 和 completion 提取；不知道的字段保留 `[PARAMETER REQUIRED]`，不得按常见 ViT 设置补全。
 
 Experimental 相对简单，因为主要是事实。可以先把内容整理成：
 
@@ -726,3 +763,85 @@ final_QC_report.md
 ```
 
 最后再由作者根据 QC report 逐项修改，并对照检查中英文两个版本文件，确保科学内容完全一致。
+
+## 24. 防御性写作审计
+
+阶段 G 必须使用 Academic Defensive Writing Auditor 的原则审查中文和英文稿件。目标不是删除必要的不确定性或扩大结论，而是避免论文读起来像提前写好的 rebuttal。
+
+优先使用下面的论证顺序：
+
+~~~text
+claim → evidence → concise boundary
+~~~
+
+避免下面的防御顺序：
+
+~~~text
+anticipated objection → disclaimer → justification → weakened claim → another disclaimer
+~~~
+
+### 24.1 需要检查的模式
+
+- reviewer-facing prebuttal，例如 “We emphasize that” 或 “It should be noted that”；
+- 重复的 non-claim disclaimer，例如多次写 “We do not claim that”；
+- 同一句堆叠 although、while、despite、only、may、might 等限定；
+- 没有诊断证据却为较弱结果寻找理由；
+- 用长段文字辩解为什么没有做某项实验；
+- 用 “For a fair comparison” 自我证明公平，而不是直接陈述控制变量；
+- 重复使用 preliminary、exploratory、within-scope 等范围标签；
+- 法律条款式列出论文不主张的一切；
+- 与有效性、可复现性或解释无关的过程性失败披露；
+- 用 strong、promising、robust、compelling 等形容词补偿证据；
+- “Taken together, these results demonstrate” 等自动总结句；
+- 把标准操作重新命名并以此防御 novelty。
+
+### 24.2 necessary caveat 与 defensive wording 的判定
+
+逐句回答五个问题：
+
+1. 删除后是否会实质性误导证据解释？
+2. 该句是否报告了有依据的条件、不确定性或限制？
+3. 该句的主要功能是否只是回答想象中的审稿质疑？
+4. 能否改写为直接说明已评估、已观察或范围之外的事实？
+5. 同一 caveat 是否已在其他位置出现？
+
+每句分类为 `NECESSARY_CAVEAT`、`DEFENSIVE`、`MIXED` 或 `CLEAN`。修改规则是：事实先行；范围用正面句式表达；每项 claim 最多保留一个会改变解释的 caveat；没有技术信息的防御句直接删除。
+
+例如：
+
+- 不写：“For a fair comparison, all methods use the same backbone.”
+- 写：“All methods use the same frozen ViT-B/16 backbone.”
+- 不在每节重复：“We do not claim spatial robustness.”
+- 在 Limitations 集中写一次：“Translation and center-crop stability did not meet the C10 criterion.”
+- 不写：“Although the improvement is modest, the result remains encouraging.”
+- 写实际效应量和区间；没有证据支持的原因不补写。
+
+### 24.3 本项目必须保留的 caveat
+
+以下边界直接影响科学解释，不能以“去防御化”为由删除，但应各自在最相关位置简洁出现一次：
+
+- C10 的 `NO_GO_NOVELTY`、`FAIL_SPATIAL` 和 `BLOCKED`；
+- C10 `n=15` 与 Stage D `n=500` 分 cohort、不池化；
+- Stage D 只支持 `GO_FIDELITY_SCOPE`；
+- 历史消融阶段 E 是 post-D10 descriptive analysis，且 E4 scientific validity 为 `MIXED`；
+- F3-ClassCompare 各方法的 target/class-agnostic 差异；
+- panel-independent scaling 不能用于跨方法幅值比较；
+- display improvement 不改变 fidelity 或类别判别性。
+
+这些 caveat 应优先写成测量结果或正面范围句，而不是 “we emphasize / we do not claim / to avoid misunderstanding” 式声明。
+
+### 24.4 固定审计输出
+
+在 `manuscript/qc/defensive_writing_audit.md` 输出：
+
+| Location | Original | Type | Severity | Necessary caveat? | Why it feels defensive | Likely reviewer reaction | Recommended action | Rewrite |
+|---|---|---|---|---|---|---|---|---|
+
+随后给出：
+
+1. 0–10 的 paper-level defensive-writing score；
+2. 3–10 项 highest-priority removals；
+3. necessary caveats to preserve；
+4. repeated phrase audit。
+
+G6 只有在中英文稿分别完成该审计、必要 caveat 未丢失、defensive wording 已处理后才能 PASS。

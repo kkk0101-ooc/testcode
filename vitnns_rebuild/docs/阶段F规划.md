@@ -1,23 +1,24 @@
-# 阶段 F：正式成图、定性展示与论文交付
+# 阶段 F：论文图表生成（F0–F3）
 
 > 建立日期：2026-09-07。
-> 当前状态：Stage F F0–F3、post-F3 blue-display r4、F3H、F3C0、F3C1 和 F3C2 已完成并封存；F4 为 `PAUSED_PENDING_F3C`。当前唯一下一授权是 `F3C3_FORMAL_ONLY`，不得启动 F3C4 outcome analysis 或 F4。
-> 文档性质：Stage F 的权威规划、阶段边界和验收合同；不是一次性跳过阶段门禁的总授权。
+> 当前状态：Stage F F0–F3 主模块、F3-Display、F3-HeadAtlas（历史 token `F3H`）和 F3-ClassCompare（历史 token `F3C`）均已有封存产物；F3C 的 50 图展示包也已完成。最终 Figure 1–6 / Supplement S1–S4 组合包尚未单独封存。
+> 当前下一授权：`F3_FINAL_FIGURE_PACKAGE_ONLY`。完成后进入 [阶段 G：论文写作](阶段G规划.md)；不再启动 F4。
+> 文档性质：Stage F 的权威图表规划、阶段边界和验收合同；不是论文写作授权。
 > 选择规则：定性案例继续受 [阶段 F 展示选择协议 v1](stage_f_display_protocol_v1.md) 约束；跨层/头归因矩阵同时受 [Stage F 跨层/头归因展示补充协议](stage_f_cross_layer_display_addendum_20260907.md) 约束。
 
 ## 1. 目标
 
-Stage F 把已经封存的 D10 主结果和 E4 消融结果转化为可投稿、可复现、可审计的论文图和论文交付包。目标视觉形态参考 [参考文章.pdf](../../论文1/参考文章.pdf)：包含方法流程示意、成组热图、统计曲线、消融对比和多方法定性面板，而不是只输出孤立的默认折线图。
+Stage F 把已经封存的 D10 主结果和历史消融阶段 E 的 E4 结果转化为可投稿、可复现、可审计的论文图表包。目标视觉形态参考 [参考文章.pdf](../../论文1/参考文章.pdf)：包含方法流程示意、成组热图、统计曲线、消融对比和多方法定性面板，而不是只输出孤立的默认折线图。
 
 “参考”只指图形组织密度、清晰度和投稿完成度。Stage F 不复制参考文章的图片、数据、文字、网络结构或实验结论；所有本论文图形必须来自本项目已验证的输入，或来自不承载经验结果的方法定义。
 
-原始 F0–F3 只把已封存的 D10/E4 结果转化为论文模块，不产生新的科学结论。owner 后续前瞻性插入的 F3H 仍为描述性阶段；F3C 则是独立冻结的 class-targeted empirical study，只能产生其协议明确允许的 conditional class-logit fidelity 结果，不得追溯改写 C10、Stage D、Stage E 或 F0–F3。Stage F 必须同时满足：
+F0–F3 是阶段 F 的完整正式编号。owner 后续插入的 F3H/F3C 不再解释为顶层阶段，而归入 F3 的两个扩展工作包：`F3-HeadAtlas` 与 `F3-ClassCompare`。历史文件名、method ID、completion 和 archive ref 保持不变；规范映射见 [F3 工作包与产物索引](阶段F_F3工作包与产物索引.md)。F3-HeadAtlas 为描述性图形包；F3-ClassCompare 是独立冻结的 class-targeted empirical comparison，只能产生其协议允许的 conditional class-logit fidelity 结果。二者不得追溯改写 C10、Stage D、历史消融阶段 E 或 F0–F3 主模块。Stage F 必须同时满足：
 
 1. 科学主图消费完整 D10 或 E4 封存数据；
 2. 定性图只使用固定审计样本或冻结规则选择的样本；
 3. 显示变换永不回流到数值、统计、排序或 decision；
 4. 每个 panel、组合图和最终导出文件都可追溯到输入、代码、参数和 SHA-256；
-5. 论文正文继续严格区分 C10、Stage D 和 Stage E 的不同 cohort、角色和有效性状态。
+5. caption data 明确区分 C10、Stage D 和历史消融阶段 E 的不同 cohort、角色和有效性状态；论文正文由阶段 G 编写。
 
 ## 2. 启动基线与不可变科学状态
 
@@ -159,24 +160,25 @@ F0 必须建立且测试至少三个版式 profile：
 
 ## 5. 最终论文图目录
 
-F1–F3 先生成可单独验证的模块；F4 只把已验证模块组成主文和 supplementary 图，不重新计算数据。
+F1–F3 先生成可单独验证的模块；`F3-Final` 只把已验证模块组成主文和 supplementary 图，不重新计算数据。阶段 G 只引用该图包，不重新渲染。
 
 | 最终图 | 来源阶段 | 内容 | 最低要求 |
 |---|---|---|---|
-| Figure 1：方法总览 | F3/F4 | 输入图像 → ViT → 固定 block/head 与 clean attention → Value-path IG → fine 4×4 map / matched patch baseline → insertion/deletion fidelity | 矢量图；只表达已实现方法，不承载新经验结果 |
-| Figure 2：主结果 | F1/F4 | C10 与 Stage D 分 cohort 的 median/CI、Stage D 500 图 `delta_fid` ECDF、NNS vs matched fidelity curves | 明示 `n=15` 与 `n=500` 不池化；完整 cohort |
-| Figure 3：尺度与上采样消融 | F2/F4 | patch-scale sensitivity、uniform/nearest equivalence、bilinear/bicubic sensitivity | 标为 post-D10 descriptive；不得选 winner |
-| Figure 4：层头与预测分层 | F2/F4 | 冻结四坐标、overall/correct/misclassified 分层、有效/失败/NA | 明示 scientific validity `MIXED`；保留 orders 117/352 |
-| Figure 5：定性对比 | F3/F4 | Original、NNS、matched、difference、NNS overlay、matched overlay、insertion/deletion curves | 样本只按冻结规则选择；共享可比色限 |
-| Figure 6：跨层/头归因矩阵 | F3/F4 | 同一 `median_effect` 样本的 Original，以及 `(0,9)`、`(4,2)`、`(6,10)`、`(11,2)` 上的 NNS/matched attribution 矩阵 | Fig. 11/13 风格；不是 raw attention；坐标内共享色限，跨坐标只比较空间模式 |
-| Supplement S1 | F3/F4 | 五个 D1 固定审计案例 | 标为 fixed audit，不得称为 best examples |
-| Supplement S2 | F3/F4 | 规则到样本映射、重复选择、weak/failure、misclassified/difficult 案例 | 不得静默替换重复样本 |
-| Supplement S3 | F1/F2/F4 | resource/QC、失败/NA、E2 budget waiver 与 E3 mixed-validity disclosure | 与科学图分开但必须随论文包交付 |
-| Supplement S4 | F3/F4 | 5 个 fixed audit IDs、5 个既有规则 slots 及 orders 117/352 failure slots 的跨层/头 NNS/matched attribution matrices | 按冻结顺序生成；重复样本可去重显示但 slot mapping 必须保留；failure/NA 原位显示 |
+| Figure 1：方法总览 | F3-Core / F3-Final | 输入图像 → ViT → 固定 block/head 与 clean attention → Value-path IG → fine 4×4 map / matched patch baseline → insertion/deletion fidelity | 矢量图；只表达已实现方法，不承载新经验结果 |
+| Figure 2：主结果 | F1 / F3-Final | C10 与 Stage D 分 cohort 的 median/CI、Stage D 500 图 `delta_fid` ECDF、NNS vs matched fidelity curves | 明示 `n=15` 与 `n=500` 不池化；完整 cohort |
+| Figure 3：尺度与上采样消融 | F2 / F3-Final | patch-scale sensitivity、uniform/nearest equivalence、bilinear/bicubic sensitivity | 标为 post-D10 descriptive；不得选 winner |
+| Figure 4：层头与预测分层 | F2 / F3-Final | 冻结四坐标、overall/correct/misclassified 分层、有效/失败/NA | 明示 scientific validity `MIXED`；保留 orders 117/352 |
+| Figure 5：定性对比 | F3-Core / F3-Final | Original、NNS、matched、difference、NNS overlay、matched overlay、insertion/deletion curves | 样本只按冻结规则选择；共享可比色限 |
+| Figure 6：跨层/头归因矩阵 | F3-HeadAtlas / F3-Final | 同一 `median_effect` 样本的 Original，以及 `(0,9)`、`(4,2)`、`(6,10)`、`(11,2)` 上的 NNS/matched attribution 矩阵 | Fig. 11/13 风格；不是 raw attention；坐标内共享色限，跨坐标只比较空间模式 |
+| Supplement S1 | F3-Core / F3-Final | 五个 D1 固定审计案例 | 标为 fixed audit，不得称为 best examples |
+| Supplement S2 | F3-Core / F3-Final | 规则到样本映射、重复选择、weak/failure、misclassified/difficult 案例 | 不得静默替换重复样本 |
+| Supplement S3 | F1/F2 / F3-Final | resource/QC、失败/NA、E2 budget waiver 与 E3 mixed-validity disclosure | 与科学图分开但必须随论文包交付 |
+| Supplement S4 | F3-HeadAtlas / F3-Final | 5 个 fixed audit IDs、5 个既有规则 slots 及 orders 117/352 failure slots 的跨层/头 NNS/matched attribution matrices | 按冻结顺序生成；重复样本可去重显示但 slot mapping 必须保留；failure/NA 原位显示 |
+| Supplement S5（如纳入） | F3-ClassCompare / F3-Final | class-targeted NNS、ViT Grad-CAM、full-model IG、rollout 和 raw CLS attention 的全 50 图 atlas、signed audit 与 display-only shape views | method target、class-agnostic 状态和逐面板缩放必须显式；不能从颜色亮度推出跨方法幅值或优越性 |
 
 Figure 1 的方法示意可以使用确定性声明式布局、TikZ 或等价矢量后端；不得用无法重建的手工截图作为唯一源。Figure 5 和 Figure 6 当前只比较 NNS 与 frozen matched baseline，不默认添加 CAM/Grad-CAM。Figure 6/S4 展示的是 fixed-clean-attention head-direction Value-path attribution，不是 raw self-attention，也不支持跨坐标绝对幅度比较；完整合同见 [跨层/头展示补充协议](stage_f_cross_layer_display_addendum_20260907.md)。
 
-## 6. F0–F4 执行顺序
+## 6. F0–F3 执行顺序
 
 ### F0：冻结并验证统一 renderer
 
@@ -184,7 +186,7 @@ Figure 1 的方法示意可以使用确定性声明式布局、TikZ 或等价矢
 
 1. E4 completion/ref/inventory 从源核验通过；
 2. local HEAD、tracking ref 和 remote branch 一致，worktree/index clean，Git LFS clean；
-3. 当前只持有 `F0_ONLY`，F1–F4 尚未开始。
+3. 历史启动时只持有 `F0_ONLY`，F1–F3 尚未开始；该句保留为 F0 的历史门禁。
 
 **必须完成**
 
@@ -233,7 +235,7 @@ Figure 1 的方法示意可以使用确定性声明式布局、TikZ 或等价矢
 
 **预计耗时**：0.5–1 个工作日。
 
-### F2：渲染 Stage E 消融模块
+### F2：渲染历史 Stage E 消融模块
 
 **唯一数值来源**：E4 `paper_data` 和 E4 recipes。
 
@@ -286,32 +288,43 @@ Figure 1 的方法示意可以使用确定性声明式布局、TikZ 或等价矢
 - 弱效果、误分类、失败或重复选择不得被“更好看”的替代案例替换。
 - orders `117`、`352` 或其他 failed/NA cell 必须原位显示状态和 failure code，不得补零、复制相邻坐标或换样本。
 
-**验收与授权**：validator 必须从 D10 表独立重建选择结果，核对 D9/D1/JPEG/map identities，并从 E3/E3-R1/E3-R2/E3-R4 四个 roots 独立重建 3,000 个 typed-terminal union、2,998 个 valid maps 与 2 个原位 failures；同时证明 model/GPU 未使用。completion 只能授权 `F4_ONLY`。
+**验收与授权**：validator 必须从 D10 表独立重建选择结果，核对 D9/D1/JPEG/map identities，并从 E3/E3-R1/E3-R2/E3-R4 四个 roots 独立重建 3,000 个 typed-terminal union、2,998 个 valid maps 与 2 个原位 failures；同时证明 model/GPU 未使用。历史 completion 的 `F4_ONLY` 保持不变，但当前解释为可继续 F3 扩展工作包，全部图形工作完成后转入 `F3_FINAL_FIGURE_PACKAGE_ONLY`。
 
 **预计耗时**：1.5–3 个工作日；其中新增跨层/头 source-union 验证与 Figure 6/S4 约增加 0.5–1 个工作日。
 
-### F4：组合图、图注、论文写作与最终导出
+### F3 内部工作包结构
 
-F4 只能消费已经通过验收的 F1–F3 模块。F4 可以调整 panel 布局、留白、标题位置和文字换行，但不能更改 panel 数据、色限、样本、选择规则或状态。
+为避免 F3H/F3C 看起来像额外顶层阶段，当前统一使用以下名称：
+
+1. `F3-Core`：原 F3 正式定性案例和方法示意；
+2. `F3-Display`：post-F3 blue-display presentation revision；
+3. `F3-HeadAtlas`：历史 F3H，全 12×12 head atlas 与 Grad-CAM 定性参照；
+4. `F3-ClassCompare`：历史 F3C，五方法 class-targeted/agnostic formal comparison 与 display package；
+5. `F3-Final`：只组合最终图、caption data 和 inventories。
+
+F3-ClassCompare 历史上包含前瞻性 empirical compute；这是已完成并封存的例外，不表示当前 Stage F 可以继续新增科学 endpoint。完整路径、completion SHA-256 和 archive ref 见 [F3 工作包与产物索引](阶段F_F3工作包与产物索引.md)。
+
+### F3-Final：组合图、caption data 与最终图表导出
+
+F3-Final 只能消费已经通过验收的 F1–F3、F3-Display、F3-HeadAtlas 和 F3-ClassCompare 模块。它可以调整 panel 布局、留白、标题位置和文字换行，但不能更改 panel 数据、色限、样本、选择规则、method target 或状态。
 
 **必须完成**
 
 1. 按第 5 节形成 Figure 1–6 和 Supplement S1–S4；
-2. 完成图注、正文交叉引用、Results、Ablation、Failure Cases、Limitations 和方法图说明；
-3. 保持 C10 与 Stage D 分 cohort 叙述，完整披露 spatial failure、E2 waiver 和 E3 mixed validity；
+2. 完成 caption data、panel keys、figure/table cross-reference keys 和每张图的 source binding；
+3. 在 caption contract 中保留 C10/Stage D 分 cohort、spatial failure、E2 waiver、E3 mixed validity 和 F3-ClassCompare method-target boundary；
 4. 导出 journal-quality PDF/SVG、600 DPI PNG、预览 contact sheet；
-5. 生成 manuscript source、编译 PDF（若目标模板已冻结）和 machine-readable display report；
-6. 从最终 manuscript 反向核对每个数字、图号、panel、caption 和 source record；
-7. 完成 F4 completion、Git/LFS publication 和 Stage F archive ref。
+5. 生成 machine-readable display report、figure inventory 和 caption inventory；
+6. 从最终 figure/caption package 反向核对每个数字、图号、panel 和 source record；
+7. 完成 F3-Final completion、Git/LFS publication 和 Stage F final-figure archive ref。
 
-论文骨架、相关工作和方法文字允许在 F0–F3 并行起草，但任何结果数字、图注和最终图号必须在 F4 绑定正式 F1–F3 产物。不存在的文献、实验、p-value、方法比较或统计量不得补写。
+论文骨架可在图形阶段以非正式 notes 形式准备，但正式正文、引用体系、Results/Discussion、Abstract 和 Conclusion 属于 [阶段 G](阶段G规划.md)。不存在的文献、实验、p-value、方法比较或统计量不得补写。
 
 **验收**
 
-- manuscript 中出现的每个经验数字都能在 D10/E4 或 Stage F report 中定位；
 - 所有正式图片来自已验证模块，draft/contact sheet 未被误引用；
 - PDF 无缺字、裁切、低分辨率、字体未嵌入或颜色含义漂移；
-- 最终 figure inventory、manuscript inventory 和 Git/LFS 状态 clean；
+- 最终 figure inventory、caption inventory 和 Git/LFS 状态 clean；
 - Stage F completion 不产生新的科学 decision。
 
 ## 7. 输出、封存与 Git 合同
@@ -323,24 +336,25 @@ evidence/stage_f/f0_<id>/
 evidence/stage_f/f1_<id>/
 evidence/stage_f/f2_<id>/
 evidence/stage_f/f3_<id>/
-evidence/stage_f/f4_<id>/
+evidence/stage_f/f3_final_<id>/
 reports/stage_f_f0_<date>/
 ...
-reports/stage_f_f4_<date>/
+reports/stage_f_f3_final_<date>/
 ```
 
-F4 的正式论文包必须位于版本化 evidence tree，例如：
+F3-Final 的正式图表包必须位于版本化 evidence tree，例如：
 
 ```text
-evidence/stage_f/f4_<id>/paper/
-  manuscript/
+evidence/stage_f/f3_final_<id>/paper/
   figures/main/
   figures/supplementary/
   captions/
   display_report.json
   figure_inventory.json
-  manuscript_inventory.json
+  caption_inventory.json
 ```
+
+阶段 G 的 manuscript、reference 和 QC 输出使用 `manuscript/`、`evidence/stage_g_writing/` 与 `reports/stage_g_writing_*`，不得再写入 Stage F root。
 
 每阶段均采用 pending→terminal receipt；terminal receipt 必须在所有 payload、manifest、inventory 和 validator 完成后原子发布。不得修改或覆盖上一阶段 root。
 
@@ -350,13 +364,13 @@ evidence/stage_f/f4_<id>/paper/
 - `refs/archive/stage-f-v1-f1-completion`；
 - `refs/archive/stage-f-v1-f2-completion`；
 - `refs/archive/stage-f-v1-f3-completion`；
-- `refs/archive/stage-f-v1-f4-completion`。
+- `refs/archive/stage-f-v1-f3-final-figures`。
 
 每个 terminal 阶段完成后必须 commit、push，并核验 local HEAD、tracking ref、remote branch、archive ref、worktree/index 和 Git LFS 状态。大型二进制使用 Git LFS；若正式 payload 因体积留在本机，至少将代码、配置、manifest、hash、报告和可重建说明纳入版本控制。
 
 ## 8. False-pass audit
 
-F0–F4 每阶段都必须生成 false-pass audit，至少主动拒绝以下攻击：
+F0–F3 每阶段及 F3-Final 都必须生成 false-pass audit，至少主动拒绝以下攻击：
 
 1. E4 ref 存在但 completion/inventory/hash 已漂移；
 2. F0 尚未完成就生成或发布正式 F1–F3 图；
@@ -383,21 +397,23 @@ F0–F4 每阶段都必须生成 false-pass audit，至少主动拒绝以下攻�
 
 任一攻击未被可靠拒绝时，对应阶段必须 `BLOCKED`，保留现场并输出诊断；不得自动换数据、换图或降低验收标准。
 
-## 9. 强制图注与写作边界
+## 9. 强制 caption data 与阶段 G 写作边界
 
 规则选择的定性图必须包含等价声明：
 
 > 案例图按 Stage D 结果访问前预注册的规则选择，仅作说明性展示；所有 primary 结论均基于完整 500 图队列。
 
-Stage E 图必须包含等价声明：
+历史 Stage E 图必须包含等价声明：
 
-> Stage E 是在 D10 结果已知后冻结的描述性敏感性分析；数值汇总基于 valid rows，并同时报告 expected、failed 和 NA。它不替换 Stage D primary，也不产生新的 GO/NO-GO。
+> 历史 Stage E 是在 D10 结果已知后冻结的描述性敏感性分析；数值汇总基于 valid rows，并同时报告 expected、failed 和 NA。它不替换 Stage D primary，也不产生新的 GO/NO-GO。
 
 C10/Stage D 对照图必须包含等价声明：
 
 > C10 的 15 图 holdout 与 Stage D 的独立 500 图 cohort 分开报告且不池化；C10 的历史 `NO_GO_NOVELTY`、`FAIL_SPATIAL` 和 `BLOCKED` 状态保持不变。
 
 固定审计案例必须标为 `fixed audit examples`，不得称为最佳、代表性或随机样本。任何逐案例色限图必须说明色限只支持案例内方法比较，不支持案例间绝对幅度比较。
+
+> 第 10–28 节记录历史执行过程。其中的 F3H、F3C、F4、`F4_ONLY` 和 “F4 未启动”均是当时使用的 token；历史 evidence、receipt 和 ref 不追溯修改，当前名称和调度只由本文第 1、5–7、30 节及 [F3 工作包索引](阶段F_F3工作包与产物索引.md)解释。
 
 ## 10. F0 completion record（2026-09-07）
 
@@ -417,7 +433,7 @@ F0 terminal receipt 只授权 `F1_ONLY`；F2、F3、F4 均未开始。
 
 ## 11. F3 后的历史调度记录
 
-F3 terminal receipt 历史上授权 `F4_ONLY`，但 owner 在 2026-09-07 以前瞻性协议暂停 F4，并依次插入 F3H full-head/Grad-CAM 与 F3C class-targeted study。本段只记录当时的调度转换；当前权威状态以第 21–23 节为准：F3H 与 F3C0 已完成，F4 为 `PAUSED_PENDING_F3C`，唯一下一授权为 `F3C1_IMPLEMENTATION_AND_SYNTHETIC_PREFLIGHT_ONLY`。F4 恢复后只能消费已经通过验收的 F1–F3/F3H/F3C 模块，完成最终组合图、图注、论文写作和反向 source audit；不得改变冻结样本、panel 数据、failure/NA、selection mapping、method target 或统计结果。
+F3 terminal receipt 历史上授权 `F4_ONLY`，但 owner 在 2026-09-07 以前瞻性协议暂停原 F4，并依次插入历史 F3H 与 F3C。当前命名将二者归为 `F3-HeadAtlas` 与 `F3-ClassCompare` 工作包。历史调度字段不改；全部 F3 工作包完成后执行 `F3_FINAL_FIGURE_PACKAGE_ONLY`，随后进入阶段 G 写作。
 
 ## 12. F1 completion record（2026-09-07）
 
@@ -675,16 +691,16 @@ F3C 不再尝试学习、调参、排序或人工指定 head 权重，而是直�
    - primary contrast 固定为 class-targeted NNS versus ViT Grad-CAM；NNS versus full-model IG、attention rollout、raw CLS attention 为同一 secondary Holm family；正式统计单位为 image (`n=50`)；
    - workflow/package PASS 与科学比较结果分离。正结果、无显著差异或负结果均不得改方法、改队列或改显示规则；
    - 没有独立 sealed segmentation/bounding-box ground truth 时，不允许 object-localization superiority claim；
-   - 只有 F3C terminal completion 才能授权 `F4_ONLY`。
+   - 历史 F3C terminal completion 的 `F4_ONLY` 不追溯修改；当前等价为允许进入 `F3_FINAL_FIGURE_PACKAGE_ONLY`。
 
-5. **F4 final composition and manuscript integration**
-   - F4 继续暂停，直到 F3C4 terminal PASS；
-   - 恢复后只能组合已验收的 F1/F2/F3/F3H/F3C 模块，完成最终 figure numbering、caption、正文、source-backtrace、论文导出和 Stage F sealing；
-   - 不得在 F4 改写 F3H/F3C 样本、method target、panel data、color scale、failure/NA、统计队列或 scientific outcome。
+5. **F3-Final final figure composition**
+   - 只能组合已验收的 F1/F2/F3-Core/F3-Display/F3-HeadAtlas/F3-ClassCompare 模块；
+   - 完成最终 figure numbering、caption data、source-backtrace、图形导出和 Stage F sealing；正文与稿件编译转入阶段 G；
+   - 不得改写任何 F3 工作包的样本、method target、panel data、color scale、failure/NA、统计队列或 scientific outcome。
 
 ### 23.4 当前授权与执行提示词
 
-截至本记录，F3C1、F3C2、F3C3、F3C4 和 F4 均尚未开始。当前唯一允许的新工作是 `F3C1_IMPLEMENTATION_AND_SYNTHETIC_PREFLIGHT_ONLY`；不得把 F3C1 的 order-44 engineering profile 计入 pilot/formal 统计，也不得据其外观或数值修改冻结方法。下一轮完整执行提示词见 `docs/stage_f_f3c1_execution_prompt_20260907.md`。
+本段是 2026-09-07 的历史状态记录，当时 F3C1–F3C4 与原 F4 均尚未开始。当前 F3C 已完成；现行下一任务见文首的 `F3_FINAL_FIGURE_PACKAGE_ONLY`。历史提示词继续保留在 `docs/stage_f_f3c1_execution_prompt_20260907.md`，不得当成当前授权。
 
 ## 24. F3C1 implementation and synthetic preflight completion（2026-09-07）
 
@@ -747,7 +763,7 @@ F3C4 最终由 R3 payload-only terminal wrapper 完成，状态 `PASS`。v1 在 
 - fine 4x4 fidelity：`NOT_COMPUTED_NO_SEALED_F3C3_FINE_GRID_INTERVENTION_TERMINALS`。workflow/package PASS 与 scientific outcome 分离；没有 object-localization claim，也没有追溯修改 C10、Stage D/E、F0-F3、F3H 或 F3C0-F3C3。
 - authoritative scientific payload：`evidence/stage_f/f3c4_analysis_r1_20260908/formal/` 与 `reports/stage_f_f3c4_analysis_r1_20260908/`；terminal receipts：`evidence/stage_f/f3c4_analysis_r3_terminal_seal_20260908/formal/` 与 `reports/stage_f_f3c4_analysis_r3_terminal_seal_20260908/`。
 
-F3C4 terminal PASS 的唯一下一授权为 `F4_ONLY`。F4 尚未启动，本轮到此停止。
+F3C4 terminal PASS 的历史下一授权为 `F4_ONLY`。该 token 不追溯改写；按 2026-09-08 阶段重组，它等价于进入 `F3_FINAL_FIGURE_PACKAGE_ONLY`，随后才进入阶段 G。
 
 ## 28. Post-F3C4 report-side review-copy completion（2026-09-08）
 
@@ -760,4 +776,32 @@ Owner 在 F3C4 terminal seal 后单独授权一个最小 display-only packaging 
 - R1 使用 fresh terminal-seal root，逐文件复核 v1 全部 42-file payload inventory、23 对 source/destination byte parity、v1 validation/tests/false-pass/access/resource/inventory 和 failure authorization；没有新增 copy/render/scientific work。R1 sealing tests `2/2 PASS`，recovery false-pass `3/3 REJECTED`，最终 pending→terminal completion `PASS`。
 - report-side review root：`reports/stage_f_f3c4_report_copy_v1_20260908/`；authoritative terminal receipts：`evidence/stage_f/f3c4_report_copy_r1_terminal_seal_20260908/formal/` 与 `reports/stage_f_f3c4_report_copy_r1_terminal_seal_20260908/`。
 
-本 revision 不改变 F3C4 scientific outcome 或 `refs/archive/stage-f-v1-f3c4-analysis-seal`。唯一下一授权仍为 `F4_ONLY`；F4 未启动。
+本 revision 不改变 F3C4 scientific outcome 或 `refs/archive/stage-f-v1-f3c4-analysis-seal`。历史下一授权仍记录为 `F4_ONLY`；当前调度使用 `F3_FINAL_FIGURE_PACKAGE_ONLY → STAGE_G_WRITING_G0_ONLY`。
+
+## 29. F3-ClassCompare display-only 50-image package（2026-09-08）
+
+F3C4 封存后新增独立 CPU-only 展示模块 `src/vitnns/stage_f_f3c_visual.py`，只读取既有 F3C3 attribution arrays 与冻结 50 图，不加载模型、不重新推理、不修改 F3C1–F3C4 的数值、统计、排名或正式图片。
+
+- 主展示：10 页，每页 5 图；逐面板第 99 百分位上端截断，gamma=1；
+- 无截断对照：10 页；逐面板最大值线性缩放；
+- signed audit：10 页；NNS/full-model IG 的 positive support 与 negative contribution 分开；
+- 输出：`reports/stage_f_f3c_visual_v1_20260908/`，共 30 PNG、3 个十页 PDF、显示参数、580 个输入文件绑定、逐图 SHA-256、中文分析、人工 QC 和 terminal completion；
+- 第 5 页继续对应 formal positions 21–25 / orders `74,69,295,132,242`；NNS 峰值占旧五方法共享色阶上限为 21.70%–47.47%；
+- 运行边界：`CUDA_VISIBLE_DEVICES=""`，Torch/timm 未导入，model/checkpoint、forward/backward、attribution/fidelity 均未执行；
+- 验证：30/30 PNG 人工检查 PASS；F3C 回归 177/177 PASS；F3C3、F3C4-R3、report-copy 与 display package validators PASS；
+- Git：commit `4f5d0e3de6418ec20e1fa5abc394a61343af2396` 已推送至 `origin/stage-d-d3-pass`。
+
+该 package 只支持空间形状检查。逐面板缩放后的颜色强度不能作跨方法幅值比较；显示改善不改变 fidelity 或类别判别性。
+
+## 30. Stage F / Stage G 重组决议（2026-09-08）
+
+从本决议起：
+
+1. Stage F 正式范围为 F0–F3，只负责论文图表生成；
+2. F3H 与 F3C 分别归入 F3-HeadAtlas 与 F3-ClassCompare；历史路径和 token 不变；
+3. 原 F4 的图形组合职责并入 F3-Final；
+4. 原 F4 的论文写作职责移至独立 Stage G；
+5. 历史 `F4_ONLY` receipt 不追溯修改，其当前等价路由为 `F3_FINAL_FIGURE_PACKAGE_ONLY → STAGE_G_WRITING_G0_ONLY`；
+6. Stage E 继续表示已封存的 post-D10 消融与敏感性分析，不与 Stage G 混用。
+
+当前唯一下一授权是 `F3_FINAL_FIGURE_PACKAGE_ONLY`。Stage G 尚未启动。

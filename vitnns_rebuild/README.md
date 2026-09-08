@@ -16,6 +16,22 @@ generated evidence roots are intentionally ignored by Git. See
 The legacy `49_vit ` directory has been removed from the active checkout; use
 Git history only for legacy source inspection.
 
+## Current stage map
+
+The active documentation separates figure production from manuscript writing:
+
+- Stage E is the already sealed post-D10 ablation/sensitivity stage; its legacy
+  E0–E4 paths and receipts remain immutable.
+- Stage F contains F0–F3 and produces all paper figures. Historical F3H and
+  F3C are indexed as the F3-HeadAtlas and F3-ClassCompare work packages.
+- Stage G is manuscript writing, bilingual consistency, citation validation,
+  defensive-writing audit, compilation, and manuscript sealing.
+
+Use `docs/阶段路线图.md` as the navigation entry, `docs/阶段F规划.md` for
+figure work, and `docs/阶段G规划.md` plus
+`docs/阶段G论文写作指导.md` for writing. Historical `F4_ONLY` receipts are
+not rewritten; the current route is F3-Final followed by Stage G G0.
+
 Stage B adds a deliberately narrow, testable method instead of patching the
 legacy scanner.  For a selected block it freezes the attention matrix actually
 used at the input endpoint and attributes one pre-projection scalar of
