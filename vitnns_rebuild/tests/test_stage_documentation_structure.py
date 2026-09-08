@@ -105,3 +105,22 @@ def test_new_navigation_markdown_links_resolve():
             target = target.strip("<>")
             if target in current_targets:
                 assert (document.parent / target).resolve().exists(), (document, target)
+
+
+def test_primary_related_article_is_bound_as_nns_source_anchor():
+    article = REPO.parent / "相关文章/Understanding neural network through neuron level visualization"
+    readme = (article / "README.md").read_text(encoding="utf-8")
+    front_matter = (article / "en/00-front-matter.md").read_text(encoding="utf-8")
+    audit = (REPO.parent / "论文1实现审计与后续计划.md").read_text(encoding="utf-8")
+    stage_g = (REPO / "docs/阶段G规划.md").read_text(encoding="utf-8")
+    guide = (REPO / "docs/阶段G论文写作指导.md").read_text(encoding="utf-8")
+
+    assert "10.1016/j.neunet.2023.09.030" in readme
+    assert "Neural Networks" in front_matter and "FCNs" in front_matter and "CNNs" in front_matter
+    assert "相关文章/Understanding neural network through neuron level visualization" in audit
+    assert "NNS 应用于 FCN/CNN" in audit
+    assert "将该 NNS 思想迁移并重新定义到 Vision Transformer" in audit
+    assert "primary_reference_anchor" in stage_g
+    assert "Dou et al. 2023" in stage_g
+    assert "primary_reference_anchor" in guide
+    assert "NNS source method for FCN/CNN" in guide

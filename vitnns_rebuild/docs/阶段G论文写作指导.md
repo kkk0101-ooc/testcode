@@ -17,6 +17,7 @@
 6. 不得把 fixed-clean-attention Value-path 写成完整 Q/K/V、完整 attention 或普遍 class explanation；fine-4×4-cell 也不得写成已证明的原生单像素 attribution。
 7. 图像更清晰只改善展示，不改变 fidelity、统计显著性或类别判别能力。
 8. 所有数字、图号、图注和主张都必须能反向定位到冻结 source record；缺证据时使用 `[EVIDENCE REQUIRED]`，缺文献时使用 `[REFERENCE REQUIRED]`。
+9. Dou et al. 2023 的 *Understanding neural network through neuron level visualization* 是 NNS 在 FCN/CNN 上的核心来源文献；本文只能把它作为问题来源和方法背景，不能把其 FCN/CNN 结果写成 ViT 证据。
 
 阶段 G 的推荐顺序不是机械的七天日历，而是 `G0` 初始化与证据绑定、`G1` scientific story/evidence matrix/figure cards、`G2` Results and Discussion、`G3` Methods and Experimental、`G4` Introduction and references、`G5` Conclusion and Abstract、`G6` 双语/审稿/QC、`G7` 编译和封存。后文的 Day 1–7 对应这些内部里程碑。
 
@@ -67,6 +68,8 @@ vitnns_rebuild/
 ```
 
 论文图片不复制进新的临时 `figures/` 目录。`manuscript/figure_manifest.json` 应通过路径、SHA-256 和 Stage F source record 引用冻结图包。
+
+核心文献材料位于 `../相关文章/Understanding neural network through neuron level visualization/`，其中 `README.md` 给出 DOI、期刊、页码和中英文拆分文件。阶段 G 应把该目录登记为 `primary_reference_anchor`。后续加入 `../相关文章/` 的其他文献可以进入 related work、背景或对照方法矩阵，但默认不改变这篇 NNS 源文献的核心地位。
 
 ## 1. 不要把 traecli 当成“高级聊天框”
 
@@ -513,6 +516,19 @@ What this study does
 ```text
 references/
 ```
+
+本项目的第一条文献记录必须来自 `../相关文章/Understanding neural network through neuron level visualization/README.md`，并在 `manuscript/references/literature_notes.md` 中固定为：
+
+```text
+primary_reference_anchor:
+  title: Understanding neural network through neuron level visualization
+  authors: Hui Dou; Furao Shen; Jian Zhao; Xinyu Mu
+  venue: Neural Networks 168 (2023), 484-495
+  doi: 10.1016/j.neunet.2023.09.030
+  role: NNS source method for FCN/CNN; this manuscript extends and revalidates the idea for ViT
+```
+
+任何写作段落引用这篇文章时，应使用直接事实：它将 NNS 应用于 FCN/CNN 并提出 learning image / neuron-level visualization。不要写成“已有工作已经证明 NNS 在 ViT 上有效”。
 
 再让 traecli 整理：
 

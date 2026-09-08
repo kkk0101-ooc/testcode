@@ -46,7 +46,8 @@ Stage A–D：方法、验证与主实验（已封存）
 - [阶段 F 规划](阶段F规划.md)：正式图表范围、显示边界和历史 completion；
 - [F3 工作包和产物索引](阶段F_F3工作包与产物索引.md)及 `manifests/stage_f_f3_work_packages_v1.json`；
 - D10、历史消融阶段 E E4、阶段 F 各 terminal package 的 machine-readable paper data、caption data、source manifest 和 completion；
-- 已核验的真实参考文献 PDF、DOI、BibTeX/EndNote 和文献笔记。
+- 核心参考文献：`../相关文章/Understanding neural network through neuron level visualization/`，对应 Dou et al., *Neural Networks* 168 (2023), 484–495, DOI `10.1016/j.neunet.2023.09.030`；
+- 其他已核验的真实参考文献 PDF、DOI、BibTeX/EndNote 和文献笔记。后续加入 `../相关文章/` 的文献默认是 related-work 支持材料，不能替代上述 NNS 核心来源文献。
 
 ### 3.2 禁止输入
 
@@ -55,6 +56,7 @@ Stage A–D：方法、验证与主实验（已封存）
 - AI 凭记忆生成但没有真实来源的引用；
 - 尚未通过阶段 F 验证的 draft/contact sheet；
 - 为了让叙事更顺而新算的 p-value、合并 cohort、替换失败样本或重画图。
+- 把 Dou et al. 2023 的 FCN/CNN 结果写成本项目 ViT 上已经证明的结果。
 
 ## 4. 写作目录
 
@@ -103,6 +105,7 @@ G0 PASS 只授权 `G1_STORY_AND_EVIDENCE_ONLY`。
 ### G1：Scientific story、Evidence Matrix 与 Figure Cards
 
 - 从审计文档和 machine-readable 证据重建 central question、主要发现、替代解释和限制；
+- 将 Dou et al. 2023 标为 `primary_reference_anchor`：它定义 NNS 源问题和 FCN/CNN 适用范围，本项目贡献是 ViT 迁移与重新验证；
 - 每项主张标记 direct/supporting evidence、confidence 和 source path；
 - 每张正式图建立 Figure Card，列出 observation、quantitative result、interpretation、alternative explanation 和禁止主张；
 - 不使用图像观感替代定量证据。
@@ -127,6 +130,7 @@ G1 PASS 只授权 `G2_RESULTS_DISCUSSION_ONLY`。
 
 - 在 Results 稳定后再写 Introduction；
 - 只引用 `references/` 中已核验来源；
+- Introduction 第一层问题应绑定 Dou et al. 2023 的 NNS for FCN/CNN；Related Work 中其他 `相关文章/` 文献按背景、ViT interpretability、attention visualization、gradient attribution、faithfulness evaluation 分类；
 - 建立 Claim–Reference Matrix；
 - 明确本文不是普遍 ViT 优越性、空间鲁棒性或完整 attention/class attribution 论文。
 
