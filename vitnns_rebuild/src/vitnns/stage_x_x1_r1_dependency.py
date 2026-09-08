@@ -53,7 +53,7 @@ def materialize(repo_root=REPO_ROOT):
         temporary=Path(raw)
         for item in config["repositories"]:
             clone=temporary/item["id"]
-            process=subprocess.run(["git","clone","--filter=blob:none","--no-checkout",item["url"],str(clone)],text=True,capture_output=True,check=False)
+            process=subprocess.run(["git","-c","http.version=HTTP/1.1","clone","--filter=blob:none","--no-checkout",item["url"],str(clone)],text=True,capture_output=True,check=False)
             if process.returncode:raise DependencyError(process.stderr.strip() or "clone failed")
             if git(clone,"rev-parse",item["commit"]+"^{commit}")!=item["commit"]:raise DependencyError("dependency commit unavailable")
             listed=git(clone,"ls-tree","-r","--name-only",item["commit"]).splitlines();selected=[]
