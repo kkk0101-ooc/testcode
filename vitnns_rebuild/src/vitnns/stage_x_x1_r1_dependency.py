@@ -55,20 +55,21 @@ def materialize(repo_root=REPO_ROOT):
             clone=temporary/item["id"]
             process=subprocess.run(["git","clone","--filter=blob:none","--no-checkout",item["url"],str(clone)],text=True,capture_output=True,check=False)
             if process.returncode:raise DependencyError(process.stderr.strip() or "clone failed")
-            process=subprocess.run(["git","-C",str(clone),"sparse-checkout","set","--no-cone",*item["allowlist"]],text=True,capture_output=True,check=False)
-            if process.returncode:raise DependencyError(process.stderr.strip() or "sparse checkout setup failed")
-            process=subprocess.run(["git","-C",str(clone),"checkout","--detach",item["commit"]],text=True,capture_output=True,check=False)
-            if process.returncode:raise DependencyError(process.stderr.strip() or "allowlisted checkout failed")
-            if git(clone,"rev-parse","HEAD")!=item["commit"]:raise DependencyError("dependency commit drifted")
-            downloaded+=sum(path.stat().st_size for path in clone.rglob("*") if path.is_file());regular=[path for path in clone.rglob("*") if path.is_file() and ".git" not in path.parts];selected=[]
-            for path in regular:
-                relative=path.relative_to(clone)
+            if git(clone,"rev-parse",item["commit"]+"^{commit}")!=item["commit"]:raise DependencyError("dependency commit unavailable")
+            listed=git(clone,"ls-tree","-r","--name-only",item["commit"]).splitlines();selected=[]
+            for name in listed:
+                relative=Path(name)
                 if not _allowed(relative,item["allowlist"]):continue
                 if any(relative.name.lower().endswith(suffix) for suffix in forbidden):raise DependencyError(f"forbidden dependency suffix: {relative}")
-                selected.append(path)
+                selected.append(relative)
             destination=staged/Path(item["destination"]).relative_to("third_party/stage_x")
-            for source in selected:
-                relative=source.relative_to(clone);target=destination/relative;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(source,target);retained+=target.stat().st_size;records.append({"engine":item["id"],"path":(Path("third_party/stage_x")/target.relative_to(staged)).as_posix(),"bytes":target.stat().st_size,"sha256":sha(target),"source_commit":item["commit"]})
+            for relative in selected:
+                process=subprocess.run(["git","-C",str(clone),"show",item["commit"]+":"+relative.as_posix()],capture_output=True,check=False)
+                if process.returncode:raise DependencyError(process.stderr.decode(errors="replace").strip() or "git show failed")
+                target=destination/relative;target.parent.mkdir(parents=True,exist_ok=True);descriptor=os.open(target,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o644)
+                with os.fdopen(descriptor,"wb") as stream:stream.write(process.stdout);stream.flush();os.fsync(stream.fileno())
+                retained+=target.stat().st_size;records.append({"engine":item["id"],"path":(Path("third_party/stage_x")/target.relative_to(staged)).as_posix(),"bytes":target.stat().st_size,"sha256":sha(target),"source_commit":item["commit"]})
+            downloaded+=sum(path.stat().st_size for path in clone.rglob("*") if path.is_file())
             licenses=[row for row in records if row["engine"]==item["id"] and Path(row["path"]).name.lower() in {"license","license.txt","copying"}]
             if not licenses:raise DependencyError(f"license not retained: {item['id']}")
         if downloaded>config["limits"]["download_bytes_max"] or retained>config["limits"]["retained_bytes_max"]:raise DependencyError("dependency byte cap exceeded")
