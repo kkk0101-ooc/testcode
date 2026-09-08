@@ -1,7 +1,7 @@
 # NNS-v2 前瞻性主张扩展方案（Stage X）
 
 > 建立日期：2026-09-08。
-> 状态：`X0_PASS`；protocol、literature、NNS-v2 mathematics、benchmark、sample isolation、statistics 和 budget 已于 2026-09-08 前瞻性冻结。尚未授权新数据下载、模型引入或 formal outcome access。
+> 状态：`X0_R1_PASS`；原 X0 的 identity-comparator contradiction 已由前瞻性 X0-R1 修正。protocol、literature、NNS-v2 mathematics、benchmark、sample isolation、statistics 和 budget 已冻结。尚未授权新数据下载、模型引入或 formal outcome access。
 > 当前唯一下一任务：`X1_NNS_V2_IMPLEMENTATION_ONLY`。
 > 上游状态：C10、Stage D D0–D10、历史 Stage E E0–E4 和 Stage F 已封存工作包均保持只读。
 > 下游状态：`F3_FINAL_FIGURE_PACKAGE_ONLY` 与 `STAGE_G_WRITING_G0_ONLY` 暂缓，等待 X6 决策。
@@ -482,3 +482,25 @@ X1 只使用 analytic/synthetic fixtures，以及 prior-access ledger 允许的 
 
 X1 terminal PASS 只能授权 X2_NNS_V2_DEVELOPMENT_AND_FUTILITY_ONLY。完成 focused tests、source-recomputing validation、false-pass audit、whole-root inventory、pending-to-terminal completion、commit/push/archive 及 post-publication Git/LFS 核验后停止；不得在同轮运行 X2。
 ```
+
+## 16. X0-R1 identity-control correction（2026-09-08）
+
+X1 启动审计在模型/JPEG/GPU access 和 accepted implementation 前发现：NNS-v2 total input attribution 按第 4 节定义就是同 target、baseline、path 和 quadrature 的 full-model input IG，因此原 X0 要求“对每个 primary comparator 严格优越”时把同一数学量当成了竞争对象。该条件不可达，且任何观察到的优势只能来自实现或数值漂移。
+
+原 X0 commit、evidence 和 `refs/archive/stage-x-nns-v2-x0-completion` 保持不可变，其授权被 `BLOCKED_SUPERSEDED_IDENTITY_COMPARATOR_CONTRADICTION` 取代。权威修正为：
+
+- full-model IG 是 `INCLUDED_PRIMARY_IDENTITY_CONTROL`，不得进入 superiority/Holm family；
+- NNS-v2 total attribution 必须与该 control 共享 input、target、baseline、path、quadrature nodes/weights 和 selected steps，并逐像素满足 `atol=rtol=1e-6`；不一致即 `NO_GO_METHOD_VALIDITY`；
+- competitive primary comparators 恰为 ViT Grad-CAM、Transformer Attribution、AttnLRP、RISE 和 Occlusion；
+- broad GO 要求对这五项全部 superiority，并同时通过 IG identity control；
+- 最高措辞为：`Across the preregistered benchmark of models, datasets, methods, and metrics, NNS-v2 outperformed the evaluated competitive baselines while matching the full-model Integrated Gradients identity control for total input attribution.`
+
+权威 amendment、config、comparator registry、truth table 和完整下一提示词分别位于：
+
+- `docs/stage_x_x0_r1_identity_control_amendment_20260908.md`；
+- `config/stage_x_x0_r1.json`；
+- `manifests/stage_x_comparator_registry_v2.json`；
+- `manifests/stage_x_benchmark_plan_v2.json`；
+- `docs/stage_x_x0_r1_execution_prompt_20260908.md`。
+
+当前唯一下一任务仍为 `X1_NNS_V2_IMPLEMENTATION_ONLY`，但必须使用 X0-R1，而不是原 X0 的 comparator role/truth table。
