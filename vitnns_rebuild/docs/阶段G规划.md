@@ -34,6 +34,7 @@ Stage A–D：方法、验证与主实验（已封存）
 3. F3 工作包索引与实际 `evidence/`、`reports/`、archive refs 一致；
 4. C10、Stage D、历史消融阶段 E、F3-HeadAtlas/F3-ClassCompare 的 scientific boundary 已进入 claim/evidence 约束；
 5. local HEAD、tracking ref、remote branch、worktree/index 和 Git LFS 状态可审计。
+6. F3-Final 已记录 F3-ClassCompare 的最终交付位置：Supplement S5 或独立随稿 atlas；若纳入，统计图、display-only pages、unclipped controls 和 signed audit 的对应关系已经冻结。
 
 如果阶段 F 只有可验证模块而尚未形成最终图包，允许在 `notes/` 中搭建写作结构，但不得冻结正式图号、图注、Results 数字或 terminal manuscript。
 
@@ -160,6 +161,45 @@ G1 PASS 只授权 `G2_RESULTS_DISCUSSION_ONLY`。
 
 F3-ClassCompare 中的 class-targeted NNS、Grad-CAM、full-model IG、rollout 和 raw CLS attention 必须按各自 method target 和 class-agnostic 状态描述。面板独立缩放图只支持空间形状观察，不能比较颜色幅值；display improvement 不代表 fidelity 或类别判别能力提高。
 
+### 6.1 Stage F 证据层级与正文用途
+
+Stage G 按下表读取 Stage F，不能以图像观感替代上游数值证据：
+
+| Stage F 输入 | 论文角色 | Stage G 可写结论 |
+|---|---|---|
+| F1 | 主定量证据 | C10 component result 与独立 Stage D 500 图 fidelity 结果；两个 cohort 分开报告 |
+| F2 | post-D10 descriptive sensitivity | fine-4×4 优势的尺度依赖、upsampling sensitivity、layer/head specificity、correct/misclassified 分层及失败/QC |
+| F3-Core | 定性审计权威 | 冻结选例、signed/shared-scale 空间结构、failure/NA 和 source provenance |
+| F3-Display | 正文定性展示 | 逐面板归一化后的空间支持形状；Figure 5/6 的首选展示层 |
+| F3-HeadAtlas | 单样本描述性补充 | 144-head pattern diversity；不足以形成 class-conditioned head weights |
+| F3-ClassCompare | 独立 50 图 class-targeted/agnostic 比较 | NNS 对 Grad-CAM 的注册 primary contrast 为负；对 rollout 为正；对 full-model IG/raw CLS attention 未达显著；不产生完整排名或普遍优越性结论 |
+
+F1/F2/F3-ClassCompare 的数字必须从 frozen `plot_data`/`paper_data` 获取；`reports/.../figures_png` 仅用于浏览。F3H-R2 和 F3C4 report-copy-v1 的历史失败回执分别由 F3H-R3 与 report-copy-R1 terminal `PASS` supersede；正文引用必须绑定最终 completion。
+
+### 6.2 图形解释规则
+
+参考论文 Dou et al. 2023 采用“方法示意、定量曲线/表格、蓝底 learning-image 矩阵”的组合。本文沿用这一信息结构：
+
+- Figure 1 解释 ViT Value-path 方法；
+- Figure 2–4 承载主结果与消融数字；
+- Figure 5–6 使用 F3-Display 蓝色版展示空间形状；
+- signed/shared-scale 图进入 supplement 或审计附件，保留符号和同坐标幅值关系；
+- F3-ClassCompare 若纳入 S5，先呈现 50 图统计，再呈现 primary、unclipped 和 signed atlas。
+
+蓝色图不是定量强度图。F3-Display 使用逐面板 magnitude normalization；F3C primary pages 使用逐面板 P99 scaling。正文只能据此描述热点位置、支持范围和空间组织，不能比较跨方法、跨层或跨样本颜色强弱。
+
+### 6.3 Results 必须保持的实证层级
+
+1. 主结论：Stage D 在固定 `(0,9)`、同目标 matched baseline 和 fine-4×4 endpoint 上得到 `500/500` positive、median `delta_fid=2.3081996221714247`、95% CI `[2.1110806126093067, 2.445235411755993]`。
+2. 历史结果：C10 `n=15` 的 fidelity component 通过，但复合决策仍为 `NO_GO_NOVELTY`，spatial 为 `FAIL_SPATIAL`，acceptance 为 `BLOCKED`。
+3. 敏感性：native 14×14 上 NNS/matched 几乎相同；secondary coordinates 的 median `delta_fid` 远小于 `(0,9)`；E3 有两个 typed failures，E4 scientific validity 为 `MIXED`。
+4. 定性观察：F3 蓝色图展示 NNS/matched 空间形状差异；完整队列统计而非选例决定 primary conclusion。
+5. ClassCompare：50 图 primary `NNS - Grad-CAM` mean `-0.0558543281`、95% CI `[-0.0708505871, -0.0410011760]`、`p=0.0000099999`；NNS 相对 rollout 的 Holm-adjusted contrast 显著为正，相对 full-model IG/raw CLS attention 未达显著，后两项不构成统计等价。
+
+因此正文的总体结论应表述为：
+
+> 在指定 head-direction Value-path 与 fine-4×4 fidelity 设计下，NNS 优于 matched patch baseline；结果具有尺度和 layer/head 依赖性。独立 class-targeted comparison 未显示 NNS 优于 Grad-CAM。
+
 ## 7. False-pass audit
 
 阶段 G 至少拒绝以下情况：
@@ -177,6 +217,6 @@ F3-ClassCompare 中的 class-targeted NNS、Grad-CAM、full-model IG、rollout �
 
 ## 8. 当前状态
 
-截至 2026-09-08，原 F4 尚未执行，阶段 G 写作也未启动。阶段 F 的 F0–F3 主模块、F3-Display、F3-HeadAtlas 和 F3-ClassCompare 已有封存产物，但旧规划明确记录 final combined figures 尚未生成。因此当前下一任务是阶段 F 内部的 `F3_FINAL_FIGURE_PACKAGE_ONLY`：只组合并封存最终 Figure 1–6、Supplement S1–S4、captions 和 source inventory；完成后才授权 `STAGE_G_WRITING_G0_ONLY`。
+截至 2026-09-08，原 F4 尚未执行，阶段 G 写作也未启动。阶段 F 的 F0–F3 主模块、F3-Display、F3-HeadAtlas 和 F3-ClassCompare 已有封存产物；联合审计确认科学证据足以支撑限定范围的 ViT Value-path fidelity 论文，但 final combined figures 尚未生成。因此当前下一任务是阶段 F 内部的 `F3_FINAL_FIGURE_PACKAGE_ONLY`：组合并封存最终 Figure 1–6、Supplement S1–S4、captions 和 source inventory，并冻结 F3-ClassCompare 的 S5/standalone-atlas 交付方式；完成后才授权 `STAGE_G_WRITING_G0_ONLY`。
 
 阶段 G 不自动执行。本文只定义写作阶段，不创建稿件正文，不启动新实验，也不修改任何已封存图形或科学证据。

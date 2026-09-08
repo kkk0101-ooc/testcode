@@ -1,7 +1,7 @@
 # 阶段 F：论文图表生成（F0–F3）
 
 > 建立日期：2026-09-07。
-> 当前状态：Stage F F0–F3 主模块、F3-Display、F3-HeadAtlas（历史 token `F3H`）和 F3-ClassCompare（历史 token `F3C`）均已有封存产物；F3C 的 50 图展示包也已完成。最终 Figure 1–6 / Supplement S1–S4 组合包尚未单独封存。
+> 当前状态：Stage F F0–F3 主模块、F3-Display、F3-HeadAtlas（历史 token `F3H`）和 F3-ClassCompare（历史 token `F3C`）均已有封存产物；F3C 的 50 图展示包也已完成。2026-09-08 的论文图形审计确认 F1/F2 为定量主证据、F3 蓝色图为正文定性展示层、signed/shared-scale 图为幅值与符号审计层。最终 Figure 1–6 / Supplement S1–S4 组合包尚未单独封存，F3-ClassCompare 是否作为 S5 随稿交付须在 F3-Final 中冻结。
 > 当前下一授权：`F3_FINAL_FIGURE_PACKAGE_ONLY`。完成后进入 [阶段 G：论文写作](阶段G规划.md)；不再启动 F4。
 > 文档性质：Stage F 的权威图表规划、阶段边界和验收合同；不是论文写作授权。
 > 选择规则：定性案例继续受 [阶段 F 展示选择协议 v1](stage_f_display_protocol_v1.md) 约束；跨层/头归因矩阵同时受 [Stage F 跨层/头归因展示补充协议](stage_f_cross_layer_display_addendum_20260907.md) 约束。
@@ -137,6 +137,7 @@ F0 必须建立且测试至少三个版式 profile：
 - NNS 与 matched baseline 使用固定、色盲友好的方法颜色；所有统计图保持一致。
 - signed attribution map 使用以 0 为中心的 diverging colormap；NNS 与 matched 在同一案例内共享对称色限。
 - NNS-minus-matched 使用单独但仍以 0 对称的差异色限。若需要跨案例比较，必须另生成使用全局共享色限的 panel，不能把逐案例归一化图解释为跨案例幅度比较。
+- F3-Display 和 F3C display-only package 是后续已封存的 presentation views，可按各自协议逐面板归一化；它们只展示空间形状，并必须与本节的 signed/shared-scale audit view 绑定。
 - 非负量使用感知均匀的 sequential colormap。
 - 原始 map/grid panel 优先保留 cell 边界；平滑或 bicubic resize 只允许出现在标为 `display-only overlay` 的面板。
 - overlay 的 resize、clip、alpha、colormap 和归一化参数必须在 F0 冻结并写入每个产物的机器报告。
@@ -168,15 +169,15 @@ F1–F3 先生成可单独验证的模块；`F3-Final` 只把已验证模块组�
 | Figure 2：主结果 | F1 / F3-Final | C10 与 Stage D 分 cohort 的 median/CI、Stage D 500 图 `delta_fid` ECDF、NNS vs matched fidelity curves | 明示 `n=15` 与 `n=500` 不池化；完整 cohort |
 | Figure 3：尺度与上采样消融 | F2 / F3-Final | patch-scale sensitivity、uniform/nearest equivalence、bilinear/bicubic sensitivity | 标为 post-D10 descriptive；不得选 winner |
 | Figure 4：层头与预测分层 | F2 / F3-Final | 冻结四坐标、overall/correct/misclassified 分层、有效/失败/NA | 明示 scientific validity `MIXED`；保留 orders 117/352 |
-| Figure 5：定性对比 | F3-Core / F3-Final | Original、NNS、matched、difference、NNS overlay、matched overlay、insertion/deletion curves | 样本只按冻结规则选择；共享可比色限 |
-| Figure 6：跨层/头归因矩阵 | F3-HeadAtlas / F3-Final | 同一 `median_effect` 样本的 Original，以及 `(0,9)`、`(4,2)`、`(6,10)`、`(11,2)` 上的 NNS/matched attribution 矩阵 | Fig. 11/13 风格；不是 raw attention；坐标内共享色限，跨坐标只比较空间模式 |
+| Figure 5：定性对比 | F3-Display + F3-Core audit / F3-Final | Original、NNS、matched、difference、NNS overlay、matched overlay、insertion/deletion curves | 样本只按冻结规则选择；正文蓝色图只比较 shape，配套 signed audit 在同案例内共享色限 |
+| Figure 6：跨层/头归因矩阵 | F3-Display + F3-Core audit / F3-Final | 同一 `median_effect` 样本的 Original，以及 `(0,9)`、`(4,2)`、`(6,10)`、`(11,2)` 上的 NNS/matched attribution 矩阵 | Fig. 11/13 风格；不是 raw attention；正文蓝色图逐面板归一化，配套 signed audit 坐标内共享色限，跨坐标只比较空间模式 |
 | Supplement S1 | F3-Core / F3-Final | 五个 D1 固定审计案例 | 标为 fixed audit，不得称为 best examples |
 | Supplement S2 | F3-Core / F3-Final | 规则到样本映射、重复选择、weak/failure、misclassified/difficult 案例 | 不得静默替换重复样本 |
 | Supplement S3 | F1/F2 / F3-Final | resource/QC、失败/NA、E2 budget waiver 与 E3 mixed-validity disclosure | 与科学图分开但必须随论文包交付 |
 | Supplement S4 | F3-HeadAtlas / F3-Final | 5 个 fixed audit IDs、5 个既有规则 slots 及 orders 117/352 failure slots 的跨层/头 NNS/matched attribution matrices | 按冻结顺序生成；重复样本可去重显示但 slot mapping 必须保留；failure/NA 原位显示 |
 | Supplement S5（如纳入） | F3-ClassCompare / F3-Final | class-targeted NNS、ViT Grad-CAM、full-model IG、rollout 和 raw CLS attention 的全 50 图 atlas、signed audit 与 display-only shape views | method target、class-agnostic 状态和逐面板缩放必须显式；不能从颜色亮度推出跨方法幅值或优越性 |
 
-Figure 1 的方法示意可以使用确定性声明式布局、TikZ 或等价矢量后端；不得用无法重建的手工截图作为唯一源。Figure 5 和 Figure 6 当前只比较 NNS 与 frozen matched baseline，不默认添加 CAM/Grad-CAM。Figure 6/S4 展示的是 fixed-clean-attention head-direction Value-path attribution，不是 raw self-attention，也不支持跨坐标绝对幅度比较；完整合同见 [跨层/头展示补充协议](stage_f_cross_layer_display_addendum_20260907.md)。
+Figure 1 的方法示意可以使用确定性声明式布局、TikZ 或等价矢量后端；不得用无法重建的手工截图作为唯一源。Figure 5 和 Figure 6 当前只比较 NNS 与 frozen matched baseline，不默认添加 CAM/Grad-CAM。Figure 5/6 的正文蓝色图与 signed/shared-scale audit 采用双轨交付；前者只读空间 shape，后者保留同案例或同坐标的符号与幅值关系。Figure 6/S4 展示的是 fixed-clean-attention head-direction Value-path attribution，不是 raw self-attention，也不支持跨坐标绝对幅度比较；完整合同见 [跨层/头展示补充协议](stage_f_cross_layer_display_addendum_20260907.md)及 [post-F3 blue-display revision](stage_f_post_f3_blue_display_revision_20260907.md)。
 
 ## 6. F0–F3 执行顺序
 
@@ -306,7 +307,7 @@ F3-ClassCompare 历史上包含前瞻性 empirical compute；这是已完成并�
 
 ### F3-Final：组合图、caption data 与最终图表导出
 
-F3-Final 只能消费已经通过验收的 F1–F3、F3-Display、F3-HeadAtlas 和 F3-ClassCompare 模块。它可以调整 panel 布局、留白、标题位置和文字换行，但不能更改 panel 数据、色限、样本、选择规则、method target 或状态。
+F3-Final 只能消费已经通过验收的 F1–F3、F3-Display、F3-HeadAtlas 和 F3-ClassCompare 模块。它可以调整 panel 布局、留白、标题位置和文字换行，但不能改变任一源模块已冻结的 panel 数据、显示变换/色限规则、样本、选择规则、method target 或状态。
 
 **必须完成**
 
@@ -805,3 +806,107 @@ F3C4 封存后新增独立 CPU-only 展示模块 `src/vitnns/stage_f_f3c_visual.
 6. Stage E 继续表示已封存的 post-D10 消融与敏感性分析，不与 Stage G 混用。
 
 当前唯一下一授权是 `F3_FINAL_FIGURE_PACKAGE_ONLY`。Stage G 尚未启动。
+
+## 31. 论文图形与证据用途审计决议（2026-09-08）
+
+本节记录对参考论文、Stage F 七组报告目录、正式 evidence 和 terminal recovery chain 的联合审计结果。它约束 F3-Final 的图形选择和 Stage G 的解释方式，不修改任何已封存数据、统计、样本、方法或历史 completion。
+
+### 31.1 参考论文的图形语法
+
+核心参考论文 Dou et al. 2023 共使用 14 张图，其结构可归纳为：
+
+| 参考图 | 作用 | 本项目可借鉴的组织方式 |
+|---|---|---|
+| Fig. 1 | fMRI 与 NNS 的概念类比 | 用简洁概念图建立研究动机 |
+| Fig. 2–5 | NNS 工作流、learning-image 初始化/生成和 CNN 线性化 | 用矢量流程图解释方法，不承载经验结果 |
+| Fig. 6 | 蓝—青—黄—红热图色标 | 给出清晰的低响应到高响应视觉语法 |
+| Fig. 7、11、13 | 跨层、跨结构和 learning-image/feature-map 矩阵 | 以紧凑蓝底矩阵展示空间模式变化 |
+| Fig. 8–10、12 | activation、distance 和结构比较 | 定量结论由曲线和表格承担 |
+| Fig. 14 | Original、NNS、池化 NNS、CAM、Grad-CAM | 将多方法定性结果按相同样本成组排列 |
+
+本项目借鉴其“方法示意 + 定量图表 + 蓝底定性矩阵”的信息结构。参考论文只作为视觉组织与 NNS 问题定义来源；其中 FCN/CNN 的数据、图形和结论不进入本项目 ViT 结果。
+
+### 31.2 七组 Stage F 报告的论文用途
+
+| report root | 证据等级 | F3-Final 用途 |
+|---|---|---|
+| `reports/stage_f_f1_r3_20260907/` | 主论文定量核心 | Figure 2：C10/Stage D 分 cohort median/CI、500 图 ECDF、NNS/matched fidelity curves |
+| `reports/stage_f_f2_r4_20260907/` | 主论文消融核心 | Figure 3、Figure 4 和 Supplement S3：尺度、上采样、层头、预测分层、失败与成本披露 |
+| `reports/stage_f_f3_r7_20260907/` | 定性图审计权威 | Figure 1、5、6、S1、S2、S4 的 signed/shared-scale、选择规则和 source binding |
+| `reports/stage_f_f3_visual_r4_20260907/` | 正文定性展示层 | Figure 5、Figure 6 以及 S1/S2/S4 的紧凑蓝色 shape views |
+| `reports/stage_f_f3c4_report_copy_v1_20260908/` | F3-ClassCompare 定量核心与审计副本 | 前三张统计图进入 S5 候选；完整 atlas/signed audit 作为补充或归档附件 |
+| `reports/stage_f_f3c_visual_v1_20260908/` | F3-ClassCompare 展示层 | 50 图 primary、unclipped 和 signed pages 进入 S5/在线附件候选；只解释空间形状 |
+| `reports/stage_f_f3h_full_head_r2_cpu_reconcile_20260907/` | 单样本描述性补充证据 | 全 12×12 head atlas、depth/head diversity 和 Grad-CAM different-target reference；不承担正文主结论 |
+
+`reports/` 中的 PNG 用于审阅和编排。最终数字和正式图源必须绑定相应 `evidence/.../formal/plot_data`、`paper_data`、render manifest、source manifest 和 terminal completion，不得从 PNG 反读。
+
+F3H-R2 和 F3C4 report-copy-v1 中保留的 `failure_event.json` 属于不可删除的恢复历史，不使既有 payload 自动失效：
+
+- F3H-R2 的科学/图形 payload 已由 F3H-R3 原位复核并 terminal `PASS`，288/288 Value-path units 有效；
+- F3C4 report-copy-v1 的 23 张 review PNG 已由 report-copy-R1 逐字节复核并 terminal `PASS`；
+- F3-Final 必须同时绑定 payload root 与 superseding terminal completion，不能只引用包含失败回执的中间目录。
+
+### 31.3 当前图片和数据支持的结论
+
+Stage D/F1 支持本文的主结论：在冻结 ViT-B/16、fixed-clean-attention head-direction Value-path target、primary `(0,9)`、同目标 matched patch-token baseline 和 fine-4×4-cell intervention endpoint 下，独立 500 图 cohort 的 `delta_fid` 为正 `500/500`，median 为 `2.3081996221714247`，paired image-bootstrap 95% CI 为 `[2.1110806126093067, 2.445235411755993]`。82 张误分类图保留在完整 cohort 中。C10 的 15 图 component result 单独报告，历史 `NO_GO_NOVELTY`、`FAIL_SPATIAL`、`BLOCKED` 和 `HOLM_BLOCKED_UNDERSPECIFIED` 不变。
+
+Stage E/F2 给出主结论的必要适用范围：
+
+- native 14×14 patch 粒度的 NNS/matched `delta_fid` 几乎相同且接近 0，主要优势对应 fine-4×4 分解；
+- uniform 与 mass-preserving nearest 属于同一 exact ranking evidence class；bilinear/bicubic 改变描述性分布，但本阶段没有 operator winner；
+- overall median `delta_fid` 在 `(0,9)`、`(4,2)`、`(6,10)`、`(11,2)` 分别为 `2.3081996222`、`0.0733655096`、`0.0389110607`、`0.0561722386`，结果具有 layer/head specificity；
+- correct 与 misclassified strata 均保留且趋势相近，但属于 post-D10 descriptive analysis；
+- `(11,2)` 的 orders `117`、`352` 为 typed IG-conservation failures，E4 scientific validity 保持 `MIXED`。
+
+F3-Core/F3-Display 显示 NNS 与 matched baseline 的空间支持结构不同，并覆盖 fixed audit、best、median、weak、misclassified 和 typed-failure cases。它们用于解释定量结果和展示失败边界，不产生目标定位、因果机制、原生单像素、完整 attention/QKV 或跨坐标绝对强度结论。
+
+F3-HeadAtlas 在一个冻结样本上完整展示 144 个 heads 的 head/depth pattern diversity；288/288 NNS/matched units 有效。其正式结论为 `INSUFFICIENT_BASIS_FOR_NUMERICAL_CLASS_CONDITIONED_WEIGHTS`，因此全头 atlas 不定义 class-conditioned head 权重。
+
+F3-ClassCompare 在独立冻结的 50 图 cohort 上完成 250/250 valid terminals。注册的 primary `class-targeted NNS - ViT Grad-CAM` mean 为 `-0.0558543281`，95% CI 为 `[-0.0708505871, -0.0410011760]`，unadjusted sign-flip `p=0.0000099999`；NNS 相对 attention rollout 的 secondary contrast 显著为正，而相对 full-model IG 和 raw CLS attention 的 Holm-adjusted contrasts 不显著。该工作包没有生成全方法 ranking、唯一 winner、GO/NO-GO、object-localization 结论或 sealed fine-4×4 class-targeted intervention result。
+
+据此，本文可报告的总命题是：
+
+> NNS 在指定 head-direction Value-path 和 fine-4×4 fidelity 设计下优于 matched patch baseline；该优势具有尺度和 layer/head 依赖性，不能推广为对 native patch、所有层头、class-logit Grad-CAM、空间鲁棒性或所有 ViT 解释方法的普遍优势。
+
+### 31.4 蓝色展示图的正式用途
+
+F3-Final 的 Figure 5 和 Figure 6 采用 F3-Display r4 蓝色版作为正文展示图。其视觉语言与参考论文 Fig. 7、11、13、14 一致：深蓝背景表示面板内低响应，暖色突出空间热点，矩阵布局用于比较空间组织。
+
+蓝色展示与 signed/shared-scale 审计采用双轨交付：
+
+1. 蓝色版服务于空间形状阅读；
+2. F3-r7 signed/shared-scale 版保留正负号及同坐标 NNS/matched 幅值关系；
+3. F3-Display 每个 panel 独立执行 `abs(raw_signed_map)`、max normalization 和 gamma 变换，因此颜色不作跨方法、跨坐标或跨样本幅值比较；
+4. F3C primary pages 使用逐面板 P99 上端截断，unclipped pages 和 signed pages随包交付；其亮度不进入 fidelity、统计或方法排序；
+5. 正文图注必须说明 display-only normalization，supplement/source inventory 必须绑定对应 raw signed map 和审计图。
+
+### 31.5 F3-Final 的冻结图目录和剩余工作
+
+F3-Final 按以下目录组合，不执行新 attribution、模型推理或 GPU 实验：
+
+| 最终产物 | 已验证来源 | 组合要求 |
+|---|---|---|
+| Figure 1 | F3-Core | 方法矢量图；移除工程标签，保留方法 target 和 fine-4×4 定义 |
+| Figure 2 | F1 | 组合 cohort interval、完整 ECDF 和 fidelity curves；C10/Stage D 不池化 |
+| Figure 3 | F2-A/F2-B | 组合尺度与上采样 sensitivity；标为 post-D10 descriptive |
+| Figure 4 | F2-C | 将 `delta_fid` 与 insertion/deletion 分组排版，避免不同量纲挤在同一视觉层；数值不变 |
+| Figure 5 | F3-Display + F3-Core audit | 蓝色 best、median、weak、misclassified 定性案例；重复 slot 映射保留在 manifest |
+| Figure 6 | F3-Display + F3-Core audit | 蓝色 `median_effect` 四坐标矩阵；跨坐标只比较 pattern |
+| Supplement S1–S2 | F3-Display + F3-Core audit | fixed audit、规则映射和完整案例；蓝色阅读版与 signed/shared-scale 审计版绑定 |
+| Supplement S3 | F2-D | E2 waiver、E3 `2998/3000`、orders `117/352` 和 E4 `MIXED` |
+| Supplement S4 | F3-Display + F3-Core audit | 完整跨层 slots 和原位 failure panels |
+| Supplement S5 / standalone atlas | F3-ClassCompare | 前三张 50 图统计图在前，随后交付 primary、unclipped 和 signed atlas；F3-Final 冻结最终纳入方式 |
+| Online provenance appendix | F3-HeadAtlas | 单样本 12×12 atlas 和 different-target Grad-CAM reference |
+
+执行必须完成：
+
+1. 从源重新核验 F1/F2/F3/F3-Display/F3-HeadAtlas/F3-ClassCompare completions、hashes、archive refs 和 superseding recovery chain；
+2. 从正式 evidence PDF/SVG/plot data 组合最终图，`reports/figures_png` 只作人工审阅；
+3. 统一期刊字体、panel letters、标题、legend、留白和版面宽度，移除 `F1-A`、`POST-D10` 等工程标题，将必要状态放入 caption；
+4. 冻结 captions、panel keys、cross-reference keys、figure inventory、caption inventory 和逐 panel source binding；
+5. caption contract 保留 C10/Stage D cohort separation、C10 spatial failure、fine-4×4-not-native-pixel、E2 waiver、E3 `MIXED`/typed failures、展示选例规则、蓝色图缩放语义和 F3-ClassCompare method-target boundary；
+6. 导出 journal-quality PDF/SVG、600-DPI PNG 和 preview contact sheet；
+7. 从最终图包反向核对每个数字、样本、panel、状态、色限和 source record；
+8. 完成 false-pass audit、terminal completion、Git/LFS publication 和 Stage F final-figure archive ref。
+
+F3-Final terminal `PASS` 后才能授权 `STAGE_G_WRITING_G0_ONLY`。在此之前可以准备非绑定写作 notes，但不得冻结正式图号、图注、Results 数字或 terminal manuscript。
