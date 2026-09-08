@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_x_x1_r1_artifact.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "document_type", "stage_id", "status", "payload", "canonical_digest"],
+  "properties": {
+    "$schema": {"const": "stage_x_x1_r1_artifact.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"type": "string", "minLength": 1},
+    "stage_id": {"const": "X1-R1"},
+    "status": {"type": "string", "minLength": 1},
+    "payload": {"type": "object"},
+    "canonical_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
