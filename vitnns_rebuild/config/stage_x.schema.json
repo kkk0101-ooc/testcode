@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_x.schema.json",
+  "title": "Stage X NNS-v2 prospective protocol",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "document_type", "protocol_id", "status", "authorization", "history", "nns_v2", "benchmark", "statistics", "resources", "access_boundary", "canonical_digest"],
+  "properties": {
+    "$schema": {"const": "stage_x.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_x_x0_protocol_config"},
+    "protocol_id": {"const": "STAGE_X_NNS_V2_BROAD_CLAIM_V1_20260908"},
+    "status": {"const": "FROZEN_X0_X1_NOT_STARTED"},
+    "authorization": {"$ref": "#/$defs/authorization"},
+    "history": {"$ref": "#/$defs/history"},
+    "nns_v2": {"$ref": "#/$defs/nns"},
+    "benchmark": {"$ref": "#/$defs/benchmark"},
+    "statistics": {"$ref": "#/$defs/statistics"},
+    "resources": {"$ref": "#/$defs/resources"},
+    "access_boundary": {"$ref": "#/$defs/access"},
+    "canonical_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "strict_number": {"type": "number"},
+    "authorization": {
+      "type": "object", "additionalProperties": false,
+      "required": ["current", "on_pass", "x1_started", "x2_started", "x3_started", "f3_final_started", "stage_g_started"],
+      "properties": {
+        "current": {"const": "X0_PROTOCOL_AND_LITERATURE_FREEZE_ONLY"},
+        "on_pass": {"const": "X1_NNS_V2_IMPLEMENTATION_ONLY"},
+        "x1_started": {"const": false}, "x2_started": {"const": false},
+        "x3_started": {"const": false}, "f3_final_started": {"const": false},
+        "stage_g_started": {"const": false}
+      }
+    },
+    "history": {
+      "type": "object", "additionalProperties": false,
+      "required": ["c10", "d10", "e4", "f3c", "archive_refs"],
+      "properties": {
+        "c10": {"$ref": "#/$defs/c10"}, "d10": {"$ref": "#/$defs/d10"},
+        "e4": {"$ref": "#/$defs/e4"}, "f3c": {"$ref": "#/$defs/f3c"},
+        "archive_refs": {"type": "object", "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "minProperties": 10, "maxProperties": 10}
+      }
+    },
+    "c10": {"type": "object", "additionalProperties": false, "required": ["status","acceptance","decision","spatial","holm"], "properties": {"status":{"const":"BLOCKED"},"acceptance":{"const":"BLOCKED"},"decision":{"const":"NO_GO_NOVELTY"},"spatial":{"const":"FAIL_SPATIAL"},"holm":{"const":"HOLM_BLOCKED_UNDERSPECIFIED"}}},
+    "d10": {"type": "object", "additionalProperties": false, "required": ["decision","model","coordinate","target","baseline","endpoint"], "properties": {"decision":{"const":"GO_FIDELITY_SCOPE"},"model":{"const":"ViT-B/16"},"coordinate":{"type":"array","prefixItems":[{"const":0},{"const":9}],"items":false},"target":{"const":"head-direction Value-path"},"baseline":{"const":"matched patch"},"endpoint":{"const":"fine-4x4"}}},
+    "e4": {"type": "object", "additionalProperties": false, "required": ["scientific_validity","e2_budget_waiver","e3_failed_orders"], "properties": {"scientific_validity":{"const":"MIXED"},"e2_budget_waiver":{"const":true},"e3_failed_orders":{"type":"array","prefixItems":[{"const":117},{"const":352}],"items":false}}},
+    "f3c": {"type": "object", "additionalProperties": false, "required": ["contrast","n","mean","ci","p_value","direction","full_method_ranking","go_no_go","fine_grid_terminals"], "properties": {"contrast":{"const":"class-targeted NNS - ViT Grad-CAM"},"n":{"const":50},"mean":{"const":-0.05585432814553341},"ci":{"type":"array","prefixItems":[{"const":-0.07085058706573369},{"const":-0.04100117599983641}],"items":false},"p_value":{"const":9.99990000099999e-06},"direction":{"const":"negative"},"full_method_ranking":{"const":false},"go_no_go":{"const":false},"fine_grid_terminals":{"const":false}}},
+    "nns": {
+      "type": "object", "additionalProperties": false,
+      "required": ["target","graph","baseline","path","native_shape","rgb_reduction","decomposition","cuts","quadrature","tolerances","display_isolated"],
+      "properties": {
+        "target":{"const":"clean_predicted_class_raw_logit_unmodified_model"},
+        "graph":{"const":"complete_unmodified_eval_mode_autograd"},
+        "baseline":{"const":"normalized_zero_canonical_rgb_0_5"},
+        "path":{"const":"straight_line_input_path"},
+        "native_shape":{"type":"array","prefixItems":[{"const":3},{"const":224},{"const":224}],"items":false},
+        "rgb_reduction":{"const":"signed_channel_sum"},
+        "decomposition":{"const":"input_ig_plus_complete_cut_path_jacobian_allocation"},
+        "cuts":{"type":"array","minItems":12,"uniqueItems":true,"items":{"type":"string","minLength":1}},
+        "quadrature":{"$ref":"#/$defs/quadrature"},
+        "tolerances":{"$ref":"#/$defs/tolerances"},
+        "display_isolated":{"const":true}
+      }
+    },
+    "quadrature": {"type":"object","additionalProperties":false,"required":["rule","steps","alpha_chunk","selection"],"properties":{"rule":{"const":"gauss_legendre"},"steps":{"type":"array","prefixItems":[{"const":128},{"const":256},{"const":512},{"const":1024},{"const":2048},{"const":4096},{"const":8192}],"items":false},"alpha_chunk":{"const":4},"selection":{"const":"first_all_gates_pass"}}},
+    "tolerances": {"type":"object","additionalProperties":false,"required":["endpoint_lt","input_atol","input_rtol","cut_pixel_atol","cut_pixel_rtol","cut_total_atol","cut_total_rtol"],"properties":{"endpoint_lt":{"const":1e-6},"input_atol":{"const":0.0001},"input_rtol":{"const":0.005},"cut_pixel_atol":{"const":0.00002},"cut_pixel_rtol":{"const":0.005},"cut_total_atol":{"const":0.0002},"cut_total_rtol":{"const":0.01}}},
+    "benchmark": {"type":"object","additionalProperties":false,"required":["claim_ids","primary_comparators","secondary_references","models","datasets","required_cells","independent_task","primary_faithfulness","localization_primary"],"properties":{"claim_ids":{"type":"array","minItems":8,"maxItems":8,"uniqueItems":true,"items":{"type":"string"}},"primary_comparators":{"type":"array","minItems":6,"uniqueItems":true,"items":{"type":"string"}},"secondary_references":{"type":"array","minItems":5,"uniqueItems":true,"items":{"type":"string"}},"models":{"type":"array","minItems":5,"maxItems":5,"uniqueItems":true,"items":{"type":"string"}},"datasets":{"type":"array","minItems":4,"maxItems":4,"uniqueItems":true,"items":{"type":"string"}},"required_cells":{"const":20},"independent_task":{"const":"oxford_iiit_pet"},"primary_faithfulness":{"const":"road_combined"},"localization_primary":{"const":"class_macro_pixel_auprc"}}},
+    "statistics": {"type":"object","additionalProperties":false,"required":["image_estimand","cell_estimand","benchmark_estimand","cell_bootstrap","benchmark_bootstrap","rng","quantile","multiplicity","positive_cell_fraction_min","margin_seal_stage","margin_algorithm","futility_algorithm","required_failure_complete_case_allowed"],"properties":{"image_estimand":{"const":"paired_road_combined_difference"},"cell_estimand":{"const":"equal_weight_mean_of_class_image_means"},"benchmark_estimand":{"const":"equal_weight_mean_of_required_cell_estimands"},"cell_bootstrap":{"const":10000},"benchmark_bootstrap":{"const":20000},"rng":{"const":"numpy_pcg64_sha256_first8_big_endian"},"quantile":{"const":"linear_percentile_0.025_0.975"},"multiplicity":{"const":"holm_one_sided_alpha_0.05_primary_comparator_family"},"positive_cell_fraction_min":{"const":0.8},"margin_seal_stage":{"const":"X2_BEFORE_X3_OUTCOME_ACCESS"},"margin_algorithm":{"const":"clip_0.20_robust_sigma_endpoint_bounds"},"futility_algorithm":{"const":"upper_ci_below_negative_clip_0.30_robust_sigma_0.02_0.075"},"required_failure_complete_case_allowed":{"const":false}}},
+    "caps": {"type":"object","additionalProperties":false,"required":["h20_gpu_hours","wall_hours","cpu_hours","peak_reserved_bytes_per_process","download_bytes","retained_bytes"],"properties":{"h20_gpu_hours":{"type":"number","minimum":0},"wall_hours":{"type":"number","exclusiveMinimum":0},"cpu_hours":{"type":"number","exclusiveMinimum":0},"peak_reserved_bytes_per_process":{"type":"integer","minimum":0},"download_bytes":{"type":"integer","minimum":0},"retained_bytes":{"type":"integer","minimum":0}}},
+    "resources": {"type":"object","additionalProperties":false,"required":["x1_caps","x2_caps","formal_formula","safety_factor","owner_h20_ceilings","automatic_waiver","posthoc_workload_reduction"],"properties":{"x1_caps":{"$ref":"#/$defs/caps"},"x2_caps":{"$ref":"#/$defs/caps"},"formal_formula":{"const":"ceil_unit_1.5_times_sum_required_units_times_x2_p99_plus_fixed_overhead"},"safety_factor":{"const":1.5},"owner_h20_ceilings":{"type":"object","additionalProperties":false,"required":["x3","x4","x5"],"properties":{"x3":{"const":300},"x4":{"const":900},"x5":{"const":700}}},"automatic_waiver":{"const":false},"posthoc_workload_reduction":{"const":false}}},
+    "access": {"type":"object","additionalProperties":false,"required":["new_empirical_outcome_access","formal_image_bytes_accessed","model_or_checkpoint_bytes_accessed","model_loaded","torch_or_timm_imported","cuda_or_gpu_accessed","dataset_or_checkpoint_downloaded"],"properties":{"new_empirical_outcome_access":{"const":false},"formal_image_bytes_accessed":{"const":false},"model_or_checkpoint_bytes_accessed":{"const":false},"model_loaded":{"const":false},"torch_or_timm_imported":{"const":false},"cuda_or_gpu_accessed":{"const":false},"dataset_or_checkpoint_downloaded":{"const":false}}}
+  }
+}

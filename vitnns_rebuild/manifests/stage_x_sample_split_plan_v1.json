@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "document_type": "stage_x_sample_split_plan",
+  "plan_id": "STAGE_X_SAMPLE_SPLIT_V1_20260908",
+  "selection_fields_allowed": ["dataset_release_id","class_id","source_object_id","file_bytes","file_sha256"],
+  "outcome_fields_forbidden": ["prediction","correctness","confidence","margin","attribution","method_difference","localization","stability","faithfulness","visual_appearance"],
+  "hash_algorithm": "sha256(namespace + NUL + dataset_release_id + NUL + class_id + NUL + source_object_id + NUL + file_sha256)",
+  "sort_algorithm": "class_stratified_hash_ascending_then_source_object_id_ascending",
+  "x1": {"namespace":"STAGE_X_X1_AUDIT_V1_20260908","synthetic_only_by_default":true,"allowed_existing_images":["ILSVRC2012_val/ILSVRC2012_val_00000079.JPEG","ILSVRC2012_val/ILSVRC2012_val_00049970.JPEG","ILSVRC2012_val/ILSVRC2012_val_00002287.JPEG"],"formal_statistics_allowed":false},
+  "x2": {"namespace":"STAGE_X_X2_DEVELOPMENT_V1_20260908","selection_source":"manifests/stage_d_fidelity_v1/registry.json","images_per_required_model":40,"shared_image_ids_across_models":true,"formal_statistics_allowed":false,"selection_gate":"materialize exact list only after X1 terminal PASS; use metadata and hash-sort only"},
+  "formal": {
+    "namespace":"STAGE_X_FORMAL_V1_20260908",
+    "materialization_gate":"authorized release acquired; license, archive hash, labels, annotations, and candidate file hashes sealed; X2 margins and formal resource caps already sealed; no image decode or model outcome access",
+    "datasets":[
+      {"dataset_id":"imagenet_1k","count":1000,"class_count":1000,"per_class":1},
+      {"dataset_id":"imagenet_s919","count":919,"class_count":919,"per_class":1},
+      {"dataset_id":"imagenet_v2_matched_frequency","count":1000,"class_count":1000,"per_class":1},
+      {"dataset_id":"oxford_iiit_pet","count":740,"class_count":37,"per_class":20,"source_split":"official test split"}
+    ],
+    "exact_file_hashes_available":false,
+    "exact_file_hash_stage":"authorized_data_materialization_before_X3_X5",
+    "visual_replacement_allowed":false,
+    "outcome_dependent_reselection_allowed":false
+  },
+  "isolation": {"x1_x2_disjoint_from_formal":true,"x2_excluded_from_x3_x5":true,"prior_access_excluded_from_formal":true,"formal_cells_share_same_dataset_manifest_across_methods":true,"formal_samples_replaced_on_failure":false},
+  "canonical_digest": "2669a9acb1aadb15fd5a733c5be8bd36e9cb375568b529dee29db618a9af49b4"
+}

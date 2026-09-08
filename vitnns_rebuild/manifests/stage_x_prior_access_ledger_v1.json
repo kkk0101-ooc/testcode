@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "document_type": "stage_x_prior_access_ledger",
+  "ledger_id": "STAGE_X_PRIOR_ACCESS_V1_20260908",
+  "default_rule": "every sample in every listed registry or slot is excluded from Stage X confirmatory holdout whether or not its visual content was manually inspected",
+  "sources": [
+    {"stage":"C10","path":"manifests/stage_c_sample_registry.csv","sha256":"9a6667bec6a27c715d272382a494f06924db881dca991dc4fac4751dbe7f37f0","count":20,"access_role":"calibration_holdout_audit_and_outcome_known","formal_exclusion":true},
+    {"stage":"Stage_D","path":"manifests/stage_d_fidelity_v1/registry.json","sha256":"9aace3abf02a2c07d992d88b765c53cfeffa7f83a6ed72ecefb8cecf9eb79b6b","count":500,"access_role":"formal_outcomes_known_and_F3_selection_pool","formal_exclusion":true},
+    {"stage":"F3C_pilot","path":"manifests/stage_f_f3c_v1/sample_split.json","sha256":"b1dd0bb74f9ee0a2381eaa797c27a0365c13757b0f72ea253924fded3d8a2b09","count":5,"selection_orders":[416,350,438,411,337],"access_role":"development_outcomes_known","subset_of_stage_d":true,"formal_exclusion":true},
+    {"stage":"F3C_formal","path":"manifests/stage_f_f3c_v1/sample_split.json","sha256":"b1dd0bb74f9ee0a2381eaa797c27a0365c13757b0f72ea253924fded3d8a2b09","count":50,"access_role":"formal_method_outcomes_known_and_atlas_rendered","subset_of_stage_d":true,"formal_exclusion":true},
+    {"stage":"F3_F3H_display_slots","source":"sealed F3 selection and F3C exclusion contract","count_unique_not_recomputed":11,"selection_orders":[14,44,117,145,231,281,326,352,372,380,387],"access_role":"display_or_failure_slot_viewed","subset_of_stage_d":true,"formal_exclusion":true}
+  ],
+  "x1_allowed_audit_samples": ["ILSVRC2012_val/ILSVRC2012_val_00000079.JPEG","ILSVRC2012_val/ILSVRC2012_val_00049970.JPEG","ILSVRC2012_val/ILSVRC2012_val_00002287.JPEG"],
+  "x1_samples_are_formal_eligible": false,
+  "unique_prior_access_exclusion_count": 520,
+  "derivation": "20 Stage C sample IDs are disjoint from the 500 Stage D IDs; all F3/F3H/F3C IDs are subsets of Stage D",
+  "canonical_digest": "1ce997d996032a34f2e5906e9da47416819ce7fd79705e536b51bc478c9878e4"
+}

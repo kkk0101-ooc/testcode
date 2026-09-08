@@ -2,7 +2,7 @@
 
 > 建立日期：2026-09-07。
 > 当前状态：Stage F F0–F3 主模块、F3-Display、F3-HeadAtlas（历史 token `F3H`）和 F3-ClassCompare（历史 token `F3C`）均已有封存产物；F3C 的 50 图展示包也已完成。2026-09-08 的论文图形审计确认 F1/F2 为定量主证据、F3 蓝色图为正文定性展示层、signed/shared-scale 图为幅值与符号审计层。最终 Figure 1–6 / Supplement S1–S4 组合包尚未单独封存，F3-ClassCompare 是否作为 S5 随稿交付须在 F3-Final 中冻结。
-> 当前下一授权：`F3_FINAL_FIGURE_PACKAGE_ONLY`。完成后进入 [阶段 G：论文写作](阶段G规划.md)；不再启动 F4。
+> 当前调度：Stage X X0 已 PASS；`F3_FINAL_FIGURE_PACKAGE_ONLY` 继续暂停，当前唯一授权为 `X1_NNS_V2_IMPLEMENTATION_ONLY`。Stage X X7 回接或 broad-claim 停止门完成后再恢复 F3-Final；不再启动 F4。
 > 文档性质：Stage F 的权威图表规划、阶段边界和验收合同；不是论文写作授权。
 > 选择规则：定性案例继续受 [阶段 F 展示选择协议 v1](stage_f_display_protocol_v1.md) 约束；跨层/头归因矩阵同时受 [Stage F 跨层/头归因展示补充协议](stage_f_cross_layer_display_addendum_20260907.md) 约束。
 
@@ -701,7 +701,7 @@ F3C 不再尝试学习、调参、排序或人工指定 head 权重，而是直�
 
 ### 23.4 当前授权与执行提示词
 
-本段是 2026-09-07 的历史状态记录，当时 F3C1–F3C4 与原 F4 均尚未开始。当前 F3C 已完成；现行下一任务见文首的 `F3_FINAL_FIGURE_PACKAGE_ONLY`。历史提示词继续保留在 `docs/stage_f_f3c1_execution_prompt_20260907.md`，不得当成当前授权。
+本段是 2026-09-07 的历史状态记录，当时 F3C1–F3C4 与原 F4 均尚未开始。当前 F3C 已完成；F3-Final 因 Stage X 暂停，现行下一任务见文首的 `X1_NNS_V2_IMPLEMENTATION_ONLY`。历史提示词继续保留在 `docs/stage_f_f3c1_execution_prompt_20260907.md`，不得当成当前授权。
 
 ## 24. F3C1 implementation and synthetic preflight completion（2026-09-07）
 
@@ -805,7 +805,7 @@ F3C4 封存后新增独立 CPU-only 展示模块 `src/vitnns/stage_f_f3c_visual.
 5. 历史 `F4_ONLY` receipt 不追溯修改，其当前等价路由为 `F3_FINAL_FIGURE_PACKAGE_ONLY → STAGE_G_WRITING_G0_ONLY`；
 6. Stage E 继续表示已封存的 post-D10 消融与敏感性分析，不与 Stage G 混用。
 
-当前唯一下一授权是 `F3_FINAL_FIGURE_PACKAGE_ONLY`。Stage G 尚未启动。
+截至 Stage X X0 completion，F3-Final 保持未启动。当前唯一下一授权是 `X1_NNS_V2_IMPLEMENTATION_ONLY`；Stage G 尚未启动。
 
 ## 31. 论文图形与证据用途审计决议（2026-09-08）
 

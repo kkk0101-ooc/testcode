@@ -1,8 +1,8 @@
 # NNS-v2 前瞻性主张扩展方案（Stage X）
 
 > 建立日期：2026-09-08。
-> 状态：`PLANNING_BASELINE`；尚未完成 X0 protocol freeze，尚未授权新数据下载、模型引入、GPU 计算或 formal outcome access。
-> 当前唯一下一任务：`X0_PROTOCOL_AND_LITERATURE_FREEZE_ONLY`。
+> 状态：`X0_PASS`；protocol、literature、NNS-v2 mathematics、benchmark、sample isolation、statistics 和 budget 已于 2026-09-08 前瞻性冻结。尚未授权新数据下载、模型引入或 formal outcome access。
+> 当前唯一下一任务：`X1_NNS_V2_IMPLEMENTATION_ONLY`。
 > 上游状态：C10、Stage D D0–D10、历史 Stage E E0–E4 和 Stage F 已封存工作包均保持只读。
 > 下游状态：`F3_FINAL_FIGURE_PACKAGE_ONLY` 与 `STAGE_G_WRITING_G0_ONLY` 暂缓，等待 X6 决策。
 
@@ -434,9 +434,9 @@ existing Stage F evidence
 
 Stage G 只能写入 X6 实际通过的 claim levels。未通过的目标作为结果或 limitation 报告，不以计划目标替代实证结论。
 
-## 14. 当前唯一下一任务：X0
+## 14. X0 冻结结果与当前唯一下一任务
 
-下一轮只执行 `X0_PROTOCOL_AND_LITERATURE_FREEZE_ONLY`，交付：
+X0 已按 `X0_PROTOCOL_AND_LITERATURE_FREEZE_ONLY` 完成以下交付：
 
 1. 版本化 protocol、acceptance、config/schema 和 typed plan；
 2. 截止日、检索式、纳入/排除标准、论文与官方实现 registry；
@@ -447,4 +447,38 @@ Stage G 只能写入 X6 实际通过的 claim levels。未通过的目标作为�
 7. X1 synthetic test specification、retention、预算模板和 false-pass audit；
 8. terminal X0 completion；PASS 时只授权 `X1_NNS_V2_IMPLEMENTATION_ONLY`。
 
-X0 不执行 NNS-v2、comparators、formal inference、GPU campaign、定位统计或论文图表。
+X0 不执行 NNS-v2、comparators、formal inference、GPU campaign、定位统计或论文图表。X0 已按该边界完成；权威合同为 `docs/stage_x_protocol.md`、`docs/stage_x_acceptance.md`、`config/stage_x.json` 及 `manifests/stage_x_*_v1.json`。
+
+## 15. X0 completion record（2026-09-08）
+
+- 状态：`PASS`；最高允许结论仍为 `GO_BROAD_BENCHMARK_SCOPE`，不允许 universal claim。
+- NNS-v2：冻结 unmodified predicted-class raw logit、straight normalized-zero path、signed `[3,224,224]` input IG，以及每个完整 computational cut 的 path-integrated Jacobian allocation。每个 cut 内 component maps 必须重构同一 total attribution；head map 必须经过原生 concat/output projection accounting；两次 residual add 分别按 identity/attention 与 residual/MLP accounting；layer views 不跨层求和。
+- comparators：primary 为 ViT Grad-CAM、full-model IG、Transformer Attribution、AttnLRP、RISE、Occlusion；secondary 为 rollout、raw CLS attention、random、center、edge/input-gradient prior。ViT-CX、LeGrad、TIS、TokenTM、LibraGrad 因 raw-logit、adapter、license 或 official implementation 缺口而 deferred。
+- matrix：ViT-S/16、ViT-B/16、DeiT-S/16、DeiT-B/16、ViT-B/32 × ImageNet-1k、ImageNet-S919、ImageNet-V2 matched-frequency、Oxford-IIIT Pet，共 20 个 required cells。除 sealed recovery-v2 ViT-B/16 外，checkpoint 均为 `PLANNED_NOT_MATERIALIZED`。
+- 数据隔离：Stage C 20 图与 Stage D 500 图构成 520 个 unique prior-access exclusions；F3/F3H/F3C 均为其子集。X2 每模型固定 40 张 development images，永不进入 X3–X5。
+- primary faithfulness 固定为 ROAD Combined；localization 为 class-macro pixel AUPRC；跨 cell 采用 class-macro cell effect 和 equal-weight hierarchical benchmark aggregate，不池化全部图片。
+- F3C primary 已从 sealed `per_image_contrasts.csv` 重算：mean `-0.05585432814553341`、95% CI `[-0.07085058706573369,-0.04100117599983641]`、sign-flip `p=9.99990000099999e-06`。
+- X1 cap 为 16 H20-GPU-hours / 48 wall-hours / 128 CPU-hours / 32 GiB retained；X2 cap 为 160 H20-GPU-hours / 72 wall-hours / 400 CPU-hours / 128 GiB retained。正式 cap 在 X2 后按 `1.5 × required units × p99 measured unit cost + fixed overhead` 封存，超过 owner ceiling 时 BLOCKED，不缩样本或方法。
+- X0 未读取 formal JPEG、model/checkpoint bytes，未加载模型，未导入 Torch/timm，未访问 CUDA/GPU，未下载数据或 checkpoint，未启动 X1/X2/X3、F3-Final 或 Stage G。
+
+### 完整 X1 执行提示词
+
+```text
+你现在在 /data01/home/yeziqi.831/nxtrec_wksp/testcode/vitnns_rebuild 工作。
+
+本次唯一任务：完整执行 Stage X 的 X1——X1_NNS_V2_IMPLEMENTATION_ONLY。
+
+首先从源核验 X0 terminal completion、refs/archive/stage-x-nns-v2-x0-completion、所有 X0 payload hash/canonical digest、local/tracking/remote、worktree/index 与 Git LFS。保持 C10、D10、E4、Stage F 及其 refs 只读。
+
+严格实现 docs/stage_x_protocol.md 与 config/stage_x.json 中的 NNS-v2：unmodified evaluation-mode predicted-class raw logit；straight normalized-zero path；signed [3,224,224] input IG；完整 computational cut 上的 pixel-to-component K^C[i,j]；原生 head concat/output projection accounting；两个 residual branch cuts；MLP/neuron/layer views；softmax、LayerNorm、GELU 与乘法交互全部留在原始 autograd path；使用冻结 Gauss-Legendre schedule、chunking、tolerances 和 first-all-gates-pass convergence。Layer views 不得跨层相加。bias 与 constant embeddings 的 direct path term 记录为零，但它们仍留在下游 graph 中。
+
+普通 input IG 只能作为 comparator。若 input completeness 与每个 architectural cut accounting 不能同时 PASS，发布 NO_GO_CLASS_LOGIT_COMPLETENESS，不得把普通 IG 重命名为 NNS-v2。冻结 attention、detach、surrogate forward 或 replacement operator 只能作为明确的非 primary condition。
+
+X1 只使用 analytic/synthetic fixtures，以及 prior-access ledger 允许的 Stage C 两个 audit IDs 和 order-44 continuity image。不得打开任何 confirmatory candidate，不得下载 dataset/checkpoint，不得启动 X2/X3/F3-Final/Stage G。GPU 只能在 metadata preflight 后、X1 hard caps 内使用。
+
+为每个 INCLUDED_PRIMARY comparator 建立 adapter contract，但不运行 benchmark。必须核验 official commit/license、clean raw-logit target、native output semantics、所有 required ViT/DeiT architecture compatibility、deterministic layer/default choices，以及 display arrays 不进入 metrics。Deferred methods 保持 excluded；class-agnostic references 保持 secondary。
+
+至少测试 strict JSON/schema/canonicalization；native forward/hook parity；analytic linear/residual/multiplicative/softmax/LayerNorm/bias fixtures；每个 cut 的 per-pixel 与 scalar reconstruction；head/branch sum identity；sub-patch position discrimination；predicted/runner-up/true target swap；positive/negative deletion；classifier-to-input randomization；display type isolation；typed numerical/infrastructure failure；atomic completion；source/ref/model/method/sample/budget tamper rejection。保留全部 quadrature attempts 与 resource telemetry。
+
+X1 terminal PASS 只能授权 X2_NNS_V2_DEVELOPMENT_AND_FUTILITY_ONLY。完成 focused tests、source-recomputing validation、false-pass audit、whole-root inventory、pending-to-terminal completion、commit/push/archive 及 post-publication Git/LFS 核验后停止；不得在同轮运行 X2。
+```
