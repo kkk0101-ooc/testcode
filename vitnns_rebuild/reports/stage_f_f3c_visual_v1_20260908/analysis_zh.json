@@ -1,0 +1,336 @@
+{
+  "F4启动": false,
+  "document_type": "stage_f_f3c_visual_chinese_analysis",
+  "schema_version": 1,
+  "status": "DESCRIPTIVE_DISPLAY_ONLY",
+  "分析范围": "冻结的50张正式样本，保持F3C顺序，不选取有利案例。",
+  "新图解释": [
+    "主展示版按每个面板自身第99百分位缩放并截断，仅用于观察空间形状。",
+    "无截断对照版按每个面板自身最大值线性缩放，用于检查主展示版的截断影响。",
+    "NNS和full-model IG的正、负贡献在辅助图中分开显示；主图只显示正向类别支持。",
+    "4x4最大池化和双线性插值是明确标注的展示变换，不进入任何fidelity数值、统计、排名或结论。",
+    "面板独立缩放后，不得比较方法之间的颜色亮度或幅值。"
+  ],
+  "旧图诊断": {
+    "复核结果": "约22%至47%，与提出方案中的诊断一致。",
+    "第5页NNS占比范围": [
+      0.2170482208886437,
+      0.47467301954480584
+    ],
+    "第5页样本": [
+      {
+        "NNS峰值占旧共享色阶上限": 0.47467301954480584,
+        "formal_position": 21,
+        "selection_order": 74,
+        "共享上限主导方法": "direct_raw_cls_attention_last_block_head_mean"
+      },
+      {
+        "NNS峰值占旧共享色阶上限": 0.25738832087432334,
+        "formal_position": 22,
+        "selection_order": 69,
+        "共享上限主导方法": "direct_raw_cls_attention_last_block_head_mean"
+      },
+      {
+        "NNS峰值占旧共享色阶上限": 0.4507521067385156,
+        "formal_position": 23,
+        "selection_order": 295,
+        "共享上限主导方法": "direct_raw_cls_attention_last_block_head_mean"
+      },
+      {
+        "NNS峰值占旧共享色阶上限": 0.2170482208886437,
+        "formal_position": 24,
+        "selection_order": 132,
+        "共享上限主导方法": "direct_raw_cls_attention_last_block_head_mean"
+      },
+      {
+        "NNS峰值占旧共享色阶上限": 0.21832638929984793,
+        "formal_position": 25,
+        "selection_order": 242,
+        "共享上限主导方法": "direct_raw_cls_attention_last_block_head_mean"
+      }
+    ],
+    "结论": "原F3C4 atlas是审计图：五种方法在同一样本共享色阶，并以14x14 target-oriented mass展示，因此原生224x224 NNS细节和较弱峰值会被压缩。"
+  },
+  "样本顺序": [
+    {
+      "formal_position": 1,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00016127.JPEG",
+      "selection_order": 179
+    },
+    {
+      "formal_position": 2,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00021049.JPEG",
+      "selection_order": 339
+    },
+    {
+      "formal_position": 3,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00018568.JPEG",
+      "selection_order": 12
+    },
+    {
+      "formal_position": 4,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00042437.JPEG",
+      "selection_order": 84
+    },
+    {
+      "formal_position": 5,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00017256.JPEG",
+      "selection_order": 389
+    },
+    {
+      "formal_position": 6,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00035833.JPEG",
+      "selection_order": 275
+    },
+    {
+      "formal_position": 7,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00025172.JPEG",
+      "selection_order": 123
+    },
+    {
+      "formal_position": 8,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00020100.JPEG",
+      "selection_order": 345
+    },
+    {
+      "formal_position": 9,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00023818.JPEG",
+      "selection_order": 138
+    },
+    {
+      "formal_position": 10,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00000625.JPEG",
+      "selection_order": 378
+    },
+    {
+      "formal_position": 11,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00039547.JPEG",
+      "selection_order": 195
+    },
+    {
+      "formal_position": 12,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00010973.JPEG",
+      "selection_order": 103
+    },
+    {
+      "formal_position": 13,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00048253.JPEG",
+      "selection_order": 473
+    },
+    {
+      "formal_position": 14,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00017083.JPEG",
+      "selection_order": 301
+    },
+    {
+      "formal_position": 15,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00049516.JPEG",
+      "selection_order": 140
+    },
+    {
+      "formal_position": 16,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00029879.JPEG",
+      "selection_order": 340
+    },
+    {
+      "formal_position": 17,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00033262.JPEG",
+      "selection_order": 126
+    },
+    {
+      "formal_position": 18,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00015667.JPEG",
+      "selection_order": 436
+    },
+    {
+      "formal_position": 19,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00014577.JPEG",
+      "selection_order": 51
+    },
+    {
+      "formal_position": 20,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00017831.JPEG",
+      "selection_order": 449
+    },
+    {
+      "formal_position": 21,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00030029.JPEG",
+      "selection_order": 74
+    },
+    {
+      "formal_position": 22,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00048260.JPEG",
+      "selection_order": 69
+    },
+    {
+      "formal_position": 23,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00020142.JPEG",
+      "selection_order": 295
+    },
+    {
+      "formal_position": 24,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00022556.JPEG",
+      "selection_order": 132
+    },
+    {
+      "formal_position": 25,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00012617.JPEG",
+      "selection_order": 242
+    },
+    {
+      "formal_position": 26,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00005819.JPEG",
+      "selection_order": 30
+    },
+    {
+      "formal_position": 27,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00031994.JPEG",
+      "selection_order": 163
+    },
+    {
+      "formal_position": 28,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00000356.JPEG",
+      "selection_order": 318
+    },
+    {
+      "formal_position": 29,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00044450.JPEG",
+      "selection_order": 262
+    },
+    {
+      "formal_position": 30,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00032823.JPEG",
+      "selection_order": 58
+    },
+    {
+      "formal_position": 31,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00020730.JPEG",
+      "selection_order": 227
+    },
+    {
+      "formal_position": 32,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00048657.JPEG",
+      "selection_order": 206
+    },
+    {
+      "formal_position": 33,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00046619.JPEG",
+      "selection_order": 420
+    },
+    {
+      "formal_position": 34,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00032345.JPEG",
+      "selection_order": 237
+    },
+    {
+      "formal_position": 35,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00025832.JPEG",
+      "selection_order": 293
+    },
+    {
+      "formal_position": 36,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00002341.JPEG",
+      "selection_order": 425
+    },
+    {
+      "formal_position": 37,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00036915.JPEG",
+      "selection_order": 34
+    },
+    {
+      "formal_position": 38,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00023607.JPEG",
+      "selection_order": 141
+    },
+    {
+      "formal_position": 39,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00018234.JPEG",
+      "selection_order": 61
+    },
+    {
+      "formal_position": 40,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00025387.JPEG",
+      "selection_order": 164
+    },
+    {
+      "formal_position": 41,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00005182.JPEG",
+      "selection_order": 454
+    },
+    {
+      "formal_position": 42,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00043706.JPEG",
+      "selection_order": 354
+    },
+    {
+      "formal_position": 43,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00019250.JPEG",
+      "selection_order": 495
+    },
+    {
+      "formal_position": 44,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00012226.JPEG",
+      "selection_order": 471
+    },
+    {
+      "formal_position": 45,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00008315.JPEG",
+      "selection_order": 176
+    },
+    {
+      "formal_position": 46,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00029526.JPEG",
+      "selection_order": 216
+    },
+    {
+      "formal_position": 47,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00043439.JPEG",
+      "selection_order": 3
+    },
+    {
+      "formal_position": 48,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00003595.JPEG",
+      "selection_order": 160
+    },
+    {
+      "formal_position": 49,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00028727.JPEG",
+      "selection_order": 398
+    },
+    {
+      "formal_position": 50,
+      "sample_id": "ILSVRC2012_val/ILSVRC2012_val_00036913.JPEG",
+      "selection_order": 332
+    }
+  ],
+  "科学PASS条件": "不适用；视觉美观不是科学PASS条件。",
+  "科学边界": [
+    "这些图不能证明NNS类别判别性胜过Grad-CAM。",
+    "论文4.2.2讨论高激活神经元之间的相似性；Fig.14属于4.2.3的定性展示，且包含最大池化和插值版本。",
+    "论文CNN门控权重传播与本项目ViT固定clean-attention条件IG不是同一算法。",
+    "固定注意力与原模型evaluator不一致是合理机制假设，但当前证据不足以判定它解释主要差距；full-model IG同样较弱，仍需区分算法、聚合与评估方式。",
+    "改善显示不改变fidelity，也不能被表述为类别判别能力提高。"
+  ],
+  "第5页保持": [
+    {
+      "formal_position": 21,
+      "selection_order": 74
+    },
+    {
+      "formal_position": 22,
+      "selection_order": 69
+    },
+    {
+      "formal_position": 23,
+      "selection_order": 295
+    },
+    {
+      "formal_position": 24,
+      "selection_order": 132
+    },
+    {
+      "formal_position": 25,
+      "selection_order": 242
+    }
+  ]
+}
