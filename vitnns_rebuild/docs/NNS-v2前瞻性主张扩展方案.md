@@ -1,8 +1,8 @@
 # NNS-v2 前瞻性主张扩展方案（Stage X）
 
 > 建立日期：2026-09-08。
-> 状态：`X0_R1_PASS`；原 X0 的 identity-comparator contradiction 已由前瞻性 X0-R1 修正。protocol、literature、NNS-v2 mathematics、benchmark、sample isolation、statistics 和 budget 已冻结。尚未授权新数据下载、模型引入或 formal outcome access。
-> 当前唯一下一任务：`X1_NNS_V2_IMPLEMENTATION_ONLY`。
+> 状态：X0-R1 `PASS`；X1 `BLOCKED_MISSING_PINNED_COMPARATOR_ENGINE`。原 X0 的 identity-comparator contradiction 已由前瞻性 X0-R1 修正。尚未授权新数据/模型下载或 formal outcome access。
+> 当前下一授权：`NONE_REQUIRES_PROSPECTIVE_X1_RECOVERY_AMENDMENT`。
 > 上游状态：C10、Stage D D0–D10、历史 Stage E E0–E4 和 Stage F 已封存工作包均保持只读。
 > 下游状态：`F3_FINAL_FIGURE_PACKAGE_ONLY` 与 `STAGE_G_WRITING_G0_ONLY` 暂缓，等待 X6 决策。
 
@@ -504,3 +504,9 @@ X1 启动审计在模型/JPEG/GPU access 和 accepted implementation 前发现�
 - `docs/stage_x_x0_r1_execution_prompt_20260908.md`。
 
 当前唯一下一任务仍为 `X1_NNS_V2_IMPLEMENTATION_ONLY`，但必须使用 X0-R1，而不是原 X0 的 comparator role/truth table。
+
+## 17. X1 blocked record（2026-09-08）
+
+X1 fresh startup gate 通过后，dependency preflight 在读取 audit JPEG、checkpoint 或模型前发现：本地没有 X0-R1 要求的 Chefer Transformer Attribution official engine，也没有 AttnLRP/LXT official engine。X1 的冻结 download cap 为 0 bytes，且 X0-R1 禁止用自写近似替代 pinned official comparator。因此 X1 终止为 `BLOCKED_MISSING_PINNED_COMPARATOR_ENGINE`；这是 dependency/infrastructure blocker，不是 NNS-v2 scientific failure。
+
+本轮没有 accepted X1 implementation，没有模型/JPEG/checkpoint access，没有 Torch/timm import 或 CUDA/GPU access，没有 X2/X3/F3-Final/Stage G。恢复需要新的前瞻性 `X1` dependency-materialization amendment，明确允许的两个仓库、固定 commits、licenses、下载字节上限和离线校验程序；该 amendment 不得授权 dataset/checkpoint 下载或删减 comparator。

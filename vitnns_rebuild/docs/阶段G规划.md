@@ -2,7 +2,7 @@
 
 > 生效日期：2026-09-08。
 > 当前定义：阶段 G 只负责论文写作、双语一致性、引用核验、编译和稿件封存，不负责生成或修改科学图表。
-> 前置阶段：Stage X X0-R1 已 PASS，当前仅授权 X1；原 X0 的 identity-control contradiction 已修正。Stage X 完成决策和 X7 回接后，或停止门恢复 scoped 路线后，阶段 F 才执行最终图包。该图包通过后 Stage G 才能进入正式写作。
+> 前置阶段：Stage X X0-R1 已 PASS，但 X1 当前为 `BLOCKED_MISSING_PINNED_COMPARATOR_ENGINE`，X2 未授权；需先完成前瞻性 X1 recovery amendment。Stage X 完成决策和 X7 回接后，或停止门恢复 scoped 路线后，阶段 F 才执行最终图包。该图包通过后 Stage G 才能进入正式写作。
 > 历史兼容：阶段 E 继续专指 2026-09-06 至 2026-09-07 已执行并封存的消融与敏感性分析。其原规划保留在 [阶段 E 规划](阶段E规划.md)，config、code、evidence、reports、completion 和 archive refs 不改名、不搬移。
 
 ## 1. 阶段边界与当前路线

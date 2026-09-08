@@ -2,7 +2,7 @@
 
 > 建立日期：2026-09-07。
 > 当前状态：Stage F F0–F3 主模块、F3-Display、F3-HeadAtlas（历史 token `F3H`）和 F3-ClassCompare（历史 token `F3C`）均已有封存产物；F3C 的 50 图展示包也已完成。2026-09-08 的论文图形审计确认 F1/F2 为定量主证据、F3 蓝色图为正文定性展示层、signed/shared-scale 图为幅值与符号审计层。最终 Figure 1–6 / Supplement S1–S4 组合包尚未单独封存，F3-ClassCompare 是否作为 S5 随稿交付须在 F3-Final 中冻结。
-> 当前调度：Stage X X0-R1 已 PASS；原 X0 identity-comparator contradiction 已前瞻修正。`F3_FINAL_FIGURE_PACKAGE_ONLY` 继续暂停，当前唯一授权为 `X1_NNS_V2_IMPLEMENTATION_ONLY`。Stage X X7 回接或 broad-claim 停止门完成后再恢复 F3-Final；不再启动 F4。
+> 当前调度：Stage X X0-R1 已 PASS；X1 因缺少 pinned comparator engines 且 download cap 为 0 而 BLOCKED，X2 未授权。`F3_FINAL_FIGURE_PACKAGE_ONLY` 继续暂停，需先有前瞻性 X1 recovery amendment。Stage X X7 回接或 broad-claim 停止门完成后再恢复 F3-Final；不再启动 F4。
 > 文档性质：Stage F 的权威图表规划、阶段边界和验收合同；不是论文写作授权。
 > 选择规则：定性案例继续受 [阶段 F 展示选择协议 v1](stage_f_display_protocol_v1.md) 约束；跨层/头归因矩阵同时受 [Stage F 跨层/头归因展示补充协议](stage_f_cross_layer_display_addendum_20260907.md) 约束。
 
