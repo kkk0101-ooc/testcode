@@ -97,7 +97,7 @@ def test_sse_identity_and_residual_semantics() -> None:
     transformed[:16, :16] += np.linspace(-1.0, 1.0, 256, dtype=np.float32).reshape(16, 16)
     mask = np.ones(clean.shape, dtype=bool)
     mask[7, 7] = False
-    result = analysis.sse_decomposition(clean, transformed, mask, 16)
+    result = m2._m2_sse_decomposition(clean, transformed, mask, 16)
     assert result["sse_total"] == pytest.approx(result["sse_between"] + result["sse_within"], abs=1e-10, rel=1e-10)
     assert result["excluded_partial_block_count"] == 1
     assert "block_level_signed_rank_stability" in result

@@ -38,7 +38,6 @@ from .stage_x_x2_mech_analysis import (
     aggregate_blocks,
     clean_structure_metrics as clean_structure,
     seed64,
-    sse_decomposition,
 )
 
 RUN_ID = "STAGE_X_X2_MECH_M2_V1_20260910"
@@ -1276,7 +1275,7 @@ def compute_multiscale_results(repo_root: Path | str = REPO_ROOT,
                             if status != "PASS":
                                 raise X2MechM2Error("BLOCKED_X2_PIXEL_REPRODUCTION_DRIFT")
                     for scale_id, block in SSE_SCALES:
-                        error = sse_decomposition(clean, inverse, mask, block)
+                        error = _m2_sse_decomposition(clean, inverse, mask, block)
                         identity_abs = abs(error["sse_total"] - error["sse_between"] - error["sse_within"])
                         denominator = max(abs(error["sse_total"]), abs(error["sse_between"] + error["sse_within"]), 1.0)
                         identity_rel = identity_abs / denominator
@@ -1580,6 +1579,62 @@ def _spearman(x: Sequence[float], y: Sequence[float]) -> float:
     if denominator <= np.finfo(np.float64).tiny:
         return float("nan")
     return float(np.sum(xr * yr, dtype=np.float64) / denominator)
+
+
+def _pearson(x: Sequence[float], y: Sequence[float]) -> float:
+    x_array = np.asarray(x, dtype=np.float64).reshape(-1)
+    y_array = np.asarray(y, dtype=np.float64).reshape(-1)
+    if x_array.size < 2 or not np.isfinite(x_array).all() or not np.isfinite(y_array).all():
+        return float("nan")
+    x_centered = x_array - x_array.mean(dtype=np.float64)
+    y_centered = y_array - y_array.mean(dtype=np.float64)
+    denominator = math.sqrt(
+        float(np.sum(x_centered * x_centered, dtype=np.float64))
+        * float(np.sum(y_centered * y_centered, dtype=np.float64))
+    )
+    if denominator <= np.finfo(np.float64).tiny:
+        return float("nan")
+    return float(np.sum(x_centered * y_centered, dtype=np.float64) / denominator)
+
+
+def _m2_sse_decomposition(clean: np.ndarray, transformed: np.ndarray,
+                          valid_mask: np.ndarray, block: int) -> dict[str, Any]:
+    a = np.asarray(clean, dtype=np.float64)
+    b = np.asarray(transformed, dtype=np.float64)
+    mask = np.asarray(valid_mask)
+    if a.shape != b.shape or mask.shape != a.shape or mask.dtype != np.bool_:
+        raise X2MechM2Error("SSE inputs have incompatible shape or mask dtype")
+    rows, cols = a.shape[0] // block, a.shape[1] // block
+    masks = mask.reshape(rows, block, cols, block).transpose(0, 2, 1, 3)
+    complete = masks.all(axis=(2, 3))
+    if not complete.any():
+        raise X2MechM2Error("no complete valid blocks for SSE")
+    clean_blocks = a.reshape(rows, block, cols, block).transpose(0, 2, 1, 3)[complete]
+    transformed_blocks = b.reshape(rows, block, cols, block).transpose(0, 2, 1, 3)[complete]
+    differences = transformed_blocks - clean_blocks
+    means = differences.mean(axis=(1, 2), dtype=np.float64)
+    between = float(np.sum((block * block) * means * means, dtype=np.float64))
+    residual = differences - means[:, None, None]
+    within = float(np.sum(residual * residual, dtype=np.float64))
+    total = float(np.sum(differences * differences, dtype=np.float64))
+    if not np.isclose(total, between + within, atol=1e-10, rtol=1e-10):
+        raise X2MechM2Error("SSE identity failed")
+    denominator = total if total > np.finfo(np.float64).tiny else 1.0
+    clean_sums = clean_blocks.sum(axis=(1, 2), dtype=np.float64)
+    transformed_sums = transformed_blocks.sum(axis=(1, 2), dtype=np.float64)
+    clean_residual = clean_blocks - clean_blocks.mean(axis=(1, 2), keepdims=True)
+    transformed_residual = transformed_blocks - transformed_blocks.mean(axis=(1, 2), keepdims=True)
+    return {
+        "sse_total": total,
+        "sse_between": between,
+        "sse_within": within,
+        "between_error_fraction": between / denominator,
+        "within_error_fraction": within / denominator,
+        "valid_block_count": int(complete.sum()),
+        "excluded_partial_block_count": int(complete.size - complete.sum()),
+        "block_level_signed_rank_stability": _spearman(clean_sums, transformed_sums),
+        "within_block_demeaned_residual_stability": _pearson(clean_residual, transformed_residual),
+    }
 
 
 def _assoc(records: Sequence[Mapping[str, Any]], x_key: str, y_key: str,
