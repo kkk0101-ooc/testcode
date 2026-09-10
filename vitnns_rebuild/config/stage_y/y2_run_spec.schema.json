@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_y_y2_run_spec.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version","document_type","protocol_id","stage_id","stage_token","status","dataset","selection","model","execution","coverage","hard_caps","valid_clean_threshold","terminal_states","next_authorization_on_pass","next_authorization_on_blocked","formal_root","report_root","pass_archive_ref","blocked_archive_ref"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_y_y2_run_spec"},
+    "protocol_id": {"const": "STAGE_Y_VIT_BLOCK_LEVEL_NNS_MECHANISM_V1_20260910"},
+    "stage_id": {"const": "Y2"},
+    "stage_token": {"const": "STAGE_Y2_CLEAN_COHORT_EVIDENCE_PRODUCTION_ONLY"},
+    "status": {"const": "FROZEN_BEFORE_COHORT_SELECTION_AND_OUTCOME_ACCESS"},
+    "dataset": {"type": "object","additionalProperties": false,"required": ["release_id","validation_tar","validation_tar_sha256","devkit","devkit_sha256","label_metadata","label_metadata_sha256","release_object_count","cohort_count","distinct_true_classes","audit_subset_count","perturbation_subset_count"],"properties": {"release_id": {"const": "ILSVRC2012_VAL_OFFICIAL"},"validation_tar": {"type": "string"},"validation_tar_sha256": {"$ref": "#/$defs/sha256"},"devkit": {"type": "string"},"devkit_sha256": {"$ref": "#/$defs/sha256"},"label_metadata": {"type": "string"},"label_metadata_sha256": {"$ref": "#/$defs/sha256"},"release_object_count": {"const": 50000},"cohort_count": {"const": 100},"distinct_true_classes": {"const": 100},"audit_subset_count": {"const": 10},"perturbation_subset_count": {"const": 20}}},
+    "selection": {"type": "object","additionalProperties": false,"required": ["plan","metadata_only_before_seal","candidate_raw_byte_sha256_allowed","candidate_image_decode_forbidden","model_load_before_seal_forbidden","replacement_allowed"],"properties": {"plan": {"type": "string"},"metadata_only_before_seal": {"const": true},"candidate_raw_byte_sha256_allowed": {"const": true},"candidate_image_decode_forbidden": {"const": true},"model_load_before_seal_forbidden": {"const": true},"replacement_allowed": {"const": false}}},
+    "model": {"type": "object","additionalProperties": false,"required": ["name","path","state_dict_sha256","canonical_tensor_digest","download_bytes"],"properties": {"name": {"const": "vit_base_patch16_224.augreg2_in21k_ft_in1k"},"path": {"type": "string"},"state_dict_sha256": {"$ref": "#/$defs/sha256"},"canonical_tensor_digest": {"$ref": "#/$defs/sha256"},"download_bytes": {"const": 0}}},
+    "execution": {"type": "object","additionalProperties": false,"required": ["conditions","device_count","required_device_name","processes_per_physical_gpu","worker_visible_device","unit_order","shard_rule","shard_counts","dynamic_rebalancing","baseline","target","quadrature_schedule","alpha_chunk","source_patch_jvp_chunk","component_vjp_chunk","deletion_forward_batch","first_all_contract_pass_selected","full_dense_pixel_hidden_jacobian"],"properties": {"conditions": {"const": ["clean"]},"device_count": {"const": 8},"required_device_name": {"const": "NVIDIA H20"},"processes_per_physical_gpu": {"const": 1},"worker_visible_device": {"const": "cuda:0"},"unit_order": {"const": "selection_order_zero_based ascending within shard"},"shard_rule": {"const": "shard_id = selection_order_zero_based mod 8"},"shard_counts": {"const": [13,13,13,13,12,12,12,12]},"dynamic_rebalancing": {"const": false},"baseline": {"const": "normalized_zero"},"target": {"const": "clean predicted-class raw logit"},"quadrature_schedule": {"const": [128,256,512,1024,2048,4096,8192]},"alpha_chunk": {"const": 4},"source_patch_jvp_chunk": {"const": 4},"component_vjp_chunk": {"const": 8},"deletion_forward_batch": {"const": 64},"first_all_contract_pass_selected": {"const": true},"full_dense_pixel_hidden_jacobian": {"const": false}}},
+    "coverage": {"type": "object","additionalProperties": false,"required": ["blocks","heads","cuts","single_head_ablation_coordinates","curve_k","deletion_percentiles","deletion_control_seeds"],"properties": {"blocks": {"const": [0,1,2,3,4,5,6,7,8,9,10,11]},"heads": {"const": [0,1,2,3,4,5,6,7,8,9,10,11]},"cuts": {"const": ["post_patch_embedding_tokens","block_input_tokens","first_residual_addition","second_residual_addition","block_output_tokens","final_norm","classifier_input"]},"single_head_ablation_coordinates": {"const": 144},"curve_k": {"const": [1,2,3,4,6,8,10,12]},"deletion_percentiles": {"const": [0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100]},"deletion_control_seeds": {"const": 32}}},
+    "hard_caps": {"type": "object","additionalProperties": false,"required": ["h20_gpu_hours","critical_path_worker_wall_hours","overall_stage_wall_hours","cpu_hours","peak_reserved_gpu_gib_per_process","fleet_concurrent_reserved_gpu_gib","retained_storage_gib","devices","download_bytes"],"properties": {"h20_gpu_hours": {"const": 64.0},"critical_path_worker_wall_hours": {"const": 9.0},"overall_stage_wall_hours": {"const": 12.0},"cpu_hours": {"const": 218.0},"peak_reserved_gpu_gib_per_process": {"const": 21.0},"fleet_concurrent_reserved_gpu_gib": {"const": 168.0},"retained_storage_gib": {"const": 6.0},"devices": {"const": 8},"download_bytes": {"const": 0}}},
+    "valid_clean_threshold": {"const": 90},
+    "terminal_states": {"const": ["VALID","FAILED_NUMERICAL","BLOCKED_INFRASTRUCTURE","BLOCKED_BUDGET"]},
+    "next_authorization_on_pass": {"const": "STAGE_Y3_PERTURBATION_MECHANISM_PRODUCTION_ONLY"},
+    "next_authorization_on_blocked": {"const": "NONE"},
+    "formal_root": {"const": "evidence/stage_y/y2_clean_formal_20260910/formal"},
+    "report_root": {"const": "reports/stage_y_y2_20260911"},
+    "pass_archive_ref": {"const": "refs/archive/stage-y-y2-clean-cohort-evidence"},
+    "blocked_archive_ref": {"const": "refs/archive/stage-y-y2-clean-cohort-evidence-blocked"}
+  },
+  "$defs": {"sha256": {"type": "string","pattern": "^[0-9a-f]{64}$"}}
+}

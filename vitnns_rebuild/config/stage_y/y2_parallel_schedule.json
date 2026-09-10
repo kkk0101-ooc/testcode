@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "document_type": "stage_y_y2_parallel_schedule",
+  "protocol_id": "STAGE_Y_VIT_BLOCK_LEVEL_NNS_MECHANISM_V1_20260910",
+  "stage_id": "Y2-P0",
+  "amendment_token": "STAGE_Y2_P0_PARALLEL_SCHEDULE_AMENDMENT_AND_IMPLEMENTATION_FREEZE_ONLY",
+  "status": "FROZEN_PROSPECTIVELY_BEFORE_FORMAL_COHORT_OUTCOME_ACCESS",
+  "completion_basis": "PROSPECTIVE_PRE_OUTCOME_PARALLEL_SCHEDULE_AMENDMENT",
+  "worker_contract": {
+    "required_devices": 8,
+    "required_device_name": "NVIDIA H20",
+    "homogeneous": true,
+    "processes_per_physical_gpu": 1,
+    "worker_internal_device": "cuda:0",
+    "worker_identity_fields": ["physical_index", "cuda_visible_devices", "gpu_uuid", "pci_bus_id", "device_name", "hostname", "pid", "environment_digest"],
+    "shard_roots": [
+      "evidence/stage_y/y2_clean_formal_20260910/formal/shards/shard-00",
+      "evidence/stage_y/y2_clean_formal_20260910/formal/shards/shard-01",
+      "evidence/stage_y/y2_clean_formal_20260910/formal/shards/shard-02",
+      "evidence/stage_y/y2_clean_formal_20260910/formal/shards/shard-03",
+      "evidence/stage_y/y2_clean_formal_20260910/formal/shards/shard-04",
+      "evidence/stage_y/y2_clean_formal_20260910/formal/shards/shard-05",
+      "evidence/stage_y/y2_clean_formal_20260910/formal/shards/shard-06",
+      "evidence/stage_y/y2_clean_formal_20260910/formal/shards/shard-07"
+    ],
+    "shared_mutable_output": false,
+    "all_attempts_retained": true,
+    "unit_terminal_states": ["VALID", "FAILED_NUMERICAL", "BLOCKED_INFRASTRUCTURE", "BLOCKED_BUDGET"]
+  },
+  "y2_sharding": {
+    "unit_count": 100,
+    "canonical_order": "selection_order_zero_based",
+    "formula": "shard_id = selection_order_zero_based mod 8",
+    "shard_counts": [13, 13, 13, 13, 12, 12, 12, 12],
+    "dynamic_rebalancing": false
+  },
+  "y3_sharding": {
+    "image_count": 20,
+    "non_clean_condition_count": 8,
+    "unit_count": 160,
+    "canonical_order": ["perturbation_subset_order", "transform_registry_order"],
+    "formula": "shard_id = unit_index_zero_based mod 8",
+    "shard_counts": [20, 20, 20, 20, 20, 20, 20, 20],
+    "dynamic_rebalancing": false,
+    "launch_authorized_in_y2_p0": false
+  },
+  "source_ledger": {
+    "path": "evidence/stage_y/y1_r1_resource_telemetry_waiver_20260911/formal/conservative_budget_receipt.json",
+    "sha256": "567510af306aabc8d8c35cf9076df84d24678faa61d9c31fad30fd9d81d6e1a5",
+    "canonical_digest": "2840ad92f9bbf039eaabc42f999631464e6cb848cca42b9bc47a593375235dc9",
+    "safety_multiplier": 1.5,
+    "fixed_initialization_per_worker": {"gpu_active_seconds": 0.0, "cpu_seconds": 47.665421853000005, "wall_seconds": 1.9898176819551736, "retained_bytes": 3994},
+    "clean_unit_maximum": {"gpu_active_seconds": 1535.329625, "cpu_seconds": 5220.206473924999, "wall_seconds": 1535.3368965430418, "retained_bytes": 37065776}
+  },
+  "budgets": {
+    "y2": {
+      "aggregate_caps": {"h20_gpu_hours": 64.0, "cpu_hours": 218.0, "storage_gib": 6.0, "peak_reserved_gpu_gib_per_process": 21.0, "devices": 8},
+      "per_shard_caps": {
+        "13_units": {"h20_gpu_hours": 8.4, "cpu_hours": 29.0, "storage_gib": 1.0, "worker_wall_hours": 9.0},
+        "12_units": {"h20_gpu_hours": 7.7, "cpu_hours": 27.0, "storage_gib": 1.0, "worker_wall_hours": 8.0}
+      },
+      "raw_recomputed": {"h20_gpu_hours": 42.64804513888889, "cpu_hours": 145.11165854647888, "summed_worker_wall_hours": 42.65266894326662, "storage_gib": 3.4520491510629654},
+      "safety_projected": {"h20_gpu_hours": 63.97206770833333, "cpu_hours": 217.6674878197183, "storage_gib": 5.178073726594448},
+      "critical_path_worker_wall_hours": 9.0,
+      "overall_stage_wall_hours": 12.0,
+      "cpu_only_reconciliation_allowance_hours": 0.3325121802816966,
+      "fleet_concurrent_reserved_gpu_gib": 168.0
+    },
+    "y3": {
+      "aggregate_caps": {"h20_gpu_hours": 102.4, "cpu_hours": 349.0, "storage_gib": 9.0, "peak_reserved_gpu_gib_per_process": 21.0, "devices": 8},
+      "per_shard_caps": {"20_units": {"h20_gpu_hours": 12.8, "cpu_hours": 44.0, "storage_gib": 2.0, "worker_wall_hours": 13.0}},
+      "raw_recomputed": {"h20_gpu_hours": 68.23687222222223, "cpu_hours": 232.11509977856218, "summed_worker_wall_hours": 68.24161721898398, "storage_gib": 5.523260787129402},
+      "safety_projected": {"h20_gpu_hours": 102.35530833333334, "cpu_hours": 348.1726496678433, "storage_gib": 8.284891180694103},
+      "critical_path_worker_wall_hours": 13.0,
+      "overall_stage_wall_hours": 18.0,
+      "cpu_only_reconciliation_allowance_hours": 0.8273503321566977,
+      "fleet_concurrent_reserved_gpu_gib": 168.0
+    }
+  },
+  "accounting_rule": "aggregate GPU-hours are summed across all eight workers and are never divided by device count",
+  "unchanged_scientific_contract": ["model", "checkpoint", "preprocessing", "cohort_selection", "exclusion", "target", "blocks", "heads", "cuts", "attribution_identity", "quadrature", "tolerance", "failure_semantics", "metrics", "statistics", "claims", "Y1_history", "Y1_R1_history"],
+  "next_authorization_on_pass": "STAGE_Y2_CLEAN_COHORT_EVIDENCE_PRODUCTION_ONLY",
+  "next_authorization_on_blocked": "NONE"
+}

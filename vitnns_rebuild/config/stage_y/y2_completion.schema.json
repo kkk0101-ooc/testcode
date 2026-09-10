@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_y_y2_completion.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema","schema_version","document_type","protocol_id","stage_id","status","payload","canonical_digest"],
+  "properties": {
+    "$schema": {"const": "stage_y_y2_artifact.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_y_y2_terminal_completion"},
+    "protocol_id": {"const": "STAGE_Y_VIT_BLOCK_LEVEL_NNS_MECHANISM_V1_20260910"},
+    "stage_id": {"const": "Y2"},
+    "status": {"enum": ["PASS","BLOCKED","BLOCKED_BUDGET","BLOCKED_COHORT","BLOCKED_PROVENANCE","BLOCKED_INFRASTRUCTURE","BLOCKED_SCIENTIFIC_VALIDITY"]},
+    "payload": {"type": "object","additionalProperties": false,"required": ["terminal","reconciliation","valid_clean_count","formal_outcome_access","conditions","bootstrap_executed","holm_executed","claim_decisions","next_authorization"],"properties": {"terminal": {"const": true},"reconciliation": {"$ref": "#/$defs/fileRecord"},"valid_clean_count": {"type": "integer","minimum": 0,"maximum": 100},"formal_outcome_access": {"type": "boolean"},"conditions": {"const": ["clean"]},"bootstrap_executed": {"const": false},"holm_executed": {"const": false},"claim_decisions": {"const": []},"next_authorization": {"enum": ["STAGE_Y3_PERTURBATION_MECHANISM_PRODUCTION_ONLY","NONE"]}}},
+    "canonical_digest": {"type": "string","pattern": "^[0-9a-f]{64}$"}
+  },
+  "$defs": {"fileRecord": {"type": "object","additionalProperties": false,"required": ["path","bytes","sha256","canonical_digest"],"properties": {"path": {"type": "string"},"bytes": {"type": "integer","minimum": 0},"sha256": {"type": "string","pattern": "^[0-9a-f]{64}$"},"canonical_digest": {"type": "string","pattern": "^[0-9a-f]{64}$"}}}}
+}

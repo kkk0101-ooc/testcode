@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_y_y2_unit_terminal.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema","schema_version","document_type","protocol_id","stage_id","status","payload","canonical_digest"],
+  "properties": {
+    "$schema": {"const": "stage_y_y2_artifact.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_y_y2_unit_terminal"},
+    "protocol_id": {"const": "STAGE_Y_VIT_BLOCK_LEVEL_NNS_MECHANISM_V1_20260910"},
+    "stage_id": {"const": "Y2"},
+    "status": {"enum": ["VALID","FAILED_NUMERICAL","BLOCKED_INFRASTRUCTURE","BLOCKED_BUDGET"]},
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unit_digest","attempt_id","shard_id","selection_order","source_object_id","condition_id","failure_code","target_identity","source_binding","checkpoint_sha256","environment_digest","numeric_contract_digest","quadrature_attempts","resource_telemetry","array_records","attempt_records"],
+      "properties": {
+        "unit_digest": {"type": "string","pattern": "^[0-9a-f]{64}$"},
+        "attempt_id": {"type": "string","minLength": 1},
+        "shard_id": {"type": "integer","minimum": 0,"maximum": 7},
+        "selection_order": {"type": "integer","minimum": 0,"maximum": 99},
+        "source_object_id": {"type": "string","minLength": 1},
+        "condition_id": {"const": "clean"},
+        "failure_code": {"type": ["string","null"]},
+        "target_identity": {"type": "object","additionalProperties": false,"properties": {"class_id": {"type": "integer"},"rule": {"const": "clean predicted-class raw logit"}}},
+        "source_binding": {"type": "object","additionalProperties": false,"required": ["cohort_digest","file_sha256"],"properties": {"cohort_digest": {"type": "string","pattern": "^[0-9a-f]{64}$"},"file_sha256": {"type": "string","pattern": "^[0-9a-f]{64}$"}}},
+        "checkpoint_sha256": {"type": "string","pattern": "^[0-9a-f]{64}$"},
+        "environment_digest": {"type": "string","pattern": "^[0-9a-f]{64}$"},
+        "numeric_contract_digest": {"type": "string","minLength": 1},
+        "quadrature_attempts": {"type": "array","items": {"type": "object"}},
+        "resource_telemetry": {"type": "object","additionalProperties": false,"required": ["gpu_active_seconds","cpu_seconds","wall_seconds","peak_allocated_gpu_bytes","peak_reserved_gpu_bytes","retained_bytes","calls"],"properties": {"gpu_active_seconds": {"type": "number","minimum": 0},"cpu_seconds": {"type": "number","minimum": 0},"wall_seconds": {"type": "number","minimum": 0},"peak_allocated_gpu_bytes": {"type": "integer","minimum": 0},"peak_reserved_gpu_bytes": {"type": "integer","minimum": 0},"retained_bytes": {"type": "integer","minimum": 0},"calls": {"type": "object"}}},
+        "array_records": {"type": "array","items": {"$ref": "#/$defs/fileRecord"}},
+        "attempt_records": {"type": "array","minItems": 1,"items": {"$ref": "#/$defs/fileRecord"}}
+      }
+    },
+    "canonical_digest": {"type": "string","pattern": "^[0-9a-f]{64}$"}
+  },
+  "$defs": {
+    "fileRecord": {"type": "object","additionalProperties": false,"required": ["path","bytes","sha256"],"properties": {"path": {"type": "string","minLength": 1},"bytes": {"type": "integer","minimum": 0},"sha256": {"type": "string","pattern": "^[0-9a-f]{64}$"},"canonical_digest": {"type": "string","pattern": "^[0-9a-f]{64}$"},"dtype": {"type": "string"},"shape": {"type": "array","items": {"type": "integer"}},"axes": {"type": "array","items": {"type": "string"}}}}
+  }
+}
