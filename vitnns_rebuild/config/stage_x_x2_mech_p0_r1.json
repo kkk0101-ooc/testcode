@@ -1,0 +1,175 @@
+{
+  "$schema": "stage_x_x2_mech_p0_r1.schema.json",
+  "schema_version": 1,
+  "document_type": "stage_x_x2_mech_p0_r1_frozen_configuration",
+  "stage_id": "X2-MECH",
+  "phase": "P0-R1",
+  "run_id": "STAGE_X_X2_MECH_P0_R1_V1_20260910",
+  "study_type": "POST_HOC_EXPLORATORY_MECHANISM_ANALYSIS",
+  "authorization": "X2_MECH_P0_R1_PROTOCOL_AND_IMPLEMENTATION_FREEZE_ONLY",
+  "next_authorization": "X2_MECH_M1_TRANSFORMED_MAP_AND_MULTISCALE_FIDELITY_ONLY",
+  "roots": {
+    "formal": "evidence/stage_x/x2_mech_p0_r1_20260910/formal",
+    "report": "reports/stage_x_x2_mech_p0_r1_20260910"
+  },
+  "x2_binding": {
+    "producer_commit": "d7d8ca177caac0b81efc3d051093d84bc464cf0a",
+    "completion_commit": "9ddfec3dca2e180930009174faa00a0f48e0b752",
+    "producer_ref": "refs/archive/stage-x-nns-v2-x2-producer",
+    "completion_ref": "refs/archive/stage-x-nns-v2-x2-completion",
+    "decision": "NO_GO_BROAD_CLAIM_DEVELOPMENT",
+    "source_root": "evidence/stage_x/x2_r2_r1_r1_nns_v2_development_20260910/formal",
+    "expected_routes": 200,
+    "clean_valid_routes": 199,
+    "failed_route_local_numerical": 1
+  },
+  "cohort": {
+    "models": [
+      "vit_small_patch16_224.augreg_in21k_ft_in1k",
+      "vit_base_patch16_224.augreg2_in21k_ft_in1k",
+      "deit_small_patch16_224.fb_in1k",
+      "deit_base_patch16_224.fb_in1k",
+      "vit_base_patch32_224.augreg_in21k_ft_in1k"
+    ],
+    "methods": ["nns_v2", "vit_grad_cam"],
+    "transforms": [
+      "translate_x_-8", "translate_x_-4", "translate_x_4", "translate_x_8",
+      "translate_y_-8", "translate_y_-4", "translate_y_4", "translate_y_8",
+      "rotate_-10", "rotate_10", "horizontal_flip", "center_crop_216_resize_224"
+    ],
+    "method_transform_instances": 4776,
+    "replacement_allowed": false,
+    "retry_until_pass_allowed": false
+  },
+  "inherited_execution": {
+    "preprocessing": "EXACT_X2_MODEL_SPEC",
+    "target": "fixed_clean_predicted_class_raw_logit",
+    "graph": "native_unfused_timm_0.9.16_eval",
+    "nns_baseline": "normalized_zero",
+    "nns_path": "straight",
+    "nns_selected_steps": "PER_ROUTE_FROZEN_X2_SELECTED_STEPS",
+    "gradcam_adapter": "X2_VIT_GRAD_CAM_LAST_BLOCK_NORM1",
+    "transform_operators": "EXACT_X2_FORWARD_AND_INVERSE_OPERATORS"
+  },
+  "map_contract": {
+    "dtype": "float32",
+    "shape": [224, 224],
+    "transformed_map_count": 4776,
+    "inverse_map_count": 4776,
+    "normalization": "none",
+    "smoothing": "none",
+    "thresholding": "none",
+    "display_products_allowed": false,
+    "clean_map_copy_allowed": false,
+    "component_maps_allowed": false,
+    "mask_registry_shared_by_transform": true
+  },
+  "masks": {
+    "names": ["x2_frozen_common_domain", "exact_operator_support"],
+    "horizontal_flip_full_domain": true,
+    "complete_blocks_only": true,
+    "partial_blocks_allowed": false
+  },
+  "scales": [
+    {"id": "pixel", "block": 1, "units_per_side": 224},
+    {"id": "fine_cell", "block": 4, "units_per_side": 56},
+    {"id": "native_patch", "block": 16, "units_per_side": 14}
+  ],
+  "representations": ["signed_sum", "absolute_mass_sum"],
+  "stability": {
+    "metrics": [
+      "signed_spearman", "top10_unit_signed_value_jaccard",
+      "absolute_mass_spearman", "top10_unit_absolute_mass_jaccard",
+      "signed_ssim", "normalized_positive_negative_mass_displacement",
+      "absolute_mass_center_of_mass_pixel_error"
+    ],
+    "top_fraction": 0.1,
+    "top_count_rule": "ceil_fraction_times_valid_units",
+    "coordinates_in_pixel_units": true,
+    "pixel_reproduction_atol": 1e-6,
+    "pixel_reproduction_rtol": 1e-6,
+    "pixel_boolean_exact": true,
+    "pixel_drift_terminal": "BLOCKED_X2_PIXEL_REPRODUCTION_DRIFT",
+    "transport_control_separate": true,
+    "horizontal_flip_separate": true
+  },
+  "decomposition": {
+    "blocks": [4, 16],
+    "accumulator_dtype": "float64",
+    "identity_atol": 1e-10,
+    "identity_rtol": 1e-10,
+    "exact_identity": "SSE_total_equals_SSE_between_plus_SSE_within",
+    "rank_metrics_additive_claim_allowed": false
+  },
+  "clean_structure_metrics": [
+    "absolute_top10_pixel_mass_share", "normalized_shannon_entropy",
+    "effective_support_fraction", "gini_coefficient",
+    "normalized_total_variation", "within_cell_4_residual_energy_fraction",
+    "within_patch_16_residual_energy_fraction", "signed_cancellation_ratio"
+  ],
+  "association": {
+    "method": "spearman",
+    "strata": ["per_model", "model_equal_aggregate"],
+    "bootstrap_draws": 20000,
+    "cluster": "sample_id_synchronized_across_models",
+    "rng": "NumPy_PCG64_SHA256_first_8_big_endian",
+    "seed_namespace": "STAGE_X_X2_MECH_ASSOCIATION_V1_20260910",
+    "quantile": "linear",
+    "degenerate_draw_policy": "skip_and_continue_to_20000_finite_draws_max_2000000_attempts",
+    "interval": 0.95,
+    "confirmatory_p_values_allowed": false
+  },
+  "fidelity": {
+    "pixel": "REUSE_AND_REVALIDATE_SEALED_X2_ONLY",
+    "rerun_scales": [4, 16],
+    "ranking_representation": "signed_sum",
+    "primary": "ROAD_Combined=0.5*(LeRF-MoRF)",
+    "percentiles": [10, 20, 30, 40, 50, 60, 70, 80, 90],
+    "noisy_linear_seeds": 5,
+    "morf_lerf": true,
+    "tie_rng": "SHA256_to_PCG64",
+    "auc": "trapezoidal",
+    "remove_whole_block": true,
+    "record_actual_pixel_fraction": true,
+    "new_superiority_or_noninferiority_threshold": false
+  },
+  "resources": {
+    "projection_basis": "sealed_X2_total_telemetry_times_1.20_times_sum_12_over_23_geometric_and_4_over_11_multiscale_ROAD",
+    "safety_factor": 1.2,
+    "projected": {
+      "h20_gpu_hours": 78.7, "wall_hours": 24, "cpu_hours": 2459,
+      "peak_reserved_gib_per_process": 5, "retained_gib": 4,
+      "max_devices": 4, "downloaded_bytes": 0
+    },
+    "hard_caps": {
+      "h20_gpu_hours": 80, "wall_hours": 48, "cpu_hours": 2500,
+      "peak_reserved_gib_per_process": 16, "retained_gib": 8,
+      "max_devices": 4, "downloaded_bytes": 0
+    },
+    "workload_reduction_allowed": false,
+    "shards": 4,
+    "assignment": "sha256_unit_digest_big_endian_modulo_4",
+    "route_transforms_cross_shard_allowed": false
+  },
+  "future_outputs": [
+    "map_manifest.csv", "map_manifest.json", "valid_mask_registry.json",
+    "pixel_reproduction_audit.csv", "pixel_reproduction_audit.json",
+    "multiscale_stability.csv", "multiscale_fidelity.csv",
+    "within_between_error.csv", "transport_control.csv",
+    "clean_structure_metrics.csv", "horizontal_flip_control.csv",
+    "association_summary.csv", "association_summary.json",
+    "estimability_matrix.json", "resource_ledger.json",
+    "false_pass_audit.json", "whole_root_inventory.json",
+    "completion/x2_mech.json", "x2_mech_report.md"
+  ],
+  "claims": {
+    "maximum_wording": "post-hoc exploratory evidence of a granularity-fidelity-equivariance trade-off",
+    "x2_decision_mutable": false,
+    "spatial_stability_pass_allowed": false,
+    "gradcam_superiority_or_noninferiority_pass_allowed": false,
+    "broad_benchmark_go_allowed": false,
+    "localization_cross_model_cross_dataset_claim_allowed": false,
+    "x3_x5_authorized": false
+  },
+  "canonical_digest": "275ffc4d40a91cdd916ef6664066a96eb1e85c670a659dbe7c6cb3e1b099d189"
+}

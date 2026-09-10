@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_x_x2_mech_p0_r1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema","schema_version","document_type","stage_id","phase","run_id","study_type","authorization","next_authorization","roots","x2_binding","cohort","inherited_execution","map_contract","masks","scales","representations","stability","decomposition","clean_structure_metrics","association","fidelity","resources","future_outputs","claims","canonical_digest"],
+  "properties": {
+    "$schema": {"const": "stage_x_x2_mech_p0_r1.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_x_x2_mech_p0_r1_frozen_configuration"},
+    "stage_id": {"const": "X2-MECH"},
+    "phase": {"const": "P0-R1"},
+    "run_id": {"const": "STAGE_X_X2_MECH_P0_R1_V1_20260910"},
+    "study_type": {"const": "POST_HOC_EXPLORATORY_MECHANISM_ANALYSIS"},
+    "authorization": {"const": "X2_MECH_P0_R1_PROTOCOL_AND_IMPLEMENTATION_FREEZE_ONLY"},
+    "next_authorization": {"const": "X2_MECH_M1_TRANSFORMED_MAP_AND_MULTISCALE_FIDELITY_ONLY"},
+    "roots": {"type":"object","minProperties":2,"maxProperties":2,"propertyNames":{"enum":["formal","report"]},"additionalProperties":{"type":"string"}},
+    "x2_binding": {"type":"object","minProperties":9,"maxProperties":9,"propertyNames":{"enum":["producer_commit","completion_commit","producer_ref","completion_ref","decision","source_root","expected_routes","clean_valid_routes","failed_route_local_numerical"]},"additionalProperties":{"$ref":"#/$defs/json"}},
+    "cohort": {"type":"object","minProperties":6,"maxProperties":6,"propertyNames":{"enum":["models","methods","transforms","method_transform_instances","replacement_allowed","retry_until_pass_allowed"]},"additionalProperties":{"$ref":"#/$defs/json"}},
+    "inherited_execution": {"type":"object","minProperties":8,"maxProperties":8,"propertyNames":{"enum":["preprocessing","target","graph","nns_baseline","nns_path","nns_selected_steps","gradcam_adapter","transform_operators"]},"additionalProperties":{"type":"string"}},
+    "map_contract": {"type":"object","minProperties":11,"maxProperties":11,"propertyNames":{"enum":["dtype","shape","transformed_map_count","inverse_map_count","normalization","smoothing","thresholding","display_products_allowed","clean_map_copy_allowed","component_maps_allowed","mask_registry_shared_by_transform"]},"additionalProperties":{"$ref":"#/$defs/json"}},
+    "masks": {"type":"object","minProperties":4,"maxProperties":4,"propertyNames":{"enum":["names","horizontal_flip_full_domain","complete_blocks_only","partial_blocks_allowed"]},"additionalProperties":{"$ref":"#/$defs/json"}},
+    "scales": {"type":"array","minItems":3,"maxItems":3,"items":{"type":"object","minProperties":3,"maxProperties":3,"propertyNames":{"enum":["id","block","units_per_side"]},"additionalProperties":{"$ref":"#/$defs/json"}}},
+    "representations": {"const":["signed_sum","absolute_mass_sum"]},
+    "stability": {"type":"object","minProperties":10,"maxProperties":10,"propertyNames":{"enum":["metrics","top_fraction","top_count_rule","coordinates_in_pixel_units","pixel_reproduction_atol","pixel_reproduction_rtol","pixel_boolean_exact","pixel_drift_terminal","transport_control_separate","horizontal_flip_separate"]},"additionalProperties":{"$ref":"#/$defs/json"}},
+    "decomposition": {"type":"object","minProperties":6,"maxProperties":6,"propertyNames":{"enum":["blocks","accumulator_dtype","identity_atol","identity_rtol","exact_identity","rank_metrics_additive_claim_allowed"]},"additionalProperties":{"$ref":"#/$defs/json"}},
+    "clean_structure_metrics": {"type":"array","minItems":8,"maxItems":8,"items":{"type":"string"},"uniqueItems":true},
+    "association": {"type":"object","minProperties":10,"maxProperties":10,"propertyNames":{"enum":["method","strata","bootstrap_draws","cluster","rng","seed_namespace","quantile","degenerate_draw_policy","interval","confirmatory_p_values_allowed"]},"additionalProperties":{"$ref":"#/$defs/json"}},
+    "fidelity": {"type":"object","minProperties":12,"maxProperties":12,"propertyNames":{"enum":["pixel","rerun_scales","ranking_representation","primary","percentiles","noisy_linear_seeds","morf_lerf","tie_rng","auc","remove_whole_block","record_actual_pixel_fraction","new_superiority_or_noninferiority_threshold"]},"additionalProperties":{"$ref":"#/$defs/json"}},
+    "resources": {"type":"object","additionalProperties":false,"required":["projection_basis","safety_factor","projected","hard_caps","workload_reduction_allowed","shards","assignment","route_transforms_cross_shard_allowed"],"properties":{"projection_basis":{"type":"string"},"safety_factor":{"const":1.2},"projected":{"$ref":"#/$defs/resources"},"hard_caps":{"$ref":"#/$defs/resources"},"workload_reduction_allowed":{"const":false},"shards":{"const":4},"assignment":{"type":"string"},"route_transforms_cross_shard_allowed":{"const":false}}},
+    "future_outputs": {"type":"array","minItems":19,"items":{"type":"string","minLength":1},"uniqueItems":true},
+    "claims": {"type":"object","minProperties":7,"maxProperties":7,"propertyNames":{"enum":["maximum_wording","x2_decision_mutable","spatial_stability_pass_allowed","gradcam_superiority_or_noninferiority_pass_allowed","broad_benchmark_go_allowed","localization_cross_model_cross_dataset_claim_allowed","x3_x5_authorized"]},"additionalProperties":{"$ref":"#/$defs/json"}},
+    "canonical_digest": {"type":"string","pattern":"^[0-9a-f]{64}$"}
+  },
+  "$defs": {
+    "json": {"type":["object","array","string","number","integer","boolean","null"]},
+    "resources": {"type":"object","minProperties":7,"maxProperties":7,"propertyNames":{"enum":["h20_gpu_hours","wall_hours","cpu_hours","peak_reserved_gib_per_process","retained_gib","max_devices","downloaded_bytes"]},"additionalProperties":{"type":"number","minimum":0}}
+  }
+}

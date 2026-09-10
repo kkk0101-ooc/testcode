@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_x_x2_mech_artifact.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema","schema_version","document_type","stage_id","phase","run_id","authorization","status","payload","canonical_digest"],
+  "properties": {
+    "$schema": {"const":"stage_x_x2_mech_artifact.schema.json"},
+    "schema_version": {"const":1},
+    "document_type": {"type":"string","pattern":"^stage_x_x2_mech_"},
+    "stage_id": {"const":"X2-MECH"},
+    "phase": {"const":"P0-R1"},
+    "run_id": {"const":"STAGE_X_X2_MECH_P0_R1_V1_20260910"},
+    "authorization": {"const":"X2_MECH_P0_R1_PROTOCOL_AND_IMPLEMENTATION_FREEZE_ONLY"},
+    "status": {"enum":["PASS","BLOCKED","FROZEN","NOT_ESTIMABLE_FROM_RETAINED_X2_EVIDENCE"]},
+    "payload": {"$ref":"#/$defs/payload"},
+    "canonical_digest": {"$ref":"#/$defs/sha"}
+  },
+  "$defs": {
+    "sha": {"type":"string","pattern":"^[0-9a-f]{64}$"},
+    "scalar": {"type":["string","number","integer","boolean","null"]},
+    "named": {"type":"object","additionalProperties":false,"required":["name","value"],"properties":{"name":{"type":"string","minLength":1},"value":{"$ref":"#/$defs/scalar"}}},
+    "binding": {"type":"object","additionalProperties":false,"required":["path","bytes","sha256","canonical_digest"],"properties":{"path":{"type":"string","minLength":1},"bytes":{"type":"integer","minimum":0},"sha256":{"$ref":"#/$defs/sha"},"canonical_digest":{"anyOf":[{"$ref":"#/$defs/sha"},{"type":"null"}]}}},
+    "check": {"type":"object","additionalProperties":false,"required":["check_id","status","detail"],"properties":{"check_id":{"type":"string"},"status":{"enum":["PASS","FAIL","BLOCKED"]},"detail":{"type":"string"}}},
+    "sourceMap": {"type":"object","additionalProperties":false,"required":["method_id","path","bytes","sha256","canonical_digest","dtype","shape"],"properties":{"method_id":{"enum":["nns_v2","vit_grad_cam"]},"path":{"type":"string"},"bytes":{"type":"integer","minimum":1},"sha256":{"$ref":"#/$defs/sha"},"canonical_digest":{"$ref":"#/$defs/sha"},"dtype":{"const":"float32"},"shape":{"const":[224,224]}}},
+    "route": {"type":"object","additionalProperties":false,"required":["unit_digest","model_id","sample_id","source_status","shard","source_terminal_path","source_terminal_sha256","source_maps"],"properties":{"unit_digest":{"$ref":"#/$defs/sha"},"model_id":{"type":"string"},"sample_id":{"type":"string"},"source_status":{"enum":["VALID","FAILED_ROUTE_LOCAL_NUMERICAL"]},"shard":{"type":"integer","minimum":0,"maximum":3},"source_terminal_path":{"type":"string"},"source_terminal_sha256":{"$ref":"#/$defs/sha"},"source_maps":{"type":"array","minItems":0,"maxItems":2,"items":{"$ref":"#/$defs/sourceMap"}}}},
+    "output": {"type":"object","additionalProperties":false,"required":["path","stage","required"],"properties":{"path":{"type":"string"},"stage":{"enum":["M1","M2","M1_M2"]},"required":{"const":true}}},
+    "budget": {"type":"object","additionalProperties":false,"required":["resource","projected","cap","unit","status"],"properties":{"resource":{"type":"string"},"projected":{"type":"number","minimum":0},"cap":{"type":"number","minimum":0},"unit":{"type":"string"},"status":{"enum":["PASS","BLOCKED_BUDGET"]}}},
+    "estimability": {"type":"object","additionalProperties":false,"required":["endpoint","before_m1","after_m1_maximum","confirmatory_upgrade_allowed"],"properties":{"endpoint":{"type":"string"},"before_m1":{"const":"NOT_ESTIMABLE_FROM_RETAINED_X2_EVIDENCE"},"after_m1_maximum":{"const":"POST_HOC_EXPLORATORY_ESTIMABLE"},"confirmatory_upgrade_allowed":{"const":false}}},
+    "attack": {"type":"object","additionalProperties":false,"required":["attack","result","mechanism"],"properties":{"attack":{"type":"string"},"result":{"const":"REJECTED"},"mechanism":{"type":"string"}}},
+    "access": {"type":"object","additionalProperties":false,"required":["name","value"],"properties":{"name":{"type":"string"},"value":{"const":false}}},
+    "terminal": {"type":"object","additionalProperties":false,"required":["terminal","complete","immutable","next_authorization","x2_decision_modified","x3_x5_started"],"properties":{"terminal":{"type":"boolean"},"complete":{"type":"boolean"},"immutable":{"type":"boolean"},"next_authorization":{"enum":["NONE","X2_MECH_M1_TRANSFORMED_MAP_AND_MULTISCALE_FIDELITY_ONLY"]},"x2_decision_modified":{"const":false},"x3_x5_started":{"const":false}}},
+    "payload": {"type":"object","additionalProperties":false,"required":["identity","bindings","checks","counts","state","files","routes","outputs","budget","estimability","attacks","access","terminal"],"properties":{"identity":{"type":"array","items":{"$ref":"#/$defs/named"}},"bindings":{"type":"array","items":{"$ref":"#/$defs/binding"}},"checks":{"type":"array","items":{"$ref":"#/$defs/check"}},"counts":{"type":"array","items":{"$ref":"#/$defs/named"}},"state":{"type":"array","items":{"$ref":"#/$defs/named"}},"files":{"type":"array","items":{"$ref":"#/$defs/binding"}},"routes":{"type":"array","items":{"$ref":"#/$defs/route"}},"outputs":{"type":"array","items":{"$ref":"#/$defs/output"}},"budget":{"type":"array","items":{"$ref":"#/$defs/budget"}},"estimability":{"type":"array","items":{"$ref":"#/$defs/estimability"}},"attacks":{"type":"array","items":{"$ref":"#/$defs/attack"}},"access":{"type":"array","items":{"$ref":"#/$defs/access"}},"terminal":{"$ref":"#/$defs/terminal"}}}
+  }
+}
