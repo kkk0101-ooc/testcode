@@ -820,6 +820,23 @@ def _jaccard_1d(left: np.ndarray, right: np.ndarray) -> float:
     return float(np.intersect1d(a, b).size / np.union1d(a, b).size)
 
 
+def _top_mask_1d(values: np.ndarray) -> np.ndarray:
+    array = np.asarray(values, dtype=np.float64).reshape(-1)
+    if array.size == 0 or not np.isfinite(array).all():
+        raise X2MechM2Error("top-10 values must be finite and non-empty")
+    count = int(math.ceil(0.1 * array.size))
+    selected = np.argpartition(array, -count)[-count:]
+    mask = np.zeros(array.size, dtype=bool)
+    mask[selected] = True
+    return mask
+
+
+def _jaccard_from_masks(left: np.ndarray, right: np.ndarray) -> float:
+    intersection = int(np.count_nonzero(left & right))
+    union = int(np.count_nonzero(left | right))
+    return float(intersection / union)
+
+
 def _rankdata_average(values: np.ndarray) -> np.ndarray:
     array = np.asarray(values, dtype=np.float64).reshape(-1)
     order = np.argsort(array, kind="mergesort")
@@ -899,6 +916,10 @@ def _prepare_clean_stability(clean: np.ndarray, valid_mask: np.ndarray, block: i
         "valid": valid,
         "signed_a": signed_a,
         "mass_a": mass_a,
+        "signed_rank_a": _rankdata_average(signed_a),
+        "mass_rank_a": _rankdata_average(mass_a),
+        "signed_top_a": _top_mask_1d(signed_a),
+        "mass_top_a": _top_mask_1d(mass_a),
         "signed_map_a": signed_map_a,
         "mass_map_a": mass_map_a,
         "crop_a": signed_map_a[r0:r1, c0:c1],
@@ -964,10 +985,14 @@ def _m2_stability_metrics_prepared(prepared: Mapping[str, Any], transformed: np.
     )
     diagonal = math.hypot(*prepared["shape"])
     return {
-        "signed_spearman": _spearman(signed_a, signed_b),
-        "top10_unit_signed_value_jaccard": _jaccard_1d(signed_a, signed_b),
-        "absolute_mass_spearman": _spearman(mass_a, mass_b),
-        "top10_unit_absolute_mass_jaccard": _jaccard_1d(mass_a, mass_b),
+        "signed_spearman": _spearman_prepared(np.asarray(prepared["signed_rank_a"], dtype=np.float64), signed_b),
+        "top10_unit_signed_value_jaccard": _jaccard_from_masks(
+            np.asarray(prepared["signed_top_a"], dtype=bool), _top_mask_1d(signed_b)
+        ),
+        "absolute_mass_spearman": _spearman_prepared(np.asarray(prepared["mass_rank_a"], dtype=np.float64), mass_b),
+        "top10_unit_absolute_mass_jaccard": _jaccard_from_masks(
+            np.asarray(prepared["mass_top_a"], dtype=bool), _top_mask_1d(mass_b)
+        ),
         "signed_ssim": float(structural_similarity(crop_a, crop_b, data_range=data_range, win_size=win)),
         "normalized_positive_negative_mass_displacement": float((positive_shift + negative_shift) / (2 * diagonal)),
         "absolute_mass_center_of_mass_pixel_error": float(mass_shift),
@@ -1263,6 +1288,7 @@ def compute_multiscale_results(repo_root: Path | str = REPO_ROOT,
     hflip_rows: list[dict[str, Any]] = []
     structure_rows: list[dict[str, Any]] = []
     clean_cache: dict[tuple[str, str], np.ndarray] = {}
+    prepared_cache: dict[tuple[str, str, str, int], dict[str, Any]] = {}
 
     def clean_map(unit: str, method: str) -> np.ndarray:
         key = (unit, method)
@@ -1272,6 +1298,12 @@ def compute_multiscale_results(repo_root: Path | str = REPO_ROOT,
 
     def m1_map(unit: str, method: str, transform: str, coordinate: str) -> np.ndarray:
         return _load_map_bound(repo, by_map[(unit, method, transform, coordinate)])
+
+    def prepared_clean(unit: str, method: str, mask_id: str, block: int, mask: np.ndarray) -> dict[str, Any]:
+        key = (unit, method, mask_id, block)
+        if key not in prepared_cache:
+            prepared_cache[key] = _prepare_clean_stability(clean_map(unit, method), mask, block)
+        return prepared_cache[key]
 
     valid_routes = sorted({row["unit_digest"] for row in map_rows})
     for unit in valid_routes:
@@ -1297,7 +1329,8 @@ def compute_multiscale_results(repo_root: Path | str = REPO_ROOT,
                 for mask_id in MASKS:
                     mask = masks_by_key[(transform, mask_id)]
                     for scale_id, block in SCALES:
-                        metrics = _m2_stability_metrics(clean, inverse, mask, block)
+                        prepared = prepared_clean(unit, method, mask_id, block, mask)
+                        metrics = _m2_stability_metrics_prepared(prepared, inverse)
                         row = {
                             "unit_digest": unit,
                             "model_id": manifest["model_id"],
@@ -1384,7 +1417,8 @@ def compute_multiscale_results(repo_root: Path | str = REPO_ROOT,
                         if default_mask.shape != mask.shape:
                             raise X2MechM2Error("transport mask shape drifted")
                         transport_mask = mask & default_mask
-                        tmetrics = _m2_stability_metrics(clean, restored, transport_mask, block)
+                        tprepared = _prepare_clean_stability(clean, transport_mask, block)
+                        tmetrics = _m2_stability_metrics_prepared(tprepared, restored)
                         transport_rows.append({
                             "unit_digest": unit,
                             "model_id": manifest["model_id"],
@@ -1659,6 +1693,25 @@ def _spearman(x: Sequence[float], y: Sequence[float]) -> float:
     xr = xr - xr.mean(dtype=np.float64)
     yr = yr - yr.mean(dtype=np.float64)
     denominator = math.sqrt(float(np.sum(xr * xr, dtype=np.float64)) * float(np.sum(yr * yr, dtype=np.float64)))
+    if denominator <= np.finfo(np.float64).tiny:
+        return float("nan")
+    return float(np.sum(xr * yr, dtype=np.float64) / denominator)
+
+
+def _spearman_prepared(left_rank: np.ndarray, right: Sequence[float]) -> float:
+    xr = np.asarray(left_rank, dtype=np.float64)
+    y_array = np.asarray(right, dtype=np.float64)
+    if xr.size < 2 or y_array.size != xr.size or not np.isfinite(y_array).all():
+        return float("nan")
+    if float(np.min(y_array)) == float(np.max(y_array)):
+        return float("nan")
+    yr = _rankdata_average(y_array)
+    xr = xr - xr.mean(dtype=np.float64)
+    yr = yr - yr.mean(dtype=np.float64)
+    denominator = math.sqrt(
+        float(np.sum(xr * xr, dtype=np.float64))
+        * float(np.sum(yr * yr, dtype=np.float64))
+    )
     if denominator <= np.finfo(np.float64).tiny:
         return float("nan")
     return float(np.sum(xr * yr, dtype=np.float64) / denominator)
