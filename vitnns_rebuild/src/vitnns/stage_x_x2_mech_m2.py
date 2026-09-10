@@ -756,11 +756,14 @@ def _array_digest(value: np.ndarray) -> str:
 def _load_map_bound(repo: Path, record: Mapping[str, Any]) -> np.ndarray:
     relative = str(record.get("path") or record.get("relative_path"))
     path = repo / relative
-    if path.stat().st_size != int(record["bytes"]) or sha_file(path) != record["sha256"]:
+    if "bytes" in record and path.stat().st_size != int(record["bytes"]):
+        raise X2MechM2Error(f"map byte binding drifted: {relative}")
+    if sha_file(path) != record["sha256"]:
         raise X2MechM2Error(f"map byte binding drifted: {relative}")
     value = np.load(path, allow_pickle=False)
     m1_worker.validate_map(value)
-    if _array_digest(value) != record["canonical_digest"]:
+    digest_key = "canonical_digest" if "canonical_digest" in record else "canonical_array_digest"
+    if _array_digest(value) != record[digest_key]:
         raise X2MechM2Error(f"map canonical digest drifted: {relative}")
     return value
 
