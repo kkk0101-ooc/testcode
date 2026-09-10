@@ -705,11 +705,11 @@ def freeze_producer(repo_root: Path | str, producer_commit: str, test_summary: s
 def validate_producer(repo_root: Path | str = REPO_ROOT, *, require_head: bool = True) -> dict[str, Any]:
     repo = Path(repo_root).resolve()
     load_config(repo)
-    producer = _git(repo, "rev-parse", PRODUCER_REF + "^{commit}")
+    producer_sha = _git(repo, "rev-parse", PRODUCER_REF + "^{commit}")
     head = _git(repo, "rev-parse", "HEAD")
-    if require_head and producer != head:
+    if require_head and producer_sha != head:
         raise X2MechM2Error("M2 producer ref does not bind current HEAD")
-    if subprocess.run(["git", "merge-base", "--is-ancestor", producer, head], cwd=repo).returncode:
+    if subprocess.run(["git", "merge-base", "--is-ancestor", producer_sha, head], cwd=repo).returncode:
         raise X2MechM2Error("M2 producer ref is not a HEAD ancestor")
     for relative in (ROOT / "source_binding.json", ROOT / "pre_execution_seal.json", PRODUCER_COMPLETION):
         value = strict_read(repo / relative)
@@ -720,7 +720,7 @@ def validate_producer(repo_root: Path | str = REPO_ROOT, *, require_head: bool =
     access = {row["name"]: row["value"] for row in producer["payload"]["access"]}
     if access.get("m1_map_values_read") or access.get("x2_per_route_stability_rows_read") or access.get("np_load_called"):
         raise X2MechM2Error("producer access boundary drifted")
-    return {"status": "PASS", "producer_commit": producer}
+    return {"status": "PASS", "producer_commit": producer_sha}
 
 
 def _require_cpu_only_environment() -> dict[str, Any]:
