@@ -8,6 +8,12 @@ Y0 token: `STAGE_Y0_PROTOCOL_AND_BUDGET_FREEZE_ONLY`
 
 Status: `FROZEN`
 
+2026-09-11 status note: original Y1 remains immutable `BLOCKED_BUDGET` with
+`next_authorization=NONE`. Y1-R1 passed only by an explicit one-time owner
+historical phase-telemetry waiver and conservative budget rebind. It added no
+GPU/image access or scientific result. Its only next authorization is Y2;
+F3-Final remains `F3_FINAL_PAUSED_PENDING_STAGE_Y`.
+
 ## 1. Prospective route amendment
 
 The current `F3_FINAL_FIGURE_PACKAGE_ONLY` route is prospectively paused as

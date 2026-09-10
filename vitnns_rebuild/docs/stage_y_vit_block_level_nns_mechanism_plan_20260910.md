@@ -4,7 +4,13 @@
 
 状态：`Y0_FROZEN`
 
-Y0 冻结入口：[Stage Y route amendment and Y0 frozen protocol](stage_y_route_and_y0_protocol_20260910.md)。
+2026-09-11 状态更新：原 Y1 保持 immutable `BLOCKED_BUDGET` 与
+`next_authorization=NONE`。Y1-R1 以一次性 owner historical phase-telemetry
+waiver 和 conservative budget rebind 为依据 PASS；未新增 GPU、图像或科学
+结果，唯一下一授权为 Y2，F3-Final 继续
+`F3_FINAL_PAUSED_PENDING_STAGE_Y`。
+
+Y0 冻结入口：[Stage Y route amendment and Y0 protocol](stage_y_route_and_y0_protocol_20260910.md)。
 该正式协议和 `config/stage_y/y0_protocol.json` 取代本文中的“建议/推荐”作为
 后续执行合同；本文其余规划内容保留为设计来源。当前路由为
 `F3_FINAL_PAUSED_PENDING_STAGE_Y`，Y0 PASS 后唯一下一授权为

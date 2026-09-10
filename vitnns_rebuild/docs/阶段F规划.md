@@ -1,6 +1,10 @@
 # 阶段 F：论文图表生成（F0–F3）
 
 > 建立日期：2026-09-07。
+> 2026-09-11：原 Stage Y Y1 `BLOCKED_BUDGET` 与
+> `next_authorization=NONE` 不变；Y1-R1 以一次性 owner telemetry waiver 和
+> conservative budget rebind 为依据 PASS，未新增 GPU、图像或科学结果。唯一
+> 下一授权为 Y2；F3-Final 继续 `F3_FINAL_PAUSED_PENDING_STAGE_Y`。
 > 2026-09-10 前瞻性路由更新：F3-Final 当前为 `F3_FINAL_PAUSED_PENDING_STAGE_Y`。Stage Y Y0 已冻结；在 Stage Y results-to-paper handoff 前不得启动 F3-Final。该暂停不修改下述任何既有 Stage F 结果、completion、图形或 archive ref。正式入口见 [Stage Y Y0 protocol](stage_y_route_and_y0_protocol_20260910.md)。
 > 当前状态：Stage F F0–F3 主模块、F3-Display、F3-HeadAtlas（历史 token `F3H`）和 F3-ClassCompare（历史 token `F3C`）均已有封存产物；F3C 的 50 图展示包也已完成。2026-09-08 的论文图形审计确认 F1/F2 为定量主证据、F3 蓝色图为正文定性展示层、signed/shared-scale 图为幅值与符号审计层。最终 Figure 1–6 / Supplement S1–S4 组合包尚未单独封存，F3-ClassCompare 是否作为 S5 随稿交付须在 F3-Final 中冻结。
 > 当前调度：X2 immutable `NO_GO_BROAD_CLAIM_DEVELOPMENT` 不变；post-hoc exploratory X2-MECH M2 已 `PASS`，结果分支为 `MIXED_OR_INCONCLUSIVE`。M2 results-to-paper handoff 的历史下一授权为 `F3_FINAL_FIGURE_PACKAGE_ONLY`，现已由 Stage Y Y0 前瞻性暂停；Y0 PASS 后唯一下一授权为 `STAGE_Y1_IMPLEMENTATION_VALIDATION_AND_COST_PILOT_ONLY`。后续 F3-Final 仅可纳入 handoff 允许的模块，不得预设最终 Figure 编号或恢复 broad claim。论文使用边界见 [X2-MECH M2 results-to-paper handoff](stage_x_x2_mech_results_to_paper_handoff_20260910.md)。
