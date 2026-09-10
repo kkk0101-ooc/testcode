@@ -14,7 +14,6 @@ import argparse
 import ast
 import csv
 import hashlib
-import importlib
 import io
 import json
 import math
@@ -737,6 +736,7 @@ def _require_cpu_only_environment() -> dict[str, Any]:
         "downloads": 0,
         "display_png_jpeg_generated": False,
         "torch_imported_for_cpu_geometry": False,
+        "scipy_cpu_geometry": False,
         "timm_imported": False,
     }
 
@@ -1140,32 +1140,29 @@ def _transport_clean(clean: np.ndarray, transform: str, metadata: Mapping[str, A
             restored[n:, :] = array[n:, :]
             valid[n:, :] = True
         return restored, valid
-    try:
-        torch = importlib.import_module("torch")
-        torchvision = importlib.import_module("torchvision")
-    except Exception as error:
-        raise X2MechM2Error("CPU-only Torch/torchvision is required for rotate/crop transport") from error
-    if os.environ.get("CUDA_VISIBLE_DEVICES") != "":
-        raise X2MechM2Error("Torch geometry import requires CUDA_VISIBLE_DEVICES=''")
-    access["torch_imported_for_cpu_geometry"] = True
-    tensor = torch.from_numpy(array)
-    TF = torchvision.transforms.functional
-    interpolation = torchvision.transforms.InterpolationMode
+    from scipy import ndimage
+    from skimage.transform import resize
+
+    access["scipy_cpu_geometry"] = True
     kind = metadata["inverse"]
     if kind == "rotate":
-        forward = TF.rotate(tensor.unsqueeze(0), float(metadata["angle"]), interpolation=interpolation.BILINEAR, fill=0.0)
-        back = TF.rotate(forward, -float(metadata["angle"]), interpolation=interpolation.BILINEAR, fill=0.0).squeeze(0)
+        angle = float(metadata["angle"])
+        forward = ndimage.rotate(array, angle, reshape=False, order=1, mode="constant", cval=0.0, prefilter=False)
+        back = ndimage.rotate(forward, -angle, reshape=False, order=1, mode="constant", cval=0.0, prefilter=False)
         valid[:] = False
         r0, r1, c0, c1 = metadata["valid_box"]
         valid[int(r0):int(r1), int(c0):int(c1)] = True
-        return back.numpy().astype(np.float32, copy=False), valid
+        return back.astype(np.float32, copy=False), valid
     if kind == "resize_224_to_216_then_pad4":
-        cropped = TF.resize(tensor.unsqueeze(0)[:, 4:220, 4:220], [224, 224], interpolation=interpolation.BICUBIC, antialias=True)
-        restored = torch.zeros_like(tensor)
-        restored[4:220, 4:220] = TF.resize(cropped, [216, 216], interpolation=interpolation.BILINEAR, antialias=False).squeeze(0)
+        forward = resize(array[4:220, 4:220], (224, 224), order=3, mode="edge",
+                         anti_aliasing=True, preserve_range=True)
+        inner = resize(forward, (216, 216), order=1, mode="edge",
+                       anti_aliasing=False, preserve_range=True)
+        restored = np.zeros_like(array)
+        restored[4:220, 4:220] = inner.astype(np.float32, copy=False)
         valid[:] = False
         valid[4:220, 4:220] = True
-        return restored.numpy().astype(np.float32, copy=False), valid
+        return restored.astype(np.float32, copy=False), valid
     raise X2MechM2Error(f"unsupported transport transform: {transform}")
 
 
