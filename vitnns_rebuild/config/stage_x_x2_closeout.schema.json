@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_x_x2_closeout.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "document_type", "stage_id", "status", "producer", "terminal_evidence", "historical_chain", "scientific_state", "custody", "verification", "downstream", "canonical_digest"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_x_x2_provenance_closeout"},
+    "stage_id": {"const": "X2"},
+    "status": {"const": "NO_GO_BROAD_CLAIM_DEVELOPMENT"},
+    "producer": {"$ref": "#/$defs/producer"},
+    "terminal_evidence": {"type": "array", "minItems": 5, "items": {"$ref": "#/$defs/file"}},
+    "historical_chain": {"type": "array", "minItems": 4, "items": {"$ref": "#/$defs/historical"}},
+    "scientific_state": {"type": "object", "additionalProperties": false, "required": ["expected_units", "valid_units", "failed_units", "stability_cells", "stability_cells_pass", "stability_pass_fraction", "stability_absolute_pass", "gradcam_stability_noninferiority_pass", "futility_triggered", "formal_superiority_claim", "formal_budget_pass"], "properties": {"expected_units": {"const": 200}, "valid_units": {"const": 199}, "failed_units": {"const": 1}, "stability_cells": {"const": 115}, "stability_cells_pass": {"const": 50}, "stability_pass_fraction": {"type": "number"}, "stability_absolute_pass": {"const": false}, "gradcam_stability_noninferiority_pass": {"const": false}, "futility_triggered": {"const": false}, "formal_superiority_claim": {"const": false}, "formal_budget_pass": {"const": false}}},
+    "custody": {"type": "object", "additionalProperties": false, "required": ["final_root", "final_root_regular_files", "final_root_bytes", "final_inventory_files", "final_inventory_bytes", "all_x2_roots_regular_files", "all_x2_roots_bytes", "complete_local_evidence_retained", "lightweight_remote_is_complete_evidence_mirror", "large_route_payloads_added_to_git"], "properties": {"final_root": {"type": "string"}, "final_root_regular_files": {"const": 2434}, "final_root_bytes": {"const": 74464507}, "final_inventory_files": {"const": 2431}, "final_inventory_bytes": {"const": 73682080}, "all_x2_roots_regular_files": {"const": 11407}, "all_x2_roots_bytes": {"const": 1506461563}, "complete_local_evidence_retained": {"const": true}, "lightweight_remote_is_complete_evidence_mirror": {"const": false}, "large_route_payloads_added_to_git": {"const": false}}},
+    "verification": {"type": "object", "additionalProperties": false, "required": ["source_recomputing_validator", "unit_terminals_validated", "artifacts_validated", "formal_journals_validated", "pending_publications", "focused_tests", "py_compile", "git_diff_check"], "properties": {"source_recomputing_validator": {"const": "PASS_EXPECTED_NO_GO"}, "unit_terminals_validated": {"const": 200}, "artifacts_validated": {"const": 2434}, "formal_journals_validated": {"const": 398}, "pending_publications": {"const": 0}, "focused_tests": {"const": "57 passed"}, "py_compile": {"const": "PASS"}, "git_diff_check": {"const": "PASS"}}},
+    "downstream": {"type": "object", "additionalProperties": false, "required": ["x3_started", "x4_started", "x5_started", "x3_x5_authorized", "next_authorization"], "properties": {"x3_started": {"const": false}, "x4_started": {"const": false}, "x5_started": {"const": false}, "x3_x5_authorized": {"const": false}, "next_authorization": {"const": "F3_FINAL_FIGURE_PACKAGE_ONLY"}}},
+    "canonical_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "producer": {"type": "object", "additionalProperties": false, "required": ["commit", "tree", "archive_ref"], "properties": {"commit": {"$ref": "#/$defs/gitsha"}, "tree": {"$ref": "#/$defs/gitsha"}, "archive_ref": {"const": "refs/archive/stage-x-nns-v2-x2-producer"}}},
+    "gitsha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "file": {"type": "object", "additionalProperties": false, "required": ["path", "bytes", "sha256", "canonical_digest", "status"], "properties": {"path": {"type": "string"}, "bytes": {"type": "integer", "minimum": 1}, "sha256": {"$ref": "#/$defs/sha256"}, "canonical_digest": {"$ref": "#/$defs/sha256"}, "status": {"type": "string"}}},
+    "historical": {"type": "object", "additionalProperties": false, "required": ["stage", "status", "path", "sha256", "canonical_digest", "immutable"], "properties": {"stage": {"type": "string"}, "status": {"type": "string"}, "path": {"type": "string"}, "sha256": {"$ref": "#/$defs/sha256"}, "canonical_digest": {"$ref": "#/$defs/sha256"}, "immutable": {"const": true}}}
+  }
+}

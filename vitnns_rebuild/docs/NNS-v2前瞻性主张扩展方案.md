@@ -1,10 +1,10 @@
 # NNS-v2 前瞻性主张扩展方案（Stage X）
 
 > 建立日期：2026-09-08。
-> 状态：X0-R1 `PASS`；X1 `BLOCKED_MISSING_PINNED_COMPARATOR_ENGINE`。原 X0 的 identity-comparator contradiction 已由前瞻性 X0-R1 修正。尚未授权新数据/模型下载或 formal outcome access。
-> 当前下一授权：`NONE_REQUIRES_PROSPECTIVE_X1_RECOVERY_AMENDMENT`。
+> 状态：X1-R1 `PASS`；X2 经版本化恢复链完成并封存为 `NO_GO_BROAD_CLAIM_DEVELOPMENT`。X3–X5 未启动且不再授权。
+> 当前下一授权：`F3_FINAL_FIGURE_PACKAGE_ONLY`，恢复 original-scope paper 路线。
 > 上游状态：C10、Stage D D0–D10、历史 Stage E E0–E4 和 Stage F 已封存工作包均保持只读。
-> 下游状态：`F3_FINAL_FIGURE_PACKAGE_ONLY` 与 `STAGE_G_WRITING_G0_ONLY` 暂缓，等待 X6 决策。
+> 下游状态：X2 provenance closeout 完成后执行 original-scope `F3_FINAL_FIGURE_PACKAGE_ONLY`；其 terminal PASS 后才授权 `STAGE_G_WRITING_G0_ONLY`。
 
 ## 1. 目的与路线决议
 
@@ -510,3 +510,13 @@ X1 启动审计在模型/JPEG/GPU access 和 accepted implementation 前发现�
 X1 fresh startup gate 通过后，dependency preflight 在读取 audit JPEG、checkpoint 或模型前发现：本地没有 X0-R1 要求的 Chefer Transformer Attribution official engine，也没有 AttnLRP/LXT official engine。X1 的冻结 download cap 为 0 bytes，且 X0-R1 禁止用自写近似替代 pinned official comparator。因此 X1 终止为 `BLOCKED_MISSING_PINNED_COMPARATOR_ENGINE`；这是 dependency/infrastructure blocker，不是 NNS-v2 scientific failure。
 
 本轮没有 accepted X1 implementation，没有模型/JPEG/checkpoint access，没有 Torch/timm import 或 CUDA/GPU access，没有 X2/X3/F3-Final/Stage G。恢复需要新的前瞻性 `X1` dependency-materialization amendment，明确允许的两个仓库、固定 commits、licenses、下载字节上限和离线校验程序；该 amendment 不得授权 dataset/checkpoint 下载或删减 comparator。
+
+## 18. X1-R1 与 X2 terminal closeout（2026-09-10）
+
+X1 经前瞻性 dependency recovery 后由 X1-R1 完成：NNS-v2 与 full-model IG identity control 逐像素一致，135 个 complete cuts、38,107 个 logical components 和注册的 architectural accounting 全部通过。该方法有效性结果不等于 comparator superiority。
+
+X2 在冻结的 5 models × 40 development images 上执行。原 X2、X2-R1、X2-R2 和 X2-R2-R1 的失败/阻塞记录全部保持不可变；最终 X2-R2-R1-R1 只修复 inverse-map 对二维 attribution 的 shape handling，并在 fresh root 重算 formal phase。最终 200 routes 中 199 clean-valid、1 route-local numerical failure；source-recomputing validator 核验 200 个 unit terminals、2,434 个 artifacts、398 个 formal journals 和 0 pending。
+
+最终 decision 为 immutable `NO_GO_BROAD_CLAIM_DEVELOPMENT`：NNS-v2 absolute stability 仅 `50/115` cells，未达到 80%；相对固定 Grad-CAM 的 stability noninferiority 未通过；ROAD futility boundary 本身未触发，但 X2 hard cap 和 X3–X5 projected formal budgets 均未通过。上述任一事实均不得被重解释为 broad PASS。X3–X5 未启动且不再授权。
+
+权威终态为 `evidence/stage_x/x2_r2_r1_r1_nns_v2_development_20260910/formal/`；provenance closeout 为 `reports/stage_x_x2_provenance_closeout_20260910.json` 和 `docs/stage_x_x2_provenance_closeout_20260910.md`。现行路线按第 13 节停止门恢复为：existing Stage F evidence → original-scope F3-Final → Stage G。
