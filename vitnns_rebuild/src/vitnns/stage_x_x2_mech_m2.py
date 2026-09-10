@@ -1342,7 +1342,7 @@ def compute_multiscale_results(repo_root: Path | str = REPO_ROOT,
     hflip_rows: list[dict[str, Any]] = []
     structure_rows: list[dict[str, Any]] = []
     clean_cache: dict[tuple[str, str], np.ndarray] = {}
-    prepared_cache: dict[tuple[str, str, str, int], dict[str, Any]] = {}
+    prepared_cache: dict[tuple[str, str, str, str, int], dict[str, Any]] = {}
 
     def clean_map(unit: str, method: str) -> np.ndarray:
         key = (unit, method)
@@ -1353,8 +1353,9 @@ def compute_multiscale_results(repo_root: Path | str = REPO_ROOT,
     def m1_map(unit: str, method: str, transform: str, coordinate: str) -> np.ndarray:
         return _load_map_bound(repo, by_map[(unit, method, transform, coordinate)])
 
-    def prepared_clean(unit: str, method: str, mask_id: str, block: int, mask: np.ndarray) -> dict[str, Any]:
-        key = (unit, method, mask_id, block)
+    def prepared_clean(unit: str, method: str, transform: str, mask_id: str, block: int,
+                       mask: np.ndarray) -> dict[str, Any]:
+        key = (unit, method, transform, mask_id, block)
         if key not in prepared_cache:
             prepared_cache[key] = _prepare_clean_stability(clean_map(unit, method), mask, block)
         return prepared_cache[key]
@@ -1387,7 +1388,7 @@ def compute_multiscale_results(repo_root: Path | str = REPO_ROOT,
                 for mask_id in MASKS:
                     mask = masks_by_key[(transform, mask_id)]
                     for scale_id, block in SCALES:
-                        prepared = prepared_clean(unit, method, mask_id, block, mask)
+                        prepared = prepared_clean(unit, method, transform, mask_id, block, mask)
                         metrics = _m2_stability_metrics_prepared(prepared, inverse)
                         row = {
                             "unit_digest": unit,
