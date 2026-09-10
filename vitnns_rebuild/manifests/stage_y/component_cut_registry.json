@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "document_type": "stage_y_component_cut_registry",
+  "protocol_id": "STAGE_Y_VIT_BLOCK_LEVEL_NNS_MECHANISM_V1_20260910",
+  "registry_id": "STAGE_Y_COMPLETE_CUTS_V1_20260910",
+  "mathematical_identity": "reuse X1-R1 K_C[i,j]=(x_i-x0_i)*integral_0^1 (df/dh_C,j)(dh_C,j/dx_i)dalpha on the unmodified graph",
+  "path": {"baseline": "normalized_zero_tensor_equivalent_to_RGB_0.5", "path": "straight", "quadrature_schedule": [128, 256, 512, 1024, 2048, 4096, 8192], "first_passing_attempt_selected": true, "all_attempts_retained": true},
+  "cuts": [
+    {"cut_id": "post_patch_embedding_tokens", "scope": "global", "components": ["197 token coordinates including CLS and 196 patches"]},
+    {"cut_id": "block_input_tokens", "scope": "each block 0..11", "components": ["197 token coordinates"]},
+    {"cut_id": "first_residual_addition", "scope": "each block 0..11", "components": ["pre_attention_identity", "native_attention_head_0..11_after_matching_output_projection_columns", "attention_aggregate=sum(native_heads)"], "allocation_pair": ["pre_attention_identity", "attention_aggregate"]},
+    {"cut_id": "second_residual_addition", "scope": "each block 0..11", "components": ["post_attention_residual", "mlp_output"], "allocation_pair": ["post_attention_residual", "mlp_output"]},
+    {"cut_id": "block_output_tokens", "scope": "each block 0..11", "components": ["197 token coordinates"]},
+    {"cut_id": "final_norm", "scope": "global", "components": ["197 normalized token coordinates"]},
+    {"cut_id": "classifier_input", "scope": "global", "components": ["CLS classifier-input coordinates"]}
+  ],
+  "patch_routing": {
+    "matrix_definition": "T_b[p,q]=sum input coordinates in source patch p and cut coordinates in destination patch token q of K_b",
+    "cls_definition": "C_b[p]=sum input coordinates in source patch p and cut coordinates in CLS token of K_b",
+    "matrix_shape": [196, 196],
+    "cls_shape": [196],
+    "signed": true,
+    "first_residual_matrices": ["identity", "head_0..11", "attention_aggregate"],
+    "second_residual_matrices": ["post_attention_residual", "mlp"],
+    "interpretation": "target-conditioned path-integrated contribution, not attention probability, information-flow truth, or Markov transition"
+  },
+  "constant_direct_accounting": {"biases_and_constant_embeddings_active": true, "direct_derivative_at_introduction": 0.0, "baseline_logit_recorded": true, "input_dependent_delta_recorded": true, "constant_terms_not_dropped": true},
+  "reconstruction_contracts": {
+    "input_completeness": "abs(sum(A)-delta_logit) <= 1e-4 + 0.005*abs(delta_logit)",
+    "pixel_reconstruction": "max_abs(sum_components(K_C)-A) <= 2e-5 + 0.005*max_abs(A)",
+    "total_reconstruction": "abs(sum(K_C)-delta_logit) <= 2e-4 + 0.01*abs(delta_logit)",
+    "endpoint_parity": "max_abs(native_logits-hooked_logits) < 1e-6",
+    "convergence": "first quadrature schedule member satisfying every required contract and deterministic repeatability",
+    "head_sum": "sum of 12 native head component arrays reconstructs attention aggregate under pixel and total tolerances",
+    "first_residual_sum": "identity plus attention aggregate reconstructs first residual-add output under pixel and total tolerances",
+    "second_residual_sum": "post-attention residual plus MLP reconstructs second residual-add output under pixel and total tolerances",
+    "scalar_map_matrix_sum": "float64 reductions of scalar conductance, signed cell map, patch matrix plus CLS vector and direct accounting agree within total reconstruction tolerance",
+    "failure_at_8192": "FAILED_NUMERICAL retained in denominator with no replacement"
+  },
+  "forbidden_operations": ["sum_decompositions_across_blocks", "three_way_identity_attention_mlp_allocation", "isolated_q_k_v_or_attention_named_complete_cut", "custom_propagation_rule"],
+  "canonical_digest": "54f3ca77177a901b4ec2f763c0ea0d697a76f737cd035145f932e2c65c507411"
+}

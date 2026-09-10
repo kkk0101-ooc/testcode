@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "document_type": "stage_y_statistical_analysis_plan",
+  "protocol_id": "STAGE_Y_VIT_BLOCK_LEVEL_NNS_MECHANISM_V1_20260910",
+  "plan_id": "STAGE_Y_SAP_V1_20260910",
+  "independent_unit": "image",
+  "repeated_measures_not_independent": ["blocks", "heads", "patches", "components", "transforms", "tie seeds"],
+  "estimand": "cohort median of the preregistered image-level aggregate",
+  "image_level_aggregation_order": ["compute primitive metrics from signed scientific arrays without display transforms", "reduce patches/cells/heads inside each image-block-condition exactly as specified by metric registry", "arithmetic-mean the four fixed blocks within each depth group for that image", "form within-image paired deep-minus-shallow or intervention-minus-control contrasts", "perform cohort inference only on one contrast row per image"],
+  "depth_groups": {"shallow": [0,1,2,3], "middle": [4,5,6,7], "deep": [8,9,10,11]},
+  "trajectory_rule": "for every registered metric report all blocks 0..11 in order as cohort median and 95% image-bootstrap CI; trajectories, all middle-depth contrasts and any local extrema are estimation/descriptive and cannot select a confirmatory block",
+  "bootstrap": {"replicates": 20000, "rng": "numpy.random.Generator(PCG64)", "seed": 792020260910, "resampling_unit": "image with all repeated measures retained together", "ci": "two-sided percentile 95% using numpy quantile method=linear", "median_even_n": "arithmetic mean of the two middle sorted observations"},
+  "tests": {"sign_flip_replicates": 100000, "rng": "numpy.random.Generator(PCG64)", "seed": 792120260910, "plus_one_correction": true, "directional_margin_test": "p=(1+count(null sign-flip median >= observed median of d-margin))/(B+1)", "two_sided_margin_test": "p=min(1,2*min(p_plus for d-margin, p_minus for -d-margin))"},
+  "multiplicity": {"method": "Holm step-down", "alpha": 0.05, "families_independent": true, "ties": "stable order by hypothesis_id", "unadjusted_claim_p_values_forbidden": true},
+  "missing_and_denominator": {"terminal_states": ["VALID", "FAILED", "NA"], "failed_or_na_retained": true, "replacement": false, "zero_imputation": false, "complete_case_substitution": false, "clean_minimum_valid_images": 90, "perturbation_minimum_valid_images": 18, "paired_contrast_requires_both_sides_valid": true, "below_minimum": "claim INVALID", "denominators_reported": ["expected", "VALID", "FAILED", "NA"]},
+  "families": [
+    {"family_id": "A", "role": "primary confirmatory within-patch refinement", "hypotheses": [
+      {"hypothesis_id": "A1", "endpoint": "hierarchical_positive_deletion_auc_gain", "image_aggregate": "arithmetic mean over blocks 0..11 of NNS deletion-loss AUC minus the median of 32 patch-uniform tie-control AUCs", "direction": "greater", "effect_threshold": 0.02, "support": "Holm-adjusted p<0.05 and 95% CI lower bound>0.02", "not_supported": "95% CI upper bound<=0.02"}
+    ]},
+    {"family_id": "B", "role": "primary confirmatory depth organization and head-control family", "hypotheses": [
+      {"hypothesis_id": "B1", "endpoint": "log_effective_spatial_support_deep_minus_shallow", "direction": "two_sided", "effect_threshold": 0.09531017980432493},
+      {"hypothesis_id": "B2", "endpoint": "effective_head_count_deep_minus_shallow", "direction": "two_sided", "effect_threshold": 0.5},
+      {"hypothesis_id": "B3", "endpoint": "off_diagonal_absolute_mass_fraction_deep_minus_shallow", "direction": "two_sided", "effect_threshold": 0.05},
+      {"hypothesis_id": "B4", "endpoint": "first_residual_attention_absolute_mass_share_deep_minus_shallow", "direction": "two_sided", "effect_threshold": 0.05},
+      {"hypothesis_id": "B5", "endpoint": "second_residual_mlp_absolute_mass_share_deep_minus_shallow", "direction": "two_sided", "effect_threshold": 0.05},
+      {"hypothesis_id": "B6", "endpoint": "head_allocation_ablation_spearman_fisher_z", "image_aggregate": "mean Fisher-z Spearman across 12 blocks between head absolute allocation and normalized clean-logit ablation loss", "direction": "greater", "effect_threshold": 0.2027325540540822},
+      {"hypothesis_id": "B7", "endpoint": "top3_minus_bottom3_head_ablation_loss", "image_aggregate": "mean across 12 blocks; heads ranked only by preregistered absolute allocation with hash tie-break", "direction": "greater", "effect_threshold": 0.02}
+    ], "default_two_sided_support": "Holm-adjusted p<0.05 and the 95% CI lies wholly above +threshold or wholly below -threshold", "default_two_sided_not_supported": "the 95% CI lies wholly inside [-threshold,+threshold]", "directional_support": "Holm-adjusted p<0.05 and 95% CI lower bound exceeds threshold"},
+    {"family_id": "C", "role": "secondary confirmatory perturbation-modulation family; not a spatial-robustness family", "population": "fixed 20-image perturbation subset", "hypotheses": [
+      {"hypothesis_id": "C1", "endpoint": "mean_absolute_condition_change_within_patch_normalized_total_variation", "direction": "greater", "effect_threshold": 0.05},
+      {"hypothesis_id": "C2", "endpoint": "mean_one_minus_head_absolute_share_cosine", "direction": "greater", "effect_threshold": 0.05},
+      {"hypothesis_id": "C3", "endpoint": "mean_one_minus_inverse_mapped_patch_matrix_absolute_mass_cosine", "direction": "greater", "effect_threshold": 0.05},
+      {"hypothesis_id": "C4", "endpoint": "mean_absolute_branch_share_change", "direction": "greater", "effect_threshold": 0.03}
+    ], "condition_aggregation": "within image compute each non-clean condition-minus-clean endpoint, then arithmetic-mean over all eight conditions and all 12 blocks; no condition may be selected", "support": "Holm-adjusted p<0.05 and 95% CI lower bound exceeds threshold", "not_supported": "95% CI upper bound<=threshold"}
+  ],
+  "descriptive_only": ["144-head atlas coordinates", "individual 196x196 entries and effective rank", "all 12-block trajectories and middle-depth contrasts", "correct/misclassified strata", "per-condition and condition-by-depth perturbation interactions", "raw-attention associations", "signed conductance directions not listed as confirmatory endpoints", "true-class or runner-up targets"],
+  "no_best_selection": true,
+  "canonical_digest": "26fd005e674e9006bfcdb2db642d5a4a5f3fec6cb78b3c24f572348415706e9a"
+}

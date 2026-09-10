@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "document_type": "stage_y_schema_registry",
+  "protocol_id": "STAGE_Y_VIT_BLOCK_LEVEL_NNS_MECHANISM_V1_20260910",
+  "registry_id": "STAGE_Y_ARRAY_SCHEMAS_V1_20260910",
+  "global_array_rules": {"storage_dtype": "float32 little-endian C-contiguous", "reduction_dtype": "float64", "axis_indices": "zero-based", "patch_order": "row-major 14x14", "cell_order": "row-major 56x56 of nonoverlapping 4x4 input cells", "sign": "positive increases and negative decreases the fixed clean predicted-class raw logit relative to the frozen baseline", "nan_inf_forbidden": true},
+  "arrays": [
+    {"array_type": "signed_cell_component_map", "shape": [56, 56], "axes": ["cell_y", "cell_x"], "scope": "all 100 images per condition/block/head and aggregate/branch component as retained by plan"},
+    {"array_type": "full_signed_rgb_component_map", "shape": [3, 224, 224], "axes": ["rgb", "pixel_y", "pixel_x"], "scope": "fixed audit subset only"},
+    {"array_type": "positive_component_map", "shape": [224, 224], "axes": ["pixel_y", "pixel_x"], "definition": "max(sum_rgb signed contribution,0)", "scope": "fixed audit subset only"},
+    {"array_type": "negative_component_map", "shape": [224, 224], "axes": ["pixel_y", "pixel_x"], "definition": "min(sum_rgb signed contribution,0)", "scope": "fixed audit subset only"},
+    {"array_type": "source_destination_patch_matrix", "shape": [196, 196], "axes": ["source_patch", "destination_patch"], "scope": "aggregate, first-residual identity, each of 12 heads, attention aggregate, second-residual post-attention residual and MLP"},
+    {"array_type": "source_patch_cls_vector", "shape": [196], "axes": ["source_patch"], "scope": "same components as patch matrices"},
+    {"array_type": "head_allocation_vector", "shape": [12], "axes": ["head"], "scope": "each image, condition and block"},
+    {"array_type": "raw_attention_control", "shape": [12, 197, 197], "axes": ["head", "query_token", "key_token"], "scope": "fixed audit subset only; descriptive structure reference"},
+    {"array_type": "valid_mask", "shape": [224, 224], "axes": ["pixel_y", "pixel_x"], "dtype": "bool", "scope": "every perturbation operator"}
+  ],
+  "scalar_record_required_fields": ["protocol_id", "selection_digest", "source_object_id", "image_terminal_state", "condition_id", "fixed_target_class", "transformed_predicted_class", "block", "component_id", "signed_conductance", "positive_mass", "negative_mass", "absolute_mass", "cancellation", "reconstruction_residual", "array_records"],
+  "terminal_record_required_fields": ["unit_digest", "attempt_id", "status", "failure_code", "target_identity", "source_binding", "quadrature_attempts", "resource_telemetry", "array_records"],
+  "array_digest": "sha256(utf8(dtype) + NUL + utf8(Python tuple shape) + NUL + raw little-endian C-contiguous bytes)",
+  "file_digest": "SHA-256 over exact file bytes",
+  "json_digest": "SHA-256 over UTF-8 canonical JSON with sorted keys, compact separators, finite numbers, and canonical_digest omitted",
+  "scientific_root": "evidence/stage_y/y2_clean_formal_20260910 and evidence/stage_y/y3_perturbation_formal_20260910",
+  "display_root": "evidence/stage_y/display_only_after_y4",
+  "display_arrays_allowed_as_scientific_input": false,
+  "canonical_digest": "bfca9e05b9815083139eeb9894c49db40ddb9dd56015c761b089c5d44305ec82"
+}

@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "document_type": "stage_y_y1_cost_pilot_plan",
+  "protocol_id": "STAGE_Y_VIT_BLOCK_LEVEL_NNS_MECHANISM_V1_20260910",
+  "plan_id": "STAGE_Y_Y1_COST_PILOT_V1_20260910",
+  "authorization_required": "STAGE_Y1_IMPLEMENTATION_VALIDATION_AND_COST_PILOT_ONLY",
+  "allowed_empirical_image": {"sample_id": "ILSVRC2012_val/ILSVRC2012_val_00002287.JPEG", "selection_order": 44, "role": "prior-access audit image only", "formal_stage_y_eligibility": false},
+  "allowed_nonempirical_inputs": ["analytic fixtures", "synthetic tensors"],
+  "conditions": ["clean", "horizontal_flip"],
+  "coverage": {"blocks": [0,1,2,3,4,5,6,7,8,9,10,11], "heads_per_block": 12, "cuts": ["post_patch_embedding_tokens", "block_input_tokens", "first_residual_addition", "second_residual_addition", "block_output_tokens", "final_norm", "classifier_input"], "matrices": "all aggregate, branch, 12 per-head 196x196 matrices and CLS vectors", "ablations": "all 144 single-head and frozen top-k/bottom-k curves", "repeatability_runs": 2},
+  "timing_boundaries": ["checkpoint open and model construction reported separately", "preprocessing", "clean target forward", "baseline forward", "quadrature per schedule attempt", "each grouped JVP/VJP cut and matrix extraction", "single/multi-head ablations", "metric serialization and fsync"],
+  "required_telemetry": ["forward calls", "backward calls", "JVP calls", "VJP calls", "quadrature steps and attempts", "peak allocated GPU bytes", "peak reserved GPU bytes", "wall seconds", "GPU active seconds", "CPU seconds", "output bytes by schema type", "retained bytes", "convergence terminal per block/cut"],
+  "pilot_hard_caps": {"h20_gpu_hours": 8.0, "wall_hours": 16.0, "cpu_hours": 96.0, "peak_reserved_gpu_gib_per_process": 80.0, "retained_gib": 64.0, "download_bytes": 0, "devices": 1},
+  "projection": {
+    "safety_multiplier": 1.5,
+    "clean_unit_cost": "maximum of the two full clean repeat costs after subtracting separately measured one-time fixed cost",
+    "perturbation_incremental_cost": "max(0, maximum full horizontal-flip repeat cost - clean_unit_cost)",
+    "y2_raw": "fixed_cost + 100*clean_unit_cost",
+    "y3_raw": "fixed_cost + 20*8*(clean_unit_cost+perturbation_incremental_cost)",
+    "formal_gpu_hours": "ceil_to_0.1(safety_multiplier*raw_gpu_hours)",
+    "formal_wall_hours": "ceil_to_1(safety_multiplier*critical_path_wall_hours under the Y1-measured device schedule)",
+    "formal_memory_gib": "ceil_to_1(safety_multiplier*observed_peak_reserved_gib)",
+    "formal_storage_gib": "ceil_to_1(safety_multiplier*(fixed_bytes + unit_count*observed_retained_bytes_per_condition))",
+    "calls_and_attempts": "same linear formulas without rounding; report per schema/cut and total"
+  },
+  "owner_ceiling_guards_not_formal_budgets": {"y2_h20_gpu_hours": 300.0, "y3_h20_gpu_hours": 500.0, "y2_wall_hours": 168.0, "y3_wall_hours": 240.0, "peak_reserved_gpu_gib_per_process": 80.0, "y2_storage_gib": 2048.0, "y3_storage_gib": 4096.0},
+  "budget_seal": "Y1 must publish a new formal budget receipt before Y2/Y3; if a projected value exceeds a ceiling or telemetry is incomplete, terminal is BLOCKED_BUDGET and no formal cohort outcome access is allowed",
+  "resource_only_amendment": "before any formal cohort outcome access, owner may prospectively reduce workload for cost only; no pilot prediction, logit, attribution, metric, convergence difficulty, or visual result may choose transforms, blocks, heads, cuts, or samples",
+  "canonical_digest": "ceae68e46910014e6092eb2b47e25069216e0bb0515a1c4201f74f0915755d4d"
+}

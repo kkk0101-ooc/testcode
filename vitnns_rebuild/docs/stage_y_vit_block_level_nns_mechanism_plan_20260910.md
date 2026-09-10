@@ -2,7 +2,13 @@
 
 日期：2026-09-10
 
-状态：`PLANNING_DRAFT_BEFORE_Y0_PROTOCOL_FREEZE`
+状态：`Y0_FROZEN`
+
+Y0 冻结入口：[Stage Y route amendment and Y0 frozen protocol](stage_y_route_and_y0_protocol_20260910.md)。
+该正式协议和 `config/stage_y/y0_protocol.json` 取代本文中的“建议/推荐”作为
+后续执行合同；本文其余规划内容保留为设计来源。当前路由为
+`F3_FINAL_PAUSED_PENDING_STAGE_Y`，Y0 PASS 后唯一下一授权为
+`STAGE_Y1_IMPLEMENTATION_VALIDATION_AND_COST_PILOT_ONLY`。
 
 建议阶段 ID：`STAGE_Y_VIT_BLOCK_LEVEL_NNS_MECHANISM`
 

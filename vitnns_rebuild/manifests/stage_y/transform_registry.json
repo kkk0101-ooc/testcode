@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "document_type": "stage_y_transform_registry",
+  "protocol_id": "STAGE_Y_VIT_BLOCK_LEVEL_NNS_MECHANISM_V1_20260910",
+  "registry_id": "STAGE_Y_TRANSFORMS_V1_20260910",
+  "input_domain": "float32 RGB in [0,1] after the frozen 248-short-side bicubic antialiased resize and 224x224 center crop, before mean/std normalization",
+  "normalization": {"mean": [0.5, 0.5, 0.5], "std": [0.5, 0.5, 0.5]},
+  "geometry_backend_contract": {
+    "implementation": "torchvision.transforms.functional operations pinned by recovery-v2 environment torchvision 0.17.2; Y1 must byte-bind the implementation adapter",
+    "coordinate_convention": "zero-based pixel-center coordinates y,x on 224x224; source-to-transformed forward map is recorded for every condition",
+    "map_inverse_interpolation": "bilinear for rotations; exact index permutation for flip and translation",
+    "contribution_fill": 0.0,
+    "valid_mask": "transport a source-support image of ones while treating every synthetic fill or reflection-pad value as support zero, apply the frozen inverse operator, and mark valid iff returned support >= 0.999999; thus translate_x_-8 is clean-domain columns 8..223, translate_x_8 is columns 0..215, flip/photometric/noise are full-domain, and rotation uses the exact bilinear support mask rather than a hand-picked rectangle",
+    "patch_matrix_inverse": "construct W[clean_patch,transformed_patch] by lifting each transformed patch as uniform pixel mass 1/256, applying the frozen inverse map, and sum-pooling clean 16x16 patches; inverse matrix is W @ T_transformed @ W.T and inverse CLS vector is W @ C_transformed; only fully valid source/destination patch pairs enter agreement"
+  },
+  "noise_seed_rule": "uint64_big_endian(first_8_bytes(SHA256('STAGE_Y_NOISE_V1_20260910' + NUL + source_object_id + NUL + condition_id))) with numpy.random.PCG64",
+  "conditions": [
+    {"id": "clean", "kind": "identity", "forward_map": "(y,x)->(y,x)", "inverse_map": "identity", "interpolation": "none", "padding_fill": "none", "full_domain": true},
+    {"id": "horizontal_flip", "kind": "geometric", "forward_map": "(y,x)->(y,223-x)", "inverse_map": "same exact index permutation", "interpolation": "none", "padding_fill": "none", "full_domain": true, "control_role": "mandatory full-domain geometric control"},
+    {"id": "translate_x_-8", "kind": "geometric", "forward_map": "(y,x)->(y,x-8)", "inverse_map": "M_clean[y,x]=M_transformed[y,x-8] where in bounds", "interpolation": "none", "padding_fill": "8-pixel reflection padding in RGB domain", "full_domain": false},
+    {"id": "translate_x_8", "kind": "geometric", "forward_map": "(y,x)->(y,x+8)", "inverse_map": "M_clean[y,x]=M_transformed[y,x+8] where in bounds", "interpolation": "none", "padding_fill": "8-pixel reflection padding in RGB domain", "full_domain": false},
+    {"id": "rotate_-10", "kind": "geometric", "forward_map": "counter-clockwise rotation by -10 degrees about pixel center (111.5,111.5)", "inverse_map": "rotation by +10 degrees with identical center and bilinear sampling", "interpolation": "bilinear, align_corners not applicable", "padding_fill": "RGB [0.5,0.5,0.5]", "full_domain": false},
+    {"id": "rotate_10", "kind": "geometric", "forward_map": "counter-clockwise rotation by +10 degrees about pixel center (111.5,111.5)", "inverse_map": "rotation by -10 degrees with identical center and bilinear sampling", "interpolation": "bilinear, align_corners not applicable", "padding_fill": "RGB [0.5,0.5,0.5]", "full_domain": false},
+    {"id": "brightness_0.9", "kind": "photometric", "forward_map": "clip(RGB*0.9,0,1)", "inverse_map": "spatial identity; photometric values are not inverted", "interpolation": "none", "padding_fill": "none", "full_domain": true},
+    {"id": "brightness_1.1", "kind": "photometric", "forward_map": "clip(RGB*1.1,0,1)", "inverse_map": "spatial identity; photometric values are not inverted", "interpolation": "none", "padding_fill": "none", "full_domain": true},
+    {"id": "gaussian_noise_0.01_seed_0", "kind": "noise", "forward_map": "clip(RGB + iid float32 Normal(0,0.01),0,1) using the frozen per-object seed", "inverse_map": "spatial identity; noise values are not inverted", "interpolation": "none", "padding_fill": "none", "full_domain": true}
+  ],
+  "target_handling": {"target": "clean predicted-class raw logit", "class_index_fixed_across_all_conditions": true, "transformed_prediction_recorded": true, "prediction_flip_rows_retained": true, "prediction_flip_excluded_from_primary": false},
+  "resource_amendment_rule": "only a prospective resource-only amendment signed before formal cohort outcome access may reduce workload; pilot scientific values may not select or delete a condition",
+  "canonical_digest": "7ed01d1378580df8700a9cdecb9d0246651fcc9a972372627e95dbf5138ee4da"
+}

@@ -1,8 +1,9 @@
 # NNS-v2 前瞻性主张扩展方案（Stage X）
 
 > 建立日期：2026-09-08。
+> Stage Y 路由说明：Stage Y 是独立的 ViT block-level internal-mechanism study，不是 X2 recovery，也不改变 X2 `NO_GO_BROAD_CLAIM_DEVELOPMENT`。Y0 冻结协议见 [Stage Y route amendment and Y0 protocol](stage_y_route_and_y0_protocol_20260910.md)。
 > 状态：X1-R1 `PASS`；X2 经版本化恢复链完成并封存为 `NO_GO_BROAD_CLAIM_DEVELOPMENT`。X3–X5 未启动且不再授权。
-> 后续状态：post-hoc exploratory X2-MECH P0-R1、M1-R1 与 M2 已 `PASS`；M2 结果分支为 `MIXED_OR_INCONCLUSIVE`，results-to-paper handoff 已完成。当前唯一下一授权为 `F3_FINAL_FIGURE_PACKAGE_ONLY`。
+> 后续状态：post-hoc exploratory X2-MECH P0-R1、M1-R1 与 M2 已 `PASS`；M2 结果分支为 `MIXED_OR_INCONCLUSIVE`，results-to-paper handoff 已完成。其历史 F3-Final 授权已由 Stage Y Y0 前瞻性暂停；Y0 PASS 后唯一下一授权为 `STAGE_Y1_IMPLEMENTATION_VALIDATION_AND_COST_PILOT_ONLY`。
 > 上游状态：C10、Stage D D0–D10、历史 Stage E E0–E4 和 Stage F 已封存工作包均保持只读。
 > 下游状态：M2 terminal 与 results-to-paper handoff 已完成；下一步更新并执行 F3-Final composition，F3-Final terminal PASS 后才授权 `STAGE_G_WRITING_G0_ONLY`。M2 论文交接见 [X2-MECH M2 results-to-paper handoff](stage_x_x2_mech_results_to_paper_handoff_20260910.md)。
 

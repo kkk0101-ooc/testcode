@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "document_type": "stage_y_cohort_selection_and_exclusion_plan",
+  "protocol_id": "STAGE_Y_VIT_BLOCK_LEVEL_NNS_MECHANISM_V1_20260910",
+  "plan_id": "STAGE_Y_COHORT_V1_20260910",
+  "dataset": {"release": "ImageNet-1k ILSVRC2012 validation", "release_id": "ILSVRC2012_VAL_OFFICIAL", "count": 100, "distinct_true_classes": 100, "images_per_selected_class": 1},
+  "allowed_selection_fields": ["dataset_release_id", "class_id", "source_object_id", "file_sha256"],
+  "forbidden_selection_fields": ["prediction", "correctness", "raw_logit", "confidence", "attribution", "scientific_metric", "runtime", "visual_appearance"],
+  "prior_access_exclusion_sources": [
+    {"stage": "C10", "path": "manifests/stage_c_sample_registry.csv", "rule": "exclude every source_object_id"},
+    {"stage": "Stage_D_and_Stage_E", "path": "manifests/stage_d_fidelity_v1/registry.json", "rule": "exclude every source_object_id; Stage E is a subset/reuse of this population"},
+    {"stage": "F3_F3H", "path": "evidence/stage_f/f3_r7_recovery_v2_20260907/formal/selection_manifest.json", "rule": "exclude every selected or audit source object; also covered by Stage D exclusion"},
+    {"stage": "F3C", "path": "manifests/stage_f_f3c_v1/sample_split.json", "rule": "exclude pilot and formal source objects; also covered by Stage D exclusion"},
+    {"stage": "X1_audit", "path": "manifests/stage_x_prior_access_ledger_v1.json", "rule": "exclude all x1_allowed_audit_samples and every source listed by the ledger"},
+    {"stage": "X2_development_and_X2_MECH", "path": "evidence/stage_x/x2_r2_r1_r1_nns_v2_development_20260910/formal/manifests/development_samples.csv", "rule": "exclude every source_object_id/sample_id; X2-MECH reuses these routes"}
+  ],
+  "exclusion_union": "normalize source_object_id as dataset_release_id + ':' + release-native object identifier; union all listed sources; duplicates collapse; absence or unparsable source blocks Y2",
+  "selection_namespace": "STAGE_Y_FORMAL_COHORT_V1_20260910",
+  "class_digest": "sha256(namespace + NUL + dataset_release_id + NUL + decimal_class_id)",
+  "object_digest": "sha256(namespace + NUL + dataset_release_id + NUL + decimal_class_id + NUL + source_object_id + NUL + lowercase_file_sha256)",
+  "algorithm": [
+    "using release metadata only, enumerate classes 0..999 with at least one nonexcluded candidate",
+    "sort eligible classes by class_digest ascending then numeric class_id ascending and take the first 100",
+    "within each selected class sort candidates by object_digest ascending then source_object_id UTF-8 byte order ascending and take the first one",
+    "sort the 100 selected records by object_digest ascending then source_object_id and assign selection_order 0..99"
+  ],
+  "failure_rules": {"fewer_than_100_eligible_classes": "BLOCKED_COHORT", "duplicate_source_object_id": "BLOCKED_COHORT", "missing_file_sha256": "BLOCKED_COHORT", "numerical_failure_replacement_allowed": false, "visual_replacement_allowed": false, "terminal_states": ["VALID", "FAILED", "NA"]},
+  "subsets": {
+    "audit_10": {"namespace": "STAGE_Y_AUDIT_SUBSET_V1_20260910", "digest": "sha256(namespace + NUL + selected_object_digest)", "algorithm": "take 10 ascending digest then source_object_id"},
+    "perturbation_20": {"namespace": "STAGE_Y_PERTURBATION_SUBSET_V1_20260910", "digest": "sha256(namespace + NUL + selected_object_digest)", "algorithm": "take 20 ascending digest then source_object_id"},
+    "overlap_allowed": true,
+    "materialization_stage": "Y2_METADATA_ONLY_BEFORE_DECODE"
+  },
+  "y0_materialized_registry": false,
+  "y0_candidate_image_decode_count": 0,
+  "correct_and_misclassified_retained": true,
+  "canonical_digest": "90aba19f3e0a0ebb2b1306ec73dc28746d0db3380b0b9cd7822992e6480c44df"
+}

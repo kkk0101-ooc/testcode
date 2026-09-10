@@ -1,8 +1,9 @@
 # 阶段 G：论文写作规划（原 F4）
 
 > 生效日期：2026-09-08。
+> 2026-09-10 路由更新：Stage G 继续等待 Stage Y results-to-paper handoff 和据此更新后的 F3-Final terminal PASS。当前不得启动 Stage G；Y0 正式入口见 [Stage Y Y0 protocol](stage_y_route_and_y0_protocol_20260910.md)。
 > 当前定义：阶段 G 只负责论文写作、双语一致性、引用核验、编译和稿件封存，不负责生成或修改科学图表。
-> 前置阶段：X2 immutable `NO_GO_BROAD_CLAIM_DEVELOPMENT` 不变；post-hoc exploratory X2-MECH M2 已 `PASS`，结果分支为 `MIXED_OR_INCONCLUSIVE`，results-to-paper handoff 已完成。当前唯一下一授权为 `F3_FINAL_FIGURE_PACKAGE_ONLY`；该图包通过后 Stage G 才能进入正式写作。
+> 前置阶段：X2 immutable `NO_GO_BROAD_CLAIM_DEVELOPMENT` 不变；post-hoc exploratory X2-MECH M2 已 `PASS`，结果分支为 `MIXED_OR_INCONCLUSIVE`，results-to-paper handoff 已完成。其历史 F3-Final 授权已由 Stage Y Y0 前瞻性暂停；当前唯一下一授权为 `STAGE_Y1_IMPLEMENTATION_VALIDATION_AND_COST_PILOT_ONLY`。Stage Y handoff 与更新后的 F3-Final 图包通过后，Stage G 才能进入正式写作。
 > 历史兼容：阶段 E 继续专指 2026-09-06 至 2026-09-07 已执行并封存的消融与敏感性分析。其原规划保留在 [阶段 E 规划](阶段E规划.md)，config、code、evidence、reports、completion 和 archive refs 不改名、不搬移。
 
 ## 1. 阶段边界与当前路线
