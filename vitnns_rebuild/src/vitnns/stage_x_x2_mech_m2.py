@@ -39,7 +39,6 @@ from .stage_x_x2_mech_analysis import (
     clean_structure_metrics as clean_structure,
     seed64,
     sse_decomposition,
-    stability_metrics,
 )
 
 RUN_ID = "STAGE_X_X2_MECH_M2_V1_20260910"
@@ -808,6 +807,89 @@ def _bool_string(value: Any, context: str) -> bool:
     raise X2MechM2Error(f"{context}: invalid boolean")
 
 
+def _top_indices_1d(values: np.ndarray) -> np.ndarray:
+    array = np.asarray(values, dtype=np.float64).reshape(-1)
+    if array.size == 0 or not np.isfinite(array).all():
+        raise X2MechM2Error("top-10 values must be finite and non-empty")
+    count = int(math.ceil(0.1 * array.size))
+    return np.sort(np.argpartition(array, -count)[-count:])
+
+
+def _jaccard_1d(left: np.ndarray, right: np.ndarray) -> float:
+    a = _top_indices_1d(left)
+    b = _top_indices_1d(right)
+    return float(np.intersect1d(a, b).size / np.union1d(a, b).size)
+
+
+def _centroid(weights: np.ndarray, coordinates: np.ndarray, fallback: np.ndarray) -> np.ndarray:
+    total = float(weights.sum(dtype=np.float64))
+    if total <= np.finfo(np.float64).tiny:
+        return fallback
+    return (coordinates * weights[:, None]).sum(axis=0) / total
+
+
+def _block_centers(valid_blocks: np.ndarray, block: int) -> np.ndarray:
+    row, col = np.nonzero(valid_blocks)
+    return np.column_stack(((row + 0.5) * block - 0.5, (col + 0.5) * block - 0.5))
+
+
+def _m2_stability_metrics(clean: np.ndarray, transformed: np.ndarray,
+                          valid_mask: np.ndarray, block: int) -> dict[str, float]:
+    from skimage.metrics import structural_similarity
+
+    left = aggregate_blocks(clean, valid_mask, block)
+    right = aggregate_blocks(transformed, valid_mask, block)
+    valid = left["valid_blocks"]
+    if not np.array_equal(valid, right["valid_blocks"]):
+        raise X2MechM2Error("left/right complete-block masks differ")
+    signed_a = left["signed_sum"][valid]
+    signed_b = right["signed_sum"][valid]
+    mass_a = left["absolute_mass_sum"][valid]
+    mass_b = right["absolute_mass_sum"][valid]
+    if signed_a.size == 0:
+        raise X2MechM2Error("no complete valid units")
+    signed_map_a = np.nan_to_num(left["signed_sum"], nan=0.0)
+    signed_map_b = np.nan_to_num(right["signed_sum"], nan=0.0)
+    row, col = np.nonzero(valid)
+    r0, r1, c0, c1 = row.min(), row.max() + 1, col.min(), col.max() + 1
+    crop_a = signed_map_a[r0:r1, c0:c1]
+    crop_b = signed_map_b[r0:r1, c0:c1]
+    data_range = max(
+        float(max(signed_a.max(), signed_b.max()) - min(signed_a.min(), signed_b.min())),
+        1e-12,
+    )
+    win = min(
+        7,
+        crop_a.shape[0] if crop_a.shape[0] % 2 else crop_a.shape[0] - 1,
+        crop_a.shape[1] if crop_a.shape[1] % 2 else crop_a.shape[1] - 1,
+    )
+    if win < 3:
+        raise X2MechM2Error("too few valid units for SSIM")
+    coordinates = _block_centers(valid, block)
+    center = np.asarray([(np.asarray(clean).shape[0] - 1) / 2, (np.asarray(clean).shape[1] - 1) / 2])
+    positive_shift = np.linalg.norm(
+        _centroid(np.maximum(signed_a, 0.0), coordinates, center)
+        - _centroid(np.maximum(signed_b, 0.0), coordinates, center)
+    )
+    negative_shift = np.linalg.norm(
+        _centroid(np.maximum(-signed_a, 0.0), coordinates, center)
+        - _centroid(np.maximum(-signed_b, 0.0), coordinates, center)
+    )
+    mass_shift = np.linalg.norm(_centroid(mass_a, coordinates, center) - _centroid(mass_b, coordinates, center))
+    diagonal = math.hypot(*np.asarray(clean).shape)
+    return {
+        "signed_spearman": _spearman(signed_a, signed_b),
+        "top10_unit_signed_value_jaccard": _jaccard_1d(signed_a, signed_b),
+        "absolute_mass_spearman": _spearman(mass_a, mass_b),
+        "top10_unit_absolute_mass_jaccard": _jaccard_1d(mass_a, mass_b),
+        "signed_ssim": float(structural_similarity(crop_a, crop_b, data_range=data_range, win_size=win)),
+        "normalized_positive_negative_mass_displacement": float((positive_shift + negative_shift) / (2 * diagonal)),
+        "absolute_mass_center_of_mass_pixel_error": float(mass_shift),
+        "valid_unit_count": int(valid.sum()),
+        "excluded_partial_unit_count": int(valid.size - valid.sum()),
+    }
+
+
 def _m1_source_validation(repo: Path) -> dict[str, Any]:
     completion = strict_read(repo / m1.COMPLETION)
     validate_signed(completion, "M1 completion")
@@ -1132,7 +1214,7 @@ def compute_multiscale_results(repo_root: Path | str = REPO_ROOT,
                 for mask_id in MASKS:
                     mask = masks_by_key[(transform, mask_id)]
                     for scale_id, block in SCALES:
-                        metrics = stability_metrics(clean, inverse, mask, block)
+                        metrics = _m2_stability_metrics(clean, inverse, mask, block)
                         row = {
                             "unit_digest": unit,
                             "model_id": manifest["model_id"],
@@ -1219,7 +1301,7 @@ def compute_multiscale_results(repo_root: Path | str = REPO_ROOT,
                         if default_mask.shape != mask.shape:
                             raise X2MechM2Error("transport mask shape drifted")
                         transport_mask = mask & default_mask
-                        tmetrics = stability_metrics(clean, restored, transport_mask, block)
+                        tmetrics = _m2_stability_metrics(clean, restored, transport_mask, block)
                         transport_rows.append({
                             "unit_digest": unit,
                             "model_id": manifest["model_id"],
@@ -1334,7 +1416,7 @@ def compute_multiscale_results(repo_root: Path | str = REPO_ROOT,
     within_summary = _summarize_error(error_rows)
     fidelity_summary = _summarize_fidelity(source["fidelity_rows"])
     association_rows, association_json = _association_outputs(
-        structure_rows, stability_rows, fidelity_summary,
+        structure_rows, stability_rows, source["fidelity_rows"],
         draws=association_draws, max_attempts=max_attempts,
     )
     branch_csv, branch_json, interpretation = _branch_outputs(
@@ -1546,7 +1628,7 @@ def _assoc(records: Sequence[Mapping[str, Any]], x_key: str, y_key: str,
 
 def _association_outputs(structure_rows: Sequence[Mapping[str, Any]],
                          stability_rows: Sequence[Mapping[str, Any]],
-                         fidelity_summary_rows: Sequence[Mapping[str, Any]],
+                         fidelity_rows: Sequence[Mapping[str, Any]],
                          *, draws: int, max_attempts: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     valid_structure = [row for row in structure_rows if row["status"] == "PASS"]
     structure_by = {(row["unit_digest"], row["method_id"]): row for row in valid_structure}
@@ -1557,11 +1639,7 @@ def _association_outputs(structure_rows: Sequence[Mapping[str, Any]],
     grouped: dict[tuple[str, str], list[Mapping[str, Any]]] = defaultdict(list)
     for row in stable_valid:
         grouped[(row["unit_digest"], row["method_id"])].append(row)
-    fidelity_by = {
-        (row["method_id"], row["scale_id"]): row
-        for row in fidelity_summary_rows
-        if row["group"] == "overall"
-    }
+    fidelity_by = {(row["unit_digest"], row["method_id"], int(row["block"])): row for row in fidelity_rows}
     combined = []
     for key, rows in grouped.items():
         unit, method = key
@@ -1569,6 +1647,7 @@ def _association_outputs(structure_rows: Sequence[Mapping[str, Any]],
         pixel = [row for row in rows if row["scale_id"] == "pixel"]
         fine = [row for row in rows if row["scale_id"] == "fine_cell"]
         patch = [row for row in rows if row["scale_id"] == "native_patch"]
+        hflip = [row for row in pixel if row["transform"] == "horizontal_flip"]
         combined.append({
             **{field: structure[field] for field in ("unit_digest", "model_id", "sample_id", "method_id")},
             "absolute_top10_pixel_mass_share": structure["absolute_top10_pixel_mass_share"],
@@ -1582,15 +1661,18 @@ def _association_outputs(structure_rows: Sequence[Mapping[str, Any]],
             "median_pixel_jaccard": _median(pixel, "top10_unit_signed_value_jaccard"),
             "median_fine_jaccard": _median(fine, "top10_unit_signed_value_jaccard"),
             "median_patch_jaccard": _median(patch, "top10_unit_signed_value_jaccard"),
+            "horizontal_flip_signed_spearman": _median(hflip, "signed_spearman"),
             "pixel_to_patch_jaccard_change": _median(patch, "top10_unit_signed_value_jaccard") - _median(pixel, "top10_unit_signed_value_jaccard"),
-            "road_combined_4x4": float(fidelity_by[(method, "fine_cell")]["median_road_combined"]),
-            "road_combined_16x16": float(fidelity_by[(method, "native_patch")]["median_road_combined"]),
+            "road_combined_4x4": float(fidelity_by[(unit, method, 4)]["road_combined"]),
+            "road_combined_16x16": float(fidelity_by[(unit, method, 16)]["road_combined"]),
         })
     requested = (
         ("absolute_top10_pixel_mass_share", "median_pixel_signed_spearman"),
+        ("absolute_top10_pixel_mass_share", "horizontal_flip_signed_spearman"),
         ("normalized_total_variation", "pixel_to_fine_signed_spearman_change"),
         ("within_patch_16_residual_energy_fraction", "pixel_to_patch_signed_spearman_change"),
         ("median_pixel_jaccard", "road_combined_4x4"),
+        ("median_patch_jaccard", "road_combined_16x16"),
     )
     rows = []
     detail = {}

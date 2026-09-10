@@ -121,7 +121,7 @@ def test_stability_metrics_include_signed_and_absolute_mass_views() -> None:
     transformed = clean + np.roll(clean, 2, axis=1).astype(np.float32) * np.float32(0.02)
     mask = np.ones(clean.shape, dtype=bool)
     for _, block in m2.SCALES:
-        result = analysis.stability_metrics(clean, transformed, mask, block)
+        result = m2._m2_stability_metrics(clean, transformed, mask, block)
         assert set(result) == {
             "signed_spearman",
             "top10_unit_signed_value_jaccard",
