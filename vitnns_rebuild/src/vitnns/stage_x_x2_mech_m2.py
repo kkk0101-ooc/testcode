@@ -1690,8 +1690,39 @@ def _association_outputs(structure_rows: Sequence[Mapping[str, Any]],
     for method in METHODS:
         records = [row for row in combined if row["method_id"] == method]
         for x_key, y_key in requested:
-            result = _assoc(records, x_key, y_key, draws=draws, max_attempts=max_attempts,
-                            namespace="STAGE_X_X2_MECH_ASSOCIATION_V1_20260910")
+            try:
+                result = _assoc(records, x_key, y_key, draws=draws, max_attempts=max_attempts,
+                                namespace="STAGE_X_X2_MECH_ASSOCIATION_V1_20260910")
+            except X2MechM2Error as error:
+                if str(error) != "association not estimable":
+                    raise
+                rows.append({
+                    "method_id": method,
+                    "x_metric": x_key,
+                    "y_metric": y_key,
+                    "n": len(records),
+                    "effect": "",
+                    "ci_lower": "",
+                    "ci_upper": "",
+                    "bootstrap_draws": draws,
+                    "finite_draws": 0,
+                    "attempts": 0,
+                    "seed": seed64("STAGE_X_X2_MECH_ASSOCIATION_V1_20260910", x_key, y_key),
+                    "status": "NOT_ESTIMABLE_DEGENERATE",
+                })
+                detail[f"{method}:{x_key}:{y_key}"] = {
+                    "effect": None,
+                    "ci_lower": None,
+                    "ci_upper": None,
+                    "bootstrap_draws": draws,
+                    "finite_draws": 0,
+                    "attempts": 0,
+                    "seed": seed64("STAGE_X_X2_MECH_ASSOCIATION_V1_20260910", x_key, y_key),
+                    "per_model": {},
+                    "confirmatory_p_value": None,
+                    "status": "NOT_ESTIMABLE_DEGENERATE",
+                }
+                continue
             rows.append({
                 "method_id": method,
                 "x_metric": x_key,
