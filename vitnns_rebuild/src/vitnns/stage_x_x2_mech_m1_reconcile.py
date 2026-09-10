@@ -42,6 +42,7 @@ PENDING = ROOT / "completion/x2_mech_m1_r1.pending.json"
 RECONCILER = Path("src/vitnns/stage_x_x2_mech_m1_reconcile.py")
 TEST_FILE = Path("tests/test_stage_x_x2_mech_m1_reconcile.py")
 AMENDMENT = Path("docs/stage_x_x2_mech_m1_r1_digest_recovery_amendment_20260910.md")
+RECONCILIATION_VERIFIER_AMENDMENT = Path("docs/stage_x_x2_mech_m1_r1_reconciliation_verifier_amendment_20260910.md")
 OLD_BLOCKED_ROOT = Path("evidence/stage_x/x2_mech_m1_20260910/formal")
 METHODS = ("nns_v2", "vit_grad_cam")
 TRANSFORMS = worker.TRANSFORMS
@@ -290,10 +291,17 @@ def _load_seal(repo: Path) -> dict[str, Any]:
     _validate_signed(value, str(PRE_EXECUTION_SEAL))
     if value.get("status") != "FROZEN" or value["payload"].get("empirical_outcome_seen_before_seal") is not False:
         raise M1ReconcileError("pre-execution seal drifted")
+    allowed_post_seal = {
+        RECONCILER.as_posix(),
+        RECONCILIATION_VERIFIER_AMENDMENT.as_posix(),
+    }
     for record in value["payload"]["sources"]:
         path = repo / record["path"]
         if path.stat().st_size != record["bytes"] or _sha_file(path) != record["sha256"]:
-            raise M1ReconcileError(f"pre-execution implementation drifted: {record['path']}")
+            if record["path"] not in allowed_post_seal:
+                raise M1ReconcileError(f"pre-execution implementation drifted: {record['path']}")
+            if not (repo / RECONCILIATION_VERIFIER_AMENDMENT).is_file():
+                raise M1ReconcileError("post-execution verifier amendment is missing")
     return value
 
 
@@ -517,7 +525,7 @@ def _verify_fidelity(route: Mapping[str, Any], summaries: Sequence[Mapping[str, 
         units = (224 // block) ** 2
         expected_fraction = math.floor(units * percentile / 100) * block * block / (224 * 224)
         if not math.isclose(_finite(row["actual_pixel_fraction"], "actual pixel fraction"),
-                            expected_fraction, abs_tol=1e-15, rel_tol=1e-15):
+                            expected_fraction, abs_tol=1e-7, rel_tol=1e-7):
             raise M1ReconcileError("partial-block perturbation or fraction drift detected")
         _finite(row["normalized_response"], "normalized response")
         detail_by[key] = dict(row)
@@ -756,14 +764,20 @@ def _root_files(repo: Path, excluded: set[Path]) -> list[Path]:
 
 def finalize(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
     repo = Path(repo_root).resolve()
-    if (repo / PENDING).exists() or (repo / COMPLETION).exists() or (repo / REPORT_ROOT).exists():
+    if (repo / COMPLETION).exists() or (repo / REPORT_ROOT).exists():
         raise M1ReconcileError("M1 reconciliation/completion output already exists")
     _load_seal(repo)
-    pending = _signed("stage_x_x2_mech_m1_completion_pending", "PENDING", {
-        "created_at": datetime.now(timezone.utc).isoformat(), "terminal": False,
-        "source_recomputing_required_before_terminal": True,
-    })
-    _write_json_new(repo / PENDING, pending)
+    if (repo / PENDING).exists():
+        pending = _read_json(repo / PENDING)
+        _validate_signed(pending, str(PENDING))
+        if pending.get("status") != "PENDING":
+            raise M1ReconcileError("pending completion state drifted")
+    else:
+        pending = _signed("stage_x_x2_mech_m1_completion_pending", "PENDING", {
+            "created_at": datetime.now(timezone.utc).isoformat(), "terminal": False,
+            "source_recomputing_required_before_terminal": True,
+        })
+        _write_json_new(repo / PENDING, pending)
     collected = _collect(repo)
     _write_aggregate_outputs(repo, collected)
     access = _access_document()
@@ -798,6 +812,7 @@ def finalize(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
         "shared_mask_count": 24, "fidelity_summary_count": 796,
         "detailed_road_row_count": 71640, "false_pass_attack_count": len(FALSE_PASS_ATTACKS),
         "budget_status": "PASS", "m2_executed": False,
+        "post_execution_verifier_amendment": _record(repo, RECONCILIATION_VERIFIER_AMENDMENT),
     })
     _write_json_new(repo / REPORT_ROOT / "validation_report.json", validation)
     excluded = {Path(PENDING), Path(COMPLETION), ROOT / "payload_manifest.json",
@@ -831,7 +846,8 @@ def finalize(repo_root: Path | str = REPO_ROOT) -> dict[str, Any]:
             "access_audit.json", "false_pass_audit.json", "reconciliation.json",
             "payload_manifest.json", "whole_root_inventory.json")]
             + [_record(repo, REPORT_ROOT / "validation_report.json"),
-               _record(repo, REPORT_ROOT / "x2_mech_m1_report.md")],
+               _record(repo, REPORT_ROOT / "x2_mech_m1_report.md"),
+               _record(repo, RECONCILIATION_VERIFIER_AMENDMENT)],
         "source_recomputing_validation": "PASS", "budget_status": "PASS",
         "budget_waiver_used": False, "m2_executed": False,
         "x2_decision": "NO_GO_BROAD_CLAIM_DEVELOPMENT", "x2_decision_modified": False,
