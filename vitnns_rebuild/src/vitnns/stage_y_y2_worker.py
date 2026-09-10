@@ -221,6 +221,8 @@ def execute(repo_root: Path | str, shard_id: int) -> dict[str, Any]:
         order = int(row["selection_order"]); unit_root = shard_root / "units" / f"unit-{order:03d}"
         y2.begin_unit(unit_root, shard_id=shard, selection_order=order, source_object_id_value=row["source_object_id"])
         status = "VALID"; failure_code = None; arrays_records: list[dict[str, Any]] = []; attempts: list[dict[str, Any]] = []; result: dict[str, Any] = {}
+        unit_started = time.monotonic(); unit_cpu_started = time.process_time()
+        torch.cuda.reset_peak_memory_stats(torch.device("cuda:0")); unit_gpu_start = torch.cuda.Event(enable_timing=True); unit_gpu_end = torch.cuda.Event(enable_timing=True); unit_gpu_start.record()
         try:
             if cumulative_gpu / 3600.0 > shard_caps["gpu_hours"] or cumulative_cpu / 3600.0 > shard_caps["cpu_hours"] or (time.monotonic() - worker_started) / 3600.0 > shard_caps["wall_hours"] or cumulative_retained > shard_caps["storage_bytes"]:
                 raise y1.StageYY1BudgetError("per-shard resource cap already exhausted")
@@ -241,7 +243,16 @@ def execute(repo_root: Path | str, shard_id: int) -> dict[str, Any]:
         else:
             y2.append_attempt(unit_root, {"attempt_id": "failure-000", "status": status, "failure_code": failure_code})
         attempt_records = [y2.file_record(path) for path in sorted((unit_root / "attempts").glob("attempt-*.json"))]
-        resource = result.get("resource_telemetry", {"gpu_active_seconds": 0.0, "cpu_seconds": 0.0, "wall_seconds": 0.0, "peak_allocated_gpu_bytes": 0, "peak_reserved_gpu_bytes": 0, "retained_bytes": sum(item["bytes"] for item in arrays_records), "calls": {}})
+        unit_gpu_end.record(); torch.cuda.synchronize()
+        resource = {
+            "gpu_active_seconds": unit_gpu_start.elapsed_time(unit_gpu_end) / 1000.0,
+            "cpu_seconds": time.process_time() - unit_cpu_started,
+            "wall_seconds": time.monotonic() - unit_started,
+            "peak_allocated_gpu_bytes": int(torch.cuda.max_memory_allocated(0)),
+            "peak_reserved_gpu_bytes": int(torch.cuda.max_memory_reserved(0)),
+            "retained_bytes": sum(path.stat().st_size for path in unit_root.rglob("*") if path.is_file()),
+            "calls": result.get("calls", {}),
+        }
         cumulative_gpu += float(resource["gpu_active_seconds"]); cumulative_cpu += float(resource["cpu_seconds"]); cumulative_retained += int(resource["retained_bytes"])
         if status == "VALID" and (cumulative_gpu / 3600.0 > shard_caps["gpu_hours"] or cumulative_cpu / 3600.0 > shard_caps["cpu_hours"] or (time.monotonic() - worker_started) / 3600.0 > shard_caps["wall_hours"] or cumulative_retained > shard_caps["storage_bytes"]):
             status = "BLOCKED_BUDGET"; failure_code = "per-shard resource cap exceeded by completed unit"

@@ -139,6 +139,9 @@ def test_cli_surface_and_cpu_only_p0_import_boundary() -> None:
         assert command in launcher
     core = (REPO / "src/vitnns/stage_y_y2.py").read_text(); ast.parse(core)
     assert "import torch" not in core and "from PIL" not in core and "import timm" not in core
+    worker = (REPO / "src/vitnns/stage_y_y2_worker.py").read_text(); ast.parse(worker)
+    assert "unit_gpu_end.record()" in worker and "time.process_time() - unit_cpu_started" in worker
+    assert '"gpu_active_seconds": 0.0' not in worker
     validator = (REPO / "scripts/validate_stage_y_y2_p0.py").read_text(); ast.parse(validator)
     assert "nvidia-smi" not in validator
 

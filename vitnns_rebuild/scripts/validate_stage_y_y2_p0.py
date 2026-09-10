@@ -223,7 +223,7 @@ def validate_schemas_and_sources() -> dict[str, Any]:
     worker = (REPO / "src/vitnns/stage_y_y2_worker.py").read_text(encoding="utf-8")
     for phrase in ("CUDA_VISIBLE_DEVICES", "cuda:0", "gpu_uuid", "pci_bus_id", "environment_digest", "physical_index"):
         req(phrase in worker, f"worker isolation identity missing: {phrase}")
-    return {"status": "PASS", "source_files": [record(path) for path in SOURCES], "cli_commands": ["seal-cohort","build-shards","validate-startup","run-shard --shard-id N","reconcile","seal","validate","validate-publication"], "cpu_only_core": True, "worker_gpu_imports_lazy": True}
+    return {"status": "PASS", "source_files": [record(path) for path in SOURCES], "cli_commands": ["seal-cohort","build-shards","validate-startup","run-shard --shard-id N","reconcile","seal","validate","validate-publication"], "cpu_only_core": True, "worker_module_isolated_from_p0_imports": True}
 
 def false_pass() -> dict[str, Any]:
     def reject(preconditions: Mapping[str, bool]) -> tuple[str, ...]:
@@ -248,7 +248,8 @@ def run_tests() -> dict[str, Any]:
 def seal() -> dict[str, Any]:
     req(not (REPO / ROOT).exists() and not (REPO / REPORT).exists(), "Y2-P0 root already exists")
     branch = git("symbolic-ref", "--short", "HEAD"); head = git("rev-parse", "HEAD"); tracking = git("rev-parse", "@{upstream}"); remote_branch = remote(f"refs/heads/{BRANCH}")
-    req(branch == BRANCH and head == tracking == remote_branch == BASE, "P0 startup Git binding drift")
+    req(branch == BRANCH and head == tracking == remote_branch, "P0 startup Git binding drift")
+    req(subprocess.run(["git", "merge-base", "--is-ancestor", BASE, head], cwd=REPO).returncode == 0, "Y1-R1 base is not an ancestor of current P0 HEAD")
     lfs = git("lfs", "status"); req("Git LFS objects to be committed:" in lfs and "Git LFS objects not staged for commit:" in lfs, "LFS status unavailable")
     history = history_binding(require_remote=True); interrupted = interrupted_inventory(); pre = pre_access_audit()
     (REPO / ROOT / "completion").mkdir(parents=True); (REPO / REPORT).mkdir(parents=True)
