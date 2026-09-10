@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_x_x2_mech_m2.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "document_type",
+    "stage_id",
+    "phase",
+    "run_id",
+    "study_type",
+    "authorization",
+    "next_authorization",
+    "roots",
+    "upstream_bindings",
+    "cohort",
+    "source_counts",
+    "execution_boundaries",
+    "metrics",
+    "association",
+    "branch_rules",
+    "output_schemas",
+    "required_outputs",
+    "claims",
+    "canonical_digest"
+  ],
+  "properties": {
+    "$schema": {"const": "stage_x_x2_mech_m2.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_x_x2_mech_m2_frozen_configuration"},
+    "stage_id": {"const": "X2-MECH"},
+    "phase": {"const": "M2"},
+    "run_id": {"const": "STAGE_X_X2_MECH_M2_V1_20260910"},
+    "study_type": {"const": "POST_HOC_EXPLORATORY_MECHANISM_ANALYSIS"},
+    "authorization": {"const": "X2_MECH_M2_CPU_ONLY_MULTISCALE_MECHANISM_ANALYSIS_ONLY"},
+    "next_authorization": {"const": "X2_MECH_RESULTS_TO_PAPER_HANDOFF_ONLY"},
+    "roots": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["formal", "report"],
+      "properties": {
+        "formal": {"const": "evidence/stage_x/x2_mech_m2_20260910/formal"},
+        "report": {"const": "reports/stage_x_x2_mech_m2_20260910"}
+      }
+    },
+    "upstream_bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "startup_head",
+        "p0_r1_completion_ref",
+        "p0_r1_completion_commit",
+        "m1_r1_completion_ref",
+        "m1_r1_completion_commit",
+        "x2_completion_ref",
+        "x2_completion_commit",
+        "x2_decision",
+        "m1_root",
+        "x2_root"
+      ],
+      "properties": {
+        "startup_head": {"$ref": "#/$defs/gitsha"},
+        "p0_r1_completion_ref": {"const": "refs/archive/stage-x-x2-mech-p0-r1-completion"},
+        "p0_r1_completion_commit": {"$ref": "#/$defs/gitsha"},
+        "m1_r1_completion_ref": {"const": "refs/archive/stage-x-x2-mech-m1-r1-completion"},
+        "m1_r1_completion_commit": {"$ref": "#/$defs/gitsha"},
+        "x2_completion_ref": {"const": "refs/archive/stage-x-nns-v2-x2-completion"},
+        "x2_completion_commit": {"$ref": "#/$defs/gitsha"},
+        "x2_decision": {"const": "NO_GO_BROAD_CLAIM_DEVELOPMENT"},
+        "m1_root": {"const": "evidence/stage_x/x2_mech_m1_r1_20260910/formal"},
+        "x2_root": {"const": "evidence/stage_x/x2_r2_r1_r1_nns_v2_development_20260910/formal"}
+      }
+    },
+    "cohort": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expected_routes", "clean_valid_routes", "failed_route_local_numerical", "methods", "transforms", "masks", "scales", "failed_route_policy"],
+      "properties": {
+        "expected_routes": {"const": 200},
+        "clean_valid_routes": {"const": 199},
+        "failed_route_local_numerical": {"const": 1},
+        "methods": {"const": ["nns_v2", "vit_grad_cam"]},
+        "transforms": {"type": "array", "minItems": 12, "maxItems": 12, "items": {"type": "string"}, "uniqueItems": true},
+        "masks": {"const": ["x2_frozen_common_domain", "exact_operator_support"]},
+        "scales": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "#/$defs/scale"}},
+        "failed_route_policy": {"const": "retain_one_typed_denominator_record_no_imputation"}
+      }
+    },
+    "source_counts": {
+      "type": "object",
+      "additionalProperties": {"type": "integer", "minimum": 0}
+    },
+    "execution_boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cuda_visible_devices",
+        "gpu_access_allowed",
+        "model_load_allowed",
+        "checkpoint_read_allowed",
+        "jpeg_read_allowed",
+        "forward_backward_allowed",
+        "download_allowed",
+        "display_png_jpeg_allowed",
+        "m1_mutation_allowed",
+        "x2_mutation_allowed",
+        "torch_allowed_only_for_cpu_geometry_reproduction",
+        "timm_import_allowed"
+      ],
+      "properties": {
+        "cuda_visible_devices": {"const": ""},
+        "gpu_access_allowed": {"const": false},
+        "model_load_allowed": {"const": false},
+        "checkpoint_read_allowed": {"const": false},
+        "jpeg_read_allowed": {"const": false},
+        "forward_backward_allowed": {"const": false},
+        "download_allowed": {"const": false},
+        "display_png_jpeg_allowed": {"const": false},
+        "m1_mutation_allowed": {"const": false},
+        "x2_mutation_allowed": {"const": false},
+        "torch_allowed_only_for_cpu_geometry_reproduction": {"const": true},
+        "timm_import_allowed": {"const": false}
+      }
+    },
+    "metrics": {"type": "object", "additionalProperties": {"$ref": "#/$defs/json"}},
+    "association": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "strata", "bootstrap_draws", "cluster", "rng", "seed_namespace", "quantile", "degenerate_draw_policy", "maximum_attempts", "confirmatory_p_values_allowed"],
+      "properties": {
+        "method": {"const": "spearman"},
+        "strata": {"const": ["per_model", "model_equal_aggregate"]},
+        "bootstrap_draws": {"const": 20000},
+        "cluster": {"const": "sample_id_synchronized_across_models"},
+        "rng": {"const": "NumPy_PCG64"},
+        "seed_namespace": {"const": "STAGE_X_X2_MECH_ASSOCIATION_V1_20260910"},
+        "quantile": {"const": "linear"},
+        "degenerate_draw_policy": {"const": "skip_and_continue"},
+        "maximum_attempts": {"const": 2000000},
+        "confirmatory_p_values_allowed": {"const": false}
+      }
+    },
+    "branch_rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allowed", "numeric_thresholds_for_A_B_C_frozen", "fallback_without_unique_thresholds"],
+      "properties": {
+        "allowed": {
+          "const": [
+            "BRANCH_A_AGGREGATION_SENSITIVITY",
+            "BRANCH_B_GRANULARITY_FIDELITY_EQUIVARIANCE_TRADEOFF",
+            "BRANCH_C_COARSE_INSTABILITY_PERSISTS",
+            "MIXED_OR_INCONCLUSIVE"
+          ]
+        },
+        "numeric_thresholds_for_A_B_C_frozen": {"const": false},
+        "fallback_without_unique_thresholds": {"const": "MIXED_OR_INCONCLUSIVE"}
+      }
+    },
+    "output_schemas": {
+      "type": "object",
+      "minProperties": 10,
+      "additionalProperties": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+    },
+    "required_outputs": {"type": "array", "minItems": 20, "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "claims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maximum_wording",
+        "x2_decision_mutable",
+        "spatial_stability_pass_allowed",
+        "gradcam_superiority_or_noninferiority_pass_allowed",
+        "broad_benchmark_go_allowed",
+        "localization_claim_allowed",
+        "cross_model_cross_dataset_generalization_claim_allowed",
+        "confirmatory_p_values_allowed",
+        "causal_conclusion_allowed",
+        "x3_x5_f3_final_stage_g_authorized"
+      ],
+      "properties": {
+        "maximum_wording": {"const": "post-hoc exploratory evidence of a granularity-fidelity-equivariance trade-off"},
+        "x2_decision_mutable": {"const": false},
+        "spatial_stability_pass_allowed": {"const": false},
+        "gradcam_superiority_or_noninferiority_pass_allowed": {"const": false},
+        "broad_benchmark_go_allowed": {"const": false},
+        "localization_claim_allowed": {"const": false},
+        "cross_model_cross_dataset_generalization_claim_allowed": {"const": false},
+        "confirmatory_p_values_allowed": {"const": false},
+        "causal_conclusion_allowed": {"const": false},
+        "x3_x5_f3_final_stage_g_authorized": {"const": false}
+      }
+    },
+    "canonical_digest": {"$ref": "#/$defs/sha"}
+  },
+  "$defs": {
+    "sha": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "gitsha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "json": {"type": ["object", "array", "string", "number", "integer", "boolean", "null"]},
+    "scale": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "block", "units_per_side"],
+      "properties": {
+        "id": {"enum": ["pixel", "fine_cell", "native_patch"]},
+        "block": {"enum": [1, 4, 16]},
+        "units_per_side": {"enum": [224, 56, 14]}
+      }
+    }
+  }
+}
+

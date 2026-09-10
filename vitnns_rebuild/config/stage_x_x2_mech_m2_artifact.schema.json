@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_x_x2_mech_m2_artifact.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "document_type",
+    "stage_id",
+    "phase",
+    "run_id",
+    "authorization",
+    "status",
+    "payload",
+    "canonical_digest"
+  ],
+  "properties": {
+    "$schema": {"const": "stage_x_x2_mech_m2_artifact.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"type": "string", "pattern": "^stage_x_x2_mech_m2_"},
+    "stage_id": {"const": "X2-MECH"},
+    "phase": {"const": "M2"},
+    "run_id": {"const": "STAGE_X_X2_MECH_M2_V1_20260910"},
+    "authorization": {"const": "X2_MECH_M2_CPU_ONLY_MULTISCALE_MECHANISM_ANALYSIS_ONLY"},
+    "status": {
+      "enum": [
+        "PASS",
+        "PENDING",
+        "FROZEN",
+        "BLOCKED",
+        "BLOCKED_X2_PIXEL_REPRODUCTION_DRIFT"
+      ]
+    },
+    "payload": {"$ref": "#/$defs/payload"},
+    "canonical_digest": {"$ref": "#/$defs/sha"}
+  },
+  "$defs": {
+    "sha": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "json": {"type": ["object", "array", "string", "number", "integer", "boolean", "null"]},
+    "named": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "value"],
+      "properties": {"name": {"type": "string"}, "value": {"$ref": "#/$defs/json"}}
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "bytes", "sha256", "canonical_digest"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "bytes": {"type": "integer", "minimum": 0},
+        "sha256": {"$ref": "#/$defs/sha"},
+        "canonical_digest": {"anyOf": [{"$ref": "#/$defs/sha"}, {"type": "null"}]}
+      }
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["check_id", "status", "detail"],
+      "properties": {
+        "check_id": {"type": "string"},
+        "status": {"enum": ["PASS", "FAIL", "BLOCKED"]},
+        "detail": {"type": "string"}
+      }
+    },
+    "terminal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "terminal",
+        "complete",
+        "immutable",
+        "next_authorization",
+        "x2_decision_modified",
+        "x3_x5_f3_final_stage_g_started"
+      ],
+      "properties": {
+        "terminal": {"type": "boolean"},
+        "complete": {"type": "boolean"},
+        "immutable": {"type": "boolean"},
+        "next_authorization": {
+          "enum": [
+            "NONE",
+            "X2_MECH_M2_CPU_ONLY_MULTISCALE_MECHANISM_ANALYSIS_ONLY",
+            "X2_MECH_RESULTS_TO_PAPER_HANDOFF_ONLY",
+            "F3_FINAL_FIGURE_PACKAGE_ONLY"
+          ]
+        },
+        "x2_decision_modified": {"const": false},
+        "x3_x5_f3_final_stage_g_started": {"const": false}
+      }
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity",
+        "bindings",
+        "checks",
+        "counts",
+        "metrics",
+        "state",
+        "files",
+        "access",
+        "resources",
+        "attacks",
+        "terminal"
+      ],
+      "properties": {
+        "identity": {"type": "array", "items": {"$ref": "#/$defs/named"}},
+        "bindings": {"type": "array", "items": {"$ref": "#/$defs/file"}},
+        "checks": {"type": "array", "items": {"$ref": "#/$defs/check"}},
+        "counts": {"type": "array", "items": {"$ref": "#/$defs/named"}},
+        "metrics": {"type": "array", "items": {"$ref": "#/$defs/named"}},
+        "state": {"type": "array", "items": {"$ref": "#/$defs/named"}},
+        "files": {"type": "array", "items": {"$ref": "#/$defs/file"}},
+        "access": {"type": "array", "items": {"$ref": "#/$defs/named"}},
+        "resources": {"type": "array", "items": {"$ref": "#/$defs/named"}},
+        "attacks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["attack", "result", "mechanism"],
+            "properties": {
+              "attack": {"type": "string"},
+              "result": {"enum": ["REJECTED", "PASS"]},
+              "mechanism": {"type": "string"}
+            }
+          }
+        },
+        "terminal": {"$ref": "#/$defs/terminal"}
+      }
+    }
+  }
+}
