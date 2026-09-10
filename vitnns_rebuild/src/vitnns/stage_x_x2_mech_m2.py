@@ -1563,12 +1563,23 @@ def _summarize_fidelity(rows: Sequence[Mapping[str, Any]]) -> list[dict[str, Any
 
 
 def _spearman(x: Sequence[float], y: Sequence[float]) -> float:
-    from scipy.stats import spearmanr
-    if len(x) < 2:
+    from scipy.stats import rankdata
+    x_array = np.asarray(x, dtype=np.float64)
+    y_array = np.asarray(y, dtype=np.float64)
+    if x_array.size < 2:
         return float("nan")
-    if len(set(x)) < 2 or len(set(y)) < 2:
+    if not np.isfinite(x_array).all() or not np.isfinite(y_array).all():
         return float("nan")
-    return float(spearmanr(np.asarray(x, dtype=np.float64), np.asarray(y, dtype=np.float64)).statistic)
+    if float(np.min(x_array)) == float(np.max(x_array)) or float(np.min(y_array)) == float(np.max(y_array)):
+        return float("nan")
+    xr = rankdata(x_array, method="average")
+    yr = rankdata(y_array, method="average")
+    xr = xr - xr.mean(dtype=np.float64)
+    yr = yr - yr.mean(dtype=np.float64)
+    denominator = math.sqrt(float(np.sum(xr * xr, dtype=np.float64)) * float(np.sum(yr * yr, dtype=np.float64)))
+    if denominator <= np.finfo(np.float64).tiny:
+        return float("nan")
+    return float(np.sum(xr * yr, dtype=np.float64) / denominator)
 
 
 def _assoc(records: Sequence[Mapping[str, Any]], x_key: str, y_key: str,
