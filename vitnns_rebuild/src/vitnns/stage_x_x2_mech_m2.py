@@ -824,11 +824,13 @@ def _rankdata_average(values: np.ndarray) -> np.ndarray:
     array = np.asarray(values, dtype=np.float64).reshape(-1)
     order = np.argsort(array, kind="mergesort")
     sorted_values = array[order]
-    starts = np.concatenate(([0], np.flatnonzero(sorted_values[1:] != sorted_values[:-1]) + 1))
-    ends = np.concatenate((starts[1:], [array.size]))
-    ranks_sorted = np.empty(array.size, dtype=np.float64)
-    for start, end in zip(starts, ends):
-        ranks_sorted[start:end] = (start + 1 + end) / 2.0
+    group_start = np.concatenate(([True], sorted_values[1:] != sorted_values[:-1]))
+    group_id = np.cumsum(group_start, dtype=np.int64) - 1
+    counts = np.bincount(group_id)
+    ends = np.cumsum(counts)
+    starts = ends - counts
+    average = (starts + 1 + ends) / 2.0
+    ranks_sorted = average[group_id]
     ranks = np.empty(array.size, dtype=np.float64)
     ranks[order] = ranks_sorted
     return ranks
@@ -839,6 +841,17 @@ def _centroid(weights: np.ndarray, coordinates: np.ndarray, fallback: np.ndarray
     if total <= np.finfo(np.float64).tiny:
         return fallback
     return (coordinates * weights[:, None]).sum(axis=0) / total
+
+
+def _centroid_from_axes(weights: np.ndarray, row_coords: np.ndarray,
+                        col_coords: np.ndarray, fallback: np.ndarray) -> np.ndarray:
+    total = float(weights.sum(dtype=np.float64))
+    if total <= np.finfo(np.float64).tiny:
+        return fallback
+    return np.asarray([
+        float(np.dot(row_coords, weights) / total),
+        float(np.dot(col_coords, weights) / total),
+    ])
 
 
 def _block_centers(valid_blocks: np.ndarray, block: int) -> np.ndarray:
@@ -896,17 +909,21 @@ def _m2_stability_metrics(clean: np.ndarray, transformed: np.ndarray,
     )
     if win < 3:
         raise X2MechM2Error("too few valid units for SSIM")
-    coordinates = _block_centers(valid, block)
+    row_coords = (row + 0.5) * block - 0.5
+    col_coords = (col + 0.5) * block - 0.5
     center = np.asarray([(np.asarray(clean).shape[0] - 1) / 2, (np.asarray(clean).shape[1] - 1) / 2])
     positive_shift = np.linalg.norm(
-        _centroid(np.maximum(signed_a, 0.0), coordinates, center)
-        - _centroid(np.maximum(signed_b, 0.0), coordinates, center)
+        _centroid_from_axes(np.maximum(signed_a, 0.0), row_coords, col_coords, center)
+        - _centroid_from_axes(np.maximum(signed_b, 0.0), row_coords, col_coords, center)
     )
     negative_shift = np.linalg.norm(
-        _centroid(np.maximum(-signed_a, 0.0), coordinates, center)
-        - _centroid(np.maximum(-signed_b, 0.0), coordinates, center)
+        _centroid_from_axes(np.maximum(-signed_a, 0.0), row_coords, col_coords, center)
+        - _centroid_from_axes(np.maximum(-signed_b, 0.0), row_coords, col_coords, center)
     )
-    mass_shift = np.linalg.norm(_centroid(mass_a, coordinates, center) - _centroid(mass_b, coordinates, center))
+    mass_shift = np.linalg.norm(
+        _centroid_from_axes(mass_a, row_coords, col_coords, center)
+        - _centroid_from_axes(mass_b, row_coords, col_coords, center)
+    )
     diagonal = math.hypot(*np.asarray(clean).shape)
     return {
         "signed_spearman": _spearman(signed_a, signed_b),
