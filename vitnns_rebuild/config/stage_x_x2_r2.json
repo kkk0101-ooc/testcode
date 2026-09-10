@@ -1,0 +1,51 @@
+{
+  "$schema": "stage_x_x2_r2.schema.json",
+  "schema_version": 1,
+  "document_type": "stage_x_x2_r2_frozen_recovery_configuration",
+  "stage_id": "X2-R2",
+  "run_id": "STAGE_X_X2_R2_V1_20260909",
+  "authorization": "X2_R2_COVERAGE_GATED_NUMERICAL_RECOVERY_ONLY",
+  "roots": {
+    "formal": "evidence/stage_x/x2_r2_nns_v2_development_20260909/formal",
+    "report": "reports/stage_x_x2_r2_nns_v2_development_20260909"
+  },
+  "coverage": {
+    "expected_routes": 200,
+    "overall_valid_min": 190,
+    "models": 5,
+    "routes_per_model": 40,
+    "per_model_valid_min": 38,
+    "all_expected_routes_require_real_terminal": true,
+    "allowed_nonvalid_classes": ["FAILED_ROUTE_LOCAL_NUMERICAL","FAILED_ROUTE_LOCAL_EXECUTION","NA_ROUTE_LOCAL_INFRASTRUCTURE"],
+    "not_started_counts_as_terminal": false,
+    "replacement_allowed": false,
+    "imputation_allowed": false,
+    "retry_until_favorable_allowed": false
+  },
+  "reuse": {
+    "x2_r1_valid_clean_routes": 197,
+    "source_validation_required": true,
+    "scientific_arrays_remain_in_x2_r1_root": true,
+    "x2_r1_failed_route_reused_as_valid": false,
+    "x2_r1_outcomes_used_for_gamma_or_effects": false
+  },
+  "new_clean_execution": {
+    "route_count": 3,
+    "original_schedule_only": [128,256,512,1024,2048,4096,8192],
+    "tolerances_unchanged": true,
+    "failed_route_must_be_reexecuted": true,
+    "never_started_routes_must_be_executed": 2
+  },
+  "downstream": {
+    "gamma_all_200_required": true,
+    "formal_uses_paired_valid_clean_roster": true,
+    "formal_denominator_remains_200": true,
+    "pass_next_authorization": "NONE_REQUIRES_OWNER_AUTHORIZATION",
+    "failure_next_authorization": "NONE",
+    "formal_superiority_claim": false,
+    "x3_started": false,
+    "x4_started": false,
+    "x5_started": false
+  },
+  "canonical_digest": "34e01b783d5373d2a84d65d04dedbc0269b572a8a1acf66886e33b5f301cae62"
+}

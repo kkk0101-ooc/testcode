@@ -627,6 +627,71 @@ def validate_attnlrp_grid(
     return results
 
 
+def attention_rollout(model: nn.Module, image: torch.Tensor) -> dict[str, Any]:
+    """Class-agnostic mean-head attention rollout on the native unfused path."""
+    if image.ndim != 4 or image.shape[0] != 1:
+        raise ComparatorError("attention rollout requires one image")
+    attentions: list[torch.Tensor] = []
+    handles = [block.attn.attn_drop.register_forward_hook(
+        lambda _module, _args, output: attentions.append(output)
+    ) for block in model.blocks]
+    try:
+        with _frozen_model(model), torch.no_grad(): model(image)
+    finally:
+        for handle in handles: handle.remove()
+    if len(attentions) != len(model.blocks):
+        raise ComparatorError("attention rollout requires all native attentions")
+    rollout = None
+    for attention in attentions:
+        matrix = attention.mean(1)
+        identity = torch.eye(matrix.shape[-1],device=matrix.device,dtype=matrix.dtype)
+        matrix = matrix + identity.unsqueeze(0); matrix = matrix / matrix.sum(-1,keepdim=True)
+        rollout = matrix if rollout is None else matrix.bmm(rollout)
+    assert rollout is not None
+    values=rollout[0,0,int(model.num_prefix_tokens):]; side=int(values.numel()**0.5)
+    if side*side!=values.numel(): raise ComparatorError("rollout patch count is not square")
+    return {"method_id":"attention_rollout","attribution":_finite_scientific(values.reshape(side,side),"native_patch_grid"),"class_targeted":False,"target_index":None,"native_resolution":[side,side]}
+
+
+def raw_cls_attention(model: nn.Module, image: torch.Tensor) -> dict[str, Any]:
+    """Class-agnostic last-block mean-head CLS attention."""
+    attention: torch.Tensor | None = None
+    def capture(_module: nn.Module,_args: tuple[Any,...],output: torch.Tensor) -> None:
+        nonlocal attention; attention=output
+    handle=model.blocks[-1].attn.attn_drop.register_forward_hook(capture)
+    try:
+        with _frozen_model(model),torch.no_grad(): model(image)
+    finally: handle.remove()
+    if attention is None: raise ComparatorError("raw CLS attention was not captured")
+    values=attention[0,:,0,int(model.num_prefix_tokens):].mean(0);side=int(values.numel()**0.5)
+    if side*side!=values.numel(): raise ComparatorError("raw CLS patch count is not square")
+    return {"method_id":"raw_cls_attention","attribution":_finite_scientific(values.reshape(side,side),"native_patch_grid"),"class_targeted":False,"target_index":None,"native_resolution":[side,side]}
+
+
+def deterministic_random_map(height: int, width: int, identity: str) -> dict[str, Any]:
+    seed=int.from_bytes(hashlib.sha256(("STAGE_X_RANDOM_MAP_V1|"+identity).encode()).digest()[:8],"big")
+    value=torch.from_numpy(np.random.Generator(np.random.PCG64(seed)).random((height,width),dtype=np.float32))
+    return {"method_id":"random_map","attribution":_finite_scientific(value,"input_resolution_seeded_random"),"class_targeted":False,"target_index":None,"native_resolution":[height,width],"seed":seed}
+
+
+def center_prior(height: int, width: int) -> dict[str, Any]:
+    rows=torch.arange(height,dtype=torch.float32)-(height-1)/2; cols=torch.arange(width,dtype=torch.float32)-(width-1)/2
+    value=-torch.sqrt(rows[:,None].square()+cols[None,:].square())
+    return {"method_id":"center_prior","attribution":_finite_scientific(value,"input_resolution_negative_center_distance"),"class_targeted":False,"target_index":None,"native_resolution":[height,width],"ties":"row_major"}
+
+
+def edge_input_gradient_prior(model: nn.Module,image: torch.Tensor) -> dict[str,Any]:
+    """Return separately identified Sobel edge and class-agnostic logit-sum gradient priors."""
+    probe=image.detach().clone().requires_grad_(True)
+    with _frozen_model(model): gradient=torch.autograd.grad(model(probe).sum(),probe)[0]
+    gray=image.detach().mean(1,keepdim=True)
+    kx=torch.tensor([[-1.,0.,1.],[-2.,0.,2.],[-1.,0.,1.]],device=image.device,dtype=image.dtype).reshape(1,1,3,3)
+    ky=kx.transpose(-1,-2)
+    edge=torch.sqrt(nn.functional.conv2d(gray,kx,padding=1).square()+nn.functional.conv2d(gray,ky,padding=1).square())[0,0]
+    input_gradient=gradient.abs().sum(1)[0]
+    return {"method_id":"edge_input_gradient_prior","edge_attribution":_finite_scientific(edge,"sobel_rgb_mean_edge_magnitude"),"input_gradient_attribution":_finite_scientific(input_gradient,"class_agnostic_logit_sum_gradient_magnitude"),"class_targeted":False,"target_index":None,"native_resolution":list(edge.shape),"reported_separately":True}
+
+
 def architecture_compatibility(model: nn.Module, model_id: str) -> dict[str, Any]:
     blocks = getattr(model, "blocks", None)
     patch = getattr(model, "patch_embed", None)

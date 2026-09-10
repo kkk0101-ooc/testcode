@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_x_x2_r2_r1_r1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "document_type", "stage_id", "run_id", "authorization", "roots", "repair", "source_reuse", "formal", "downstream", "canonical_digest"],
+  "properties": {
+    "$schema": {"const": "stage_x_x2_r2_r1_r1.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_x_x2_r2_r1_r1_frozen_recovery_configuration"},
+    "stage_id": {"const": "X2-R2-R1-R1"},
+    "run_id": {"const": "STAGE_X_X2_R2_R1_R1_V1_20260910"},
+    "authorization": {"const": "X2_R2_R1_R1_FORMAL_STABILITY_INVERSE_MAP_SHAPE_RECOVERY_ONLY"},
+    "roots": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["formal", "report"],
+      "properties": {
+        "formal": {"const": "evidence/stage_x/x2_r2_r1_r1_nns_v2_development_20260910/formal"},
+        "report": {"const": "reports/stage_x_x2_r2_r1_r1_nns_v2_development_20260910"}
+      }
+    },
+    "repair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "source_file", "function", "rotate_resize_hflip_return_2d", "transform_set_unchanged", "metrics_unchanged", "thresholds_unchanged", "gamma_selection_unchanged", "scientific_denominator_unchanged"],
+      "properties": {
+        "scope": {"const": "inverse_map_2d_attribution_shape_handling_only"},
+        "source_file": {"const": "src/vitnns/stage_x_x2_metrics.py"},
+        "function": {"const": "inverse_map"},
+        "rotate_resize_hflip_return_2d": {"const": true},
+        "transform_set_unchanged": {"const": true},
+        "metrics_unchanged": {"const": true},
+        "thresholds_unchanged": {"const": true},
+        "gamma_selection_unchanged": {"const": true},
+        "scientific_denominator_unchanged": {"const": true}
+      }
+    },
+    "source_reuse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_stage", "source_root", "source_stage_failure_status", "source_stage_failure_canonical_digest", "clean_coverage_source_validated", "clean_expected_routes", "clean_valid_routes", "clean_failed_route_local_numerical", "gamma_terminals_source_validated", "gamma_route_count", "gamma_selection_canonical_digest", "selected_conv_gamma", "selected_linear_gamma", "large_arrays_copied"],
+      "properties": {
+        "source_stage": {"const": "X2-R2-R1"},
+        "source_root": {"const": "evidence/stage_x/x2_r2_r1_nns_v2_development_20260909/formal"},
+        "source_stage_failure_status": {"const": "BLOCKED_INFRASTRUCTURE"},
+        "source_stage_failure_canonical_digest": {"const": "0c0b637ded543922d653e472ecabd6a81d772d119179a4b89ab8f20a34d73b64"},
+        "clean_coverage_source_validated": {"const": true},
+        "clean_expected_routes": {"const": 200},
+        "clean_valid_routes": {"const": 199},
+        "clean_failed_route_local_numerical": {"const": 1},
+        "gamma_terminals_source_validated": {"const": true},
+        "gamma_route_count": {"const": 200},
+        "gamma_selection_canonical_digest": {"const": "dd6e1b307acedee70233f7c42d191a5ef90d8e9eaea94362f3df8a4f98a7f9a4"},
+        "selected_conv_gamma": {"const": 100.0},
+        "selected_linear_gamma": {"const": 0.05},
+        "large_arrays_copied": {"const": false}
+      }
+    },
+    "formal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rerun_phase", "expected_routes_denominator", "paired_roster", "failed_clean_route_enters_effect_analysis", "failed_clean_route_state"],
+      "properties": {
+        "rerun_phase": {"const": "formal_only"},
+        "expected_routes_denominator": {"const": 200},
+        "paired_roster": {"const": "clean_valid_and_valid_endpoints_only"},
+        "failed_clean_route_enters_effect_analysis": {"const": false},
+        "failed_clean_route_state": {"const": "FAILED_ROUTE_LOCAL_NUMERICAL"}
+      }
+    },
+    "downstream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["faithfulness_recomputed", "stability_recomputed", "sanity_recomputed", "margins_recomputed", "futility_recomputed", "resource_recomputed", "formal_budget_recomputed", "false_pass_audit_required", "pass_next_authorization", "failure_next_authorization", "formal_superiority_claim", "x3_started", "x4_started", "x5_started"],
+      "properties": {
+        "faithfulness_recomputed": {"const": true},
+        "stability_recomputed": {"const": true},
+        "sanity_recomputed": {"const": true},
+        "margins_recomputed": {"const": true},
+        "futility_recomputed": {"const": true},
+        "resource_recomputed": {"const": true},
+        "formal_budget_recomputed": {"const": true},
+        "false_pass_audit_required": {"const": true},
+        "pass_next_authorization": {"const": "NONE_REQUIRES_OWNER_AUTHORIZATION"},
+        "failure_next_authorization": {"const": "NONE"},
+        "formal_superiority_claim": {"const": false},
+        "x3_started": {"const": false},
+        "x4_started": {"const": false},
+        "x5_started": {"const": false}
+      }
+    },
+    "canonical_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "document_type": "stage_x_x2_frozen_run_configuration",
+  "stage_id": "X2",
+  "authorization": "X2_NNS_V2_DEVELOPMENT_AND_FUTILITY_ONLY",
+  "roots": {
+    "formal": "evidence/stage_x/x2_nns_v2_development_20260909/formal",
+    "report": "reports/stage_x_x2_nns_v2_development_20260909",
+    "local_checkpoint_cache": "assets/models/stage_x_x2",
+    "display": "reports/stage_x_x2_nns_v2_development_20260909/display"
+  },
+  "git": {
+    "branch": "stage-d-d3-pass",
+    "x1_r1_delivery_commit": "69fc9177491c63a21088a2092274859b00917879",
+    "x1_r1_delivery_parent": "0dd96d71a9e246a6cf64686180418b850e11ce8a",
+    "x1_r1_archive_ref": "refs/archive/stage-x-nns-v2-x1-r1-completion",
+    "x2_archive_ref": "refs/archive/stage-x-nns-v2-x2-completion"
+  },
+  "sample_selection": {
+    "namespace": "STAGE_X_X2_DEVELOPMENT_V1_20260908",
+    "source": "manifests/stage_d_fidelity_v1/registry.json",
+    "dataset_release_id": "ILSVRC2012_validation",
+    "count": 40,
+    "shared_across_models": true,
+    "allowed_fields": ["dataset_release_id", "class_id", "source_object_id", "file_bytes", "file_sha256"],
+    "algorithm": "within each class sort frozen hash ascending then source_object_id ascending; retain the class winner; sort class winners by frozen hash ascending then source_object_id ascending; retain first 40",
+    "formal_exclusion_permanent": true,
+    "replacement_allowed": false
+  },
+  "models": [
+    {"id":"vit_s16","model_id":"vit_small_patch16_224.augreg_in21k_ft_in1k","source_kind":"official_timm_0.9.16_npz","url":"https://storage.googleapis.com/vit_models/augreg/S_16-i21k-300ep-lr_0.001-aug_light1-wd_0.03-do_0.0-sd_0.0--imagenet2012-steps_20k-lr_0.03-res_224.npz","license":"Apache-2.0 Google ViT source material","expected_key_count":152,"expected_parameter_count":22050664,"download_bytes_max":536870912,"preprocess":{"resize_shorter_side":248,"center_crop":[224,224],"interpolation":"bicubic","antialias":true,"mean":[0.5,0.5,0.5],"std":[0.5,0.5,0.5],"color_mode":"RGB"}},
+    {"id":"vit_b16","model_id":"vit_base_patch16_224.augreg2_in21k_ft_in1k","source_kind":"sealed_recovery_v2_state_dict","path":"assets/models/vit_base_patch16_224_weights.semantic_candidate.pth","sha256":"489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d","canonical_tensor_digest":"150234d8117a50057f62aa14a97f46bbf1da92b00b386c10c71cc7000c5d51dd","license":"Apache-2.0 Google ViT source material","expected_key_count":152,"expected_parameter_count":86567656,"download_bytes_max":0,"preprocess":{"resize_shorter_side":248,"center_crop":[224,224],"interpolation":"bicubic","antialias":true,"mean":[0.5,0.5,0.5],"std":[0.5,0.5,0.5],"color_mode":"RGB"}},
+    {"id":"deit_s16","model_id":"deit_small_patch16_224.fb_in1k","source_kind":"official_timm_0.9.16_pth","url":"https://dl.fbaipublicfiles.com/deit/deit_small_patch16_224-cd65a155.pth","license":"Apache-2.0 DeiT official source material","expected_key_count":152,"expected_parameter_count":22050664,"download_bytes_max":536870912,"preprocess":{"resize_shorter_side":248,"center_crop":[224,224],"interpolation":"bicubic","antialias":true,"mean":[0.485,0.456,0.406],"std":[0.229,0.224,0.225],"color_mode":"RGB"}},
+    {"id":"deit_b16","model_id":"deit_base_patch16_224.fb_in1k","source_kind":"official_timm_0.9.16_pth","url":"https://dl.fbaipublicfiles.com/deit/deit_base_patch16_224-b5f2ef4d.pth","license":"Apache-2.0 DeiT official source material","expected_key_count":152,"expected_parameter_count":86567656,"download_bytes_max":1073741824,"preprocess":{"resize_shorter_side":248,"center_crop":[224,224],"interpolation":"bicubic","antialias":true,"mean":[0.485,0.456,0.406],"std":[0.229,0.224,0.225],"color_mode":"RGB"}},
+    {"id":"vit_b32","model_id":"vit_base_patch32_224.augreg_in21k_ft_in1k","source_kind":"official_timm_0.9.16_npz","url":"https://storage.googleapis.com/vit_models/augreg/B_32-i21k-300ep-lr_0.001-aug_medium1-wd_0.03-do_0.0-sd_0.0--imagenet2012-steps_20k-lr_0.03-res_224.npz","license":"Apache-2.0 Google ViT source material","expected_key_count":152,"expected_parameter_count":88224232,"download_bytes_max":1073741824,"preprocess":{"resize_shorter_side":248,"center_crop":[224,224],"interpolation":"bicubic","antialias":true,"mean":[0.5,0.5,0.5],"std":[0.5,0.5,0.5],"color_mode":"RGB"}}
+  ],
+  "execution": {"canonical_path":"native_unfused_timm_0.9.16_eval","steps":[128,256,512,1024,2048,4096,8192],"alpha_chunk":4,"component_chunk":8,"complete_cuts":135,"unit_count":200,"unit_terminals":["VALID","FAILED","NA"],"oom_retry_max":1,"terminal_overwrite_allowed":false,"shards":4,"shard_devices":[0,1,2,3],"assignment":"sha256(unit_identity) big-endian modulo 4"},
+  "methods": {"method_under_test":"nns_v2","identity_control":"full_model_integrated_gradients","competitive_primary":["vit_grad_cam","transformer_attribution_chefer","attnlrp","rise","occlusion"],"holm_family":["nns_v2_minus_vit_grad_cam","nns_v2_minus_transformer_attribution_chefer","nns_v2_minus_attnlrp","nns_v2_minus_rise","nns_v2_minus_occlusion"],"secondary":["attention_rollout","raw_cls_attention","random_map","center_prior","edge_input_gradient_prior"]},
+  "target": {"kind":"clean_predicted_class_raw_logit","baseline":"normalized_zero","path":"straight","quadrature":"gauss_legendre","identity_atol":1e-6,"identity_rtol":1e-6,"same_selected_steps":true},
+  "gamma_selection": {"algorithm_name":"AttnLRP outside attention + CP-LRP inside attention","conv_grid":[0.1,0.25,100.0],"linear_grid":[0.0,0.01,0.05,0.1,1.0],"eligibility":["all_200_routes_forward_max_abs_lt_1e-6","target_equal","shape_equal_224x224","finite","source_binding_equal"],"score":"primary_ROAD_Combined","aggregation":"within_model_class_balanced_mean_then_five_model_equal_mean","direction":"higher","tie_break":"frozen_grid_order","retain_all_candidates":true,"single_selection":true},
+  "faithfulness": {"primary":"ROAD_Combined=0.5*(LeRF-MoRF)","percentiles":[10,20,30,40,50,60,70,80,90],"noisy_linear_imputation_seeds":5,"target":"fixed_clean_predicted_class_raw_logit","tie_repeats":5,"tie_rng":"SHA256_to_PCG64","global_rng_allowed":false,"fraction_grid":[0.0,0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5,0.55,0.6,0.65,0.7,0.75,0.8,0.85,0.9,0.95,1.0],"auc":"trapezoidal","secondary":["insertion_auc","deletion_auc","sufficiency_20_percent","comprehensiveness_20_percent","ROAD_MoRF","ROAD_LeRF"]},
+  "stability": {"methods":["nns_v2","vit_grad_cam"],"transformations":["translate_x_-8","translate_x_-4","translate_x_4","translate_x_8","translate_y_-8","translate_y_-4","translate_y_4","translate_y_8","center_crop_216_resize_224","horizontal_flip","rotate_-10","rotate_10","gaussian_noise_0.01_seed_0","gaussian_noise_0.01_seed_1","gaussian_noise_0.01_seed_2","gaussian_noise_0.01_seed_3","gaussian_noise_0.01_seed_4","brightness_0.9","brightness_1.1","contrast_0.9","contrast_1.1","jpeg_70","jpeg_90"],"geometry_inverse_to_clean":true,"common_valid_domain_only":true,"metrics":["signed_spearman","top10_mass_jaccard","signed_ssim","normalized_positive_negative_mass_displacement","center_of_mass_pixel_error","prediction_flip_rate"],"absolute_gates":{"median_spearman_min":0.5,"jaccard_min":0.3,"ssim_min":0.5,"normalized_displacement_max":0.1,"com_error_pixels_max":8.0},"reference":"vit_grad_cam"},
+  "retention": {"L0":"all scalar terminals and resources","L1":"native scientific maps and primary curves","L2":"full component maps for first hash-ranked image per model only","L3":"display-only separate root schema and API; forbidden from metrics"},
+  "resources": {"hard_caps":{"h20_gpu_hours":160.0,"wall_hours":72.0,"cpu_hours":400.0,"peak_reserved_bytes_per_process":51539607552,"max_devices":8,"download_bytes":42949672960,"retained_bytes":137438953472,"automatic_waiver":false},"profile_quantiles":[0.5,0.95,0.99],"profile_fields":["wall_seconds","gpu_seconds","cpu_seconds","peak_reserved_bytes","peak_allocated_bytes","forward_calls","backward_calls","downloaded_bytes","retained_bytes"]},
+  "margin_and_futility": {"scale":"MAD(d_i)/0.6744897501960817","faithfulness_noninferiority":"clip(0.20*s,0.01,0.05)","negative_futility":"clip(0.30*s,0.02,0.075)","stability_correlation_jaccard_ssim":"clip(0.20*s,0.02,0.10)","stability_normalized_displacement":"clip(0.20*s,0.01,0.05)","stability_com_error":"clip(0.20*s,1,4)","primary_early_stop":"NNS-v2 minus ViT Grad-CAM ROAD Combined","ci":"95_percent_class_model_hierarchical_bootstrap","bootstrap_draws":20000,"rng":"NumPy_PCG64_SHA256_first_8_big_endian","quantile":"linear","trigger":"upper_95_CI < -negative_futility_magnitude","trigger_terminal":"NO_GO_BROAD_CLAIM_DEVELOPMENT"},
+  "formal_projection": {"formula":"ceil(1.5*sum(required_unit_count*X2_p99_unit_cost)+measured_fixed_control_overhead)","rounding":{"gpu_hours":0.1,"cpu_hours":1,"wall_hours":1,"memory_gib":1,"storage_gib":1},"owner_gpu_hour_ceilings":{"X3":300,"X4":900,"X5":700},"workload_reduction_allowed":false},
+  "terminal_contract": {"publish":"pending_to_terminal_atomic_rename","resume_verifies":["run_spec","unit_digest","source_sha256","model_binding","sample_binding","attempt_journal"],"scientific_invalidity_precedence":true,"pass_next_authorization":"NONE_REQUIRES_OWNER_AUTHORIZATION","no_go_next_authorization":"NONE","x3_started":false},
+  "false_pass_attacks": ["identity_control_in_competitive_or_holm","holm_not_exactly_five","outcome_dependent_sample_selection_or_reselection","model_specific_sample_lists","x2_sample_leak_to_formal","gamma_visual_or_formal_selection","gamma_candidate_dropped","target_baseline_or_selected_step_drift","nns_ig_identity_mismatch","fused_unfused_drift_misreported","residual_total_minus_branch","cross_layer_sum","neuron_or_cut_reduced_for_cost","patch_resize_claimed_native_pixel","failed_or_na_dropped_replaced_or_imputed","p99_replaced_by_mean_or_p95","margin_post_outcome_mutation","formal_budget_workload_reduction","display_product_in_metric","source_checkpoint_sample_terminal_or_resume_tamper","x3_candidate_early_access","x2_pass_claimed_as_formal_superiority"],
+  "canonical_digest": "b225e82fc89a8032a668a59a9feaf14f457dd49bc6f95b63a53924a741901f7a"
+}

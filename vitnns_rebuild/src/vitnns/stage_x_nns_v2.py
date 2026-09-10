@@ -734,11 +734,23 @@ def explain(
                 identity_pass = torch.allclose(identity, attribution, atol=IDENTITY_ATOL, rtol=IDENTITY_RTOL)
                 cut_pass = all(item.passed for item in cut_results.values())
                 passed = input_pass and identity_pass and cut_pass
+                worst_cut = max(
+                    cut_results.values(),
+                    key=lambda item: (
+                        abs(float(item.pixel_max_abs_error)),
+                        abs(float(item.total_abs_error)),
+                    ),
+                )
                 attempts.append({
                     "steps": count,
+                    "input_delta": delta,
+                    "input_sum": input_sum,
                     "input_abs_error": input_error,
                     "identity_max_abs_error": identity_error,
                     "all_cuts_pass": cut_pass,
+                    "worst_cut_id": worst_cut.cut_id,
+                    "worst_pixel_residual": worst_cut.pixel_max_abs_error,
+                    "worst_total_residual": worst_cut.total_abs_error,
                     "pass": passed,
                 })
                 if passed:

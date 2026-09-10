@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_x_x2_failure_receipt.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema","schema_version","document_type","stage_id","attempt_id","status","failure_code","source_root","report_root","manifest_sources","counts","diagnostic_routes","interrupted_routes","interruption_evidence","states","scientific_seals","custody","authorization","downstream","canonical_digest"],
+  "properties": {
+    "$schema": {"const": "stage_x_x2_failure_receipt.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_x_x2_post_failure_terminal_receipt"},
+    "stage_id": {"const": "X2"},
+    "attempt_id": {"const": "STAGE_X_X2_V1_20260909"},
+    "status": {"const": "NO_GO_METHOD_VALIDITY"},
+    "failure_code": {"const": "X2_ARTIFACT_PAYLOAD_SCHEMA_NOT_CLOSED"},
+    "source_root": {"const": "evidence/stage_x/x2_nns_v2_development_20260909/formal"},
+    "report_root": {"const": "reports/stage_x_x2_nns_v2_development_20260909"},
+    "manifest_sources": {"type":"object","additionalProperties":false,"required":["sample_manifest","unit_manifest","open_artifact_schema"],"properties":{"sample_manifest":{"$ref":"#/$defs/file"},"unit_manifest":{"$ref":"#/$defs/file"},"open_artifact_schema":{"$ref":"#/$defs/file"}}},
+    "counts": {"type":"object","additionalProperties":false,"required":["development_images","expected_routes","complete_diagnostic_routes","interrupted_attempts","not_started_total","never_started","published_unit_terminals","existing_file_count_before_receipt","existing_bytes_before_receipt"],"properties":{"development_images":{"const":40},"expected_routes":{"const":200},"complete_diagnostic_routes":{"const":11},"interrupted_attempts":{"const":4},"not_started_total":{"const":189},"never_started":{"const":185},"published_unit_terminals":{"const":0},"existing_file_count_before_receipt":{"type":"integer","minimum":1},"existing_bytes_before_receipt":{"type":"integer","minimum":1}}},
+    "diagnostic_routes": {"type":"array","minItems":11,"maxItems":11,"uniqueItems":true,"items":{"$ref":"#/$defs/route"}},
+    "interrupted_routes": {"type":"array","minItems":4,"maxItems":4,"uniqueItems":true,"items":{"$ref":"#/$defs/routeIdentity"}},
+    "interruption_evidence": {"type":"object","additionalProperties":false,"required":["captured_process_count","pids","commands","derivation"],"properties":{"captured_process_count":{"const":4},"pids":{"const":[3246053,3246054,3246055,3246058]},"commands":{"type":"array","minItems":4,"maxItems":4,"uniqueItems":true,"items":{"type":"string","pattern":"stage_x_x2_worker run-clean.*--shard [0-3].*--device cuda:[0-3]"}},"derivation":{"const":"one live worker per frozen shard at global stop; interrupted identity is the first manifest-ordered route in that shard without a clean or terminal publication"}}},
+    "states": {"type":"object","additionalProperties":false,"required":["diagnostic_route_state","interrupted_route_state","remaining_route_state","unexecuted_unit_terminals_created"],"properties":{"diagnostic_route_state":{"const":"DIAGNOSTIC_ONLY_INVALIDATED_BY_GLOBAL_METHOD_VALIDITY_STOP"},"interrupted_route_state":{"const":"NOT_STARTED_DUE_TO_GLOBAL_METHOD_VALIDITY_STOP_INTERRUPTED_IN_MEMORY"},"remaining_route_state":{"const":"NOT_STARTED_DUE_TO_GLOBAL_METHOD_VALIDITY_STOP_NEVER_STARTED"},"unexecuted_unit_terminals_created":{"const":false}}},
+    "scientific_seals": {"type":"object","additionalProperties":false,"required":["gamma_selected","margins_sealed","futility_computed","stability_completed","formal_budget_projected"],"properties":{"gamma_selected":{"const":false},"margins_sealed":{"const":false},"futility_computed":{"const":false},"stability_completed":{"const":false},"formal_budget_projected":{"const":false}}},
+    "custody": {"type":"object","additionalProperties":false,"required":["existing_tree_inventory_digest","existing_files_unchanged","partial_atomic_directories","pending_publications","source_recomputed"],"properties":{"existing_tree_inventory_digest":{"$ref":"#/$defs/sha"},"existing_files_unchanged":{"const":true},"partial_atomic_directories":{"const":0},"pending_publications":{"const":0},"source_recomputed":{"const":true}}},
+    "authorization": {"type":"object","additionalProperties":false,"required":["next_authorization","source","created_by_failed_x2"],"properties":{"next_authorization":{"const":"X2_R1_NNS_V2_DEVELOPMENT_AND_FUTILITY_RECOVERY_ONLY"},"source":{"const":"OWNER_EXPLICIT_20260909"},"created_by_failed_x2":{"const":false}}},
+    "downstream": {"type":"object","additionalProperties":false,"required":["x3_started","x4_started","x5_started"],"properties":{"x3_started":{"const":false},"x4_started":{"const":false},"x5_started":{"const":false}}},
+    "canonical_digest": {"$ref":"#/$defs/sha"}
+  },
+  "$defs": {
+    "sha": {"type":"string","pattern":"^[0-9a-f]{64}$"},
+    "file": {"type":"object","additionalProperties":false,"required":["path","bytes","sha256"],"properties":{"path":{"type":"string","minLength":1},"bytes":{"type":"integer","minimum":1},"sha256":{"$ref":"#/$defs/sha"}}},
+    "routeIdentity": {"type":"object","additionalProperties":false,"required":["unit_digest","model_id","sample_id","sample_sha256","development_rank","shard"],"properties":{"unit_digest":{"$ref":"#/$defs/sha"},"model_id":{"type":"string","minLength":1},"sample_id":{"type":"string","minLength":1},"sample_sha256":{"$ref":"#/$defs/sha"},"development_rank":{"type":"integer","minimum":0,"maximum":39},"shard":{"type":"integer","minimum":0,"maximum":3}}},
+    "route": {"type":"object","additionalProperties":false,"required":["unit_digest","model_id","sample_id","sample_sha256","development_rank","shard","file_count","tree_digest","state"],"properties":{"unit_digest":{"$ref":"#/$defs/sha"},"model_id":{"type":"string","minLength":1},"sample_id":{"type":"string","minLength":1},"sample_sha256":{"$ref":"#/$defs/sha"},"development_rank":{"type":"integer","minimum":0,"maximum":39},"shard":{"type":"integer","minimum":0,"maximum":3},"file_count":{"const":29},"tree_digest":{"$ref":"#/$defs/sha"},"state":{"const":"DIAGNOSTIC_ONLY_INVALIDATED_BY_GLOBAL_METHOD_VALIDITY_STOP"}}}
+  }
+}

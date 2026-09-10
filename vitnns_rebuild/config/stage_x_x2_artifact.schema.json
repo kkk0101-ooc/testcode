@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_x_x2_artifact.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "document_type", "stage_id", "status", "payload", "canonical_digest"],
+  "properties": {
+    "$schema": {"const": "stage_x_x2_artifact.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"type": "string", "minLength": 1},
+    "stage_id": {"const": "X2"},
+    "status": {"enum": ["PENDING", "PASS", "VALID", "FAILED", "NA", "NO_GO_METHOD_VALIDITY", "NO_GO_CLASS_LOGIT_COMPLETENESS", "NO_GO_BROAD_CLAIM_DEVELOPMENT", "BLOCKED_INFRASTRUCTURE", "BLOCKED_DETERMINISTIC_MEMORY_PLAN", "BLOCKED_BUDGET"]},
+    "payload": {"type": "object"},
+    "canonical_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_x_x2.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "document_type", "stage_id", "authorization", "roots", "git", "sample_selection", "models", "execution", "methods", "target", "gamma_selection", "faithfulness", "stability", "retention", "resources", "margin_and_futility", "formal_projection", "terminal_contract", "false_pass_attacks", "canonical_digest"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_x_x2_frozen_run_configuration"},
+    "stage_id": {"const": "X2"},
+    "authorization": {"const": "X2_NNS_V2_DEVELOPMENT_AND_FUTILITY_ONLY"},
+    "roots": {"type": "object"},
+    "git": {"type": "object"},
+    "sample_selection": {"type": "object"},
+    "models": {"type": "array", "minItems": 5, "maxItems": 5},
+    "execution": {"type": "object"},
+    "methods": {"type": "object"},
+    "target": {"type": "object"},
+    "gamma_selection": {"type": "object"},
+    "faithfulness": {"type": "object"},
+    "stability": {"type": "object"},
+    "retention": {"type": "object"},
+    "resources": {"type": "object"},
+    "margin_and_futility": {"type": "object"},
+    "formal_projection": {"type": "object"},
+    "terminal_contract": {"type": "object"},
+    "false_pass_attacks": {"type": "array", "minItems": 22},
+    "canonical_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

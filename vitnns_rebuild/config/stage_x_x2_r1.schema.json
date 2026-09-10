@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_x_x2_r1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema","schema_version","document_type","stage_id","run_id","authorization","roots","source_contract","amendment","failed_attempt_receipt","reuse","execution","pre_outcome_mutations","terminal","canonical_digest"],
+  "properties": {
+    "$schema": {"const": "stage_x_x2_r1.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_x_x2_r1_frozen_recovery_configuration"},
+    "stage_id": {"const": "X2-R1"},
+    "run_id": {"const": "STAGE_X_X2_R1_V1_20260909"},
+    "authorization": {"const": "X2_R1_NNS_V2_DEVELOPMENT_AND_FUTILITY_RECOVERY_ONLY"},
+    "roots": {"type":"object","additionalProperties":false,"required":["formal","report","checkpoint_cache"],"properties":{"formal":{"const":"evidence/stage_x/x2_r1_nns_v2_development_20260909/formal"},"report":{"const":"reports/stage_x_x2_r1_nns_v2_development_20260909"},"checkpoint_cache":{"const":"assets/models/stage_x_x2"}}},
+    "source_contract": {"$ref":"#/$defs/canonicalFile"},
+    "amendment": {"$ref":"#/$defs/file"},
+    "failed_attempt_receipt": {"$ref":"#/$defs/canonicalFile"},
+    "reuse": {"type":"object","additionalProperties":false,"required":["exact_sample_manifest_only","sample_reselection_allowed","checkpoint_cache_bytes_allowed","checkpoint_redownload_allowed_if_hash_valid","old_outcome_paths_may_be_hashed_for_custody_only","old_outcomes_allowed_in_analysis","all_200_routes_reexecuted"],"properties":{"exact_sample_manifest_only":{"const":true},"sample_reselection_allowed":{"const":false},"checkpoint_cache_bytes_allowed":{"const":true},"checkpoint_redownload_allowed_if_hash_valid":{"const":false},"old_outcome_paths_may_be_hashed_for_custody_only":{"const":true},"old_outcomes_allowed_in_analysis":{"const":false},"all_200_routes_reexecuted":{"const":true}}},
+    "execution": {"type":"object","additionalProperties":false,"required":["phases","shards","devices","assignment","attempt_id","pending_to_terminal_atomic","overwrite_allowed","reconcile_from_unit_sources"],"properties":{"phases":{"const":["clean_validity","gamma_candidates","gamma_reconciliation","formal_selected_gamma","terminal_reconciliation"]},"shards":{"const":4},"devices":{"const":[0,1,2,3]},"assignment":{"const":"first_8_bytes_sha256_unit_identity_big_endian_modulo_4"},"attempt_id":{"const":"attempt-000001"},"pending_to_terminal_atomic":{"const":true},"overwrite_allowed":{"const":false},"reconcile_from_unit_sources":{"const":true}}},
+    "pre_outcome_mutations": {"const":["root_unknown_field","payload_unknown_field","nested_unknown_field","missing_required_field","duplicate_json_key","bad_canonical_digest","nan","infinity","bool_as_int","wrong_unit_count","wrong_unit_digest","wrong_sample_model_binding","full_model_ig_in_holm","holm_family_not_five","terminal_overwrite","pending_overwrite","array_dtype_drift","array_shape_drift","array_file_sha_drift","array_content_digest_drift"]},
+    "terminal": {"type":"object","additionalProperties":false,"required":["pass_next_authorization","no_go_next_authorization","formal_superiority_claim","x3_started","x4_started","x5_started"],"properties":{"pass_next_authorization":{"const":"NONE_REQUIRES_OWNER_AUTHORIZATION"},"no_go_next_authorization":{"const":"NONE"},"formal_superiority_claim":{"const":false},"x3_started":{"const":false},"x4_started":{"const":false},"x5_started":{"const":false}}},
+    "canonical_digest": {"$ref":"#/$defs/sha"}
+  },
+  "$defs": {
+    "sha": {"type":"string","pattern":"^[0-9a-f]{64}$"},
+    "file": {"type":"object","additionalProperties":false,"required":["kind","path","bytes","sha256"],"properties":{"kind":{"const":"file"},"path":{"type":"string","minLength":1},"bytes":{"type":"integer","minimum":1},"sha256":{"$ref":"#/$defs/sha"}}},
+    "canonicalFile": {"type":"object","additionalProperties":false,"required":["kind","path","bytes","sha256","canonical_digest"],"properties":{"kind":{"const":"file"},"path":{"type":"string","minLength":1},"bytes":{"type":"integer","minimum":1},"sha256":{"$ref":"#/$defs/sha"},"canonical_digest":{"$ref":"#/$defs/sha"}}}
+  }
+}

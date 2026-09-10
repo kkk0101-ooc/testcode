@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_x_x2_r2.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema","schema_version","document_type","stage_id","run_id","authorization","roots","coverage","reuse","new_clean_execution","downstream","canonical_digest"],
+  "properties": {
+    "$schema": {"const": "stage_x_x2_r2.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_x_x2_r2_frozen_recovery_configuration"},
+    "stage_id": {"const": "X2-R2"},
+    "run_id": {"const": "STAGE_X_X2_R2_V1_20260909"},
+    "authorization": {"const": "X2_R2_COVERAGE_GATED_NUMERICAL_RECOVERY_ONLY"},
+    "roots": {"type":"object","additionalProperties":false,"required":["formal","report"],"properties":{"formal":{"const":"evidence/stage_x/x2_r2_nns_v2_development_20260909/formal"},"report":{"const":"reports/stage_x_x2_r2_nns_v2_development_20260909"}}},
+    "coverage": {"type":"object","additionalProperties":false,"required":["expected_routes","overall_valid_min","models","routes_per_model","per_model_valid_min","all_expected_routes_require_real_terminal","allowed_nonvalid_classes","not_started_counts_as_terminal","replacement_allowed","imputation_allowed","retry_until_favorable_allowed"],"properties":{"expected_routes":{"const":200},"overall_valid_min":{"const":190},"models":{"const":5},"routes_per_model":{"const":40},"per_model_valid_min":{"const":38},"all_expected_routes_require_real_terminal":{"const":true},"allowed_nonvalid_classes":{"const":["FAILED_ROUTE_LOCAL_NUMERICAL","FAILED_ROUTE_LOCAL_EXECUTION","NA_ROUTE_LOCAL_INFRASTRUCTURE"]},"not_started_counts_as_terminal":{"const":false},"replacement_allowed":{"const":false},"imputation_allowed":{"const":false},"retry_until_favorable_allowed":{"const":false}}},
+    "reuse": {"type":"object","additionalProperties":false,"required":["x2_r1_valid_clean_routes","source_validation_required","scientific_arrays_remain_in_x2_r1_root","x2_r1_failed_route_reused_as_valid","x2_r1_outcomes_used_for_gamma_or_effects"],"properties":{"x2_r1_valid_clean_routes":{"const":197},"source_validation_required":{"const":true},"scientific_arrays_remain_in_x2_r1_root":{"const":true},"x2_r1_failed_route_reused_as_valid":{"const":false},"x2_r1_outcomes_used_for_gamma_or_effects":{"const":false}}},
+    "new_clean_execution": {"type":"object","additionalProperties":false,"required":["route_count","original_schedule_only","tolerances_unchanged","failed_route_must_be_reexecuted","never_started_routes_must_be_executed"],"properties":{"route_count":{"const":3},"original_schedule_only":{"const":[128,256,512,1024,2048,4096,8192]},"tolerances_unchanged":{"const":true},"failed_route_must_be_reexecuted":{"const":true},"never_started_routes_must_be_executed":{"const":2}}},
+    "downstream": {"type":"object","additionalProperties":false,"required":["gamma_all_200_required","formal_uses_paired_valid_clean_roster","formal_denominator_remains_200","pass_next_authorization","failure_next_authorization","formal_superiority_claim","x3_started","x4_started","x5_started"],"properties":{"gamma_all_200_required":{"const":true},"formal_uses_paired_valid_clean_roster":{"const":true},"formal_denominator_remains_200":{"const":true},"pass_next_authorization":{"const":"NONE_REQUIRES_OWNER_AUTHORIZATION"},"failure_next_authorization":{"const":"NONE"},"formal_superiority_claim":{"const":false},"x3_started":{"const":false},"x4_started":{"const":false},"x5_started":{"const":false}}},
+    "canonical_digest": {"type":"string","pattern":"^[0-9a-f]{64}$"}
+  }
+}
