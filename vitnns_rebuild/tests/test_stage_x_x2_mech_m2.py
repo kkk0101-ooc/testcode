@@ -113,6 +113,12 @@ def test_transport_integer_translation_and_horizontal_flip_full_domain() -> None
     shifted, mask = m2._transport_clean(value, "translate_x_4", {"inverse": "translate", "axis": "x", "amount": 4}, access)
     assert np.array_equal(shifted[mask], value[mask])
     assert mask.sum() == 224 * 220
+    identity_mask = m2._identity_transport_mask("translate_x_4")
+    assert identity_mask is not None
+    assert identity_mask.sum() == 224 * 220
+    identity = m2._identity_metrics(identity_mask, 4)
+    assert identity["signed_spearman"] == 1.0
+    assert identity["absolute_mass_center_of_mass_pixel_error"] == 0.0
     assert access["torch_imported_for_cpu_geometry"] is False
 
 

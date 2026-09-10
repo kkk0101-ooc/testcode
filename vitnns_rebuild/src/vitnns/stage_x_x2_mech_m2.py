@@ -893,6 +893,7 @@ def _prepare_clean_stability(clean: np.ndarray, valid_mask: np.ndarray, block: i
         mass_a = np.abs(signed_a)
         signed_map_a = np.where(valid, a, 0.0)
         mass_map_a = np.where(valid, np.abs(a), 0.0)
+        ssim_map_a = a
     else:
         rows, cols = a.shape[0] // block, a.shape[1] // block
         a_blocks = a.reshape(rows, block, cols, block).transpose(0, 2, 1, 3)
@@ -903,6 +904,7 @@ def _prepare_clean_stability(clean: np.ndarray, valid_mask: np.ndarray, block: i
         signed_a = signed_map_a[valid]
         mass_a = mass_map_a[valid]
         signed_map_a = np.where(valid, signed_map_a, 0.0)
+        ssim_map_a = signed_map_a
     if signed_a.size == 0:
         raise X2MechM2Error("no complete valid units")
     row, col = np.nonzero(valid)
@@ -922,7 +924,7 @@ def _prepare_clean_stability(clean: np.ndarray, valid_mask: np.ndarray, block: i
         "mass_top_a": _top_mask_1d(mass_a),
         "signed_map_a": signed_map_a,
         "mass_map_a": mass_map_a,
-        "crop_a": signed_map_a[r0:r1, c0:c1],
+        "crop_a": ssim_map_a[r0:r1, c0:c1],
         "crop_bounds": (r0, r1, c0, c1),
         "row_coords": row_coords,
         "col_coords": col_coords,
@@ -944,6 +946,7 @@ def _m2_stability_metrics_prepared(prepared: Mapping[str, Any], transformed: np.
         signed_b = b[valid]
         mass_b = np.abs(signed_b)
         signed_map_b = np.where(valid, b, 0.0)
+        ssim_map_b = b
     else:
         rows, cols = b.shape[0] // block, b.shape[1] // block
         b_blocks = b.reshape(rows, block, cols, block).transpose(0, 2, 1, 3)
@@ -952,11 +955,12 @@ def _m2_stability_metrics_prepared(prepared: Mapping[str, Any], transformed: np.
         signed_b = signed_map_b[valid]
         mass_b = mass_map_b[valid]
         signed_map_b = np.where(valid, signed_map_b, 0.0)
+        ssim_map_b = signed_map_b
     signed_a = np.asarray(prepared["signed_a"], dtype=np.float64)
     mass_a = np.asarray(prepared["mass_a"], dtype=np.float64)
     crop_a = np.asarray(prepared["crop_a"], dtype=np.float64)
     r0, r1, c0, c1 = prepared["crop_bounds"]
-    crop_b = signed_map_b[r0:r1, c0:c1]
+    crop_b = ssim_map_b[r0:r1, c0:c1]
     data_range = max(
         float(max(signed_a.max(), signed_b.max()) - min(signed_a.min(), signed_b.min())),
         1e-12,
@@ -1229,6 +1233,56 @@ def _transport_clean(clean: np.ndarray, transform: str, metadata: Mapping[str, A
     raise X2MechM2Error(f"unsupported transport transform: {transform}")
 
 
+def _identity_transport_mask(transform: str, shape: tuple[int, int] = (224, 224)) -> np.ndarray | None:
+    valid = np.ones(shape, dtype=bool)
+    if transform == "horizontal_flip":
+        return valid
+    if transform.startswith("translate_x_"):
+        amount = int(transform.removeprefix("translate_x_"))
+        valid[:] = False
+        if amount > 0:
+            valid[:, :-amount] = True
+        else:
+            valid[:, -amount:] = True
+        return valid
+    if transform.startswith("translate_y_"):
+        amount = int(transform.removeprefix("translate_y_"))
+        valid[:] = False
+        if amount > 0:
+            valid[:-amount, :] = True
+        else:
+            valid[-amount:, :] = True
+        return valid
+    return None
+
+
+def _identity_metrics(valid_mask: np.ndarray, block: int) -> dict[str, float]:
+    mask = np.asarray(valid_mask)
+    if mask.dtype != np.bool_ or mask.ndim != 2:
+        raise X2MechM2Error("identity metrics require a boolean 2D mask")
+    if block == 1:
+        valid_count = int(mask.sum())
+        excluded = int(mask.size - valid_count)
+    else:
+        rows, cols = mask.shape[0] // block, mask.shape[1] // block
+        complete = mask.reshape(rows, block, cols, block).transpose(0, 2, 1, 3).all(axis=(2, 3))
+        valid_count = int(complete.sum())
+        excluded = int(complete.size - complete.sum())
+    if valid_count <= 0:
+        raise X2MechM2Error("identity metrics require at least one valid unit")
+    return {
+        "signed_spearman": 1.0,
+        "top10_unit_signed_value_jaccard": 1.0,
+        "absolute_mass_spearman": 1.0,
+        "top10_unit_absolute_mass_jaccard": 1.0,
+        "signed_ssim": 1.0,
+        "normalized_positive_negative_mass_displacement": 0.0,
+        "absolute_mass_center_of_mass_pixel_error": 0.0,
+        "valid_unit_count": valid_count,
+        "excluded_partial_unit_count": excluded,
+    }
+
+
 def _scale_id(block: int) -> str:
     return {1: "pixel", 4: "fine_cell", 16: "native_patch"}[block]
 
@@ -1325,7 +1379,11 @@ def compute_multiscale_results(repo_root: Path | str = REPO_ROOT,
                 manifest = by_map[(unit, method, transform, "inverse")]
                 prediction_changed = _bool_string(manifest["prediction_changed"], "M1 prediction_changed")
                 source_metadata = json.loads(manifest["transform_metadata"], object_pairs_hook=_pairs)
-                restored, default_mask = _transport_clean(clean, transform, source_metadata, access)
+                identity_transport_mask = _identity_transport_mask(transform, clean.shape)
+                restored: np.ndarray | None = None
+                default_mask: np.ndarray | None = None
+                if identity_transport_mask is None:
+                    restored, default_mask = _transport_clean(clean, transform, source_metadata, access)
                 for mask_id in MASKS:
                     mask = masks_by_key[(transform, mask_id)]
                     for scale_id, block in SCALES:
@@ -1414,11 +1472,15 @@ def compute_multiscale_results(repo_root: Path | str = REPO_ROOT,
                             "status": "PASS",
                         })
                     for scale_id, block in SCALES:
-                        if default_mask.shape != mask.shape:
-                            raise X2MechM2Error("transport mask shape drifted")
-                        transport_mask = mask & default_mask
-                        tprepared = _prepare_clean_stability(clean, transport_mask, block)
-                        tmetrics = _m2_stability_metrics_prepared(tprepared, restored)
+                        if identity_transport_mask is not None:
+                            transport_mask = mask & identity_transport_mask
+                            tmetrics = _identity_metrics(transport_mask, block)
+                        else:
+                            if default_mask is None or restored is None or default_mask.shape != mask.shape:
+                                raise X2MechM2Error("transport mask shape drifted")
+                            transport_mask = mask & default_mask
+                            tprepared = _prepare_clean_stability(clean, transport_mask, block)
+                            tmetrics = _m2_stability_metrics_prepared(tprepared, restored)
                         transport_rows.append({
                             "unit_digest": unit,
                             "model_id": manifest["model_id"],
