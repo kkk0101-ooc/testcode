@@ -2,7 +2,7 @@
 
 > 建立日期：2026-09-07。
 > 当前状态：Stage F F0–F3 主模块、F3-Display、F3-HeadAtlas（历史 token `F3H`）和 F3-ClassCompare（历史 token `F3C`）均已有封存产物；F3C 的 50 图展示包也已完成。2026-09-08 的论文图形审计确认 F1/F2 为定量主证据、F3 蓝色图为正文定性展示层、signed/shared-scale 图为幅值与符号审计层。最终 Figure 1–6 / Supplement S1–S4 组合包尚未单独封存，F3-ClassCompare 是否作为 S5 随稿交付须在 F3-Final 中冻结。
-> 当前调度：Stage X X1-R1 已 PASS；X2 已封存为 `NO_GO_BROAD_CLAIM_DEVELOPMENT`，X3–X5 未启动且不再授权。现恢复 original-scope `F3_FINAL_FIGURE_PACKAGE_ONLY`；不再启动 F4。
+> 当前调度：X2 immutable `NO_GO_BROAD_CLAIM_DEVELOPMENT` 不变；post-hoc exploratory X2-MECH M1-R1 已 PASS，当前执行 CPU-only M2。M2 terminal 后先建立 `stage_x_x2_mech_results_to_paper_handoff_20260910.md`，再更新并执行 F3-Final；当前不预留 X2-MECH 图号，不启动 F4。M1→M2 叙事边界见 [科学交接](stage_x_x2_mech_m1_to_m2_scientific_handoff_20260910.md)。
 > 文档性质：Stage F 的权威图表规划、阶段边界和验收合同；不是论文写作授权。
 > 选择规则：定性案例继续受 [阶段 F 展示选择协议 v1](stage_f_display_protocol_v1.md) 约束；跨层/头归因矩阵同时受 [Stage F 跨层/头归因展示补充协议](stage_f_cross_layer_display_addendum_20260907.md) 约束。
 
@@ -701,7 +701,7 @@ F3C 不再尝试学习、调参、排序或人工指定 head 权重，而是直�
 
 ### 23.4 当前授权与执行提示词
 
-本段是 2026-09-07 的历史状态记录，当时 F3C1–F3C4 与原 F4 均尚未开始。当前 F3C 已完成；F3-Final 因 Stage X 暂停，现行下一任务见文首的 `X1_NNS_V2_IMPLEMENTATION_ONLY`。历史提示词继续保留在 `docs/stage_f_f3c1_execution_prompt_20260907.md`，不得当成当前授权。
+本段是 2026-09-07 的历史状态记录，当时 F3C1–F3C4 与原 F4 均尚未开始；其中所称 `X1_NNS_V2_IMPLEMENTATION_ONLY` 也只代表随后 2026-09-08 的历史调度。当前 F3C 已完成，现行下一任务以文首的 X2-MECH M2 调度为准。历史提示词继续保留在 `docs/stage_f_f3c1_execution_prompt_20260907.md`，不得当成当前授权。
 
 ## 24. F3C1 implementation and synthetic preflight completion（2026-09-07）
 
@@ -805,7 +805,7 @@ F3C4 封存后新增独立 CPU-only 展示模块 `src/vitnns/stage_f_f3c_visual.
 5. 历史 `F4_ONLY` receipt 不追溯修改，其当前等价路由为 `F3_FINAL_FIGURE_PACKAGE_ONLY → STAGE_G_WRITING_G0_ONLY`；
 6. Stage E 继续表示已封存的 post-D10 消融与敏感性分析，不与 Stage G 混用。
 
-截至 Stage X X0 completion，F3-Final 保持未启动。当前唯一下一授权是 `X1_NNS_V2_IMPLEMENTATION_ONLY`；Stage G 尚未启动。
+截至 Stage X X0 completion，当时 F3-Final 保持未启动且下一授权是 `X1_NNS_V2_IMPLEMENTATION_ONLY`。该句只记录 X0 时点；现行唯一下一授权以文首的 X2-MECH M2 调度为准，Stage G 仍未启动。
 
 ## 31. 论文图形与证据用途审计决议（2026-09-08）
 

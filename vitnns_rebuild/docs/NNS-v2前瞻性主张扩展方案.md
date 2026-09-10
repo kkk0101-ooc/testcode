@@ -2,9 +2,9 @@
 
 > 建立日期：2026-09-08。
 > 状态：X1-R1 `PASS`；X2 经版本化恢复链完成并封存为 `NO_GO_BROAD_CLAIM_DEVELOPMENT`。X3–X5 未启动且不再授权。
-> 当前下一授权：`F3_FINAL_FIGURE_PACKAGE_ONLY`，恢复 original-scope paper 路线。
+> 后续状态：post-hoc exploratory X2-MECH P0-R1 与 M1-R1 已 `PASS`；当前唯一下一授权为 `X2_MECH_M2_CPU_ONLY_MULTISCALE_MECHANISM_ANALYSIS_ONLY`。
 > 上游状态：C10、Stage D D0–D10、历史 Stage E E0–E4 和 Stage F 已封存工作包均保持只读。
-> 下游状态：X2 provenance closeout 完成后执行 original-scope `F3_FINAL_FIGURE_PACKAGE_ONLY`；其 terminal PASS 后才授权 `STAGE_G_WRITING_G0_ONLY`。
+> 下游状态：M2 terminal 与 results-to-paper handoff 完成后更新 F3-Final composition；F3-Final terminal PASS 后才授权 `STAGE_G_WRITING_G0_ONLY`。M1→M2 的科学叙事与证据边界见 [X2-MECH M1→M2 科学交接](stage_x_x2_mech_m1_to_m2_scientific_handoff_20260910.md)。
 
 ## 1. 目的与路线决议
 
@@ -503,7 +503,7 @@ X1 启动审计在模型/JPEG/GPU access 和 accepted implementation 前发现�
 - `manifests/stage_x_benchmark_plan_v2.json`；
 - `docs/stage_x_x0_r1_execution_prompt_20260908.md`。
 
-当前唯一下一任务仍为 `X1_NNS_V2_IMPLEMENTATION_ONLY`，但必须使用 X0-R1，而不是原 X0 的 comparator role/truth table。
+在 X0-R1 completion 当时，下一任务为 `X1_NNS_V2_IMPLEMENTATION_ONLY`，且必须使用 X0-R1 而不是原 X0 的 comparator role/truth table。该历史授权已由后续 X1-R1、X2 closeout 和第 19 节的 X2-MECH 状态取代。
 
 ## 17. X1 blocked record（2026-09-08）
 
@@ -520,3 +520,7 @@ X2 在冻结的 5 models × 40 development images 上执行。原 X2、X2-R1、X
 最终 decision 为 immutable `NO_GO_BROAD_CLAIM_DEVELOPMENT`：NNS-v2 absolute stability 仅 `50/115` cells，未达到 80%；相对固定 Grad-CAM 的 stability noninferiority 未通过；ROAD futility boundary 本身未触发，但 X2 hard cap 和 X3–X5 projected formal budgets 均未通过。上述任一事实均不得被重解释为 broad PASS。X3–X5 未启动且不再授权。
 
 权威终态为 `evidence/stage_x/x2_r2_r1_r1_nns_v2_development_20260910/formal/`；provenance closeout 为 `reports/stage_x_x2_provenance_closeout_20260910.json` 和 `docs/stage_x_x2_provenance_closeout_20260910.md`。现行路线按第 13 节停止门恢复为：existing Stage F evidence → original-scope F3-Final → Stage G。
+
+## 19. X2-MECH P0-R1 / M1-R1 状态（2026-09-10）
+
+在不改变 X2 NO-GO 的前提下，post-hoc exploratory X2-MECH 已完成 P0-R1 protocol freeze 和 M1-R1 evidence production。M1-R1 source-recomputing `PASS`：199 个 clean-valid routes、4,776 transformed maps、4,776 inverse maps、24 shared masks、796 multiscale fidelity summaries 和 71,640 detailed ROAD rows；原 failed route 保持原位，M2 尚未执行。当前只授权 CPU-only M2。完整论文定位、M1 恢复边界与 M2 预声明解释分支见 [X2-MECH M1→M2 科学交接](stage_x_x2_mech_m1_to_m2_scientific_handoff_20260910.md)；冻结计算口径仍只由 [X2-MECH protocol](stage_x_x2_mechanism_protocol_20260910.md) 定义。

@@ -2,7 +2,7 @@
 
 > 生效日期：2026-09-08。
 > 当前定义：阶段 G 只负责论文写作、双语一致性、引用核验、编译和稿件封存，不负责生成或修改科学图表。
-> 前置阶段：Stage X X1-R1 已 PASS；X2 已封存为 `NO_GO_BROAD_CLAIM_DEVELOPMENT`，因此 X3–X5 未启动且不再授权。当前先执行 original-scope F3-Final；该图包通过后 Stage G 才能进入正式写作。
+> 前置阶段：X2 immutable `NO_GO_BROAD_CLAIM_DEVELOPMENT` 不变；post-hoc exploratory X2-MECH M1-R1 已 PASS，CPU-only M2 已授权未启动。M2 terminal 与 results-to-paper handoff 完成后更新并执行 F3-Final；该图包通过后 Stage G 才能进入正式写作。
 > 历史兼容：阶段 E 继续专指 2026-09-06 至 2026-09-07 已执行并封存的消融与敏感性分析。其原规划保留在 [阶段 E 规划](阶段E规划.md)，config、code、evidence、reports、completion 和 archive refs 不改名、不搬移。
 
 ## 1. 阶段边界与当前路线
@@ -45,6 +45,8 @@ Stage A–D：方法、验证与主实验（已封存）
 - [论文1当前实现审计、缺口与后续计划](../../论文1实现审计与后续计划.md)：研究问题、旧结果停用规则、允许/禁止主张和论文级验收清单；
 - [阶段 G 论文写作指导](阶段G论文写作指导.md)：具体写作与 QC 流程；
 - [阶段 F 规划](阶段F规划.md)：正式图表范围、显示边界和历史 completion；
+- [X2-MECH M1→M2 科学交接](stage_x_x2_mech_m1_to_m2_scientific_handoff_20260910.md)：working scientific story、M1 状态、证据等级与 M2 预声明解释分支；
+- M2 terminal completion 后新增的 `stage_x_x2_mech_results_to_paper_handoff_20260910.md`：M2 的最终 post-hoc exploratory 解释与 F3-Final/G0/G1 交接；该文件在 M2 完成前不得创建为结果文档；
 - [F3 工作包和产物索引](阶段F_F3工作包与产物索引.md)及 `manifests/stage_f_f3_work_packages_v1.json`；
 - D10、历史消融阶段 E E4、阶段 F 各 terminal package 的 machine-readable paper data、caption data、source manifest 和 completion；
 - 核心参考文献：`../相关文章/Understanding neural network through neuron level visualization/`，对应 Dou et al., *Neural Networks* 168 (2023), 484–495, DOI `10.1016/j.neunet.2023.09.030`；
@@ -103,6 +105,8 @@ manuscript/
 
 G0 PASS 只授权 `G1_STORY_AND_EVIDENCE_ONLY`。
 
+若 X2-MECH M2 进入论文，G0 必须验证其 terminal/ref/hash、results-to-paper handoff 和 F3-Final source binding，并保持 `POST_HOC_EXPLORATORY_MECHANISM_ANALYSIS` 标签；M2 不得改写 X2 NO-GO 或 Stage D primary。
+
 ### G1：Scientific story、Evidence Matrix 与 Figure Cards
 
 - 从审计文档和 machine-readable 证据重建 central question、主要发现、替代解释和限制；
@@ -112,6 +116,8 @@ G0 PASS 只授权 `G1_STORY_AND_EVIDENCE_ONLY`。
 - 不使用图像观感替代定量证据。
 
 G1 PASS 只授权 `G2_RESULTS_DISCUSSION_ONLY`。
+
+G1 必须在 evidence matrix 中将 X2 的 broad-claim boundary 与 M2 的 post-hoc mechanism interpretation 分列；只有 M2 terminal 和 results-to-paper handoff 明确允许的机制措辞才能进入 scientific story。
 
 ### G2：Results and Discussion
 
@@ -217,6 +223,6 @@ F1/F2/F3-ClassCompare 的数字必须从 frozen `plot_data`/`paper_data` 获取�
 
 ## 8. 当前状态
 
-截至 2026-09-10，原 F4 尚未执行，阶段 G 写作也未启动。阶段 F 的 F0–F3 主模块、F3-Display、F3-HeadAtlas 和 F3-ClassCompare 已有封存产物；Stage X X2 已触发并封存 broad-claim 停止门，X3–X5 未启动。当前唯一下一任务为 original-scope `F3_FINAL_FIGURE_PACKAGE_ONLY`；其 terminal PASS 后才授权 `STAGE_G_WRITING_G0_ONLY`。
+截至 2026-09-10，原 F4 和阶段 G 均未启动。Stage F 的既有工作包保持封存；X2-MECH M1-R1 已完成 transformed/inverse maps 与 multiscale fidelity evidence，当前唯一下一授权为 CPU-only M2。M2 terminal → results-to-paper handoff → 更新后的 F3-Final 依次完成后，才授权 `STAGE_G_WRITING_G0_ONLY`。
 
 阶段 G 不自动执行。本文只定义写作阶段，不创建稿件正文，不启动新实验，也不修改任何已封存图形或科学证据。
