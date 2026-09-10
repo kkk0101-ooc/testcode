@@ -34,7 +34,7 @@ TRANSFORMS = (
 )
 ARRAY_SUFFIXES = (".npy",)
 FORBIDDEN_OUTPUT_SUFFIXES = (".jpg", ".jpeg", ".png")
-M1_ROOT = Path("evidence/stage_x/x2_mech_m1_20260910/formal")
+M1_ROOT = Path("evidence/stage_x/x2_mech_m1_r1_20260910/formal")
 ATTEMPT_ID = "attempt-000001"
 
 
@@ -43,10 +43,11 @@ class X2MechWorkerError(ValueError):
 
 
 def array_digest(value: np.ndarray) -> str:
-    array = np.ascontiguousarray(value, dtype=np.float32)
+    array = np.ascontiguousarray(value)
     digest = hashlib.sha256()
-    digest.update(str(array.dtype).encode("ascii")); digest.update(b"|")
-    digest.update(",".join(str(item) for item in array.shape).encode("ascii")); digest.update(b"|")
+    digest.update(array.dtype.str.encode("ascii")); digest.update(b"\0")
+    digest.update(json.dumps(list(array.shape), separators=(",", ":")).encode("ascii"))
+    digest.update(b"\0")
     digest.update(array.tobytes(order="C"))
     return digest.hexdigest()
 

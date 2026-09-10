@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import copy
+import hashlib
 import json
 import os
 import subprocess
@@ -118,6 +119,16 @@ def test_map_contract_and_tamper_rejection(tmp_path: Path) -> None:
     with pytest.raises(FileExistsError): worker.save_map_new(tmp_path / "map.npy", value)
     with pytest.raises(worker.X2MechWorkerError): worker.save_map_new(tmp_path / "map.png", value)
     with pytest.raises(worker.X2MechWorkerError): worker.validate_map(value.astype(np.float64))
+
+
+def test_worker_array_digest_matches_sealed_x2_convention() -> None:
+    value = synthetic_map()
+    array = np.ascontiguousarray(value)
+    digest = hashlib.sha256()
+    digest.update(array.dtype.str.encode("ascii")); digest.update(b"\0")
+    digest.update(json.dumps(list(array.shape), separators=(",", ":")).encode("ascii"))
+    digest.update(b"\0"); digest.update(array.tobytes(order="C"))
+    assert worker.array_digest(value) == digest.hexdigest()
 
 
 def test_worker_rejects_failed_or_tampered_route() -> None:
