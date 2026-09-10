@@ -849,8 +849,8 @@ def _centroid_from_axes(weights: np.ndarray, row_coords: np.ndarray,
     if total <= np.finfo(np.float64).tiny:
         return fallback
     return np.asarray([
-        float(np.dot(row_coords, weights) / total),
-        float(np.dot(col_coords, weights) / total),
+        float(np.sum(row_coords * weights, dtype=np.float64) / total),
+        float(np.sum(col_coords * weights, dtype=np.float64) / total),
     ])
 
 
@@ -861,42 +861,80 @@ def _block_centers(valid_blocks: np.ndarray, block: int) -> np.ndarray:
 
 def _m2_stability_metrics(clean: np.ndarray, transformed: np.ndarray,
                           valid_mask: np.ndarray, block: int) -> dict[str, float]:
-    from skimage.metrics import structural_similarity
+    prepared = _prepare_clean_stability(clean, valid_mask, block)
+    return _m2_stability_metrics_prepared(prepared, transformed)
 
+
+def _prepare_clean_stability(clean: np.ndarray, valid_mask: np.ndarray, block: int) -> dict[str, Any]:
     a = np.asarray(clean, dtype=np.float64)
-    b = np.asarray(transformed, dtype=np.float64)
     mask = np.asarray(valid_mask)
-    if a.shape != b.shape or mask.shape != a.shape or mask.dtype != np.bool_:
+    if mask.shape != a.shape or mask.dtype != np.bool_:
         raise X2MechM2Error("stability inputs have incompatible shape or mask dtype")
     if block == 1:
         valid = mask
         signed_a = a[valid]
-        signed_b = b[valid]
         mass_a = np.abs(signed_a)
-        mass_b = np.abs(signed_b)
         signed_map_a = np.where(valid, a, 0.0)
-        signed_map_b = np.where(valid, b, 0.0)
+        mass_map_a = np.where(valid, np.abs(a), 0.0)
     else:
         rows, cols = a.shape[0] // block, a.shape[1] // block
         a_blocks = a.reshape(rows, block, cols, block).transpose(0, 2, 1, 3)
-        b_blocks = b.reshape(rows, block, cols, block).transpose(0, 2, 1, 3)
         masks = mask.reshape(rows, block, cols, block).transpose(0, 2, 1, 3)
         valid = masks.all(axis=(2, 3))
         signed_map_a = a_blocks.sum(axis=(2, 3), dtype=np.float64)
-        signed_map_b = b_blocks.sum(axis=(2, 3), dtype=np.float64)
         mass_map_a = np.abs(a_blocks).sum(axis=(2, 3), dtype=np.float64)
-        mass_map_b = np.abs(b_blocks).sum(axis=(2, 3), dtype=np.float64)
         signed_a = signed_map_a[valid]
-        signed_b = signed_map_b[valid]
         mass_a = mass_map_a[valid]
-        mass_b = mass_map_b[valid]
         signed_map_a = np.where(valid, signed_map_a, 0.0)
-        signed_map_b = np.where(valid, signed_map_b, 0.0)
     if signed_a.size == 0:
         raise X2MechM2Error("no complete valid units")
     row, col = np.nonzero(valid)
     r0, r1, c0, c1 = row.min(), row.max() + 1, col.min(), col.max() + 1
-    crop_a = signed_map_a[r0:r1, c0:c1]
+    row_coords = (row + 0.5) * block - 0.5
+    col_coords = (col + 0.5) * block - 0.5
+    center = np.asarray([(a.shape[0] - 1) / 2, (a.shape[1] - 1) / 2])
+    return {
+        "shape": a.shape,
+        "block": block,
+        "valid": valid,
+        "signed_a": signed_a,
+        "mass_a": mass_a,
+        "signed_map_a": signed_map_a,
+        "mass_map_a": mass_map_a,
+        "crop_a": signed_map_a[r0:r1, c0:c1],
+        "crop_bounds": (r0, r1, c0, c1),
+        "row_coords": row_coords,
+        "col_coords": col_coords,
+        "center": center,
+        "valid_count": int(valid.sum()),
+        "excluded_count": int(valid.size - valid.sum()),
+    }
+
+
+def _m2_stability_metrics_prepared(prepared: Mapping[str, Any], transformed: np.ndarray) -> dict[str, float]:
+    from skimage.metrics import structural_similarity
+
+    b = np.asarray(transformed, dtype=np.float64)
+    block = int(prepared["block"])
+    valid = np.asarray(prepared["valid"], dtype=bool)
+    if tuple(b.shape) != tuple(prepared["shape"]):
+        raise X2MechM2Error("transformed map shape differs from clean map")
+    if block == 1:
+        signed_b = b[valid]
+        mass_b = np.abs(signed_b)
+        signed_map_b = np.where(valid, b, 0.0)
+    else:
+        rows, cols = b.shape[0] // block, b.shape[1] // block
+        b_blocks = b.reshape(rows, block, cols, block).transpose(0, 2, 1, 3)
+        signed_map_b = b_blocks.sum(axis=(2, 3), dtype=np.float64)
+        mass_map_b = np.abs(b_blocks).sum(axis=(2, 3), dtype=np.float64)
+        signed_b = signed_map_b[valid]
+        mass_b = mass_map_b[valid]
+        signed_map_b = np.where(valid, signed_map_b, 0.0)
+    signed_a = np.asarray(prepared["signed_a"], dtype=np.float64)
+    mass_a = np.asarray(prepared["mass_a"], dtype=np.float64)
+    crop_a = np.asarray(prepared["crop_a"], dtype=np.float64)
+    r0, r1, c0, c1 = prepared["crop_bounds"]
     crop_b = signed_map_b[r0:r1, c0:c1]
     data_range = max(
         float(max(signed_a.max(), signed_b.max()) - min(signed_a.min(), signed_b.min())),
@@ -909,9 +947,9 @@ def _m2_stability_metrics(clean: np.ndarray, transformed: np.ndarray,
     )
     if win < 3:
         raise X2MechM2Error("too few valid units for SSIM")
-    row_coords = (row + 0.5) * block - 0.5
-    col_coords = (col + 0.5) * block - 0.5
-    center = np.asarray([(np.asarray(clean).shape[0] - 1) / 2, (np.asarray(clean).shape[1] - 1) / 2])
+    row_coords = np.asarray(prepared["row_coords"], dtype=np.float64)
+    col_coords = np.asarray(prepared["col_coords"], dtype=np.float64)
+    center = np.asarray(prepared["center"], dtype=np.float64)
     positive_shift = np.linalg.norm(
         _centroid_from_axes(np.maximum(signed_a, 0.0), row_coords, col_coords, center)
         - _centroid_from_axes(np.maximum(signed_b, 0.0), row_coords, col_coords, center)
@@ -924,7 +962,7 @@ def _m2_stability_metrics(clean: np.ndarray, transformed: np.ndarray,
         _centroid_from_axes(mass_a, row_coords, col_coords, center)
         - _centroid_from_axes(mass_b, row_coords, col_coords, center)
     )
-    diagonal = math.hypot(*np.asarray(clean).shape)
+    diagonal = math.hypot(*prepared["shape"])
     return {
         "signed_spearman": _spearman(signed_a, signed_b),
         "top10_unit_signed_value_jaccard": _jaccard_1d(signed_a, signed_b),
@@ -933,8 +971,8 @@ def _m2_stability_metrics(clean: np.ndarray, transformed: np.ndarray,
         "signed_ssim": float(structural_similarity(crop_a, crop_b, data_range=data_range, win_size=win)),
         "normalized_positive_negative_mass_displacement": float((positive_shift + negative_shift) / (2 * diagonal)),
         "absolute_mass_center_of_mass_pixel_error": float(mass_shift),
-        "valid_unit_count": int(valid.sum()),
-        "excluded_partial_unit_count": int(valid.size - valid.sum()),
+        "valid_unit_count": int(prepared["valid_count"]),
+        "excluded_partial_unit_count": int(prepared["excluded_count"]),
     }
 
 
