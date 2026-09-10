@@ -820,6 +820,20 @@ def _jaccard_1d(left: np.ndarray, right: np.ndarray) -> float:
     return float(np.intersect1d(a, b).size / np.union1d(a, b).size)
 
 
+def _rankdata_average(values: np.ndarray) -> np.ndarray:
+    array = np.asarray(values, dtype=np.float64).reshape(-1)
+    order = np.argsort(array, kind="mergesort")
+    sorted_values = array[order]
+    starts = np.concatenate(([0], np.flatnonzero(sorted_values[1:] != sorted_values[:-1]) + 1))
+    ends = np.concatenate((starts[1:], [array.size]))
+    ranks_sorted = np.empty(array.size, dtype=np.float64)
+    for start, end in zip(starts, ends):
+        ranks_sorted[start:end] = (start + 1 + end) / 2.0
+    ranks = np.empty(array.size, dtype=np.float64)
+    ranks[order] = ranks_sorted
+    return ranks
+
+
 def _centroid(weights: np.ndarray, coordinates: np.ndarray, fallback: np.ndarray) -> np.ndarray:
     total = float(weights.sum(dtype=np.float64))
     if total <= np.finfo(np.float64).tiny:
@@ -836,19 +850,37 @@ def _m2_stability_metrics(clean: np.ndarray, transformed: np.ndarray,
                           valid_mask: np.ndarray, block: int) -> dict[str, float]:
     from skimage.metrics import structural_similarity
 
-    left = aggregate_blocks(clean, valid_mask, block)
-    right = aggregate_blocks(transformed, valid_mask, block)
-    valid = left["valid_blocks"]
-    if not np.array_equal(valid, right["valid_blocks"]):
-        raise X2MechM2Error("left/right complete-block masks differ")
-    signed_a = left["signed_sum"][valid]
-    signed_b = right["signed_sum"][valid]
-    mass_a = left["absolute_mass_sum"][valid]
-    mass_b = right["absolute_mass_sum"][valid]
+    a = np.asarray(clean, dtype=np.float64)
+    b = np.asarray(transformed, dtype=np.float64)
+    mask = np.asarray(valid_mask)
+    if a.shape != b.shape or mask.shape != a.shape or mask.dtype != np.bool_:
+        raise X2MechM2Error("stability inputs have incompatible shape or mask dtype")
+    if block == 1:
+        valid = mask
+        signed_a = a[valid]
+        signed_b = b[valid]
+        mass_a = np.abs(signed_a)
+        mass_b = np.abs(signed_b)
+        signed_map_a = np.where(valid, a, 0.0)
+        signed_map_b = np.where(valid, b, 0.0)
+    else:
+        rows, cols = a.shape[0] // block, a.shape[1] // block
+        a_blocks = a.reshape(rows, block, cols, block).transpose(0, 2, 1, 3)
+        b_blocks = b.reshape(rows, block, cols, block).transpose(0, 2, 1, 3)
+        masks = mask.reshape(rows, block, cols, block).transpose(0, 2, 1, 3)
+        valid = masks.all(axis=(2, 3))
+        signed_map_a = a_blocks.sum(axis=(2, 3), dtype=np.float64)
+        signed_map_b = b_blocks.sum(axis=(2, 3), dtype=np.float64)
+        mass_map_a = np.abs(a_blocks).sum(axis=(2, 3), dtype=np.float64)
+        mass_map_b = np.abs(b_blocks).sum(axis=(2, 3), dtype=np.float64)
+        signed_a = signed_map_a[valid]
+        signed_b = signed_map_b[valid]
+        mass_a = mass_map_a[valid]
+        mass_b = mass_map_b[valid]
+        signed_map_a = np.where(valid, signed_map_a, 0.0)
+        signed_map_b = np.where(valid, signed_map_b, 0.0)
     if signed_a.size == 0:
         raise X2MechM2Error("no complete valid units")
-    signed_map_a = np.nan_to_num(left["signed_sum"], nan=0.0)
-    signed_map_b = np.nan_to_num(right["signed_sum"], nan=0.0)
     row, col = np.nonzero(valid)
     r0, r1, c0, c1 = row.min(), row.max() + 1, col.min(), col.max() + 1
     crop_a = signed_map_a[r0:r1, c0:c1]
@@ -1562,7 +1594,6 @@ def _summarize_fidelity(rows: Sequence[Mapping[str, Any]]) -> list[dict[str, Any
 
 
 def _spearman(x: Sequence[float], y: Sequence[float]) -> float:
-    from scipy.stats import rankdata
     x_array = np.asarray(x, dtype=np.float64)
     y_array = np.asarray(y, dtype=np.float64)
     if x_array.size < 2:
@@ -1571,8 +1602,8 @@ def _spearman(x: Sequence[float], y: Sequence[float]) -> float:
         return float("nan")
     if float(np.min(x_array)) == float(np.max(x_array)) or float(np.min(y_array)) == float(np.max(y_array)):
         return float("nan")
-    xr = rankdata(x_array, method="average")
-    yr = rankdata(y_array, method="average")
+    xr = _rankdata_average(x_array)
+    yr = _rankdata_average(y_array)
     xr = xr - xr.mean(dtype=np.float64)
     yr = yr - yr.mean(dtype=np.float64)
     denominator = math.sqrt(float(np.sum(xr * xr, dtype=np.float64)) * float(np.sum(yr * yr, dtype=np.float64)))

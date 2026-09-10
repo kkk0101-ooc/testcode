@@ -155,6 +155,14 @@ def test_association_bootstrap_is_synchronized_deterministic() -> None:
     assert one["confirmatory_p_value"] is None
 
 
+def test_local_spearman_matches_scipy_with_ties() -> None:
+    from scipy.stats import spearmanr
+
+    left = np.asarray([1.0, 2.0, 2.0, 5.0, 8.0, 8.0, 9.0])
+    right = np.asarray([3.0, 1.0, 1.0, 4.0, 7.0, 6.0, 10.0])
+    assert m2._spearman(left, right) == pytest.approx(float(spearmanr(left, right).statistic))
+
+
 def test_branch_falls_back_without_frozen_thresholds() -> None:
     stability = []
     for method in m2.METHODS:
