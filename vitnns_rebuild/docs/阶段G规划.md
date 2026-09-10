@@ -2,7 +2,7 @@
 
 > 生效日期：2026-09-08。
 > 当前定义：阶段 G 只负责论文写作、双语一致性、引用核验、编译和稿件封存，不负责生成或修改科学图表。
-> 前置阶段：X2 immutable `NO_GO_BROAD_CLAIM_DEVELOPMENT` 不变；post-hoc exploratory X2-MECH M1-R1 已 PASS，CPU-only M2 已授权未启动。M2 terminal 与 results-to-paper handoff 完成后更新并执行 F3-Final；该图包通过后 Stage G 才能进入正式写作。
+> 前置阶段：X2 immutable `NO_GO_BROAD_CLAIM_DEVELOPMENT` 不变；post-hoc exploratory X2-MECH M2 已 `PASS`，结果分支为 `MIXED_OR_INCONCLUSIVE`，results-to-paper handoff 已完成。当前唯一下一授权为 `F3_FINAL_FIGURE_PACKAGE_ONLY`；该图包通过后 Stage G 才能进入正式写作。
 > 历史兼容：阶段 E 继续专指 2026-09-06 至 2026-09-07 已执行并封存的消融与敏感性分析。其原规划保留在 [阶段 E 规划](阶段E规划.md)，config、code、evidence、reports、completion 和 archive refs 不改名、不搬移。
 
 ## 1. 阶段边界与当前路线
@@ -105,7 +105,7 @@ manuscript/
 
 G0 PASS 只授权 `G1_STORY_AND_EVIDENCE_ONLY`。
 
-若 X2-MECH M2 进入论文，G0 必须验证其 terminal/ref/hash、results-to-paper handoff 和 F3-Final source binding，并保持 `POST_HOC_EXPLORATORY_MECHANISM_ANALYSIS` 标签；M2 不得改写 X2 NO-GO 或 Stage D primary。
+若 X2-MECH M2 进入论文，G0 必须验证其 terminal/ref/hash、[results-to-paper handoff](stage_x_x2_mech_results_to_paper_handoff_20260910.md) 和 F3-Final source binding，并保持 `POST_HOC_EXPLORATORY_MECHANISM_ANALYSIS` 标签；M2 不得改写 X2 NO-GO 或 Stage D primary。
 
 ### G1：Scientific story、Evidence Matrix 与 Figure Cards
 
@@ -223,6 +223,6 @@ F1/F2/F3-ClassCompare 的数字必须从 frozen `plot_data`/`paper_data` 获取�
 
 ## 8. 当前状态
 
-截至 2026-09-10，原 F4 和阶段 G 均未启动。Stage F 的既有工作包保持封存；X2-MECH M1-R1 已完成 transformed/inverse maps 与 multiscale fidelity evidence，当前唯一下一授权为 CPU-only M2。M2 terminal → results-to-paper handoff → 更新后的 F3-Final 依次完成后，才授权 `STAGE_G_WRITING_G0_ONLY`。
+截至 2026-09-10，原 F4 和阶段 G 均未启动。Stage F 的既有工作包保持封存；X2-MECH M2 与 results-to-paper handoff 已完成，且不改变 X2 `NO_GO_BROAD_CLAIM_DEVELOPMENT` 或 Stage D primary。当前唯一下一授权为 `F3_FINAL_FIGURE_PACKAGE_ONLY`；该图包完成后，才授权 `STAGE_G_WRITING_G0_ONLY`。
 
 阶段 G 不自动执行。本文只定义写作阶段，不创建稿件正文，不启动新实验，也不修改任何已封存图形或科学证据。

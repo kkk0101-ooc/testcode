@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "document_type": "stage_x_x2_mech_results_to_paper_handoff",
+  "status": "PASS",
+  "created_at": "2026-09-10",
+  "study_type": "POST_HOC_EXPLORATORY_MECHANISM_ANALYSIS",
+  "m2_binding": {
+    "completion_ref": "refs/archive/stage-x-x2-mech-m2-completion",
+    "completion_commit": "5322ede0fe032838a2211b4de640251a4ece9ad2",
+    "completion_artifact": "evidence/stage_x/x2_mech_m2_20260910/formal/completion/x2_mech_m2.json",
+    "completion_sha256": "a8b8d271f13b414eca4d276993ad39d66fd1098b406cd9f3df64162b45f65e59",
+    "completion_canonical_digest": "3e6d7f1f991935ce8633f256bb32785c9ff3ea39826f426a40755733c7272763",
+    "whole_root_inventory": "evidence/stage_x/x2_mech_m2_20260910/formal/whole_root_inventory.json",
+    "whole_root_inventory_sha256": "25f6a110ba10c201727e683c19a7b17188f6f8902d388395f55feb365a49a313",
+    "whole_root_inventory_canonical_digest": "9efb2284b0a6f5dbd605e3df5c549f440afd1ed6455002996db0dfc3290143f0",
+    "whole_root_files_digest": "8ad3ce659fc91b8a52f76c47a692298b87ee13e9c8a419a31d6b69fcc837b322",
+    "report": "reports/stage_x_x2_mech_m2_20260910/x2_mech_m2_report.md",
+    "report_sha256": "406a339ec514ddb4279d7632692c4f3178fcbc15014141342be5ddaa9a626cfe"
+  },
+  "upstream_binding": {
+    "m1_to_m2_handoff": "docs/stage_x_x2_mech_m1_to_m2_scientific_handoff_20260910.md",
+    "m1_completion_ref": "refs/archive/stage-x-x2-mech-m1-r1-completion",
+    "m1_completion_commit": "b6d14965cce3d7a4618b4f5435331c7a9b954d19",
+    "x2_decision": "NO_GO_BROAD_CLAIM_DEVELOPMENT"
+  },
+  "mechanism_branch": "MIXED_OR_INCONCLUSIVE",
+  "observation": {
+    "nns_v2_signed_spearman": {
+      "pixel": 0.11366648574801438,
+      "fine_cell_4x4": 0.2177360373571473,
+      "native_patch_16x16": 0.33779091119911697
+    },
+    "vit_grad_cam_signed_spearman": {
+      "pixel": 0.6470336100253422,
+      "fine_cell_4x4": 0.6532370714163442,
+      "native_patch_16x16": 0.7218010653661862
+    },
+    "nns_v2_road_combined": {
+      "fine_cell_4x4": 0.05496294885494901,
+      "native_patch_16x16": 0.06067247007244031
+    },
+    "vit_grad_cam_road_combined": {
+      "fine_cell_4x4": 0.1499317089177042,
+      "native_patch_16x16": 0.15329919519210142
+    },
+    "nns_v2_sse_fraction": {
+      "fine_cell_4x4_between": 0.07447684921684658,
+      "fine_cell_4x4_within": 0.9255231507831534,
+      "native_patch_16x16_between": 0.0026145042858070795,
+      "native_patch_16x16_within": 0.997385495714193
+    },
+    "horizontal_flip_transport_median_signed_spearman": 1.0
+  },
+  "paper_interpretation": "Post-hoc multiscale analyses yielded mixed evidence about whether aggregation accounts for the observed geometric instability.",
+  "allowed_claims": [
+    "M2 is post-hoc exploratory mechanism evidence.",
+    "M2 can be cited as descriptive multiscale stability, within/between SSE, transport-control, clean-structure, and association evidence.",
+    "Stage D remains the primary scoped fidelity result."
+  ],
+  "forbidden_claims": [
+    "spatial-stability PASS",
+    "NNS-v2 superiority or noninferiority to Grad-CAM",
+    "broad benchmark GO",
+    "localization claim",
+    "cross-model or cross-dataset generalization claim",
+    "confirmatory p-value",
+    "causal conclusion",
+    "modification of X2 NO_GO_BROAD_CLAIM_DEVELOPMENT"
+  ],
+  "paper_placement": {
+    "recommended": [
+      "Discussion",
+      "Supplement",
+      "provenance appendix"
+    ],
+    "not_recommended": [
+      "primary confirmatory Results claim"
+    ]
+  },
+  "f3_final_modules": [
+    "multiscale stability table",
+    "within_between SSE panel",
+    "transport and horizontal-flip control table",
+    "exploratory association table",
+    "provenance appendix card"
+  ],
+  "g0_g1_evidence_matrix": [
+    "X2_MECH_M2_MULTISCALE_STABILITY",
+    "X2_MECH_M2_WITHIN_BETWEEN_SSE",
+    "X2_MECH_M2_TRANSPORT_CONTROL",
+    "X2_MECH_M2_ASSOCIATION"
+  ],
+  "stage_d_primary_unchanged": true,
+  "x2_no_go_unchanged": true,
+  "next_authorization": "F3_FINAL_FIGURE_PACKAGE_ONLY",
+  "not_started": [
+    "F3-Final",
+    "Stage G",
+    "X3",
+    "X4",
+    "X5"
+  ],
+  "canonical_digest": "9cc0726807acd1bf5d5e1f85d845051776ed706b6c2431375f64cd7e50928add"
+}

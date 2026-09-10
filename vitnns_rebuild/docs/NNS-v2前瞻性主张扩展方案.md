@@ -2,9 +2,9 @@
 
 > 建立日期：2026-09-08。
 > 状态：X1-R1 `PASS`；X2 经版本化恢复链完成并封存为 `NO_GO_BROAD_CLAIM_DEVELOPMENT`。X3–X5 未启动且不再授权。
-> 后续状态：post-hoc exploratory X2-MECH P0-R1 与 M1-R1 已 `PASS`；当前唯一下一授权为 `X2_MECH_M2_CPU_ONLY_MULTISCALE_MECHANISM_ANALYSIS_ONLY`。
+> 后续状态：post-hoc exploratory X2-MECH P0-R1、M1-R1 与 M2 已 `PASS`；M2 结果分支为 `MIXED_OR_INCONCLUSIVE`，results-to-paper handoff 已完成。当前唯一下一授权为 `F3_FINAL_FIGURE_PACKAGE_ONLY`。
 > 上游状态：C10、Stage D D0–D10、历史 Stage E E0–E4 和 Stage F 已封存工作包均保持只读。
-> 下游状态：M2 terminal 与 results-to-paper handoff 完成后更新 F3-Final composition；F3-Final terminal PASS 后才授权 `STAGE_G_WRITING_G0_ONLY`。M1→M2 的科学叙事与证据边界见 [X2-MECH M1→M2 科学交接](stage_x_x2_mech_m1_to_m2_scientific_handoff_20260910.md)。
+> 下游状态：M2 terminal 与 results-to-paper handoff 已完成；下一步更新并执行 F3-Final composition，F3-Final terminal PASS 后才授权 `STAGE_G_WRITING_G0_ONLY`。M2 论文交接见 [X2-MECH M2 results-to-paper handoff](stage_x_x2_mech_results_to_paper_handoff_20260910.md)。
 
 ## 1. 目的与路线决议
 
@@ -523,4 +523,4 @@ X2 在冻结的 5 models × 40 development images 上执行。原 X2、X2-R1、X
 
 ## 19. X2-MECH P0-R1 / M1-R1 状态（2026-09-10）
 
-在不改变 X2 NO-GO 的前提下，post-hoc exploratory X2-MECH 已完成 P0-R1 protocol freeze 和 M1-R1 evidence production。M1-R1 source-recomputing `PASS`：199 个 clean-valid routes、4,776 transformed maps、4,776 inverse maps、24 shared masks、796 multiscale fidelity summaries 和 71,640 detailed ROAD rows；原 failed route 保持原位，M2 尚未执行。当前只授权 CPU-only M2。完整论文定位、M1 恢复边界与 M2 预声明解释分支见 [X2-MECH M1→M2 科学交接](stage_x_x2_mech_m1_to_m2_scientific_handoff_20260910.md)；冻结计算口径仍只由 [X2-MECH protocol](stage_x_x2_mechanism_protocol_20260910.md) 定义。
+在不改变 X2 NO-GO 的前提下，post-hoc exploratory X2-MECH 已完成 P0-R1 protocol freeze、M1-R1 evidence production 和 M2 CPU-only mechanism analysis。M2 terminal `PASS`，结果分支为 `MIXED_OR_INCONCLUSIVE`；它提供 multiscale stability、within/between SSE、transport-control、horizontal-flip、clean-structure 和 exploratory association 证据，但不签发 spatial-stability PASS、Grad-CAM superiority/noninferiority、broad GO、定位、泛化、confirmatory p-value 或因果结论。论文使用边界见 [X2-MECH M2 results-to-paper handoff](stage_x_x2_mech_results_to_paper_handoff_20260910.md)。
