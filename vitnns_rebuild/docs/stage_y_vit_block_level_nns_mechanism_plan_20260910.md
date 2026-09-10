@@ -131,14 +131,33 @@ class-logit path contribution 如何重分配？同 patch 保留、跨 patch mix
 
 ### Y-RQ5：attention/residual/MLP component allocation
 
-在每个 block 的两个 residual additions 上，identity 与 multi-head attention、
-post-attention residual 与 MLP 的 signed conductance、absolute attribution
-mass 和 cancellation 如何变化？
+Y-RQ5 要研究的是：每个 block 在处理类别相关信息时，主要是在“保留已有
+表示”，还是通过 attention 或 MLP “加入新的类别相关更新”，以及这种分工
+如何从浅层变化到深层。
+
+这需要分别分析两个 residual additions，而不是把三个模块混成一个比例：
+
+1. 第一处 residual addition 比较 `已有表示的 identity path` 与
+   `multi-head attention 新增的更新`；
+2. 第二处 residual addition 比较 `attention 后继续保留的 residual path` 与
+   `MLP 新增的更新`。
+
+每组比较都同时测量 signed conductance、absolute attribution mass 和
+cancellation，分别回答该分支总体促进还是抑制目标类别、参与程度有多大、
+以及内部正负贡献是否发生强烈抵消。
 
 对应候选主张 `Y-CLM-BRANCH-ALLOCATION`：
 
-> The relative allocation of class-logit-directed attribution among
-> attention, residual, and MLP components is depth dependent.
+> Across Transformer depth, we characterize two complementary
+> class-logit-directed allocations: the allocation between the pre-attention
+> identity path and multi-head attention update at the first residual
+> addition, and the allocation between the post-attention residual path and
+> MLP update at the second residual addition.
+
+如果结果显示可重复的深度差异，才允许进一步写“这两组分配及其正负抵消
+结构随 Transformer 深度发生系统变化”；若没有清晰趋势，则必须报告层间与
+图像间异质性，不得把 component allocation 解释成模块性能排序或唯一因果
+责任。
 
 ### Y-RQ6：扰动如何调制上述组织
 
@@ -357,13 +376,18 @@ contribution”。不得把二者差异直接解释为 attention 错误。
 
 ### 6.5 branch allocation
 
-对两个 residual additions 分别报告：
+围绕“保留已有表示还是加入新更新”这个问题，对两个 residual additions 分别
+报告：
 
-- identity vs attention branch；
-- post-attention residual vs MLP branch；
+- 第一处：pre-attention identity path vs multi-head attention update；
+- 第二处：post-attention residual path vs MLP update；
 - signed conductance、L1-normalized absolute mass share、cancellation；
 - component sum 对 total map 的 reconstruction residual；
 - shallow/middle/deep paired contrasts。
+
+这两组是各自 complete cut 内的分配，不得把 identity、attention 和 MLP
+直接合并成一个三项百分比，也不得把较高 attribution share 直接称为较高
+分类性能。
 
 ### 6.6 perturbation modulation
 
