@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "document_type": "stage_y_y2_r2_run_spec",
+  "protocol_id": "STAGE_Y_VIT_BLOCK_LEVEL_NNS_MECHANISM_V1_20260910",
+  "stage_id": "Y2-R2",
+  "authorization": "STAGE_Y2_R2_RESOURCE_REPORTING_RECOVERY_AND_MISSING_UNITS_ONLY",
+  "status": "PROSPECTIVE_AFTER_Y2_R1_TYPED_BUDGET_FAILURE",
+  "outcome_blind": false,
+  "formal_root": "evidence/stage_y/y2_r2_clean_formal_20260912/formal",
+  "report_root": "reports/stage_y_y2_r2_20260912",
+  "producer_archive_ref": "refs/archive/stage-y-y2-r2-resource-reporting-recovery-producer",
+  "completion_archive_ref": "refs/archive/stage-y-y2-r2-clean-cohort-evidence-completion",
+  "predecessors": {
+    "y2_commit": "1a621724b32b208036fb5f2a3993a48697e933c8",
+    "y2_ref": "refs/archive/stage-y-y2-clean-cohort-evidence-blocked",
+    "y2_r1_commit": "7cf9b1f9a25695821b19e98cff4e2edbc369891a",
+    "y2_r1_ref": "refs/archive/stage-y-y2-r1-clean-cohort-evidence-blocked",
+    "immutable": true
+  },
+  "source_classes": {
+    "Y2_R1_VALID_REBIND": 84,
+    "Y2_R1_COMPLETED_BUDGET_REBIND": [73,80,86],
+    "Y2_R2_COMPUTED": [77,81,84,85,88,89,90,92,93,94,96,97,98]
+  },
+  "scientific_contract": {
+    "condition": "clean",
+    "target": "clean predicted-class raw logit",
+    "baseline": "normalized_zero",
+    "quadrature_schedule": [128,256,512,1024,2048,4096,8192],
+    "alpha_chunk": 4,
+    "source_patch_jvp_chunk": 4,
+    "component_vjp_chunk": 8,
+    "deletion_forward_batch": 64,
+    "blocks": [0,1,2,3,4,5,6,7,8,9,10,11],
+    "heads": [0,1,2,3,4,5,6,7,8,9,10,11],
+    "cuts": ["post_patch_embedding_tokens","block_input_tokens","first_residual_addition","second_residual_addition","block_output_tokens","final_norm","classifier_input"],
+    "first_all_contract_pass_selected": true
+  },
+  "execution": {
+    "minimum_devices": 1,
+    "maximum_devices": 8,
+    "required_device_name": "NVIDIA H20",
+    "minimum_free_memory_gib": 21,
+    "processes_per_gpu": 1,
+    "worker_visible_device": "cuda:0",
+    "missing_roster_order": "ascending selection_order",
+    "shard_rule": "missing_roster_zero_based_index mod locked_worker_count",
+    "dynamic_rebalancing": false,
+    "hot_add": false,
+    "scientific_retry_count": 1,
+    "cublas_workspace_config": ":4096:8"
+  },
+  "resources": {
+    "semantics": "REPORTING_ONLY",
+    "fields": ["cpu_hours","h20_gpu_hours","per_worker_wall_time","critical_path_wall_time","overall_stage_wall_time","retained_bytes","retained_storage","download_bytes","peak_memory"],
+    "old_caps_are_stop_gates": false,
+    "actual_oom_is_infrastructure_failure": true,
+    "download_authorized": false,
+    "expected_download_bytes": 0
+  },
+  "denominator": 100,
+  "pass_valid_count": 100,
+  "formal_outcome_access_on_pass": false,
+  "next_authorization_on_pass": "STAGE_Y3_PERTURBATION_MECHANISM_PRODUCTION_ONLY",
+  "next_authorization_on_failure": "NONE"
+}
