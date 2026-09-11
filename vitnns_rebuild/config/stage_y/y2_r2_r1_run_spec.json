@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "stage_id": "Y2-R2-R1",
+  "authorization": "STAGE_Y2_R2_RESOURCE_REPORTING_RECOVERY_AND_MISSING_UNITS_ONLY",
+  "outcome_blind": false,
+  "formal_root": "evidence/stage_y/y2_r2_r1_clean_formal_20260912/formal",
+  "report_root": "reports/stage_y_y2_r2_r1_20260912",
+  "startup_commit": "1fd71d1b3e4d4c10fd3c65374169c734b64b8ff3",
+  "producer_archive_ref": "refs/archive/stage-y-y2-r2-r1-resource-reporting-recovery-producer",
+  "completion_archive_ref": "refs/archive/stage-y-y2-r2-r1-clean-cohort-evidence-completion",
+  "source_classes": {
+    "Y2_R1_VALID_REBIND": 84,
+    "Y2_R1_COMPLETED_BUDGET_REBIND": [73,80,86],
+    "Y2_R2_COMPUTED": [77,81,84,85,88,89,90,92,93,94,96,97,98]
+  },
+  "scientific_contract": {
+    "condition": "clean",
+    "target": "clean predicted-class raw logit",
+    "baseline": "normalized_zero",
+    "quadrature_schedule": [128,256,512,1024,2048,4096,8192],
+    "alpha_chunk": 4,
+    "source_patch_jvp_chunk": 4,
+    "component_vjp_chunk": 8,
+    "deletion_forward_batch": 64,
+    "blocks": [0,1,2,3,4,5,6,7,8,9,10,11],
+    "heads": [0,1,2,3,4,5,6,7,8,9,10,11],
+    "cuts": ["post_patch_embedding_tokens","block_input_tokens","first_residual_addition","second_residual_addition","block_output_tokens","final_norm","classifier_input"],
+    "first_all_contract_pass_selected": true
+  },
+  "execution": {
+    "minimum_devices": 1,
+    "maximum_devices": 8,
+    "required_device_name": "NVIDIA H20",
+    "minimum_free_memory_gib": 21,
+    "processes_per_gpu": 1,
+    "worker_visible_device": "cuda:0",
+    "shard_rule": "missing_roster_zero_based_index mod locked_worker_count",
+    "dynamic_rebalancing": false,
+    "hot_add": false,
+    "scientific_retry_count": 1,
+    "cublas_workspace_config": ":4096:8"
+  },
+  "resources": {
+    "semantics": "REPORTING_ONLY",
+    "old_caps_are_stop_gates": false,
+    "actual_oom_is_infrastructure_failure": true,
+    "download_authorized": false,
+    "expected_download_bytes": 0
+  },
+  "denominator": 100,
+  "pass_valid_count": 100,
+  "next_authorization_on_pass": "STAGE_Y3_PERTURBATION_MECHANISM_PRODUCTION_ONLY",
+  "next_authorization_on_failure": "NONE"
+}

@@ -1,0 +1,6527 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "const": "y2_r2_r1_artifact.schema.json"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "document_type": {
+      "enum": [
+        "stage_y_y2_r2_r1_pending",
+        "stage_y_y2_r2_r1_binding",
+        "stage_y_y2_r2_r1_unit_pending",
+        "stage_y_y2_r2_r1_unit_terminal",
+        "stage_y_y2_r2_r1_scientific_result",
+        "stage_y_y2_r2_r1_attempt",
+        "stage_y_y2_r2_r1_array_inventory",
+        "stage_y_y2_r2_r1_resource_record",
+        "stage_y_y2_r2_r1_worker_identity",
+        "stage_y_y2_r2_r1_shard_terminal",
+        "stage_y_y2_r2_r1_shard_pending",
+        "stage_y_y2_r2_r1_startup_gate",
+        "stage_y_y2_r2_r1_shard_manifest",
+        "stage_y_y2_r2_r1_rebind_record",
+        "stage_y_y2_r2_r1_rebind_manifest",
+        "stage_y_y2_r2_r1_missing_manifest",
+        "stage_y_y2_r2_r1_preflight",
+        "stage_y_y2_r2_r1_verification_resource",
+        "stage_y_y2_r2_r1_resource_ledger",
+        "stage_y_y2_r2_r1_overruns",
+        "stage_y_y2_r2_r1_access_audit",
+        "stage_y_y2_r2_r1_false_pass_audit",
+        "stage_y_y2_r2_r1_reconciliation",
+        "stage_y_y2_r2_r1_unified_manifest",
+        "stage_y_y2_r2_r1_validation_report",
+        "stage_y_y2_r2_r1_payload_manifest",
+        "stage_y_y2_r2_r1_inventory",
+        "stage_y_y2_r2_r1_completion",
+        "stage_y_y2_r2_r1_failure"
+      ]
+    },
+    "protocol_id": {
+      "const": "STAGE_Y_VIT_BLOCK_LEVEL_NNS_MECHANISM_V1_20260910"
+    },
+    "stage_id": {
+      "const": "Y2-R2-R1"
+    },
+    "status": {
+      "enum": [
+        "PASS",
+        "VALID",
+        "PENDING",
+        "FAILED_NUMERICAL",
+        "BLOCKED_STARTUP_STATE",
+        "BLOCKED_SOURCE_DRIFT",
+        "BLOCKED_ACCESS",
+        "BLOCKED_PROVENANCE",
+        "BLOCKED_INFRASTRUCTURE",
+        "BLOCKED_SCIENTIFIC_VALIDITY"
+      ]
+    },
+    "payload": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/pending"
+        },
+        {
+          "$ref": "#/$defs/binding"
+        },
+        {
+          "$ref": "#/$defs/unit_pending"
+        },
+        {
+          "$ref": "#/$defs/unit_terminal"
+        },
+        {
+          "$ref": "#/$defs/scientific_result"
+        },
+        {
+          "$ref": "#/$defs/attempt"
+        },
+        {
+          "$ref": "#/$defs/array_inventory"
+        },
+        {
+          "$ref": "#/$defs/resource_record"
+        },
+        {
+          "$ref": "#/$defs/worker_identity"
+        },
+        {
+          "$ref": "#/$defs/shard_terminal"
+        },
+        {
+          "$ref": "#/$defs/shard_pending"
+        },
+        {
+          "$ref": "#/$defs/startup_gate"
+        },
+        {
+          "$ref": "#/$defs/shard_manifest"
+        },
+        {
+          "$ref": "#/$defs/rebind_record"
+        },
+        {
+          "$ref": "#/$defs/rebind_manifest"
+        },
+        {
+          "$ref": "#/$defs/missing_manifest"
+        },
+        {
+          "$ref": "#/$defs/preflight"
+        },
+        {
+          "$ref": "#/$defs/verification_resource"
+        },
+        {
+          "$ref": "#/$defs/resource_ledger"
+        },
+        {
+          "$ref": "#/$defs/overruns"
+        },
+        {
+          "$ref": "#/$defs/access_audit"
+        },
+        {
+          "$ref": "#/$defs/false_pass_audit"
+        },
+        {
+          "$ref": "#/$defs/reconciliation"
+        },
+        {
+          "$ref": "#/$defs/unified_manifest"
+        },
+        {
+          "$ref": "#/$defs/validation_report"
+        },
+        {
+          "$ref": "#/$defs/payload_manifest"
+        },
+        {
+          "$ref": "#/$defs/inventory"
+        },
+        {
+          "$ref": "#/$defs/completion"
+        },
+        {
+          "$ref": "#/$defs/failure"
+        }
+      ]
+    },
+    "canonical_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "required": [
+    "$schema",
+    "schema_version",
+    "document_type",
+    "protocol_id",
+    "stage_id",
+    "status",
+    "payload",
+    "canonical_digest"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "y2_r2_r1_artifact.schema.json",
+  "$defs": {
+    "pending": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "started_at": {
+          "type": "string"
+        },
+        "started_unix_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "next_authorization": {
+          "const": "NONE_WHILE_PENDING"
+        }
+      },
+      "required": [
+        "started_at",
+        "started_unix_ns",
+        "next_authorization"
+      ]
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "producer_commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "producer_ref": {
+          "type": "string"
+        },
+        "source_files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "canonical_digest": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "path",
+              "bytes",
+              "sha256"
+            ]
+          }
+        },
+        "files_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "producer_commit",
+        "producer_ref",
+        "source_files",
+        "files_digest"
+      ]
+    },
+    "unit_pending": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "selection_order": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_object_id": {
+          "type": "string"
+        },
+        "attempt_id": {
+          "type": "string"
+        },
+        "retry_index": {
+          "const": 1
+        }
+      },
+      "required": [
+        "selection_order",
+        "source_object_id",
+        "attempt_id",
+        "retry_index"
+      ]
+    },
+    "unit_terminal": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "selection_order": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_object_id": {
+          "type": "string"
+        },
+        "source_type": {
+          "const": "Y2_R2_COMPUTED"
+        },
+        "shard_id": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "attempt_id": {
+          "type": "string"
+        },
+        "condition_id": {
+          "const": "clean"
+        },
+        "failure_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "target_identity": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "class_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 999
+                },
+                "rule": {
+                  "const": "clean predicted-class raw logit"
+                }
+              },
+              "required": [
+                "class_id",
+                "rule"
+              ]
+            },
+            {
+              "const": {}
+            }
+          ]
+        },
+        "source_binding": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cohort_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "file_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "cohort_digest",
+            "file_sha256"
+          ]
+        },
+        "checkpoint_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "environment_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "numeric_contract_digest": {
+          "type": "string"
+        },
+        "quadrature_attempts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "steps": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "all_contracts_pass": {
+                "type": "boolean"
+              },
+              "input_sum": {
+                "type": "number"
+              },
+              "input_delta": {
+                "type": "number"
+              },
+              "input_abs_error": {
+                "type": "number"
+              },
+              "threshold": {
+                "type": "number"
+              },
+              "closure_status": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "identity_max_abs_error": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "wall_seconds": {
+                "type": "number"
+              },
+              "array_digest": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "failure_code": {
+                "type": "string"
+              },
+              "failure_phase": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "steps",
+              "all_contracts_pass"
+            ]
+          }
+        },
+        "resource_telemetry": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "gpu_active_seconds": {
+              "type": "number"
+            },
+            "cpu_seconds": {
+              "type": "number"
+            },
+            "wall_seconds": {
+              "type": "number"
+            },
+            "peak_allocated_gpu_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "peak_reserved_gpu_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "retained_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "download_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "calls": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "forward_calls": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "backward_calls": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "jvp_calls": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "jvp_direction_lanes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "quadrature_alpha_batches": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "vjp_calls": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "forward_calls",
+                "backward_calls",
+                "jvp_calls",
+                "jvp_direction_lanes",
+                "quadrature_alpha_batches",
+                "vjp_calls"
+              ]
+            }
+          },
+          "required": [
+            "gpu_active_seconds",
+            "cpu_seconds",
+            "wall_seconds",
+            "peak_reserved_gpu_bytes",
+            "retained_bytes"
+          ]
+        },
+        "scientific_result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "canonical_digest": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "required": [
+                "path",
+                "bytes",
+                "sha256"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "array_inventory": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "canonical_digest": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "required": [
+                "path",
+                "bytes",
+                "sha256"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resource_record": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "canonical_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "path",
+            "bytes",
+            "sha256"
+          ]
+        },
+        "array_records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "canonical_digest": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "dtype": {
+                "const": "float32"
+              },
+              "shape": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "axes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "path",
+              "bytes",
+              "sha256",
+              "canonical_digest",
+              "dtype",
+              "shape",
+              "axes"
+            ]
+          }
+        },
+        "attempt_records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "canonical_digest": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "path",
+              "bytes",
+              "sha256"
+            ]
+          }
+        },
+        "predecessor_terminal": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "canonical_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "path",
+            "bytes",
+            "sha256"
+          ]
+        },
+        "retry_index": {
+          "const": 1
+        },
+        "scientific_scope_changed": {
+          "const": false
+        },
+        "target_metric_tolerance_changed": {
+          "const": false
+        }
+      },
+      "required": [
+        "selection_order",
+        "source_object_id",
+        "source_type",
+        "shard_id",
+        "attempt_id",
+        "condition_id",
+        "failure_code",
+        "target_identity",
+        "source_binding",
+        "checkpoint_sha256",
+        "environment_digest",
+        "numeric_contract_digest",
+        "quadrature_attempts",
+        "resource_telemetry",
+        "scientific_result",
+        "array_inventory",
+        "resource_record",
+        "array_records",
+        "attempt_records",
+        "predecessor_terminal",
+        "retry_index",
+        "scientific_scope_changed",
+        "target_metric_tolerance_changed"
+      ]
+    },
+    "scientific_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "target_identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "class_id": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 999
+            },
+            "rule": {
+              "const": "clean predicted-class raw logit"
+            }
+          },
+          "required": [
+            "class_id",
+            "rule"
+          ]
+        },
+        "clean_logit": {
+          "type": "number"
+        },
+        "baseline_logit": {
+          "type": "number"
+        },
+        "delta": {
+          "type": "number"
+        },
+        "selected_steps": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "closure": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "status": {
+              "type": "string"
+            },
+            "failures": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "input_abs_error": {
+              "type": "number"
+            },
+            "input_threshold": {
+              "type": "number"
+            },
+            "pixel_base_threshold": {
+              "type": "number"
+            },
+            "total_threshold": {
+              "type": "number"
+            },
+            "head_sum_max_abs_error": {
+              "type": "number"
+            },
+            "branch_cell_max_abs_error": {
+              "type": "number"
+            },
+            "scalar_map_matrix_max_abs_error": {
+              "type": "number"
+            },
+            "per_cut": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "post_patch_embedding_tokens": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b00.input": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b00.first_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b00.second_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b00.output": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b01.input": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b01.first_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b01.second_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b01.output": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b02.input": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b02.first_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b02.second_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b02.output": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b03.input": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b03.first_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b03.second_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b03.output": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b04.input": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b04.first_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b04.second_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b04.output": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b05.input": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b05.first_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b05.second_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b05.output": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b06.input": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b06.first_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b06.second_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b06.output": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b07.input": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b07.first_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b07.second_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b07.output": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b08.input": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b08.first_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b08.second_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b08.output": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b09.input": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b09.first_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b09.second_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b09.output": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b10.input": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b10.first_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b10.second_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b10.output": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b11.input": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b11.first_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b11.second_residual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "b11.output": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "final_norm": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                },
+                "classifier_input": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "patch_row_max_abs_error": {
+                      "type": "number"
+                    },
+                    "cell_max_abs_error": {
+                      "type": "number"
+                    },
+                    "total_abs_error": {
+                      "type": "number"
+                    },
+                    "scalar_map_matrix_abs_error": {
+                      "type": "number"
+                    },
+                    "pass": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "patch_row_max_abs_error",
+                    "cell_max_abs_error",
+                    "total_abs_error",
+                    "scalar_map_matrix_abs_error",
+                    "pass"
+                  ]
+                }
+              },
+              "required": [
+                "post_patch_embedding_tokens",
+                "b00.input",
+                "b00.first_residual",
+                "b00.second_residual",
+                "b00.output",
+                "b01.input",
+                "b01.first_residual",
+                "b01.second_residual",
+                "b01.output",
+                "b02.input",
+                "b02.first_residual",
+                "b02.second_residual",
+                "b02.output",
+                "b03.input",
+                "b03.first_residual",
+                "b03.second_residual",
+                "b03.output",
+                "b04.input",
+                "b04.first_residual",
+                "b04.second_residual",
+                "b04.output",
+                "b05.input",
+                "b05.first_residual",
+                "b05.second_residual",
+                "b05.output",
+                "b06.input",
+                "b06.first_residual",
+                "b06.second_residual",
+                "b06.output",
+                "b07.input",
+                "b07.first_residual",
+                "b07.second_residual",
+                "b07.output",
+                "b08.input",
+                "b08.first_residual",
+                "b08.second_residual",
+                "b08.output",
+                "b09.input",
+                "b09.first_residual",
+                "b09.second_residual",
+                "b09.output",
+                "b10.input",
+                "b10.first_residual",
+                "b10.second_residual",
+                "b10.output",
+                "b11.input",
+                "b11.first_residual",
+                "b11.second_residual",
+                "b11.output",
+                "final_norm",
+                "classifier_input"
+              ]
+            }
+          },
+          "required": [
+            "status",
+            "failures",
+            "input_abs_error",
+            "input_threshold",
+            "pixel_base_threshold",
+            "total_threshold",
+            "head_sum_max_abs_error",
+            "branch_cell_max_abs_error",
+            "scalar_map_matrix_max_abs_error",
+            "per_cut"
+          ]
+        },
+        "ablations": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "status": {
+              "type": "string"
+            },
+            "target": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "normalization_denominator": {
+              "type": "number"
+            },
+            "intervention_point": {
+              "const": "native per-head value-mixed output before concat/output projection"
+            },
+            "replacement": {
+              "const": "zero same shape dtype"
+            },
+            "blocks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "block": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "native_logit": {
+                    "type": "number"
+                  },
+                  "allocation_absolute_mass": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 12,
+                    "maxItems": 12
+                  },
+                  "rank_order": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "minItems": 12,
+                    "maxItems": 12
+                  },
+                  "single_head": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "head": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "raw_logit_loss": {
+                          "type": "number"
+                        },
+                        "normalized_loss": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "head",
+                        "raw_logit_loss",
+                        "normalized_loss"
+                      ]
+                    },
+                    "minItems": 12,
+                    "maxItems": 12
+                  },
+                  "curves": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "top": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "k": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "heads": {
+                              "type": "array",
+                              "items": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "raw_logit_loss": {
+                              "type": "number"
+                            },
+                            "normalized_loss": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "k",
+                            "heads",
+                            "raw_logit_loss",
+                            "normalized_loss"
+                          ]
+                        },
+                        "minItems": 8,
+                        "maxItems": 8
+                      },
+                      "bottom": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "k": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "heads": {
+                              "type": "array",
+                              "items": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "raw_logit_loss": {
+                              "type": "number"
+                            },
+                            "normalized_loss": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "k",
+                            "heads",
+                            "raw_logit_loss",
+                            "normalized_loss"
+                          ]
+                        },
+                        "minItems": 8,
+                        "maxItems": 8
+                      }
+                    },
+                    "required": [
+                      "top",
+                      "bottom"
+                    ]
+                  }
+                },
+                "required": [
+                  "block",
+                  "native_logit",
+                  "allocation_absolute_mass",
+                  "rank_order",
+                  "single_head",
+                  "curves"
+                ]
+              },
+              "minItems": 12,
+              "maxItems": 12
+            },
+            "single_head_coordinates": {
+              "const": 144
+            },
+            "curve_points": {
+              "const": 192
+            }
+          },
+          "required": [
+            "status",
+            "target",
+            "normalization_denominator",
+            "intervention_point",
+            "replacement",
+            "blocks",
+            "single_head_coordinates",
+            "curve_points"
+          ]
+        },
+        "deletion_operator": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "status": {
+              "type": "string"
+            },
+            "scientific_decision": {
+              "const": null
+            },
+            "blocks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "block": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "percentiles": {
+                    "const": [
+                      0,
+                      5,
+                      10,
+                      15,
+                      20,
+                      25,
+                      30,
+                      35,
+                      40,
+                      45,
+                      50,
+                      55,
+                      60,
+                      65,
+                      70,
+                      75,
+                      80,
+                      85,
+                      90,
+                      95,
+                      100
+                    ]
+                  },
+                  "selected_counts": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "minItems": 21,
+                    "maxItems": 21
+                  },
+                  "nns_losses": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 21,
+                    "maxItems": 21
+                  },
+                  "nns_auc": {
+                    "type": "number"
+                  },
+                  "controls": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "seed_index": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "losses": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          },
+                          "minItems": 21,
+                          "maxItems": 21
+                        },
+                        "auc": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "seed_index",
+                        "losses",
+                        "auc"
+                      ]
+                    },
+                    "minItems": 32,
+                    "maxItems": 32
+                  },
+                  "control_median_auc": {
+                    "type": "number"
+                  },
+                  "auc_gain": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "block",
+                  "percentiles",
+                  "selected_counts",
+                  "nns_losses",
+                  "nns_auc",
+                  "controls",
+                  "control_median_auc",
+                  "auc_gain"
+                ]
+              },
+              "minItems": 12,
+              "maxItems": 12
+            },
+            "control_permutations_per_block": {
+              "const": 32
+            },
+            "same_native_patch_order": {
+              "const": true
+            },
+            "masking_baseline": {
+              "const": "normalized_zero"
+            },
+            "target": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "status",
+            "scientific_decision",
+            "blocks",
+            "control_permutations_per_block",
+            "same_native_patch_order",
+            "masking_baseline",
+            "target"
+          ]
+        },
+        "calls": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "forward_calls": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "backward_calls": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "jvp_calls": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "jvp_direction_lanes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "quadrature_alpha_batches": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "vjp_calls": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "forward_calls",
+            "backward_calls",
+            "jvp_calls",
+            "jvp_direction_lanes",
+            "quadrature_alpha_batches",
+            "vjp_calls"
+          ]
+        },
+        "phase_telemetry": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "forward_backward_wall_seconds": {
+              "type": "number"
+            },
+            "vjp_wall_seconds": {
+              "type": "number"
+            },
+            "jvp_wall_seconds": {
+              "type": "number"
+            },
+            "vjp_groups": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "alpha_begin": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "alpha_end": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "component_start": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "component_stop": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "component_labels": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "wall_seconds": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "alpha_begin",
+                  "alpha_end",
+                  "component_start",
+                  "component_stop",
+                  "component_labels",
+                  "wall_seconds"
+                ]
+              }
+            },
+            "jvp_groups": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "alpha_begin": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "alpha_end": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "source_patch_groups": {
+                    "type": "array",
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  },
+                  "cut_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "wall_seconds": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "alpha_begin",
+                  "alpha_end",
+                  "source_patch_groups",
+                  "cut_ids",
+                  "wall_seconds"
+                ]
+              }
+            }
+          },
+          "required": [
+            "forward_backward_wall_seconds",
+            "vjp_wall_seconds",
+            "jvp_wall_seconds",
+            "vjp_groups",
+            "jvp_groups"
+          ]
+        }
+      },
+      "required": [
+        "target_identity",
+        "clean_logit",
+        "baseline_logit",
+        "delta",
+        "selected_steps",
+        "closure",
+        "ablations",
+        "deletion_operator",
+        "calls",
+        "phase_telemetry"
+      ]
+    },
+    "attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "attempt_id": {
+          "type": "string"
+        },
+        "selection_order": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "retry_index": {
+          "const": 1
+        },
+        "quadrature_attempts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "steps": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "all_contracts_pass": {
+                "type": "boolean"
+              },
+              "input_sum": {
+                "type": "number"
+              },
+              "input_delta": {
+                "type": "number"
+              },
+              "input_abs_error": {
+                "type": "number"
+              },
+              "threshold": {
+                "type": "number"
+              },
+              "closure_status": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "identity_max_abs_error": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "wall_seconds": {
+                "type": "number"
+              },
+              "array_digest": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "failure_code": {
+                "type": "string"
+              },
+              "failure_phase": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "steps",
+              "all_contracts_pass"
+            ]
+          }
+        }
+      },
+      "required": [
+        "attempt_id",
+        "selection_order",
+        "retry_index",
+        "quadrature_attempts"
+      ]
+    },
+    "array_inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "selection_order": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "array_records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "canonical_digest": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "dtype": {
+                "const": "float32"
+              },
+              "shape": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "axes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "path",
+              "bytes",
+              "sha256",
+              "canonical_digest",
+              "dtype",
+              "shape",
+              "axes"
+            ]
+          },
+          "minItems": 262,
+          "maxItems": 262
+        },
+        "records_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "selection_order",
+        "array_records",
+        "records_digest"
+      ]
+    },
+    "resource_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "gpu_active_seconds": {
+          "type": "number"
+        },
+        "cpu_seconds": {
+          "type": "number"
+        },
+        "wall_seconds": {
+          "type": "number"
+        },
+        "peak_allocated_gpu_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "peak_reserved_gpu_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "retained_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "download_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "calls": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "forward_calls": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "backward_calls": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "jvp_calls": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "jvp_direction_lanes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "quadrature_alpha_batches": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "vjp_calls": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "forward_calls",
+            "backward_calls",
+            "jvp_calls",
+            "jvp_direction_lanes",
+            "quadrature_alpha_batches",
+            "vjp_calls"
+          ]
+        }
+      },
+      "required": [
+        "gpu_active_seconds",
+        "cpu_seconds",
+        "wall_seconds",
+        "peak_reserved_gpu_bytes",
+        "retained_bytes"
+      ]
+    },
+    "worker_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "physical_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cuda_visible_devices": {
+          "type": "string"
+        },
+        "gpu_uuid": {
+          "type": "string"
+        },
+        "pci_bus_id": {
+          "type": "string"
+        },
+        "device_name": {
+          "type": "string"
+        },
+        "hostname": {
+          "type": "string"
+        },
+        "pid": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "environment_identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "python_executable_realpath": {
+              "type": "string"
+            },
+            "python_version": {
+              "type": "string"
+            },
+            "torch_version": {
+              "type": "string"
+            },
+            "torchvision_version": {
+              "type": "string"
+            },
+            "timm_version": {
+              "type": "string"
+            },
+            "cuda_version": {
+              "type": "string"
+            },
+            "driver": {
+              "type": "string"
+            },
+            "device_name": {
+              "const": "NVIDIA H20"
+            },
+            "cublas_workspace_config": {
+              "const": ":4096:8"
+            },
+            "deterministic_algorithms_enabled": {
+              "const": true
+            },
+            "deterministic_warn_only_enabled": {
+              "const": false
+            },
+            "cudnn_benchmark": {
+              "const": false
+            },
+            "cudnn_deterministic": {
+              "const": true
+            },
+            "cuda_matmul_allow_tf32": {
+              "const": false
+            },
+            "cudnn_allow_tf32": {
+              "const": false
+            },
+            "checkpoint_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "numeric_contract_digest": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "python_executable_realpath",
+            "python_version",
+            "torch_version",
+            "torchvision_version",
+            "timm_version",
+            "cuda_version",
+            "driver",
+            "device_name",
+            "cublas_workspace_config",
+            "deterministic_algorithms_enabled",
+            "deterministic_warn_only_enabled",
+            "cudnn_benchmark",
+            "cudnn_deterministic",
+            "cuda_matmul_allow_tf32",
+            "cudnn_allow_tf32",
+            "checkpoint_sha256",
+            "numeric_contract_digest"
+          ]
+        },
+        "environment_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "physical_index",
+        "cuda_visible_devices",
+        "gpu_uuid",
+        "pci_bus_id",
+        "device_name",
+        "hostname",
+        "pid",
+        "environment_identity",
+        "environment_digest"
+      ]
+    },
+    "shard_terminal": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "shard_id": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unit_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "terminal_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "VALID": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "FAILED_NUMERICAL": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "BLOCKED_PROVENANCE": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "BLOCKED_SOURCE_DRIFT": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "BLOCKED_ACCESS": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "BLOCKED_INFRASTRUCTURE": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "VALID",
+            "FAILED_NUMERICAL",
+            "BLOCKED_PROVENANCE",
+            "BLOCKED_SOURCE_DRIFT",
+            "BLOCKED_ACCESS",
+            "BLOCKED_INFRASTRUCTURE"
+          ]
+        },
+        "fixed_initialization": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "gpu_active_seconds": {
+              "type": "number"
+            },
+            "cpu_seconds": {
+              "type": "number"
+            },
+            "wall_seconds": {
+              "type": "number"
+            },
+            "peak_allocated_gpu_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "peak_reserved_gpu_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "retained_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "download_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "calls": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "forward_calls": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "backward_calls": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "jvp_calls": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "jvp_direction_lanes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "quadrature_alpha_batches": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "vjp_calls": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "forward_calls",
+                "backward_calls",
+                "jvp_calls",
+                "jvp_direction_lanes",
+                "quadrature_alpha_batches",
+                "vjp_calls"
+              ]
+            }
+          },
+          "required": [
+            "gpu_active_seconds",
+            "cpu_seconds",
+            "wall_seconds",
+            "peak_reserved_gpu_bytes",
+            "retained_bytes"
+          ]
+        },
+        "worker_wall_seconds": {
+          "type": "number"
+        },
+        "completed_unix_ns": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "shard_id",
+        "unit_count",
+        "terminal_counts",
+        "fixed_initialization",
+        "worker_wall_seconds",
+        "completed_unix_ns"
+      ]
+    },
+    "shard_pending": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "shard_id": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "started_unix_ns": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "shard_id",
+        "started_unix_ns"
+      ]
+    },
+    "startup_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "locked_worker_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "devices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "physical_index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "device_name": {
+                "type": "string"
+              },
+              "gpu_uuid": {
+                "type": "string"
+              },
+              "pci_bus_id": {
+                "type": "string"
+              },
+              "total_memory_mib": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "free_memory_mib": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "driver": {
+                "type": "string"
+              },
+              "environment_identity": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "python_executable_realpath": {
+                    "type": "string"
+                  },
+                  "python_version": {
+                    "type": "string"
+                  },
+                  "torch_version": {
+                    "type": "string"
+                  },
+                  "torchvision_version": {
+                    "type": "string"
+                  },
+                  "timm_version": {
+                    "type": "string"
+                  },
+                  "cuda_version": {
+                    "type": "string"
+                  },
+                  "driver": {
+                    "type": "string"
+                  },
+                  "device_name": {
+                    "const": "NVIDIA H20"
+                  },
+                  "cublas_workspace_config": {
+                    "const": ":4096:8"
+                  },
+                  "deterministic_algorithms_enabled": {
+                    "const": true
+                  },
+                  "deterministic_warn_only_enabled": {
+                    "const": false
+                  },
+                  "cudnn_benchmark": {
+                    "const": false
+                  },
+                  "cudnn_deterministic": {
+                    "const": true
+                  },
+                  "cuda_matmul_allow_tf32": {
+                    "const": false
+                  },
+                  "cudnn_allow_tf32": {
+                    "const": false
+                  },
+                  "checkpoint_sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "numeric_contract_digest": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "python_executable_realpath",
+                  "python_version",
+                  "torch_version",
+                  "torchvision_version",
+                  "timm_version",
+                  "cuda_version",
+                  "driver",
+                  "device_name",
+                  "cublas_workspace_config",
+                  "deterministic_algorithms_enabled",
+                  "deterministic_warn_only_enabled",
+                  "cudnn_benchmark",
+                  "cudnn_deterministic",
+                  "cuda_matmul_allow_tf32",
+                  "cudnn_allow_tf32",
+                  "checkpoint_sha256",
+                  "numeric_contract_digest"
+                ]
+              },
+              "environment_digest": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "numeric_probe_digest": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "probe_operations": {
+                "const": [
+                  "torch.matmul_float32",
+                  "torch.matmul_float64",
+                  "backward",
+                  "exact_repeat"
+                ]
+              }
+            },
+            "required": [
+              "physical_index",
+              "device_name",
+              "gpu_uuid",
+              "pci_bus_id",
+              "total_memory_mib",
+              "free_memory_mib",
+              "driver",
+              "environment_identity",
+              "environment_digest",
+              "numeric_probe_digest",
+              "probe_operations"
+            ]
+          }
+        },
+        "python_executable_realpath": {
+          "type": "string"
+        },
+        "environment_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "numeric_probe_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "dynamic_rebalancing": {
+          "const": false
+        }
+      },
+      "required": [
+        "locked_worker_count",
+        "devices",
+        "python_executable_realpath",
+        "environment_digest",
+        "numeric_probe_digest",
+        "dynamic_rebalancing"
+      ]
+    },
+    "shard_manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "shard_id": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unit_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "selection_orders": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "mapping_rule": {
+          "const": "missing_roster_zero_based_index mod locked_worker_count"
+        },
+        "dynamic_rebalancing": {
+          "const": false
+        },
+        "source_type": {
+          "const": "Y2_R2_COMPUTED"
+        }
+      },
+      "required": [
+        "shard_id",
+        "unit_count",
+        "selection_orders",
+        "mapping_rule",
+        "dynamic_rebalancing",
+        "source_type"
+      ]
+    },
+    "rebind_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "selection_order": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_object_id": {
+          "type": "string"
+        },
+        "class_id": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_type": {
+          "enum": [
+            "Y2_R1_VALID_REBIND",
+            "Y2_R1_COMPLETED_BUDGET_REBIND"
+          ]
+        },
+        "status": {
+          "const": "VALID"
+        },
+        "source_terminal": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "canonical_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "path",
+            "bytes",
+            "sha256"
+          ]
+        },
+        "source_terminal_status": {
+          "type": "string"
+        },
+        "source_scientific_result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "canonical_digest": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "required": [
+                "path",
+                "bytes",
+                "sha256"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "array_count": {
+          "const": 262
+        },
+        "array_records_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "attempt_records_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "validation_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "resource_telemetry": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "gpu_active_seconds": {
+              "type": "number"
+            },
+            "cpu_seconds": {
+              "type": "number"
+            },
+            "wall_seconds": {
+              "type": "number"
+            },
+            "peak_allocated_gpu_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "peak_reserved_gpu_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "retained_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "download_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "calls": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "forward_calls": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "backward_calls": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "jvp_calls": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "jvp_direction_lanes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "quadrature_alpha_batches": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "vjp_calls": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "forward_calls",
+                "backward_calls",
+                "jvp_calls",
+                "jvp_direction_lanes",
+                "quadrature_alpha_batches",
+                "vjp_calls"
+              ]
+            }
+          },
+          "required": [
+            "gpu_active_seconds",
+            "cpu_seconds",
+            "wall_seconds",
+            "peak_reserved_gpu_bytes",
+            "retained_bytes"
+          ]
+        },
+        "arrays_copied": {
+          "const": false
+        },
+        "gpu_reexecuted": {
+          "const": false
+        },
+        "intervention_payload_retained": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "selection_order",
+        "source_object_id",
+        "class_id",
+        "source_type",
+        "status",
+        "source_terminal",
+        "source_terminal_status",
+        "source_scientific_result",
+        "array_count",
+        "array_records_digest",
+        "attempt_records_digest",
+        "validation_digest",
+        "resource_telemetry",
+        "arrays_copied",
+        "gpu_reexecuted",
+        "intervention_payload_retained"
+      ]
+    },
+    "rebind_manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source_type": {
+          "type": "string"
+        },
+        "record_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "selection_orders": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "selection_order": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "source_object_id": {
+                "type": "string"
+              },
+              "class_id": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "source_type": {
+                "enum": [
+                  "Y2_R1_VALID_REBIND",
+                  "Y2_R1_COMPLETED_BUDGET_REBIND"
+                ]
+              },
+              "status": {
+                "const": "VALID"
+              },
+              "source_terminal": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "bytes": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "canonical_digest": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "path",
+                  "bytes",
+                  "sha256"
+                ]
+              },
+              "source_terminal_status": {
+                "type": "string"
+              },
+              "source_scientific_result": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "path": {
+                        "type": "string"
+                      },
+                      "bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "canonical_digest": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "bytes",
+                      "sha256"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "array_count": {
+                "const": 262
+              },
+              "array_records_digest": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "attempt_records_digest": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "validation_digest": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "resource_telemetry": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "gpu_active_seconds": {
+                    "type": "number"
+                  },
+                  "cpu_seconds": {
+                    "type": "number"
+                  },
+                  "wall_seconds": {
+                    "type": "number"
+                  },
+                  "peak_allocated_gpu_bytes": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "peak_reserved_gpu_bytes": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "retained_bytes": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "download_bytes": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "calls": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "forward_calls": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "backward_calls": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "jvp_calls": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "jvp_direction_lanes": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "quadrature_alpha_batches": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "vjp_calls": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "forward_calls",
+                      "backward_calls",
+                      "jvp_calls",
+                      "jvp_direction_lanes",
+                      "quadrature_alpha_batches",
+                      "vjp_calls"
+                    ]
+                  }
+                },
+                "required": [
+                  "gpu_active_seconds",
+                  "cpu_seconds",
+                  "wall_seconds",
+                  "peak_reserved_gpu_bytes",
+                  "retained_bytes"
+                ]
+              },
+              "arrays_copied": {
+                "const": false
+              },
+              "gpu_reexecuted": {
+                "const": false
+              },
+              "intervention_payload_retained": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "selection_order",
+              "source_object_id",
+              "class_id",
+              "source_type",
+              "status",
+              "source_terminal",
+              "source_terminal_status",
+              "source_scientific_result",
+              "array_count",
+              "array_records_digest",
+              "attempt_records_digest",
+              "validation_digest",
+              "resource_telemetry",
+              "arrays_copied",
+              "gpu_reexecuted",
+              "intervention_payload_retained"
+            ]
+          }
+        },
+        "records_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "source_type",
+        "record_count",
+        "selection_orders",
+        "records",
+        "records_digest"
+      ]
+    },
+    "missing_manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "record_count": {
+          "const": 13
+        },
+        "selection_orders": {
+          "const": [
+            77,
+            81,
+            84,
+            85,
+            88,
+            89,
+            90,
+            92,
+            93,
+            94,
+            96,
+            97,
+            98
+          ]
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "selection_order": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "source_object_id": {
+                "type": "string"
+              },
+              "source_terminal": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "bytes": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "canonical_digest": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "path",
+                  "bytes",
+                  "sha256"
+                ]
+              }
+            },
+            "required": [
+              "selection_order",
+              "source_object_id",
+              "source_terminal"
+            ]
+          },
+          "minItems": 13,
+          "maxItems": 13
+        },
+        "records_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "record_count",
+        "selection_orders",
+        "records",
+        "records_digest"
+      ]
+    },
+    "preflight": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "focused_test_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "false_pass_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cohort_digest": {
+          "const": "156eab4bd86ff9979abc6acf8b06af3aa5a90e90cd02edef7713539b147ce277"
+        },
+        "selection_digest": {
+          "const": "8b3faa6d437bda38e963985ac12f14f3b440a3e4021915081f1d5e1b1c80d2cf"
+        },
+        "startup_commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "resource_telemetry": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "gpu_active_seconds": {
+              "type": "number"
+            },
+            "cpu_seconds": {
+              "type": "number"
+            },
+            "wall_seconds": {
+              "type": "number"
+            },
+            "peak_allocated_gpu_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "peak_reserved_gpu_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "retained_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "download_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "calls": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "forward_calls": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "backward_calls": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "jvp_calls": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "jvp_direction_lanes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "quadrature_alpha_batches": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "vjp_calls": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "forward_calls",
+                "backward_calls",
+                "jvp_calls",
+                "jvp_direction_lanes",
+                "quadrature_alpha_batches",
+                "vjp_calls"
+              ]
+            }
+          },
+          "required": [
+            "gpu_active_seconds",
+            "cpu_seconds",
+            "wall_seconds",
+            "peak_reserved_gpu_bytes",
+            "retained_bytes"
+          ]
+        }
+      },
+      "required": [
+        "checks",
+        "focused_test_count",
+        "false_pass_count",
+        "cohort_digest",
+        "selection_digest",
+        "startup_commit",
+        "resource_telemetry"
+      ]
+    },
+    "verification_resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "gpu_active_seconds": {
+          "type": "number"
+        },
+        "cpu_seconds": {
+          "type": "number"
+        },
+        "wall_seconds": {
+          "type": "number"
+        },
+        "peak_allocated_gpu_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "peak_reserved_gpu_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "retained_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "download_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "calls": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "forward_calls": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "backward_calls": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "jvp_calls": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "jvp_direction_lanes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "quadrature_alpha_batches": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "vjp_calls": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "forward_calls",
+            "backward_calls",
+            "jvp_calls",
+            "jvp_direction_lanes",
+            "quadrature_alpha_batches",
+            "vjp_calls"
+          ]
+        }
+      },
+      "required": [
+        "gpu_active_seconds",
+        "cpu_seconds",
+        "wall_seconds",
+        "peak_reserved_gpu_bytes",
+        "retained_bytes"
+      ]
+    },
+    "resource_ledger": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "stage_resources": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "Y2": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "h20_gpu_hours": {
+                  "type": "number"
+                },
+                "cpu_hours": {
+                  "type": "number"
+                },
+                "wall_seconds_sum": {
+                  "type": "number"
+                },
+                "retained_bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "retained_storage_gib": {
+                  "type": "number"
+                },
+                "peak_memory_bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "download_bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "h20_gpu_hours",
+                "cpu_hours",
+                "wall_seconds_sum",
+                "retained_bytes",
+                "retained_storage_gib",
+                "peak_memory_bytes",
+                "download_bytes"
+              ]
+            },
+            "Y2_R1": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "h20_gpu_hours": {
+                  "type": "number"
+                },
+                "cpu_hours": {
+                  "type": "number"
+                },
+                "wall_seconds_sum": {
+                  "type": "number"
+                },
+                "retained_bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "retained_storage_gib": {
+                  "type": "number"
+                },
+                "peak_memory_bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "download_bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "h20_gpu_hours",
+                "cpu_hours",
+                "wall_seconds_sum",
+                "retained_bytes",
+                "retained_storage_gib",
+                "peak_memory_bytes",
+                "download_bytes"
+              ]
+            },
+            "Y2_R2_BLOCKED": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "h20_gpu_hours": {
+                  "type": "number"
+                },
+                "cpu_hours": {
+                  "type": "number"
+                },
+                "wall_seconds_sum": {
+                  "type": "number"
+                },
+                "retained_bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "retained_storage_gib": {
+                  "type": "number"
+                },
+                "peak_memory_bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "download_bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "h20_gpu_hours",
+                "cpu_hours",
+                "wall_seconds_sum",
+                "retained_bytes",
+                "retained_storage_gib",
+                "peak_memory_bytes",
+                "download_bytes"
+              ]
+            },
+            "Y2_R2_R1": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "h20_gpu_hours": {
+                  "type": "number"
+                },
+                "cpu_hours": {
+                  "type": "number"
+                },
+                "wall_seconds_sum": {
+                  "type": "number"
+                },
+                "retained_bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "retained_storage_gib": {
+                  "type": "number"
+                },
+                "peak_memory_bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "download_bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "h20_gpu_hours",
+                "cpu_hours",
+                "wall_seconds_sum",
+                "retained_bytes",
+                "retained_storage_gib",
+                "peak_memory_bytes",
+                "download_bytes"
+              ]
+            }
+          },
+          "required": [
+            "Y2",
+            "Y2_R1",
+            "Y2_R2_BLOCKED",
+            "Y2_R2_R1"
+          ]
+        },
+        "cumulative_resources": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "h20_gpu_hours": {
+              "type": "number"
+            },
+            "cpu_hours": {
+              "type": "number"
+            },
+            "wall_seconds_sum": {
+              "type": "number"
+            },
+            "retained_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "retained_storage_gib": {
+              "type": "number"
+            },
+            "peak_memory_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "download_bytes": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "h20_gpu_hours",
+            "cpu_hours",
+            "wall_seconds_sum",
+            "retained_bytes",
+            "retained_storage_gib",
+            "peak_memory_bytes",
+            "download_bytes"
+          ]
+        },
+        "worker_wall_seconds": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "critical_path_wall_seconds": {
+          "type": "number"
+        },
+        "overall_stage_wall_seconds": {
+          "type": "number"
+        },
+        "prior_stage_wall_seconds": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "Y2": {
+              "type": "number"
+            },
+            "Y2_R1": {
+              "type": "number"
+            },
+            "Y2_R2_BLOCKED": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "Y2",
+            "Y2_R1",
+            "Y2_R2_BLOCKED"
+          ]
+        },
+        "reporting_only": {
+          "const": true
+        },
+        "retained_bytes_basis": {
+          "type": "string"
+        },
+        "historical_blocked_cpu_measurement": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "stage_resources",
+        "cumulative_resources",
+        "worker_wall_seconds",
+        "critical_path_wall_seconds",
+        "overall_stage_wall_seconds",
+        "prior_stage_wall_seconds",
+        "reporting_only",
+        "retained_bytes_basis",
+        "historical_blocked_cpu_measurement"
+      ]
+    },
+    "overruns": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "resource_overruns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "stage": {
+                "type": "string"
+              },
+              "field": {
+                "type": "string"
+              },
+              "observed": {
+                "type": "number"
+              },
+              "former_ceiling": {
+                "type": "number"
+              },
+              "classification": {
+                "const": "RESOURCE_OVERRUN_REPORTED"
+              },
+              "scientific_validity_effect": {
+                "const": "NONE"
+              }
+            },
+            "required": [
+              "stage",
+              "field",
+              "observed",
+              "former_ceiling",
+              "classification",
+              "scientific_validity_effect"
+            ]
+          }
+        },
+        "reporting_only": {
+          "const": true
+        }
+      },
+      "required": [
+        "resource_overruns",
+        "reporting_only"
+      ]
+    },
+    "access_audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "external_accesses": {
+          "const": []
+        },
+        "download_bytes": {
+          "const": 0
+        },
+        "clean_array_validation_performed": {
+          "type": "boolean"
+        },
+        "bootstrap_executed": {
+          "const": false
+        },
+        "holm_executed": {
+          "const": false
+        },
+        "claim_decision_executed": {
+          "const": false
+        },
+        "later_stages_started": {
+          "const": []
+        }
+      },
+      "required": [
+        "external_accesses",
+        "download_bytes",
+        "clean_array_validation_performed",
+        "bootstrap_executed",
+        "holm_executed",
+        "claim_decision_executed",
+        "later_stages_started"
+      ]
+    },
+    "false_pass_audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "attack_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rejected_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "attack": {
+                "type": "string"
+              },
+              "expected": {
+                "const": "REJECT"
+              },
+              "observed": {
+                "const": "REJECT"
+              },
+              "pass": {
+                "const": true
+              }
+            },
+            "required": [
+              "attack",
+              "expected",
+              "observed",
+              "pass"
+            ]
+          }
+        }
+      },
+      "required": [
+        "attack_count",
+        "rejected_count",
+        "checks"
+      ]
+    },
+    "reconciliation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "denominator": {
+          "const": 100
+        },
+        "valid_clean_count": {
+          "const": 100
+        },
+        "source_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "Y2_R1_VALID_REBIND": {
+              "const": 84
+            },
+            "Y2_R1_COMPLETED_BUDGET_REBIND": {
+              "const": 3
+            },
+            "Y2_R2_COMPUTED": {
+              "const": 13
+            }
+          },
+          "required": [
+            "Y2_R1_VALID_REBIND",
+            "Y2_R1_COMPLETED_BUDGET_REBIND",
+            "Y2_R2_COMPUTED"
+          ]
+        },
+        "selection_orders": {
+          "const": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31,
+            32,
+            33,
+            34,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40,
+            41,
+            42,
+            43,
+            44,
+            45,
+            46,
+            47,
+            48,
+            49,
+            50,
+            51,
+            52,
+            53,
+            54,
+            55,
+            56,
+            57,
+            58,
+            59,
+            60,
+            61,
+            62,
+            63,
+            64,
+            65,
+            66,
+            67,
+            68,
+            69,
+            70,
+            71,
+            72,
+            73,
+            74,
+            75,
+            76,
+            77,
+            78,
+            79,
+            80,
+            81,
+            82,
+            83,
+            84,
+            85,
+            86,
+            87,
+            88,
+            89,
+            90,
+            91,
+            92,
+            93,
+            94,
+            95,
+            96,
+            97,
+            98,
+            99
+          ]
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "selection_order": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "source_object_id": {
+                    "type": "string"
+                  },
+                  "class_id": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "source_type": {
+                    "enum": [
+                      "Y2_R1_VALID_REBIND",
+                      "Y2_R1_COMPLETED_BUDGET_REBIND"
+                    ]
+                  },
+                  "status": {
+                    "const": "VALID"
+                  },
+                  "source_terminal": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "path": {
+                        "type": "string"
+                      },
+                      "bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "canonical_digest": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "bytes",
+                      "sha256"
+                    ]
+                  },
+                  "source_terminal_status": {
+                    "type": "string"
+                  },
+                  "source_scientific_result": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "bytes": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "sha256": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{64}$"
+                          },
+                          "canonical_digest": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{64}$"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "bytes",
+                          "sha256"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "array_count": {
+                    "const": 262
+                  },
+                  "array_records_digest": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "attempt_records_digest": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "validation_digest": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "resource_telemetry": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "gpu_active_seconds": {
+                        "type": "number"
+                      },
+                      "cpu_seconds": {
+                        "type": "number"
+                      },
+                      "wall_seconds": {
+                        "type": "number"
+                      },
+                      "peak_allocated_gpu_bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "peak_reserved_gpu_bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "retained_bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "download_bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "calls": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "forward_calls": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "backward_calls": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "jvp_calls": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "jvp_direction_lanes": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "quadrature_alpha_batches": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "vjp_calls": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "forward_calls",
+                          "backward_calls",
+                          "jvp_calls",
+                          "jvp_direction_lanes",
+                          "quadrature_alpha_batches",
+                          "vjp_calls"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "gpu_active_seconds",
+                      "cpu_seconds",
+                      "wall_seconds",
+                      "peak_reserved_gpu_bytes",
+                      "retained_bytes"
+                    ]
+                  },
+                  "arrays_copied": {
+                    "const": false
+                  },
+                  "gpu_reexecuted": {
+                    "const": false
+                  },
+                  "intervention_payload_retained": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "selection_order",
+                  "source_object_id",
+                  "class_id",
+                  "source_type",
+                  "status",
+                  "source_terminal",
+                  "source_terminal_status",
+                  "source_scientific_result",
+                  "array_count",
+                  "array_records_digest",
+                  "attempt_records_digest",
+                  "validation_digest",
+                  "resource_telemetry",
+                  "arrays_copied",
+                  "gpu_reexecuted",
+                  "intervention_payload_retained"
+                ]
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "selection_order": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "source_object_id": {
+                    "type": "string"
+                  },
+                  "class_id": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "source_type": {
+                    "const": "Y2_R2_COMPUTED"
+                  },
+                  "status": {
+                    "const": "VALID"
+                  },
+                  "terminal": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "path": {
+                        "type": "string"
+                      },
+                      "bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "canonical_digest": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "bytes",
+                      "sha256"
+                    ]
+                  },
+                  "resource_telemetry": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "gpu_active_seconds": {
+                        "type": "number"
+                      },
+                      "cpu_seconds": {
+                        "type": "number"
+                      },
+                      "wall_seconds": {
+                        "type": "number"
+                      },
+                      "peak_allocated_gpu_bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "peak_reserved_gpu_bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "retained_bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "download_bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "calls": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "forward_calls": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "backward_calls": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "jvp_calls": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "jvp_direction_lanes": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "quadrature_alpha_batches": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "vjp_calls": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "forward_calls",
+                          "backward_calls",
+                          "jvp_calls",
+                          "jvp_direction_lanes",
+                          "quadrature_alpha_batches",
+                          "vjp_calls"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "gpu_active_seconds",
+                      "cpu_seconds",
+                      "wall_seconds",
+                      "peak_reserved_gpu_bytes",
+                      "retained_bytes"
+                    ]
+                  },
+                  "validation_digest": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "selection_order",
+                  "source_object_id",
+                  "class_id",
+                  "source_type",
+                  "status",
+                  "terminal",
+                  "resource_telemetry",
+                  "validation_digest"
+                ]
+              }
+            ]
+          },
+          "minItems": 100,
+          "maxItems": 100
+        },
+        "records_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "formal_outcome_access": {
+          "const": false
+        },
+        "bootstrap_executed": {
+          "const": false
+        },
+        "holm_executed": {
+          "const": false
+        },
+        "claim_decision_executed": {
+          "const": false
+        },
+        "later_stages_started": {
+          "const": []
+        },
+        "next_authorization": {
+          "const": "STAGE_Y3_PERTURBATION_MECHANISM_PRODUCTION_ONLY"
+        }
+      },
+      "required": [
+        "denominator",
+        "valid_clean_count",
+        "source_counts",
+        "selection_orders",
+        "records",
+        "records_digest",
+        "formal_outcome_access",
+        "bootstrap_executed",
+        "holm_executed",
+        "claim_decision_executed",
+        "later_stages_started",
+        "next_authorization"
+      ]
+    },
+    "unified_manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "denominator": {
+          "const": 100
+        },
+        "valid_clean_count": {
+          "const": 100
+        },
+        "source_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "Y2_R1_VALID_REBIND": {
+              "const": 84
+            },
+            "Y2_R1_COMPLETED_BUDGET_REBIND": {
+              "const": 3
+            },
+            "Y2_R2_COMPUTED": {
+              "const": 13
+            }
+          },
+          "required": [
+            "Y2_R1_VALID_REBIND",
+            "Y2_R1_COMPLETED_BUDGET_REBIND",
+            "Y2_R2_COMPUTED"
+          ]
+        },
+        "selection_orders": {
+          "const": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31,
+            32,
+            33,
+            34,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40,
+            41,
+            42,
+            43,
+            44,
+            45,
+            46,
+            47,
+            48,
+            49,
+            50,
+            51,
+            52,
+            53,
+            54,
+            55,
+            56,
+            57,
+            58,
+            59,
+            60,
+            61,
+            62,
+            63,
+            64,
+            65,
+            66,
+            67,
+            68,
+            69,
+            70,
+            71,
+            72,
+            73,
+            74,
+            75,
+            76,
+            77,
+            78,
+            79,
+            80,
+            81,
+            82,
+            83,
+            84,
+            85,
+            86,
+            87,
+            88,
+            89,
+            90,
+            91,
+            92,
+            93,
+            94,
+            95,
+            96,
+            97,
+            98,
+            99
+          ]
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "selection_order": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "source_object_id": {
+                    "type": "string"
+                  },
+                  "class_id": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "source_type": {
+                    "enum": [
+                      "Y2_R1_VALID_REBIND",
+                      "Y2_R1_COMPLETED_BUDGET_REBIND"
+                    ]
+                  },
+                  "status": {
+                    "const": "VALID"
+                  },
+                  "source_terminal": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "path": {
+                        "type": "string"
+                      },
+                      "bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "canonical_digest": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "bytes",
+                      "sha256"
+                    ]
+                  },
+                  "source_terminal_status": {
+                    "type": "string"
+                  },
+                  "source_scientific_result": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "bytes": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "sha256": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{64}$"
+                          },
+                          "canonical_digest": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{64}$"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "bytes",
+                          "sha256"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "array_count": {
+                    "const": 262
+                  },
+                  "array_records_digest": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "attempt_records_digest": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "validation_digest": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "resource_telemetry": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "gpu_active_seconds": {
+                        "type": "number"
+                      },
+                      "cpu_seconds": {
+                        "type": "number"
+                      },
+                      "wall_seconds": {
+                        "type": "number"
+                      },
+                      "peak_allocated_gpu_bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "peak_reserved_gpu_bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "retained_bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "download_bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "calls": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "forward_calls": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "backward_calls": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "jvp_calls": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "jvp_direction_lanes": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "quadrature_alpha_batches": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "vjp_calls": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "forward_calls",
+                          "backward_calls",
+                          "jvp_calls",
+                          "jvp_direction_lanes",
+                          "quadrature_alpha_batches",
+                          "vjp_calls"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "gpu_active_seconds",
+                      "cpu_seconds",
+                      "wall_seconds",
+                      "peak_reserved_gpu_bytes",
+                      "retained_bytes"
+                    ]
+                  },
+                  "arrays_copied": {
+                    "const": false
+                  },
+                  "gpu_reexecuted": {
+                    "const": false
+                  },
+                  "intervention_payload_retained": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "selection_order",
+                  "source_object_id",
+                  "class_id",
+                  "source_type",
+                  "status",
+                  "source_terminal",
+                  "source_terminal_status",
+                  "source_scientific_result",
+                  "array_count",
+                  "array_records_digest",
+                  "attempt_records_digest",
+                  "validation_digest",
+                  "resource_telemetry",
+                  "arrays_copied",
+                  "gpu_reexecuted",
+                  "intervention_payload_retained"
+                ]
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "selection_order": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "source_object_id": {
+                    "type": "string"
+                  },
+                  "class_id": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "source_type": {
+                    "const": "Y2_R2_COMPUTED"
+                  },
+                  "status": {
+                    "const": "VALID"
+                  },
+                  "terminal": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "path": {
+                        "type": "string"
+                      },
+                      "bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "canonical_digest": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "bytes",
+                      "sha256"
+                    ]
+                  },
+                  "resource_telemetry": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "gpu_active_seconds": {
+                        "type": "number"
+                      },
+                      "cpu_seconds": {
+                        "type": "number"
+                      },
+                      "wall_seconds": {
+                        "type": "number"
+                      },
+                      "peak_allocated_gpu_bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "peak_reserved_gpu_bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "retained_bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "download_bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "calls": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "forward_calls": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "backward_calls": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "jvp_calls": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "jvp_direction_lanes": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "quadrature_alpha_batches": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "vjp_calls": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "forward_calls",
+                          "backward_calls",
+                          "jvp_calls",
+                          "jvp_direction_lanes",
+                          "quadrature_alpha_batches",
+                          "vjp_calls"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "gpu_active_seconds",
+                      "cpu_seconds",
+                      "wall_seconds",
+                      "peak_reserved_gpu_bytes",
+                      "retained_bytes"
+                    ]
+                  },
+                  "validation_digest": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "selection_order",
+                  "source_object_id",
+                  "class_id",
+                  "source_type",
+                  "status",
+                  "terminal",
+                  "resource_telemetry",
+                  "validation_digest"
+                ]
+              }
+            ]
+          },
+          "minItems": 100,
+          "maxItems": 100
+        },
+        "records_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "formal_outcome_access": {
+          "const": false
+        },
+        "bootstrap_executed": {
+          "const": false
+        },
+        "holm_executed": {
+          "const": false
+        },
+        "claim_decision_executed": {
+          "const": false
+        },
+        "later_stages_started": {
+          "const": []
+        },
+        "next_authorization": {
+          "const": "STAGE_Y3_PERTURBATION_MECHANISM_PRODUCTION_ONLY"
+        }
+      },
+      "required": [
+        "denominator",
+        "valid_clean_count",
+        "source_counts",
+        "selection_orders",
+        "records",
+        "records_digest",
+        "formal_outcome_access",
+        "bootstrap_executed",
+        "holm_executed",
+        "claim_decision_executed",
+        "later_stages_started",
+        "next_authorization"
+      ]
+    },
+    "validation_report": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "record_count": {
+          "const": 100
+        },
+        "records_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "checks",
+        "record_count",
+        "records_digest"
+      ]
+    },
+    "payload_manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "canonical_digest": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "path",
+              "bytes",
+              "sha256"
+            ]
+          }
+        },
+        "file_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "files_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "files",
+        "file_count",
+        "files_digest"
+      ]
+    },
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "root": {
+          "type": "string"
+        },
+        "excluded": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "canonical_digest": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "path",
+              "bytes",
+              "sha256"
+            ]
+          }
+        },
+        "file_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "files_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "root",
+        "excluded",
+        "files",
+        "file_count",
+        "total_bytes",
+        "files_digest"
+      ]
+    },
+    "completion": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "completed_at": {
+          "type": "string"
+        },
+        "denominator": {
+          "const": 100
+        },
+        "valid_clean_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "Y2_R1_VALID_REBIND": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Y2_R1_COMPLETED_BUDGET_REBIND": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Y2_R2_COMPUTED": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "Y2_R1_VALID_REBIND",
+            "Y2_R1_COMPLETED_BUDGET_REBIND",
+            "Y2_R2_COMPUTED"
+          ]
+        },
+        "formal_outcome_access": {
+          "const": false
+        },
+        "next_authorization": {
+          "enum": [
+            "STAGE_Y3_PERTURBATION_MECHANISM_PRODUCTION_ONLY",
+            "NONE"
+          ]
+        },
+        "reconciliation": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "canonical_digest": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "required": [
+                "path",
+                "bytes",
+                "sha256"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "validation_report": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "canonical_digest": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "required": [
+                "path",
+                "bytes",
+                "sha256"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "whole_root_inventory": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "canonical_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "path",
+            "bytes",
+            "sha256"
+          ]
+        },
+        "report": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "canonical_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "path",
+            "bytes",
+            "sha256"
+          ]
+        },
+        "failure": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "canonical_digest": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "required": [
+                "path",
+                "bytes",
+                "sha256"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "completed_at",
+        "denominator",
+        "valid_clean_count",
+        "source_counts",
+        "formal_outcome_access",
+        "next_authorization",
+        "reconciliation",
+        "validation_report",
+        "whole_root_inventory",
+        "report",
+        "failure"
+      ]
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "phase": {
+          "type": "string"
+        },
+        "failure_type": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "next_authorization": {
+          "const": "NONE"
+        }
+      },
+      "required": [
+        "phase",
+        "failure_type",
+        "message",
+        "next_authorization"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_pending"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/pending"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_binding"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/binding"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_unit_pending"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/unit_pending"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_unit_terminal"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/unit_terminal"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_scientific_result"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/scientific_result"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_attempt"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/attempt"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_array_inventory"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/array_inventory"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_resource_record"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/resource_record"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_worker_identity"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/worker_identity"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_shard_terminal"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/shard_terminal"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_shard_pending"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/shard_pending"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_startup_gate"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/startup_gate"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_shard_manifest"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/shard_manifest"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_rebind_record"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/rebind_record"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_rebind_manifest"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/rebind_manifest"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_missing_manifest"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/missing_manifest"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_preflight"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/preflight"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_verification_resource"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/verification_resource"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_resource_ledger"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/resource_ledger"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_overruns"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/overruns"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_access_audit"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/access_audit"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_false_pass_audit"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/false_pass_audit"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_reconciliation"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/reconciliation"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_unified_manifest"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/unified_manifest"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_validation_report"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/validation_report"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_payload_manifest"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/payload_manifest"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_inventory"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/inventory"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_completion"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/completion"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "document_type": {
+            "const": "stage_y_y2_r2_r1_failure"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/failure"
+          }
+        }
+      }
+    }
+  ]
+}
