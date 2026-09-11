@@ -10,12 +10,14 @@ identities are sealed from that cohort before any selected JPEG is decoded or
 the recovery-v2 model is loaded. Candidate JPEG bytes may be streamed only to
 compute SHA-256; candidate image decoding is forbidden.
 
-After the pre-execution seal, exactly eight homogeneous NVIDIA H20 workers,
-one process per physical GPU, process independent image units under the clean
-condition. Zero-based selection order is assigned by `selection_order mod 8`;
-shards 00-03 contain 13 images each and shards 04-07 contain 12 each. Dynamic
+After the pre-execution seal, the startup gate selects all eligible idle
+homogeneous NVIDIA H20 devices in ascending physical-index order, with a
+minimum of one and a maximum of eight, then locks that roster for the run. One
+process per physical GPU processes independent clean-image units. If the locked
+count is `K`, zero-based selection order is assigned by `selection_order mod K`;
+for example, four idle H20s produce four shards of 25 images each. Dynamic
 rebalancing by class, prediction, runtime, convergence, attribution, or any
-outcome is forbidden. Each image is an append-only unit with a PENDING receipt,
+outcome is forbidden after `K` is sealed. Each image is an append-only unit with a PENDING receipt,
 retained attempts, and one atomic typed terminal. The implementation reuses
 the validated Y1 grouped JVP/VJP mathematical identity without a propagation
 change and never materializes a pixel-by-hidden dense Jacobian. Required
@@ -29,11 +31,11 @@ F3-Final work, or Stage G work is part of Y2. `PASS` means only that the frozen
 cohort and clean evidence package are complete and valid. It does not support
 any scientific claim.
 
-Each worker sees exactly one physical GPU through `CUDA_VISIBLE_DEVICES` and
+Each worker sees exactly one locked physical GPU through `CUDA_VISIBLE_DEVICES` and
 uses only `cuda:0` internally. It records the physical index, visible-device
 string, GPU UUID, PCI bus ID, device name, hostname, PID, and environment
 digest in its isolated shard root. The shared cohort seal is immutable before
-launch. Reconciliation is CPU-only and reads all eight shard roots; it never
+launch. Reconciliation is CPU-only and reads exactly the locked `K` shard roots; it never
 decodes a JPEG, imports the model path, or accesses CUDA.
 
 Formal root: `evidence/stage_y/y2_clean_formal_20260910/formal/`

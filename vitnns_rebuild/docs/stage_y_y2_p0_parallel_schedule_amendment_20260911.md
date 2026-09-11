@@ -34,6 +34,10 @@ failures/NA, at least 90 VALID units, and clean-only execution. It performs no
 bootstrap, Holm correction, or claim decision. Y3 remains forbidden until Y2 is
 terminal PASS.
 
+This original P0 schedule was superseded prospectively, before formal cohort
+access, by `stage_y_y2_p0_r1_elastic_idle_h20_schedule_20260911.md`. Its fixed
+eight-device requirement is historical and must not be used to launch Y2.
+
 The source-recomputed caps are frozen in
 `config/stage_y/y2_parallel_schedule.json`. Aggregate GPU-hours remain summed
 across devices. The only authorization after Y2-P0 PASS is

@@ -13,24 +13,26 @@ from vitnns import stage_y_y2 as y2
 REPO = Path(__file__).resolve().parents[1]
 
 
-def test_schedule_and_run_spec_are_frozen_to_exactly_eight_workers() -> None:
+def test_schedule_and_run_spec_are_frozen_to_one_through_eight_workers() -> None:
     schedule = json.loads((REPO / "config/stage_y/y2_parallel_schedule.json").read_text())
     spec = json.loads((REPO / "config/stage_y/y2_run_spec.json").read_text())
     schema = json.loads((REPO / "config/stage_y/y2_run_spec.schema.json").read_text())
     Draft202012Validator.check_schema(schema); Draft202012Validator(schema).validate(spec)
-    assert schedule["worker_contract"]["required_devices"] == spec["execution"]["device_count"] == 8
-    assert schedule["y2_sharding"]["shard_counts"] == [13,13,13,13,12,12,12,12]
-    assert schedule["y3_sharding"]["shard_counts"] == [20] * 8
-    assert schedule["y3_sharding"]["launch_authorized_in_y2_p0"] is False
-    assert schedule["accounting_rule"].endswith("never divided by device count")
+    assert schedule["worker_contract"]["minimum_workers"] == spec["execution"]["minimum_device_count"] == 1
+    assert schedule["worker_contract"]["maximum_workers"] == spec["execution"]["maximum_device_count"] == 8
+    assert schedule["y2_sharding"]["shard_counts_by_worker_count"]["4"] == [25] * 4
+    assert schedule["y3_sharding"]["shard_counts_by_worker_count"]["4"] == [40] * 4
+    assert schedule["y3_sharding"]["launch_authorized_in_y2_p0_r1"] is False
+    assert schedule["accounting_rule"].endswith("never divided by worker count")
 
 
 def test_y2_and_y3_modulo_sharding_is_complete_and_nonadaptive() -> None:
-    assert [len(y2.expected_y2_orders(shard)) for shard in y2.SHARD_IDS] == [13,13,13,13,12,12,12,12]
-    assert sorted(order for shard in y2.SHARD_IDS for order in y2.expected_y2_orders(shard)) == list(range(100))
-    for order in range(100): assert order in y2.expected_y2_orders(y2.y2_shard_id(order))
-    y3 = [[(image, transform) for image in range(20) for transform in range(8) if y2.y3_shard_id(image, transform) == shard] for shard in y2.SHARD_IDS]
-    assert [len(items) for items in y3] == [20] * 8
+    for workers in range(1, 9):
+        assert [len(y2.expected_y2_orders(shard, workers)) for shard in y2.shard_ids(workers)] == y2.shard_counts(100, workers)
+        assert sorted(order for shard in y2.shard_ids(workers) for order in y2.expected_y2_orders(shard, workers)) == list(range(100))
+        for order in range(100): assert order in y2.expected_y2_orders(y2.y2_shard_id(order, workers), workers)
+        y3 = [[(image, transform) for image in range(20) for transform in range(8) if y2.y3_shard_id(image, transform, workers) == shard] for shard in y2.shard_ids(workers)]
+        assert [len(items) for items in y3] == y2.shard_counts(160, workers)
     with pytest.raises(y2.StageYY2ScheduleError): y2.y2_shard_id(100)
     with pytest.raises(y2.StageYY2ScheduleError): y2.y3_shard_id(20, 0)
 
@@ -48,6 +50,11 @@ def test_resource_projection_recomputes_fixed_cost_per_worker_and_aggregate_gpu_
     assert result["y2"]["fleet_concurrent_reserved_gpu_gib"] == result["y3"]["fleet_concurrent_reserved_gpu_gib"] == 168.0
     assert result["y2"]["safety_projected"]["h20_gpu_hours"] == pytest.approx(63.97206770833333)
     assert result["y3"]["safety_projected"]["h20_gpu_hours"] == pytest.approx(102.35530833333334)
+    four = y2.schedule_from_source_ledger(ledger, 4)
+    assert four["y2"]["shard_counts"] == [25] * 4
+    assert four["y2"]["critical_path_worker_wall_hours"] == 16.0
+    assert four["y2"]["overall_stage_wall_hours"] == 19.0
+    assert four["y2"]["fleet_concurrent_reserved_gpu_gib"] == 84.0
 
 
 def _cohort() -> dict:
@@ -65,8 +72,8 @@ def test_manifest_builder_writes_only_eight_isolated_roots(tmp_path: Path) -> No
         assert document["payload"]["dynamic_rebalancing"] is False
 
 
-def _populate_synthetic_shards(root: Path) -> None:
-    manifests = y2.build_shard_manifests(_cohort(), root)
+def _populate_synthetic_shards(root: Path, worker_count: int = 8) -> None:
+    manifests = y2.build_shard_manifests(_cohort(), root, worker_count)
     for shard, manifest in enumerate(manifests):
         shard_root = root / "shards" / f"shard-{shard:02d}"
         binding = {
@@ -78,9 +85,11 @@ def _populate_synthetic_shards(root: Path) -> None:
         y2.write_json_new(shard_root / "worker_identity.json", y2.signed("stage_y_y2_worker_identity", "PASS", binding))
         for row in manifest["payload"]["records"]:
             order = row["selection_order"]; unit_root = shard_root / "units" / f"unit-{order:03d}"
-            y2.begin_unit(unit_root, shard_id=shard, selection_order=order, source_object_id_value=row["source_object_id"])
+            y2.begin_unit(unit_root, shard_id=shard, selection_order=order, source_object_id_value=row["source_object_id"], worker_count=worker_count)
             y2.append_attempt(unit_root, {"attempt_id": "synthetic-0", "steps": 2, "all_contracts_pass": True})
             attempts = [y2.file_record(path) for path in sorted((unit_root / "attempts").glob("attempt-*.json"))]
+            scientific_path = unit_root / "scientific_result.json"
+            y2.write_json_new(scientific_path, y2.signed("stage_y_y2_unit_scientific_result", "VALID", {"synthetic": True}))
             payload = {
                 "unit_digest": y2.canonical_digest({"selection_order": order, "source_object_id": row["source_object_id"]}),
                 "attempt_id": "synthetic-0", "shard_id": shard, "selection_order": order,
@@ -90,13 +99,13 @@ def _populate_synthetic_shards(root: Path) -> None:
                 "checkpoint_sha256": "c" * 64, "environment_digest": "e" * 64,
                 "numeric_contract_digest": "n" * 64, "quadrature_attempts": [{"steps": 2, "all_contracts_pass": True}],
                 "resource_telemetry": {"gpu_active_seconds": 36.0, "cpu_seconds": 72.0, "wall_seconds": 36.0, "peak_allocated_gpu_bytes": 1, "peak_reserved_gpu_bytes": 2, "retained_bytes": 3, "calls": {}},
-                "array_records": [], "attempt_records": attempts,
+                "scientific_record": y2.file_record(scientific_path), "array_records": [], "attempt_records": attempts,
             }
-            y2.finish_unit(unit_root, "VALID", payload)
+            y2.finish_unit(unit_root, "VALID", payload, worker_count=worker_count)
         pending = shard_root / "completion/shard.pending.json"
-        y2.write_json_new(pending, y2.signed("stage_y_y2_shard_pending", "PENDING", {"shard_id": shard, "terminal_published": False}))
+        y2.write_json_new(pending, y2.signed("stage_y_y2_shard_pending", "PENDING", {"shard_id": shard, "shard_count": worker_count, "terminal_published": False}))
         fixed = {"gpu_active_seconds": 0.0, "cpu_seconds": 0.0, "wall_seconds": 0.0, "peak_reserved_gpu_bytes": 0, "retained_bytes": 0}
-        terminal = y2.signed("stage_y_y2_shard_terminal", "VALID", {"shard_id": shard, "unit_count": len(manifest["payload"]["records"]), "terminal_counts": {"VALID": len(manifest["payload"]["records"]), "FAILED_NUMERICAL": 0, "BLOCKED_INFRASTRUCTURE": 0, "BLOCKED_BUDGET": 0}, "worker_identity": binding, "fixed_initialization_resource": fixed, "shard_elapsed_seconds": 0.0, "completed_unix_ns": 1})
+        terminal = y2.signed("stage_y_y2_shard_terminal", "VALID", {"shard_id": shard, "shard_count": worker_count, "unit_count": len(manifest["payload"]["records"]), "terminal_counts": {"VALID": len(manifest["payload"]["records"]), "FAILED_NUMERICAL": 0, "BLOCKED_INFRASTRUCTURE": 0, "BLOCKED_BUDGET": 0}, "worker_identity": binding, "fixed_initialization_resource": fixed, "resource_caps": manifest["payload"]["resource_caps"], "shard_elapsed_seconds": 0.0, "completed_unix_ns": 1})
         y2.publish_terminal(pending, shard_root / "completion/shard.json", terminal)
 
 
@@ -108,7 +117,7 @@ def test_unit_receipt_is_atomic_and_reconciler_sums_all_shards_cpu_only(tmp_path
     assert result["payload"]["valid_count"] == 100
     assert result["payload"]["attempt_record_count"] == 100
     assert result["payload"]["resource_totals"]["h20_gpu_hours"] == pytest.approx(1.0)
-    assert result["payload"]["gpu_hours_accounting"] == "SUM_ACROSS_ALL_SHARDS_NOT_DIVIDED_BY_EIGHT"
+    assert result["payload"]["gpu_hours_accounting"] == "SUM_ACROSS_ALL_SHARDS_NOT_DIVIDED_BY_WORKER_COUNT"
     assert result["payload"]["bootstrap_executed"] is result["payload"]["holm_executed"] is result["payload"]["claim_decision_executed"] is False
 
 
@@ -135,7 +144,7 @@ def test_worker_identity_and_unit_terminal_payloads_fail_closed(tmp_path: Path) 
 
 def test_cli_surface_and_cpu_only_p0_import_boundary() -> None:
     launcher = (REPO / "scripts/run_stage_y_y2.py").read_text(); ast.parse(launcher)
-    for command in ("seal-cohort","build-shards","validate-startup","run-shard","reconcile","seal","validate","validate-publication"):
+    for command in ("seal-cohort","build-shards","validate-startup","run-shard","run-all","reconcile","seal","validate","validate-publication"):
         assert command in launcher
     core = (REPO / "src/vitnns/stage_y_y2.py").read_text(); ast.parse(core)
     assert "import torch" not in core and "from PIL" not in core and "import timm" not in core
@@ -146,22 +155,13 @@ def test_cli_surface_and_cpu_only_p0_import_boundary() -> None:
     assert "nvidia-smi" not in validator
 
 
-def test_startup_gate_rejects_seven_devices_without_gpu_access(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    spec = importlib.util.spec_from_file_location("run_stage_y_y2_test", REPO / "scripts/run_stage_y_y2.py")
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
-    formal = tmp_path / y2.ROOT; formal.mkdir(parents=True)
-    y2.write_json_new(formal / "cohort_registry.json", _cohort())
-    y2.build_shard_manifests(_cohort(), formal)
-    class Result:
-        returncode = 0; stderr = ""
-        def __init__(self, stdout: str): self.stdout = stdout
-    def fake_run(command, **kwargs):
-        if command[0] == "ps": return Result("")
-        return Result("\n".join(f"{i}, NVIDIA H20, GPU-{i}, 0000:{i:02x}:00.0, 98304, 999.0" for i in range(7)))
-    monkeypatch.setattr(module.subprocess, "run", fake_run)
-    with pytest.raises(y2.StageYY2ScheduleError, match="exactly eight"):
-        module.validate_startup(tmp_path)
+def test_idle_device_selection_uses_four_free_cards_without_gpu_access() -> None:
+    rows = [{"physical_index": i, "device_name": "NVIDIA H20", "gpu_uuid": f"GPU-{i}", "pci_bus_id": f"0000:{i:02x}:00.0", "total_memory_mib": 98304, "free_memory_mib": 90000, "driver": "synthetic"} for i in range(8)]
+    selected = y2.select_idle_h20_devices(rows, {"GPU-1","GPU-3","GPU-5","GPU-7"})
+    assert [row["physical_index"] for row in selected] == [0,2,4,6]
+    assert y2.shard_counts(100, len(selected)) == [25] * 4
+    with pytest.raises(y2.StageYY2ScheduleError, match="no eligible"):
+        y2.select_idle_h20_devices(rows, {f"GPU-{i}" for i in range(8)})
 
 
 def test_formal_y2_root_is_absent_during_p0() -> None:

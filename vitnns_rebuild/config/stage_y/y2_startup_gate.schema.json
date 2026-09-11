@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_y_y2_startup_gate.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema","schema_version","document_type","protocol_id","stage_id","status","payload","canonical_digest"],
+  "properties": {
+    "$schema": {"const": "stage_y_y2_artifact.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_y_y2_multi_gpu_startup_gate"},
+    "protocol_id": {"const": "STAGE_Y_VIT_BLOCK_LEVEL_NNS_MECHANISM_V1_20260910"},
+    "stage_id": {"const": "Y2"},
+    "status": {"const": "PASS"},
+    "payload": {
+      "type": "object", "additionalProperties": false,
+      "required": ["locked_worker_count","selection_policy","devices","checkpoint_sha256","model_identity","numeric_contract_digest","cross_device_numeric_parity","isolated_shard_roots","shared_mutable_output","dynamic_rebalancing","stale_worker_pids","formal_unit_outcome_count_before_launch","resource_projection","started_unix_ns"],
+      "properties": {
+        "locked_worker_count": {"type": "integer","minimum": 1,"maximum": 8},
+        "selection_policy": {"const": "all eligible idle H20 devices in ascending physical-index order, capped at eight"},
+        "devices": {"type": "array","minItems": 1,"maxItems": 8,"items": {"$ref": "#/$defs/device"}},
+        "checkpoint_sha256": {"$ref": "#/$defs/sha256"},
+        "model_identity": {"const": "vit_base_patch16_224.augreg2_in21k_ft_in1k"},
+        "numeric_contract_digest": {"const": "stage-y-y1-grouped-jvp-vjp-frozen-v1"},
+        "cross_device_numeric_parity": {"const": true},
+        "isolated_shard_roots": {"const": true},
+        "shared_mutable_output": {"const": false},
+        "dynamic_rebalancing": {"const": false},
+        "stale_worker_pids": {"const": []},
+        "formal_unit_outcome_count_before_launch": {"const": 0},
+        "resource_projection": {"$ref": "#/$defs/resourceProjection"},
+        "started_unix_ns": {"type": "integer","minimum": 1}
+      }
+    },
+    "canonical_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string","pattern": "^[0-9a-f]{64}$"},
+    "device": {"type": "object","additionalProperties": false,"required": ["physical_index","device_name","gpu_uuid","pci_bus_id","total_memory_mib","free_memory_mib","driver","environment_digest","numeric_probe"],"properties": {"physical_index": {"type": "integer","minimum": 0},"device_name": {"const": "NVIDIA H20"},"gpu_uuid": {"type": "string","minLength": 1},"pci_bus_id": {"type": "string","minLength": 1},"total_memory_mib": {"type": "integer","minimum": 21504},"free_memory_mib": {"type": "integer","minimum": 21504},"driver": {"type": "string","minLength": 1},"environment_digest": {"$ref": "#/$defs/sha256"},"numeric_probe": {"type": "string","minLength": 1}}},
+    "nonnegativeNumber": {"type": "number","minimum": 0},
+    "resourceProjection": {"type": "object","additionalProperties": false,"required": ["worker_count","shard_counts","per_shard","raw_aggregate","safety_projected","aggregate_caps","critical_path_worker_wall_hours","overall_stage_wall_hours","cpu_only_reconciliation_allowance_hours","per_worker_fixed_initialization","fleet_concurrent_reserved_gpu_gib","gpu_accounting"],"properties": {"worker_count": {"type": "integer","minimum": 1,"maximum": 8},"shard_counts": {"type": "array","minItems": 1,"maxItems": 8,"items": {"type": "integer","minimum": 12,"maximum": 100}},"per_shard": {"type": "array","minItems": 1,"maxItems": 8,"items": {"$ref": "#/$defs/shardCaps"}},"raw_aggregate": {"$ref": "#/$defs/resourceTotals"},"safety_projected": {"$ref": "#/$defs/safetyProjection"},"aggregate_caps": {"$ref": "#/$defs/aggregateCaps"},"critical_path_worker_wall_hours": {"$ref": "#/$defs/nonnegativeNumber"},"overall_stage_wall_hours": {"$ref": "#/$defs/nonnegativeNumber"},"cpu_only_reconciliation_allowance_hours": {"$ref": "#/$defs/nonnegativeNumber"},"per_worker_fixed_initialization": {"$ref": "#/$defs/fixedInitialization"},"fleet_concurrent_reserved_gpu_gib": {"$ref": "#/$defs/nonnegativeNumber"},"gpu_accounting": {"const": "SUM_ACROSS_WORKERS_NEVER_DIVIDE_BY_DEVICE_COUNT"}}},
+    "shardCaps": {"type": "object","additionalProperties": false,"required": ["units","raw_h20_gpu_hours","raw_cpu_hours","raw_wall_hours","raw_storage_gib","cap_h20_gpu_hours","cap_cpu_hours","cap_worker_wall_hours","cap_storage_gib"],"properties": {"units": {"type": "integer","minimum": 12,"maximum": 100},"raw_h20_gpu_hours": {"$ref": "#/$defs/nonnegativeNumber"},"raw_cpu_hours": {"$ref": "#/$defs/nonnegativeNumber"},"raw_wall_hours": {"$ref": "#/$defs/nonnegativeNumber"},"raw_storage_gib": {"$ref": "#/$defs/nonnegativeNumber"},"cap_h20_gpu_hours": {"$ref": "#/$defs/nonnegativeNumber"},"cap_cpu_hours": {"$ref": "#/$defs/nonnegativeNumber"},"cap_worker_wall_hours": {"$ref": "#/$defs/nonnegativeNumber"},"cap_storage_gib": {"$ref": "#/$defs/nonnegativeNumber"}}},
+    "resourceTotals": {"type": "object","additionalProperties": false,"required": ["h20_gpu_hours","cpu_hours","summed_worker_wall_hours","storage_gib"],"properties": {"h20_gpu_hours": {"$ref": "#/$defs/nonnegativeNumber"},"cpu_hours": {"$ref": "#/$defs/nonnegativeNumber"},"summed_worker_wall_hours": {"$ref": "#/$defs/nonnegativeNumber"},"storage_gib": {"$ref": "#/$defs/nonnegativeNumber"}}},
+    "safetyProjection": {"type": "object","additionalProperties": false,"required": ["h20_gpu_hours","cpu_hours","storage_gib"],"properties": {"h20_gpu_hours": {"$ref": "#/$defs/nonnegativeNumber"},"cpu_hours": {"$ref": "#/$defs/nonnegativeNumber"},"storage_gib": {"$ref": "#/$defs/nonnegativeNumber"}}},
+    "aggregateCaps": {"type": "object","additionalProperties": false,"required": ["h20_gpu_hours","cpu_hours","storage_gib","peak_reserved_gpu_gib_per_process","devices"],"properties": {"h20_gpu_hours": {"const": 64.0},"cpu_hours": {"const": 218.0},"storage_gib": {"const": 6.0},"peak_reserved_gpu_gib_per_process": {"const": 21.0},"devices": {"type": "integer","minimum": 1,"maximum": 8}}},
+    "fixedInitialization": {"type": "object","additionalProperties": false,"required": ["gpu_active_seconds","cpu_seconds","wall_seconds","retained_bytes"],"properties": {"gpu_active_seconds": {"$ref": "#/$defs/nonnegativeNumber"},"cpu_seconds": {"$ref": "#/$defs/nonnegativeNumber"},"wall_seconds": {"$ref": "#/$defs/nonnegativeNumber"},"retained_bytes": {"type": "integer","minimum": 0}}}
+  }
+}

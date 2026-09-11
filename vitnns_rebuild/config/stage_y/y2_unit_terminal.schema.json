@@ -14,7 +14,7 @@
     "payload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["unit_digest","attempt_id","shard_id","selection_order","source_object_id","condition_id","failure_code","target_identity","source_binding","checkpoint_sha256","environment_digest","numeric_contract_digest","quadrature_attempts","resource_telemetry","array_records","attempt_records"],
+      "required": ["unit_digest","attempt_id","shard_id","selection_order","source_object_id","condition_id","failure_code","target_identity","source_binding","checkpoint_sha256","environment_digest","numeric_contract_digest","quadrature_attempts","resource_telemetry","scientific_record","array_records","attempt_records"],
       "properties": {
         "unit_digest": {"type": "string","pattern": "^[0-9a-f]{64}$"},
         "attempt_id": {"type": "string","minLength": 1},
@@ -23,20 +23,28 @@
         "source_object_id": {"type": "string","minLength": 1},
         "condition_id": {"const": "clean"},
         "failure_code": {"type": ["string","null"]},
-        "target_identity": {"type": "object","additionalProperties": false,"properties": {"class_id": {"type": "integer"},"rule": {"const": "clean predicted-class raw logit"}}},
+        "target_identity": {"oneOf": [{"type": "object","additionalProperties": false,"maxProperties": 0},{"$ref": "#/$defs/targetIdentity"}]},
         "source_binding": {"type": "object","additionalProperties": false,"required": ["cohort_digest","file_sha256"],"properties": {"cohort_digest": {"type": "string","pattern": "^[0-9a-f]{64}$"},"file_sha256": {"type": "string","pattern": "^[0-9a-f]{64}$"}}},
         "checkpoint_sha256": {"type": "string","pattern": "^[0-9a-f]{64}$"},
         "environment_digest": {"type": "string","pattern": "^[0-9a-f]{64}$"},
         "numeric_contract_digest": {"type": "string","minLength": 1},
-        "quadrature_attempts": {"type": "array","items": {"type": "object"}},
-        "resource_telemetry": {"type": "object","additionalProperties": false,"required": ["gpu_active_seconds","cpu_seconds","wall_seconds","peak_allocated_gpu_bytes","peak_reserved_gpu_bytes","retained_bytes","calls"],"properties": {"gpu_active_seconds": {"type": "number","minimum": 0},"cpu_seconds": {"type": "number","minimum": 0},"wall_seconds": {"type": "number","minimum": 0},"peak_allocated_gpu_bytes": {"type": "integer","minimum": 0},"peak_reserved_gpu_bytes": {"type": "integer","minimum": 0},"retained_bytes": {"type": "integer","minimum": 0},"calls": {"type": "object"}}},
-        "array_records": {"type": "array","items": {"$ref": "#/$defs/fileRecord"}},
+        "quadrature_attempts": {"type": "array","items": {"$ref": "#/$defs/quadratureAttempt"}},
+        "resource_telemetry": {"type": "object","additionalProperties": false,"required": ["gpu_active_seconds","cpu_seconds","wall_seconds","peak_allocated_gpu_bytes","peak_reserved_gpu_bytes","retained_bytes","calls"],"properties": {"gpu_active_seconds": {"type": "number","minimum": 0},"cpu_seconds": {"type": "number","minimum": 0},"wall_seconds": {"type": "number","minimum": 0},"peak_allocated_gpu_bytes": {"type": "integer","minimum": 0},"peak_reserved_gpu_bytes": {"type": "integer","minimum": 0},"retained_bytes": {"type": "integer","minimum": 0},"calls": {"$ref": "#/$defs/calls"}}},
+        "scientific_record": {"oneOf": [{"type": "null"},{"$ref": "#/$defs/fileRecord"}]},
+        "array_records": {"type": "array","maxItems": 262,"items": {"$ref": "#/$defs/fileRecord"}},
         "attempt_records": {"type": "array","minItems": 1,"items": {"$ref": "#/$defs/fileRecord"}}
-      }
+      },
+      "allOf": [
+        {"if": {"properties": {"failure_code": {"type": "null"}}},"then": {"properties": {"target_identity": {"$ref": "#/$defs/targetIdentity"},"scientific_record": {"$ref": "#/$defs/fileRecord"},"array_records": {"minItems": 262,"maxItems": 262},"quadrature_attempts": {"minItems": 1}}}},
+        {"if": {"properties": {"scientific_record": {"type": "null"}}},"then": {"properties": {"failure_code": {"type": "string","minLength": 1}}}}
+      ]
     },
     "canonical_digest": {"type": "string","pattern": "^[0-9a-f]{64}$"}
   },
   "$defs": {
+    "targetIdentity": {"type": "object","additionalProperties": false,"required": ["class_id","rule"],"properties": {"class_id": {"type": "integer","minimum": 0,"maximum": 999},"rule": {"const": "clean predicted-class raw logit"}}},
+    "calls": {"type": "object","additionalProperties": false,"required": ["forward_calls","backward_calls","jvp_calls","jvp_direction_lanes","vjp_calls","quadrature_alpha_batches"],"properties": {"forward_calls": {"type": "integer","minimum": 0},"backward_calls": {"type": "integer","minimum": 0},"jvp_calls": {"type": "integer","minimum": 0},"jvp_direction_lanes": {"type": "integer","minimum": 0},"vjp_calls": {"type": "integer","minimum": 0},"quadrature_alpha_batches": {"type": "integer","minimum": 0}}},
+    "quadratureAttempt": {"type": "object","additionalProperties": false,"required": ["steps","all_contracts_pass"],"properties": {"steps": {"enum": [128,256,512,1024,2048,4096,8192]},"all_contracts_pass": {"type": "boolean"},"failure_code": {"type": "string"},"failure_phase": {"type": "string"},"wall_seconds": {"type": "number","minimum": 0},"input_sum": {"type": "number"},"input_delta": {"type": "number"},"input_abs_error": {"type": "number","minimum": 0},"threshold": {"type": "number","minimum": 0},"closure_status": {"type": ["string","null"]},"identity_max_abs_error": {"type": ["number","null"],"minimum": 0},"array_digest": {"type": "string","pattern": "^[0-9a-f]{64}$"}}},
     "fileRecord": {"type": "object","additionalProperties": false,"required": ["path","bytes","sha256"],"properties": {"path": {"type": "string","minLength": 1},"bytes": {"type": "integer","minimum": 0},"sha256": {"type": "string","pattern": "^[0-9a-f]{64}$"},"canonical_digest": {"type": "string","pattern": "^[0-9a-f]{64}$"},"dtype": {"type": "string"},"shape": {"type": "array","items": {"type": "integer"}},"axes": {"type": "array","items": {"type": "string"}}}}
   }
 }

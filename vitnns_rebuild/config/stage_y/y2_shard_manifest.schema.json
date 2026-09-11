@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_y_y2_shard_manifest.schema.json",
+  "type": "object","additionalProperties": false,
+  "required": ["$schema","schema_version","document_type","protocol_id","stage_id","status","payload","canonical_digest"],
+  "properties": {
+    "$schema": {"const": "stage_y_y2_artifact.schema.json"},
+    "schema_version": {"const": 1},
+    "document_type": {"const": "stage_y_y2_shard_manifest"},
+    "protocol_id": {"const": "STAGE_Y_VIT_BLOCK_LEVEL_NNS_MECHANISM_V1_20260910"},
+    "stage_id": {"const": "Y2"},
+    "status": {"const": "PASS"},
+    "payload": {"type": "object","additionalProperties": false,"required": ["shard_id","shard_count","shard_name","root","cohort_canonical_digest","mapping_rule","unit_count","selection_orders","records","dynamic_rebalancing","condition_roster","resource_caps"],"properties": {"shard_id": {"type": "integer","minimum": 0,"maximum": 7},"shard_count": {"type": "integer","minimum": 1,"maximum": 8},"shard_name": {"type": "string","pattern": "^shard-0[0-7]$"},"root": {"type": "string","minLength": 1},"cohort_canonical_digest": {"$ref": "#/$defs/sha256"},"mapping_rule": {"const": "selection_order_zero_based mod locked_worker_count"},"unit_count": {"type": "integer","minimum": 12,"maximum": 100},"selection_orders": {"type": "array","minItems": 12,"maxItems": 100,"items": {"type": "integer","minimum": 0,"maximum": 99},"uniqueItems": true},"records": {"type": "array","minItems": 12,"maxItems": 100,"items": {"$ref": "#/$defs/cohortRecord"}},"dynamic_rebalancing": {"const": false},"condition_roster": {"const": ["clean"]},"resource_caps": {"$ref": "#/$defs/resourceCaps"}}},
+    "canonical_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string","pattern": "^[0-9a-f]{64}$"},
+    "cohortRecord": {"type": "object","additionalProperties": false,"required": ["dataset_release_id","class_id","official_wnid","source_object_id","release_native_object_id","tar_member_name","file_bytes","file_sha256","class_digest","object_digest","selection_order","selection_digest"],"properties": {"dataset_release_id": {"const": "ILSVRC2012_VAL_OFFICIAL"},"class_id": {"type": "integer","minimum": 0,"maximum": 999},"official_wnid": {"type": "string","pattern": "^n[0-9]{8}$"},"source_object_id": {"type": "string","minLength": 1},"release_native_object_id": {"type": "string","minLength": 1},"tar_member_name": {"type": "string","minLength": 1},"file_bytes": {"type": "integer","minimum": 1},"file_sha256": {"$ref": "#/$defs/sha256"},"class_digest": {"$ref": "#/$defs/sha256"},"object_digest": {"$ref": "#/$defs/sha256"},"selection_order": {"type": "integer","minimum": 0,"maximum": 99},"selection_digest": {"$ref": "#/$defs/sha256"}}},
+    "resourceCaps": {"type": "object","additionalProperties": false,"required": ["units","raw_h20_gpu_hours","raw_cpu_hours","raw_wall_hours","raw_storage_gib","cap_h20_gpu_hours","cap_cpu_hours","cap_worker_wall_hours","cap_storage_gib"],"properties": {"units": {"type": "integer","minimum": 12,"maximum": 100},"raw_h20_gpu_hours": {"type": "number","minimum": 0},"raw_cpu_hours": {"type": "number","minimum": 0},"raw_wall_hours": {"type": "number","minimum": 0},"raw_storage_gib": {"type": "number","minimum": 0},"cap_h20_gpu_hours": {"type": "number","minimum": 0},"cap_cpu_hours": {"type": "number","minimum": 0},"cap_worker_wall_hours": {"type": "number","minimum": 0},"cap_storage_gib": {"type": "number","minimum": 0}}}
+  }
+}

@@ -19,6 +19,7 @@ import tarfile
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PROTOCOL_ID = "STAGE_Y_VIT_BLOCK_LEVEL_NNS_MECHANISM_V1_20260910"
 STAGE_ID = "Y2"
 TOKEN = "STAGE_Y2_CLEAN_COHORT_EVIDENCE_PRODUCTION_ONLY"
@@ -39,8 +40,12 @@ EXPECTED_BASE = "70f70ca7290316531406791a6533d65590424a24"
 Y0_REF = "refs/archive/stage-y-y0-protocol-freeze"
 Y1_BLOCKED_REF = "refs/archive/stage-y-y1-implementation-cost-pilot-blocked"
 Y1_R1_REF = "refs/archive/stage-y-y1-r1-resource-telemetry-waiver"
-SHARD_COUNT = 8
-SHARD_IDS = tuple(range(SHARD_COUNT))
+MIN_WORKERS = 1
+MAX_WORKERS = 8
+# Backward-compatible names describe the largest supported roster only.  Formal
+# code must use the worker count sealed in the startup gate.
+SHARD_COUNT = MAX_WORKERS
+SHARD_IDS = tuple(range(MAX_WORKERS))
 UNIT_TERMINAL_STATES = ("VALID", "FAILED_NUMERICAL", "BLOCKED_INFRASTRUCTURE", "BLOCKED_BUDGET")
 SCHEDULE = Path("config/stage_y/y2_parallel_schedule.json")
 
@@ -68,6 +73,16 @@ class StageYY2ProvenanceError(StageYY2Error):
 
 class StageYY2ScheduleError(StageYY2Error):
     code = "BLOCKED_RESOURCE_SCHEDULE"
+
+
+class StageYY2InfrastructureError(StageYY2Error):
+    code = "BLOCKED_INFRASTRUCTURE"
+
+
+def project_path(path: Path | str) -> Path:
+    """Resolve protocol-relative paths independently of the caller CWD."""
+    path = Path(path)
+    return path if path.is_absolute() else PROJECT_ROOT / path
 
 
 def canonical_bytes(value: Any) -> bytes:
@@ -104,7 +119,9 @@ def validate_signed(value: Mapping[str, Any]) -> None:
         raise StageYY2ProvenanceError("artifact identity drift")
 
 
-def read_json(path: Path) -> Any:
+def read_json(path: Path | str) -> Any:
+    path = Path(path)
+    source = project_path(path)
     def pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
         result: dict[str, Any] = {}
         for key, value in items:
@@ -115,14 +132,15 @@ def read_json(path: Path) -> Any:
     def reject(token: str) -> None:
         raise StageYY2ProvenanceError(f"non-finite JSON constant: {path}:{token}")
     try:
-        return json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=pairs, parse_constant=reject)
+        return json.loads(source.read_text(encoding="utf-8"), object_pairs_hook=pairs, parse_constant=reject)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
         raise StageYY2ProvenanceError(f"cannot read strict JSON {path}: {error}") from error
 
 
-def sha_file(path: Path) -> str:
+def sha_file(path: Path | str) -> str:
+    path = Path(path)
     digest = hashlib.sha256()
-    with path.open("rb") as stream:
+    with project_path(path).open("rb") as stream:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
@@ -135,12 +153,18 @@ def stream_sha(stream: Any) -> str:
     return digest.hexdigest()
 
 
-def file_record(path: Path) -> dict[str, Any]:
-    if not path.is_file():
+def file_record(path: Path | str) -> dict[str, Any]:
+    path = Path(path)
+    source = project_path(path)
+    if not source.is_file():
         raise StageYY2ProvenanceError(f"required file missing: {path}")
-    item: dict[str, Any] = {"path": path.as_posix(), "bytes": path.stat().st_size, "sha256": sha_file(path)}
+    try:
+        label = source.resolve().relative_to(PROJECT_ROOT.resolve()).as_posix()
+    except ValueError:
+        label = path.as_posix()
+    item: dict[str, Any] = {"path": label, "bytes": source.stat().st_size, "sha256": sha_file(source)}
     if path.suffix == ".json":
-        value = read_json(path)
+        value = read_json(source)
         if isinstance(value, Mapping) and "canonical_digest" in value:
             unsigned = dict(value)
             claimed = unsigned.pop("canonical_digest")
@@ -178,6 +202,26 @@ def publish_terminal(pending: Path, terminal: Path, value: Mapping[str, Any]) ->
         os.fsync(directory)
     finally:
         os.close(directory)
+
+
+def whole_root_inventory(formal_root: Path, status: str) -> dict[str, Any]:
+    excluded = {"whole_root_inventory.json", "completion/y2.pending.json", "completion/y2.json"}
+    rows = []
+    for path in sorted(formal_root.rglob("*")):
+        if not path.is_file():
+            continue
+        relative = path.relative_to(formal_root).as_posix()
+        if relative in excluded:
+            continue
+        rows.append({"path": relative, "bytes": path.stat().st_size, "sha256": sha_file(path)})
+    return signed("stage_y_y2_whole_root_inventory", status, {
+        "root": ROOT.as_posix() if formal_root.as_posix().endswith(ROOT.as_posix()) else formal_root.as_posix(),
+        "excluded": sorted(excluded),
+        "files": rows,
+        "file_count": len(rows),
+        "total_bytes": sum(row["bytes"] for row in rows),
+        "files_digest": canonical_digest({"files": rows}),
+    })
 
 
 def git(repo: Path, *args: str) -> str:
@@ -421,30 +465,60 @@ def manifest_digest(paths: Iterable[Path]) -> str:
     return canonical_digest(rows)
 
 
-def y2_shard_id(selection_order_zero_based: int) -> int:
+def validate_worker_count(worker_count: int) -> int:
+    if isinstance(worker_count, bool) or not isinstance(worker_count, int):
+        raise StageYY2ScheduleError(f"worker count must be an integer: {worker_count!r}")
+    count = int(worker_count)
+    if count not in range(MIN_WORKERS, MAX_WORKERS + 1):
+        raise StageYY2ScheduleError(
+            f"worker count must be in {MIN_WORKERS}..{MAX_WORKERS}: {count}"
+        )
+    return count
+
+
+def shard_ids(worker_count: int) -> tuple[int, ...]:
+    return tuple(range(validate_worker_count(worker_count)))
+
+
+def shard_counts(unit_count: int, worker_count: int) -> list[int]:
+    count = validate_worker_count(worker_count)
+    if int(unit_count) < count:
+        raise StageYY2ScheduleError("worker count cannot exceed unit count")
+    return [len(range(shard, int(unit_count), count)) for shard in range(count)]
+
+
+def y2_shard_id(selection_order_zero_based: int, worker_count: int = MAX_WORKERS) -> int:
     order = int(selection_order_zero_based)
     if order not in range(100):
         raise StageYY2ScheduleError(f"Y2 selection order outside 0..99: {order}")
-    return order % SHARD_COUNT
+    return order % validate_worker_count(worker_count)
 
 
-def y3_shard_id(perturbation_subset_order: int, transform_registry_order: int) -> int:
+def y3_shard_id(
+    perturbation_subset_order: int,
+    transform_registry_order: int,
+    worker_count: int = MAX_WORKERS,
+) -> int:
     image_order = int(perturbation_subset_order)
     transform_order = int(transform_registry_order)
     if image_order not in range(20) or transform_order not in range(8):
         raise StageYY2ScheduleError("Y3 canonical coordinate outside 20 x 8 roster")
-    return (image_order * 8 + transform_order) % SHARD_COUNT
+    return (image_order * 8 + transform_order) % validate_worker_count(worker_count)
 
 
-def expected_y2_orders(shard_id: int) -> list[int]:
+def expected_y2_orders(shard_id: int, worker_count: int = MAX_WORKERS) -> list[int]:
+    count = validate_worker_count(worker_count)
     shard = int(shard_id)
-    if shard not in SHARD_IDS:
+    if shard not in shard_ids(count):
         raise StageYY2ScheduleError(f"invalid shard id: {shard}")
-    return list(range(shard, 100, SHARD_COUNT))
+    return list(range(shard, 100, count))
 
 
-def schedule_from_source_ledger(ledger: Mapping[str, Any]) -> dict[str, Any]:
-    """Recompute the eight-worker projection from immutable Y1-R1 inputs."""
+def schedule_from_source_ledger(
+    ledger: Mapping[str, Any], worker_count: int = MAX_WORKERS
+) -> dict[str, Any]:
+    """Recompute an outcome-blind K-worker projection from Y1-R1 inputs."""
+    count = validate_worker_count(worker_count)
     validate_signed_ledger = dict(ledger)
     unsigned = dict(validate_signed_ledger)
     observed = unsigned.pop("canonical_digest", None)
@@ -477,60 +551,86 @@ def schedule_from_source_ledger(ledger: Mapping[str, Any]) -> dict[str, Any]:
             "cap_storage_gib": float(math.ceil(multiplier * raw_storage - 1e-12)),
         }
 
-    def stage(counts: Sequence[int], aggregate: Mapping[str, float], overall_wall: float) -> dict[str, Any]:
+    def stage(
+        counts: Sequence[int],
+        aggregate: Mapping[str, float],
+        reconciliation_allowance: float,
+    ) -> dict[str, Any]:
         units = sum(counts)
-        raw_gpu = (SHARD_COUNT * float(fixed["gpu_active_seconds"]) + units * float(unit["gpu_active_seconds"])) / 3600.0
-        raw_cpu = (SHARD_COUNT * float(fixed["cpu_seconds"]) + units * float(unit["cpu_seconds"])) / 3600.0
-        raw_summed_wall = (SHARD_COUNT * float(fixed["wall_seconds"]) + units * float(unit["wall_seconds"])) / 3600.0
-        raw_storage = (SHARD_COUNT * fixed_bytes + units * unit_bytes) / 1024.0 ** 3
+        raw_gpu = (count * float(fixed["gpu_active_seconds"]) + units * float(unit["gpu_active_seconds"])) / 3600.0
+        raw_cpu = (count * float(fixed["cpu_seconds"]) + units * float(unit["cpu_seconds"])) / 3600.0
+        raw_summed_wall = (count * float(fixed["wall_seconds"]) + units * float(unit["wall_seconds"])) / 3600.0
+        raw_storage = (count * fixed_bytes + units * unit_bytes) / 1024.0 ** 3
         shards = [one_shard(count) for count in counts]
         projected_cpu = multiplier * raw_cpu
+        critical_path = max(row["cap_worker_wall_hours"] for row in shards)
         return {
+            "worker_count": count,
             "shard_counts": list(counts),
             "per_shard": shards,
             "raw_aggregate": {"h20_gpu_hours": raw_gpu, "cpu_hours": raw_cpu, "summed_worker_wall_hours": raw_summed_wall, "storage_gib": raw_storage},
             "safety_projected": {"h20_gpu_hours": multiplier * raw_gpu, "cpu_hours": projected_cpu, "storage_gib": multiplier * raw_storage},
             "aggregate_caps": dict(aggregate),
-            "critical_path_worker_wall_hours": max(row["cap_worker_wall_hours"] for row in shards),
-            "overall_stage_wall_hours": overall_wall,
+            "critical_path_worker_wall_hours": critical_path,
+            "overall_stage_wall_hours": critical_path + reconciliation_allowance,
             "cpu_only_reconciliation_allowance_hours": float(aggregate["cpu_hours"]) - projected_cpu,
             "per_worker_fixed_initialization": {**fixed, "retained_bytes": fixed_bytes},
-            "fleet_concurrent_reserved_gpu_gib": SHARD_COUNT * float(aggregate["peak_reserved_gpu_gib_per_process"]),
+            "fleet_concurrent_reserved_gpu_gib": count * float(aggregate["peak_reserved_gpu_gib_per_process"]),
             "gpu_accounting": "SUM_ACROSS_WORKERS_NEVER_DIVIDE_BY_DEVICE_COUNT",
         }
 
-    y2_caps = {"h20_gpu_hours": 64.0, "cpu_hours": 218.0, "storage_gib": 6.0, "peak_reserved_gpu_gib_per_process": 21.0, "devices": 8}
-    y3_caps = {"h20_gpu_hours": 102.4, "cpu_hours": 349.0, "storage_gib": 9.0, "peak_reserved_gpu_gib_per_process": 21.0, "devices": 8}
+    y2_caps = {"h20_gpu_hours": 64.0, "cpu_hours": 218.0, "storage_gib": 6.0, "peak_reserved_gpu_gib_per_process": 21.0, "devices": count}
+    y3_caps = {"h20_gpu_hours": 102.4, "cpu_hours": 349.0, "storage_gib": 9.0, "peak_reserved_gpu_gib_per_process": 21.0, "devices": count}
     return {
         "source_canonical_digest": observed,
         "safety_multiplier": multiplier,
-        "y2": stage([13, 13, 13, 13, 12, 12, 12, 12], y2_caps, 12.0),
-        "y3": stage([20] * 8, y3_caps, 18.0),
+        "worker_count": count,
+        "y2": stage(shard_counts(100, count), y2_caps, 3.0),
+        "y3": stage(shard_counts(160, count), y3_caps, 5.0),
     }
 
 
-def build_shard_manifests(cohort_artifact: Mapping[str, Any], formal_root: Path) -> list[dict[str, Any]]:
-    """Write eight immutable manifests after the shared cohort has sealed."""
+def build_shard_manifests(
+    cohort_artifact: Mapping[str, Any],
+    formal_root: Path,
+    worker_count: int = MAX_WORKERS,
+    resource_projection: Mapping[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Write the locked K immutable manifests after the cohort has sealed."""
+    count = validate_worker_count(worker_count)
     records = selected_by_order(cohort_artifact)
     cohort_digest = str(cohort_artifact["canonical_digest"])
+    if resource_projection is None:
+        ledger = read_json(Path(
+            "evidence/stage_y/y1_r1_resource_telemetry_waiver_20260911/"
+            "formal/conservative_budget_receipt.json"
+        ))
+        resource_projection = schedule_from_source_ledger(ledger, count)["y2"]
+    if (
+        int(resource_projection["worker_count"]) != count
+        or list(resource_projection["shard_counts"]) != shard_counts(100, count)
+    ):
+        raise StageYY2ScheduleError("resource projection does not match locked worker count")
     root_label = ROOT if formal_root.as_posix().endswith(ROOT.as_posix()) else formal_root
     manifests: list[dict[str, Any]] = []
-    for shard_id in SHARD_IDS:
-        assigned = [dict(row) for row in records if y2_shard_id(int(row["selection_order"])) == shard_id]
-        expected = expected_y2_orders(shard_id)
+    for shard_id in shard_ids(count):
+        assigned = [dict(row) for row in records if y2_shard_id(int(row["selection_order"]), count) == shard_id]
+        expected = expected_y2_orders(shard_id, count)
         if [int(row["selection_order"]) for row in assigned] != expected:
             raise StageYY2ScheduleError("deterministic shard mapping drift")
         payload = {
             "shard_id": shard_id,
+            "shard_count": count,
             "shard_name": f"shard-{shard_id:02d}",
             "root": (root_label / "shards" / f"shard-{shard_id:02d}").as_posix(),
             "cohort_canonical_digest": cohort_digest,
-            "mapping_rule": "selection_order_zero_based mod 8",
+            "mapping_rule": "selection_order_zero_based mod locked_worker_count",
             "unit_count": len(assigned),
             "selection_orders": expected,
             "records": assigned,
             "dynamic_rebalancing": False,
             "condition_roster": ["clean"],
+            "resource_caps": dict(resource_projection["per_shard"][shard_id]),
         }
         document = signed("stage_y_y2_shard_manifest", "PASS", payload)
         shard_root = formal_root / "shards" / f"shard-{shard_id:02d}"
@@ -558,12 +658,51 @@ def worker_binding(identity: Mapping[str, Any]) -> dict[str, Any]:
     return dict(identity)
 
 
-def begin_unit(unit_root: Path, *, shard_id: int, selection_order: int, source_object_id_value: str) -> Path:
-    if y2_shard_id(selection_order) != shard_id:
+def select_idle_h20_devices(
+    rows: Sequence[Mapping[str, Any]],
+    busy_gpu_uuids: set[str],
+    *,
+    maximum_workers: int = MAX_WORKERS,
+) -> list[dict[str, Any]]:
+    """Outcome-blind startup selection; this function itself never probes a GPU."""
+    maximum = validate_worker_count(maximum_workers)
+    normalized: list[dict[str, Any]] = []
+    for original in rows:
+        row = dict(original)
+        required = {"physical_index", "device_name", "gpu_uuid", "pci_bus_id", "total_memory_mib", "free_memory_mib", "driver"}
+        if set(row) != required:
+            raise StageYY2ScheduleError("GPU inventory row is not closed")
+        row["physical_index"] = int(row["physical_index"])
+        row["total_memory_mib"] = int(row["total_memory_mib"])
+        row["free_memory_mib"] = int(row["free_memory_mib"])
+        normalized.append(row)
+    if len({row["physical_index"] for row in normalized}) != len(normalized):
+        raise StageYY2ScheduleError("duplicate physical GPU index")
+    if len({row["gpu_uuid"] for row in normalized}) != len(normalized):
+        raise StageYY2ScheduleError("duplicate GPU UUID")
+    eligible = [
+        row for row in sorted(normalized, key=lambda item: item["physical_index"])
+        if row["device_name"] == "NVIDIA H20"
+        and row["total_memory_mib"] >= 21 * 1024
+        and row["free_memory_mib"] >= 21 * 1024
+        and row["gpu_uuid"] not in busy_gpu_uuids
+    ][:maximum]
+    if not eligible:
+        raise StageYY2ScheduleError("no eligible idle NVIDIA H20 device is available")
+    return eligible
+
+
+def begin_unit(
+    unit_root: Path, *, shard_id: int, selection_order: int,
+    source_object_id_value: str, worker_count: int = MAX_WORKERS,
+) -> Path:
+    count = validate_worker_count(worker_count)
+    if y2_shard_id(selection_order, count) != shard_id:
         raise StageYY2ScheduleError("unit assigned to wrong shard")
     pending = unit_root / "completion" / "unit.pending.json"
     value = signed("stage_y_y2_unit_pending", "PENDING", {
         "shard_id": shard_id, "selection_order": selection_order,
+        "shard_count": count,
         "source_object_id": source_object_id_value, "condition_id": "clean",
         "terminal_published": False,
     })
@@ -580,16 +719,28 @@ def append_attempt(unit_root: Path, attempt: Mapping[str, Any]) -> dict[str, Any
     return file_record(path)
 
 
-def finish_unit(unit_root: Path, status: str, payload: Mapping[str, Any]) -> dict[str, Any]:
+def finish_unit(
+    unit_root: Path, status: str, payload: Mapping[str, Any],
+    worker_count: int = MAX_WORKERS,
+) -> dict[str, Any]:
     if status not in UNIT_TERMINAL_STATES:
         raise StageYY2ScheduleError(f"invalid unit terminal: {status}")
     attempts = sorted((unit_root / "attempts").glob("attempt-*.json"))
     if not attempts:
         raise StageYY2ScheduleError("unit terminal cannot omit all attempts")
-    expected_keys = {"unit_digest", "attempt_id", "shard_id", "selection_order", "source_object_id", "condition_id", "failure_code", "target_identity", "source_binding", "checkpoint_sha256", "environment_digest", "numeric_contract_digest", "quadrature_attempts", "resource_telemetry", "array_records", "attempt_records"}
+    expected_keys = {"unit_digest", "attempt_id", "shard_id", "selection_order", "source_object_id", "condition_id", "failure_code", "target_identity", "source_binding", "checkpoint_sha256", "environment_digest", "numeric_contract_digest", "quadrature_attempts", "resource_telemetry", "scientific_record", "array_records", "attempt_records"}
     if set(payload) != expected_keys:
         raise StageYY2ProvenanceError("unit terminal payload is not closed")
-    if payload["condition_id"] != "clean" or y2_shard_id(int(payload["selection_order"])) != int(payload["shard_id"]):
+    if status == "VALID":
+        if payload["failure_code"] is not None or payload["scientific_record"] is None:
+            raise StageYY2ProvenanceError("VALID unit must bind science and omit a failure code")
+    elif not isinstance(payload["failure_code"], str) or not payload["failure_code"] or payload["scientific_record"] is not None:
+        raise StageYY2ProvenanceError("non-VALID unit must bind a failure code and omit science")
+    if (
+        payload["condition_id"] != "clean"
+        or y2_shard_id(int(payload["selection_order"]), worker_count)
+        != int(payload["shard_id"])
+    ):
         raise StageYY2ScheduleError("unit terminal scope or shard drift")
     observed_attempts = [file_record(path) for path in attempts]
     if payload["attempt_records"] != observed_attempts:
@@ -600,51 +751,106 @@ def finish_unit(unit_root: Path, status: str, payload: Mapping[str, Any]) -> dic
 
 
 def reconcile_shards(formal_root: Path, *, minimum_valid: int = 90) -> dict[str, Any]:
-    """CPU-only, JSON/hash-only reconciliation of all eight shard roots."""
+    """CPU-only, JSON/hash-only reconciliation of the locked shard roster."""
     shard_names = sorted(path.name for path in (formal_root / "shards").iterdir() if path.is_dir())
-    expected_names = [f"shard-{item:02d}" for item in SHARD_IDS]
+    startup_gate_path = formal_root / "multi_gpu_startup_gate.json"
+    if startup_gate_path.is_file():
+        startup_gate = read_json(startup_gate_path); validate_signed(startup_gate)
+        worker_count = validate_worker_count(startup_gate["payload"]["locked_worker_count"])
+    elif formal_root.as_posix().endswith(ROOT.as_posix()):
+        raise StageYY2ScheduleError("formal reconciliation requires a startup gate")
+    else:
+        worker_count = validate_worker_count(len(shard_names))
+        startup_gate = None
+    expected_names = [f"shard-{item:02d}" for item in shard_ids(worker_count)]
     if shard_names != expected_names:
-        raise StageYY2ScheduleError("shard roster must be exactly shard-00 through shard-07")
+        raise StageYY2ScheduleError("shard roster does not match locked worker count")
     terminals: list[dict[str, Any]] = []
     identities: list[dict[str, Any]] = []
     all_attempt_records: list[dict[str, Any]] = []
+    bound_array_paths: set[Path] = set()
+    bound_scientific_paths: set[Path] = set()
     shard_terminals: list[dict[str, Any]] = []
     for shard_id, name in enumerate(expected_names):
         root = formal_root / "shards" / name
         manifest = read_json(root / "shard_manifest.json"); validate_signed(manifest)
-        if manifest["payload"]["shard_id"] != shard_id or manifest["payload"]["selection_orders"] != expected_y2_orders(shard_id):
+        manifest_records = manifest["payload"]["records"]
+        if (
+            manifest["payload"]["shard_id"] != shard_id
+            or manifest["payload"]["shard_count"] != worker_count
+            or manifest["payload"]["selection_orders"]
+            != expected_y2_orders(shard_id, worker_count)
+            or [row["selection_order"] for row in manifest_records]
+            != expected_y2_orders(shard_id, worker_count)
+            or manifest["payload"]["unit_count"] != len(manifest_records)
+        ):
             raise StageYY2ScheduleError("shard manifest mapping drift")
+        manifest_by_order = {int(row["selection_order"]): row for row in manifest_records}
+        if len(manifest_by_order) != len(manifest_records):
+            raise StageYY2ScheduleError("duplicate selection order in shard manifest")
         identity_doc = read_json(root / "worker_identity.json"); validate_signed(identity_doc)
         identities.append(worker_binding(identity_doc["payload"]))
         require_shard_terminal = root / "completion/shard.json"
         if not require_shard_terminal.is_file() or (root / "completion/shard.pending.json").exists():
             raise StageYY2ScheduleError(f"shard terminal transition incomplete in {name}")
         shard_terminal = read_json(require_shard_terminal); validate_signed(shard_terminal)
-        if shard_terminal["document_type"] != "stage_y_y2_shard_terminal" or shard_terminal["status"] not in UNIT_TERMINAL_STATES or shard_terminal["payload"]["shard_id"] != shard_id:
+        if shard_terminal["document_type"] != "stage_y_y2_shard_terminal" or shard_terminal["status"] not in UNIT_TERMINAL_STATES or shard_terminal["payload"]["shard_id"] != shard_id or shard_terminal["payload"]["shard_count"] != worker_count:
             raise StageYY2ScheduleError(f"shard terminal invalid in {name}")
+        if shard_terminal["payload"]["resource_caps"] != manifest["payload"]["resource_caps"]:
+            raise StageYY2ProvenanceError(f"shard resource-cap link drift in {name}")
         if shard_terminal["payload"]["worker_identity"] != identity_doc["payload"]:
             raise StageYY2ProvenanceError(f"shard worker identity link drift in {name}")
         shard_terminals.append(shard_terminal)
         unit_paths = sorted(root.glob("units/unit-*/completion/unit.json"))
-        if len(unit_paths) != len(expected_y2_orders(shard_id)):
+        if len(unit_paths) != len(expected_y2_orders(shard_id, worker_count)):
             raise StageYY2ScheduleError(f"terminal count drift in {name}")
         for path in unit_paths:
             terminal = read_json(path); validate_signed(terminal)
             if terminal["document_type"] != "stage_y_y2_unit_terminal" or terminal["status"] not in UNIT_TERMINAL_STATES:
                 raise StageYY2ProvenanceError("invalid accepted unit terminal")
             payload = terminal["payload"]
-            if payload["shard_id"] != shard_id or y2_shard_id(payload["selection_order"]) != shard_id or payload["condition_id"] != "clean":
+            if payload["shard_id"] != shard_id or y2_shard_id(payload["selection_order"], worker_count) != shard_id or payload["condition_id"] != "clean":
                 raise StageYY2ScheduleError("terminal mapping or condition drift")
+            source = manifest_by_order.get(int(payload["selection_order"]))
+            if source is None:
+                raise StageYY2ScheduleError("terminal selection order is absent from shard manifest")
+            expected_source_binding = {
+                "cohort_digest": manifest["payload"]["cohort_canonical_digest"],
+                "file_sha256": source["file_sha256"],
+            }
+            if (
+                payload["source_object_id"] != source["source_object_id"]
+                or payload["source_binding"] != expected_source_binding
+                or payload["unit_digest"] != canonical_digest({
+                    "selection_order": payload["selection_order"],
+                    "source_object_id": payload["source_object_id"],
+                })
+            ):
+                raise StageYY2ProvenanceError("unit source or identity binding drift")
             if payload["environment_digest"] != identity_doc["payload"]["environment_digest"]:
                 raise StageYY2ScheduleError("unit environment does not match its worker identity")
+            scientific_record = payload["scientific_record"]
+            if terminal["status"] == "VALID":
+                if not isinstance(scientific_record, Mapping):
+                    raise StageYY2ProvenanceError("VALID unit omitted scientific record")
+                scientific_path = project_path(Path(str(scientific_record["path"]))).resolve()
+                unit_root = path.parents[1].resolve()
+                try: scientific_path.relative_to(unit_root)
+                except ValueError as error: raise StageYY2ScheduleError("scientific record escaped its unit root") from error
+                if file_record(scientific_path) != scientific_record:
+                    raise StageYY2ProvenanceError("scientific record drift")
+                bound_scientific_paths.add(scientific_path)
+                scientific = read_json(scientific_path); validate_signed(scientific)
+                if scientific["document_type"] != "stage_y_y2_unit_scientific_result" or scientific["status"] != "VALID":
+                    raise StageYY2ProvenanceError("invalid unit scientific result")
+            elif scientific_record is not None:
+                raise StageYY2ProvenanceError("non-VALID unit cannot publish a scientific result")
             observed_attempts = [file_record(item) for item in sorted(path.parents[1].glob("attempts/attempt-*.json"))]
             if payload["attempt_records"] != observed_attempts or not observed_attempts:
                 raise StageYY2ProvenanceError("attempt retention drift")
             unit_root = path.parents[1].resolve()
             for array_record in payload["array_records"]:
-                array_path = Path(str(array_record["path"]))
-                if not array_path.is_absolute(): array_path = Path.cwd() / array_path
-                array_path = array_path.resolve()
+                array_path = project_path(Path(str(array_record["path"]))).resolve()
                 try: array_path.relative_to(unit_root / "arrays")
                 except ValueError as error: raise StageYY2ScheduleError("array path escaped its unit root") from error
                 if not array_path.is_file() or int(array_record["bytes"]) != array_path.stat().st_size or array_record["sha256"] != sha_file(array_path):
@@ -656,23 +862,46 @@ def reconcile_shards(formal_root: Path, *, minimum_valid: int = 90) -> dict[str,
                 digest = hashlib.sha256(); digest.update(str(array.dtype).encode("utf-8")); digest.update(b"\0"); digest.update(str(tuple(array.shape)).encode("utf-8")); digest.update(b"\0"); digest.update(np.ascontiguousarray(array).tobytes(order="C"))
                 if digest.hexdigest() != array_record["canonical_digest"]:
                     raise StageYY2ProvenanceError("scientific array canonical digest drift")
+                bound_array_paths.add(array_path)
             all_attempt_records.extend(observed_attempts)
             terminals.append(terminal)
         observed_counts = {state: sum(row["status"] == state for row in terminals if row["payload"]["shard_id"] == shard_id) for state in UNIT_TERMINAL_STATES}
         if shard_terminal["payload"]["terminal_counts"] != observed_counts or shard_terminal["payload"]["unit_count"] != sum(observed_counts.values()):
             raise StageYY2ProvenanceError(f"shard terminal counts are not source-recomputed in {name}")
+        expected_shard_status = (
+            "BLOCKED_BUDGET" if observed_counts["BLOCKED_BUDGET"]
+            else "BLOCKED_INFRASTRUCTURE" if observed_counts["BLOCKED_INFRASTRUCTURE"]
+            else "FAILED_NUMERICAL" if observed_counts["FAILED_NUMERICAL"]
+            else "VALID"
+        )
+        if shard_terminal["status"] != expected_shard_status:
+            raise StageYY2ProvenanceError(f"shard terminal status is not source-recomputed in {name}")
     orders = [int(row["payload"]["selection_order"]) for row in terminals]
+    actual_array_paths = {path.resolve() for path in (formal_root / "shards").glob("shard-*/units/unit-*/arrays/*.npy")}
+    actual_scientific_paths = {path.resolve() for path in (formal_root / "shards").glob("shard-*/units/unit-*/scientific_result.json")}
+    if actual_array_paths != bound_array_paths or actual_scientific_paths != bound_scientific_paths:
+        raise StageYY2ProvenanceError("unbound or missing scientific payload file")
     if sorted(orders) != list(range(100)) or len(set(orders)) != 100:
         raise StageYY2ScheduleError("Y2 selection-order coverage is not exactly 0..99")
     for field in ("checkpoint_sha256", "environment_digest", "numeric_contract_digest"):
         if len({row["payload"][field] for row in terminals}) != 1:
             raise StageYY2ScheduleError(f"cross-worker {field} mismatch")
-    if len({row["gpu_uuid"] for row in identities}) != 8 or len({row["pci_bus_id"] for row in identities}) != 8:
+    if len({row["gpu_uuid"] for row in identities}) != worker_count or len({row["pci_bus_id"] for row in identities}) != worker_count:
         raise StageYY2ScheduleError("worker GPU UUID or PCI identity is not unique")
-    if len({row["physical_index"] for row in identities}) != 8 or len({row["cuda_visible_devices"] for row in identities}) != 8:
+    if len({row["physical_index"] for row in identities}) != worker_count or len({row["cuda_visible_devices"] for row in identities}) != worker_count:
         raise StageYY2ScheduleError("physical GPU or CUDA_VISIBLE_DEVICES assignment is not unique")
     if len({row["environment_digest"] for row in identities}) != 1:
         raise StageYY2ScheduleError("worker environments are not homogeneous")
+    if startup_gate is not None:
+        gate_devices = startup_gate["payload"]["devices"]
+        if len(gate_devices) != worker_count:
+            raise StageYY2ScheduleError("startup device roster length drift")
+        fields = ("physical_index", "gpu_uuid", "pci_bus_id", "device_name", "environment_digest")
+        for shard_id, identity in enumerate(identities):
+            if any(identity[field] != gate_devices[shard_id][field] for field in fields):
+                raise StageYY2ScheduleError("worker identity differs from locked startup roster")
+        if {row["payload"]["checkpoint_sha256"] for row in terminals} != {startup_gate["payload"]["checkpoint_sha256"]}:
+            raise StageYY2ProvenanceError("unit checkpoint differs from startup gate")
     totals = {"gpu_active_seconds": 0.0, "cpu_seconds": 0.0, "wall_seconds_sum": 0.0, "retained_bytes": 0, "peak_reserved_gpu_bytes_per_process": 0}
     fixed_initializations = []
     per_shard_resources = []
@@ -692,6 +921,7 @@ def reconcile_shards(formal_root: Path, *, minimum_valid: int = 90) -> dict[str,
             "wall_seconds_sum": float(fixed["wall_seconds"]) + sum(float(row["payload"]["resource_telemetry"]["wall_seconds"]) for row in shard_rows),
             "worker_elapsed_seconds": float(shard_terminal["payload"]["shard_elapsed_seconds"]),
             "peak_reserved_gpu_bytes": max([int(fixed["peak_reserved_gpu_bytes"])] + [int(row["payload"]["resource_telemetry"]["peak_reserved_gpu_bytes"]) for row in shard_rows]),
+            "retained_bytes": sum(path.stat().st_size for path in (formal_root / "shards" / f"shard-{shard_id:02d}").rglob("*") if path.is_file()),
         }
         per_shard_resources.append(shard_resource)
     for row in terminals:
@@ -711,17 +941,17 @@ def reconcile_shards(formal_root: Path, *, minimum_valid: int = 90) -> dict[str,
     if totals["retained_bytes"] / 1024.0 ** 3 > 6.0: cap_failures.append("aggregate_storage_gib")
     if totals["peak_reserved_gpu_bytes_per_process"] / 1024.0 ** 3 > 21.0: cap_failures.append("peak_reserved_gpu_gib_per_process")
     overall_stage_wall_seconds = None
-    startup_gate_path = formal_root / "multi_gpu_startup_gate.json"
-    if formal_root.as_posix().endswith(ROOT.as_posix()):
-        if not startup_gate_path.is_file(): raise StageYY2ScheduleError("formal reconciliation requires the eight-device startup gate")
-        startup_gate = read_json(startup_gate_path); validate_signed(startup_gate)
+    if startup_gate is not None:
         overall_stage_wall_seconds = max(int(row["payload"]["completed_unix_ns"]) for row in shard_terminals) / 1e9 - int(startup_gate["payload"]["started_unix_ns"]) / 1e9
-        if overall_stage_wall_seconds / 3600.0 > 12.0: cap_failures.append("overall_stage_wall_hours")
+        if overall_stage_wall_seconds / 3600.0 > float(startup_gate["payload"]["resource_projection"]["overall_stage_wall_hours"]): cap_failures.append("overall_stage_wall_hours")
     for row in per_shard_resources:
-        count = row["unit_count"]; gpu_cap = 8.4 if count == 13 else 7.7; cpu_cap = 29.0 if count == 13 else 27.0; wall_cap = 9.0 if count == 13 else 8.0
+        manifest = read_json(formal_root / "shards" / f"shard-{row['shard_id']:02d}" / "shard_manifest.json")
+        caps = manifest["payload"]["resource_caps"]
+        gpu_cap = float(caps["cap_h20_gpu_hours"]); cpu_cap = float(caps["cap_cpu_hours"]); wall_cap = float(caps["cap_worker_wall_hours"])
         if row["gpu_active_seconds"] / 3600.0 > gpu_cap: cap_failures.append(f"shard_{row['shard_id']:02d}_gpu_hours")
         if row["cpu_seconds"] / 3600.0 > cpu_cap: cap_failures.append(f"shard_{row['shard_id']:02d}_cpu_hours")
         if row["worker_elapsed_seconds"] / 3600.0 > wall_cap: cap_failures.append(f"shard_{row['shard_id']:02d}_critical_path_wall_hours")
+        if row["retained_bytes"] / 1024.0 ** 3 > float(caps["cap_storage_gib"]): cap_failures.append(f"shard_{row['shard_id']:02d}_storage_gib")
     if cap_failures or terminal_counts["BLOCKED_BUDGET"]:
         stage_status = "BLOCKED_BUDGET"
     elif terminal_counts["BLOCKED_INFRASTRUCTURE"]:
@@ -732,6 +962,7 @@ def reconcile_shards(formal_root: Path, *, minimum_valid: int = 90) -> dict[str,
         stage_status = "PASS"
     summary = {
         "status": stage_status,
+        "locked_worker_count": worker_count,
         "shard_roster": expected_names, "selection_orders": sorted(orders),
         "unit_count": len(terminals), "valid_count": valid_count,
         "terminal_counts": terminal_counts,
@@ -740,7 +971,7 @@ def reconcile_shards(formal_root: Path, *, minimum_valid: int = 90) -> dict[str,
         "per_shard_resources": per_shard_resources,
         "resource_totals": {**totals, "h20_gpu_hours": totals["gpu_active_seconds"] / 3600.0, "cpu_hours": totals["cpu_seconds"] / 3600.0, "retained_storage_gib": totals["retained_bytes"] / 1024.0 ** 3, "worker_critical_path_seconds": max(row["worker_elapsed_seconds"] for row in per_shard_resources)},
         "overall_stage_wall_seconds": overall_stage_wall_seconds,
-        "gpu_hours_accounting": "SUM_ACROSS_ALL_SHARDS_NOT_DIVIDED_BY_EIGHT",
+        "gpu_hours_accounting": "SUM_ACROSS_ALL_SHARDS_NOT_DIVIDED_BY_WORKER_COUNT",
         "budget_cap_failures": cap_failures,
         "conditions_observed": ["clean"],
         "failures_and_na_preserved": True,

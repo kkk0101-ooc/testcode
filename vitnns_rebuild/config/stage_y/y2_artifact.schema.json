@@ -1,1 +1,17 @@
-{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"stage_y_y2_artifact.schema.json","type":"object","additionalProperties":false,"required":["$schema","schema_version","document_type","protocol_id","stage_id","status","payload","canonical_digest"],"properties":{"$schema":{"const":"stage_y_y2_artifact.schema.json"},"schema_version":{"const":1},"document_type":{"type":"string","minLength":1},"protocol_id":{"const":"STAGE_Y_VIT_BLOCK_LEVEL_NNS_MECHANISM_V1_20260910"},"stage_id":{"const":"Y2"},"status":{"enum":["PENDING","PASS","VALID","FAILED_NUMERICAL","BLOCKED","BLOCKED_BUDGET","BLOCKED_COHORT","BLOCKED_PROVENANCE","BLOCKED_INFRASTRUCTURE","BLOCKED_SCIENTIFIC_VALIDITY"]},"payload":{"type":"object"},"canonical_digest":{"type":"string","pattern":"^[0-9a-f]{64}$"}}}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage_y_y2_artifact.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema","schema_version","document_type","protocol_id","stage_id","status","payload","canonical_digest"],
+  "properties": {
+    "$schema": {"type": "string", "enum": ["stage_y_y2_artifact.schema.json","stage_y_y2_startup_gate.schema.json","stage_y_y2_shard_manifest.schema.json","stage_y_y2_unit_terminal.schema.json","stage_y_y2_completion.schema.json"]},
+    "schema_version": {"const": 1},
+    "document_type": {"type": "string", "pattern": "^stage_y_y2_[a-z0-9_]+$"},
+    "protocol_id": {"const": "STAGE_Y_VIT_BLOCK_LEVEL_NNS_MECHANISM_V1_20260910"},
+    "stage_id": {"const": "Y2"},
+    "status": {"enum": ["PENDING","PASS","VALID","FAILED_NUMERICAL","BLOCKED","BLOCKED_BUDGET","BLOCKED_COHORT","BLOCKED_PROVENANCE","BLOCKED_RESOURCE_SCHEDULE","BLOCKED_INFRASTRUCTURE","BLOCKED_SCIENTIFIC_VALIDITY"]},
+    "payload": {"type": "object", "minProperties": 1, "propertyNames": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}},
+    "canonical_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
