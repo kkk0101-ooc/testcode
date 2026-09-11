@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "document_type": "stage_y_y2_r1_run_spec",
+  "protocol_id": "STAGE_Y_VIT_BLOCK_LEVEL_NNS_MECHANISM_V1_20260910",
+  "stage_id": "Y2-R1",
+  "stage_token": "STAGE_Y2_R1_CUBLAS_DETERMINISM_ENVIRONMENT_RECOVERY_ONLY",
+  "status": "FROZEN_BEFORE_RECOVERY_EXECUTION",
+  "predecessor": {
+    "archive_ref": "refs/archive/stage-y-y2-clean-cohort-evidence-blocked",
+    "commit": "1a621724b32b208036fb5f2a3993a48697e933c8",
+    "formal_root": "evidence/stage_y/y2_clean_formal_20260910/formal",
+    "report_root": "reports/stage_y_y2_20260911",
+    "terminal_status": "BLOCKED_INFRASTRUCTURE",
+    "failure_class": "INFRASTRUCTURE_ENVIRONMENT_INITIALIZATION_FAILURE",
+    "immutable": true
+  },
+  "identity": {
+    "cohort_count": 100,
+    "distinct_true_classes": 100,
+    "cohort_canonical_digest": "156eab4bd86ff9979abc6acf8b06af3aa5a90e90cd02edef7713539b147ce277",
+    "selection_digest": "8b3faa6d437bda38e963985ac12f14f3b440a3e4021915081f1d5e1b1c80d2cf",
+    "audit_count": 10,
+    "audit_subset_digest": "924f2a360ff07bb0a0807b101665683822fea3b6f1f2da2ffc10778929556e60",
+    "perturbation_count": 20,
+    "perturbation_subset_digest": "91880fb763eccbe7f67f409c3c0284a74d8a48bb06538e9cf1ca3345427fe000"
+  },
+  "environment_repair": {
+    "variable": "CUBLAS_WORKSPACE_CONFIG",
+    "exact_value": ":4096:8",
+    "set_before_child_process_creation": true,
+    "worker_check_before_torch_import": true,
+    "wrong_or_missing_value_terminal": "BLOCKED_RESOURCE_SCHEDULE",
+    "deterministic_algorithms": true,
+    "deterministic_warn_only": false,
+    "cudnn_benchmark": false,
+    "cudnn_deterministic": true,
+    "cuda_matmul_allow_tf32": false,
+    "cudnn_allow_tf32": false
+  },
+  "execution": {
+    "conditions": ["clean"],
+    "device_count_policy": "lock all eligible idle NVIDIA H20 devices at startup, minimum 1 and maximum 8",
+    "minimum_device_count": 1,
+    "maximum_device_count": 8,
+    "idle_device_rule": "NVIDIA H20 with at least 21 GiB free memory and no active compute PID",
+    "required_device_name": "NVIDIA H20",
+    "processes_per_physical_gpu": 1,
+    "worker_visible_device": "cuda:0",
+    "unit_order": "selection_order_zero_based ascending within shard",
+    "shard_rule": "shard_id = selection_order_zero_based mod locked_worker_count",
+    "dynamic_rebalancing": false,
+    "baseline": "normalized_zero",
+    "target": "clean predicted-class raw logit",
+    "quadrature_schedule": [128,256,512,1024,2048,4096,8192],
+    "alpha_chunk": 4,
+    "source_patch_jvp_chunk": 4,
+    "component_vjp_chunk": 8,
+    "deletion_forward_batch": 64,
+    "first_all_contract_pass_selected": true,
+    "full_dense_pixel_hidden_jacobian": false
+  },
+  "coverage": {
+    "blocks": [0,1,2,3,4,5,6,7,8,9,10,11],
+    "heads": [0,1,2,3,4,5,6,7,8,9,10,11],
+    "cuts": ["post_patch_embedding_tokens","block_input_tokens","first_residual_addition","second_residual_addition","block_output_tokens","final_norm","classifier_input"],
+    "single_head_ablation_coordinates": 144,
+    "curve_k": [1,2,3,4,6,8,10,12],
+    "deletion_percentiles": [0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100],
+    "deletion_control_seeds": 32
+  },
+  "hard_caps": {
+    "h20_gpu_hours": 64.0,
+    "cpu_hours": 218.0,
+    "peak_reserved_gpu_gib_per_process": 21.0,
+    "retained_storage_gib": 6.0,
+    "accounting": "original Y2 plus Y2-R1 recovery",
+    "recovery_wall_clock_resets": true
+  },
+  "retry": {
+    "reason": "CUBLAS_WORKSPACE_CONFIG_MISSING_BEFORE_TORCH_INITIALIZATION",
+    "retry_index": 1,
+    "scientific_scope_changed": false,
+    "target_metric_tolerance_changed": false
+  },
+  "valid_clean_threshold": 90,
+  "terminal_states": ["VALID","FAILED_NUMERICAL","BLOCKED_INFRASTRUCTURE","BLOCKED_BUDGET"],
+  "next_authorization_on_pass": "STAGE_Y3_PERTURBATION_MECHANISM_PRODUCTION_ONLY",
+  "next_authorization_on_blocked": "NONE",
+  "formal_root": "evidence/stage_y/y2_r1_clean_formal_20260911/formal",
+  "report_root": "reports/stage_y_y2_r1_20260911",
+  "pass_archive_ref": "refs/archive/stage-y-y2-r1-clean-cohort-evidence",
+  "blocked_archive_ref": "refs/archive/stage-y-y2-r1-clean-cohort-evidence-blocked"
+}

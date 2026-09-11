@@ -21,6 +21,11 @@ import numpy as np
 
 from . import stage_y_y2 as y2
 
+# This check is intentionally before every Torch/torchvision/timm import and
+# before any JPEG byte is read.  The launcher owns environment initialization.
+if os.environ.get("STAGE_Y2_R1_RECOVERY") == "1":
+    y2.activate_recovery_contract()
+
 MODEL_PATH = Path("assets/models/vit_base_patch16_224_weights.semantic_candidate.pth")
 MODEL_NAME = "vit_base_patch16_224.augreg2_in21k_ft_in1k"
 MODEL_SHA256 = "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d"
@@ -175,6 +180,8 @@ def _compute_unit(model: Any, image: Any, row: Mapping[str, Any], spec: Mapping[
 def execute(repo_root: Path | str, shard_id: int) -> dict[str, Any]:
     """Run exactly one preassigned shard; never writes outside its root."""
     repo = Path(repo_root).resolve(); shard = int(shard_id); worker_started = time.monotonic()
+    if y2.RECOVERY_MODE and os.environ.get("CUBLAS_WORKSPACE_CONFIG") != y2.REQUIRED_CUBLAS_WORKSPACE_CONFIG:
+        raise y2.StageYY2ScheduleError("CUBLAS_WORKSPACE_CONFIG must equal :4096:8 before Torch initialization")
     formal = repo / y2.ROOT; shard_root = formal / "shards" / f"shard-{shard:02d}"
     manifest = y2.read_json(shard_root / "shard_manifest.json"); y2.validate_signed(manifest)
     gate = y2.read_json(formal / "multi_gpu_startup_gate.json"); y2.validate_signed(gate)
@@ -192,6 +199,8 @@ def execute(repo_root: Path | str, shard_id: int) -> dict[str, Any]:
     shard_pending = shard_root / "completion/shard.pending.json"
     if not shard_pending.is_file() or (shard_root / "completion/shard.json").exists():
         raise y2.StageYY2ProvenanceError("launcher-owned shard PENDING receipt is absent or already terminal")
+    if y2.RECOVERY_MODE and os.environ.get("CUBLAS_WORKSPACE_CONFIG") != y2.REQUIRED_CUBLAS_WORKSPACE_CONFIG:
+        raise y2.StageYY2ScheduleError("cuBLAS workspace configuration missing before Torch import")
 
     # Heavy framework imports and all CUDA calls occur only after the sealed
     # launcher authorization and immutable device assignment have passed.
@@ -207,21 +216,21 @@ def execute(repo_root: Path | str, shard_id: int) -> dict[str, Any]:
     torch.cuda.set_device(0); torch.use_deterministic_algorithms(True)
     torch.backends.cudnn.benchmark = False; torch.backends.cudnn.deterministic = True
     torch.backends.cuda.matmul.allow_tf32 = False; torch.backends.cudnn.allow_tf32 = False
-    env = {
-        "python": platform.python_version(), "torch": torch.__version__,
-        "torchvision": torchvision.__version__, "timm": timm.__version__,
-        "cuda": torch.version.cuda, "driver": expected["driver"],
-        "checkpoint_sha256": MODEL_SHA256, "numeric_contract_digest": NUMERIC_CONTRACT_DIGEST,
-    }
+    env = y2.build_environment_identity(
+        torch, torchvision, timm, driver=expected["driver"],
+        checkpoint_sha256=MODEL_SHA256,
+        numeric_contract_digest=NUMERIC_CONTRACT_DIGEST,
+    )
     binding = y2.worker_binding({
         "physical_index": expected["physical_index"], "cuda_visible_devices": visible,
         "gpu_uuid": expected["gpu_uuid"], "pci_bus_id": expected["pci_bus_id"],
         "device_name": torch.cuda.get_device_name(0), "hostname": socket.gethostname(),
         "pid": os.getpid(), "environment_digest": y2.environment_digest(env),
+        **({"environment_identity": env} if y2.RECOVERY_MODE else {}),
     })
     if binding["environment_digest"] != expected["environment_digest"]:
         raise y2.StageYY2ScheduleError("worker environment differs from startup gate")
-    y2.write_json_new(shard_root / "worker_identity.json", y2.signed("stage_y_y2_worker_identity", "PASS", binding))
+    y2.write_json_new(shard_root / "worker_identity.json", y2.signed(f"{y2.DOCUMENT_PREFIX}_worker_identity", "PASS", binding))
     if y2.sha_file(repo / MODEL_PATH) != MODEL_SHA256: raise y2.StageYY2ProvenanceError("checkpoint SHA-256 drift")
     fixed_started = time.monotonic(); fixed_cpu_started = time.process_time()
     torch.cuda.reset_peak_memory_stats(torch.device("cuda:0")); fixed_gpu_start = torch.cuda.Event(enable_timing=True); fixed_gpu_end = torch.cuda.Event(enable_timing=True); fixed_gpu_start.record()
@@ -279,7 +288,7 @@ def execute(repo_root: Path | str, shard_id: int) -> dict[str, Any]:
                 key: result[key] for key in ("target_identity", "clean_logit", "baseline_logit", "delta", "selected_steps", "closure", "ablations", "deletion_operator", "calls", "phase_telemetry")
             }
             scientific_path = unit_root / "scientific_result.json"
-            y2.write_json_new(scientific_path, y2.signed("stage_y_y2_unit_scientific_result", "VALID", scientific_payload))
+            y2.write_json_new(scientific_path, y2.signed(f"{y2.DOCUMENT_PREFIX}_unit_scientific_result", "VALID", scientific_payload))
             scientific_record = y2.file_record(scientific_path)
         payload = {
             "unit_digest": y2.canonical_digest({"selection_order": order, "source_object_id": row["source_object_id"]}),
@@ -293,12 +302,26 @@ def execute(repo_root: Path | str, shard_id: int) -> dict[str, Any]:
             "quadrature_attempts": attempts, "resource_telemetry": resource,
             "scientific_record": scientific_record, "array_records": arrays_records, "attempt_records": attempt_records,
         }
+        if y2.RECOVERY_MODE:
+            original_path = y2.ORIGINAL_ROOT / "shards" / f"shard-{order % 4:02d}" / "units" / f"unit-{order:03d}" / "completion/unit.json"
+            original_terminal = y2.read_json(repo / original_path)
+            payload["retry_identity"] = {
+                "supersedes_original_y2_unit": True,
+                "original_y2_unit_path": original_path.as_posix(),
+                "original_attempt_digest": original_terminal["payload"]["attempt_records"][-1]["canonical_digest"],
+                "original_terminal_digest": original_terminal["canonical_digest"],
+                "original_failure_code": original_terminal["payload"]["failure_code"],
+                "retry_reason": "CUBLAS_WORKSPACE_CONFIG_MISSING_BEFORE_TORCH_INITIALIZATION",
+                "retry_index": 1,
+                "scientific_scope_changed": False,
+                "target_metric_tolerance_changed": False,
+            }
         y2.finish_unit(unit_root, status, payload, worker_count=worker_count); terminal_counts[status] += 1
     if terminal_counts["BLOCKED_BUDGET"]: shard_status = "BLOCKED_BUDGET"
     elif terminal_counts["BLOCKED_INFRASTRUCTURE"]: shard_status = "BLOCKED_INFRASTRUCTURE"
     elif terminal_counts["FAILED_NUMERICAL"]: shard_status = "FAILED_NUMERICAL"
     else: shard_status = "VALID"
-    shard_summary = y2.signed("stage_y_y2_shard_terminal", shard_status, {"shard_id": shard, "shard_count": worker_count, "unit_count": sum(terminal_counts.values()), "terminal_counts": terminal_counts, "worker_identity": binding, "fixed_initialization_resource": fixed_resource, "resource_caps": sealed_caps, "shard_elapsed_seconds": time.monotonic() - worker_started, "completed_unix_ns": time.time_ns()})
+    shard_summary = y2.signed(f"{y2.DOCUMENT_PREFIX}_shard_terminal", shard_status, {"shard_id": shard, "shard_count": worker_count, "unit_count": sum(terminal_counts.values()), "terminal_counts": terminal_counts, "worker_identity": binding, "fixed_initialization_resource": fixed_resource, "resource_caps": sealed_caps, "shard_elapsed_seconds": time.monotonic() - worker_started, "completed_unix_ns": time.time_ns()})
     y2.publish_terminal(shard_pending, shard_root / "completion/shard.json", shard_summary)
     return {"status": shard_status, "shard_id": shard, "terminal_counts": terminal_counts}
 

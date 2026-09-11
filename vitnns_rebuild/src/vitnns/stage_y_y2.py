@@ -13,8 +13,10 @@ import io
 import json
 import math
 import os
+import platform
 import socket
 import subprocess
+import sys
 import tarfile
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
@@ -23,6 +25,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PROTOCOL_ID = "STAGE_Y_VIT_BLOCK_LEVEL_NNS_MECHANISM_V1_20260910"
 STAGE_ID = "Y2"
 TOKEN = "STAGE_Y2_CLEAN_COHORT_EVIDENCE_PRODUCTION_ONLY"
+DOCUMENT_PREFIX = "stage_y_y2"
+ARTIFACT_SCHEMA = "stage_y_y2_artifact.schema.json"
 RELEASE_ID = "ILSVRC2012_VAL_OFFICIAL"
 NAMESPACE = "STAGE_Y_FORMAL_COHORT_V1_20260910"
 AUDIT_NAMESPACE = "STAGE_Y_AUDIT_SUBSET_V1_20260910"
@@ -30,6 +34,13 @@ PERTURBATION_NAMESPACE = "STAGE_Y_PERTURBATION_SUBSET_V1_20260910"
 ROOT = Path("evidence/stage_y/y2_clean_formal_20260910/formal")
 REPORT_ROOT = Path("reports/stage_y_y2_20260911")
 RUN_SPEC = Path("config/stage_y/y2_run_spec.json")
+ORIGINAL_ROOT = ROOT
+ORIGINAL_REPORT_ROOT = REPORT_ROOT
+ORIGINAL_RUN_SPEC = RUN_SPEC
+R1_ROOT = Path("evidence/stage_y/y2_r1_clean_formal_20260911/formal")
+R1_REPORT_ROOT = Path("reports/stage_y_y2_r1_20260911")
+R1_RUN_SPEC = Path("config/stage_y/y2_r1_run_spec.json")
+RECOVERY_MODE = False
 PLAN = Path("manifests/stage_y/cohort_selection_and_exclusion_plan.json")
 TAR_PATH = Path("assets/imagenet/ILSVRC2012_img_val.tar")
 LABEL_PATH = Path("assets/imagenet/imagenet_2012_validation_synset_labels.txt")
@@ -48,6 +59,16 @@ SHARD_COUNT = MAX_WORKERS
 SHARD_IDS = tuple(range(MAX_WORKERS))
 UNIT_TERMINAL_STATES = ("VALID", "FAILED_NUMERICAL", "BLOCKED_INFRASTRUCTURE", "BLOCKED_BUDGET")
 SCHEDULE = Path("config/stage_y/y2_parallel_schedule.json")
+REQUIRED_CUBLAS_WORKSPACE_CONFIG = ":4096:8"
+ENVIRONMENT_IDENTITY_FIELDS = frozenset({
+    "python_executable_realpath", "python_version", "torch_version",
+    "torchvision_version", "timm_version", "cuda_version", "driver",
+    "device_name", "cublas_workspace_config",
+    "deterministic_algorithms_enabled", "deterministic_warn_only_enabled",
+    "cudnn_benchmark", "cudnn_deterministic",
+    "cuda_matmul_allow_tf32", "cudnn_allow_tf32",
+    "checkpoint_sha256", "numeric_contract_digest",
+})
 
 EXCLUSION_PATHS = (
     Path("manifests/stage_c_sample_registry.csv"),
@@ -79,6 +100,25 @@ class StageYY2InfrastructureError(StageYY2Error):
     code = "BLOCKED_INFRASTRUCTURE"
 
 
+def activate_recovery_contract() -> None:
+    """Activate the prospective Y2-R1 namespace in the current process.
+
+    The original Y2 files and archive ref remain bound to their historical
+    commit.  This switch changes only where subsequently generated artifacts
+    are written and how their new envelopes identify themselves.
+    """
+    global STAGE_ID, TOKEN, DOCUMENT_PREFIX, ARTIFACT_SCHEMA
+    global ROOT, REPORT_ROOT, RUN_SPEC, RECOVERY_MODE
+    STAGE_ID = "Y2-R1"
+    TOKEN = "STAGE_Y2_R1_CUBLAS_DETERMINISM_ENVIRONMENT_RECOVERY_ONLY"
+    DOCUMENT_PREFIX = "stage_y_y2_r1"
+    ARTIFACT_SCHEMA = "stage_y_y2_r1_artifact.schema.json"
+    ROOT = R1_ROOT
+    REPORT_ROOT = R1_REPORT_ROOT
+    RUN_SPEC = R1_RUN_SPEC
+    RECOVERY_MODE = True
+
+
 def project_path(path: Path | str) -> Path:
     """Resolve protocol-relative paths independently of the caller CWD."""
     path = Path(path)
@@ -95,7 +135,7 @@ def canonical_digest(value: Any) -> str:
 
 def signed(document_type: str, status: str, payload: Mapping[str, Any]) -> dict[str, Any]:
     value = {
-        "$schema": "stage_y_y2_artifact.schema.json",
+        "$schema": ARTIFACT_SCHEMA,
         "schema_version": 1,
         "document_type": document_type,
         "protocol_id": PROTOCOL_ID,
@@ -107,7 +147,7 @@ def signed(document_type: str, status: str, payload: Mapping[str, Any]) -> dict[
     return value
 
 
-def validate_signed(value: Mapping[str, Any]) -> None:
+def validate_signed(value: Mapping[str, Any], *, allow_historical_y2: bool = False) -> None:
     required = {"$schema", "schema_version", "document_type", "protocol_id", "stage_id", "status", "payload", "canonical_digest"}
     if set(value) != required:
         raise StageYY2ProvenanceError("artifact envelope is not closed")
@@ -115,7 +155,10 @@ def validate_signed(value: Mapping[str, Any]) -> None:
     observed = unsigned.pop("canonical_digest")
     if observed != canonical_digest(unsigned):
         raise StageYY2ProvenanceError("artifact canonical digest mismatch")
-    if value["protocol_id"] != PROTOCOL_ID or value["stage_id"] != STAGE_ID:
+    allowed_stage_ids = {STAGE_ID}
+    if allow_historical_y2 and RECOVERY_MODE:
+        allowed_stage_ids.add("Y2")
+    if value["protocol_id"] != PROTOCOL_ID or value["stage_id"] not in allowed_stage_ids:
         raise StageYY2ProvenanceError("artifact identity drift")
 
 
@@ -205,7 +248,8 @@ def publish_terminal(pending: Path, terminal: Path, value: Mapping[str, Any]) ->
 
 
 def whole_root_inventory(formal_root: Path, status: str) -> dict[str, Any]:
-    excluded = {"whole_root_inventory.json", "completion/y2.pending.json", "completion/y2.json"}
+    completion_stem = "y2_r1" if RECOVERY_MODE else "y2"
+    excluded = {"whole_root_inventory.json", f"completion/{completion_stem}.pending.json", f"completion/{completion_stem}.json"}
     rows = []
     for path in sorted(formal_root.rglob("*")):
         if not path.is_file():
@@ -214,7 +258,7 @@ def whole_root_inventory(formal_root: Path, status: str) -> dict[str, Any]:
         if relative in excluded:
             continue
         rows.append({"path": relative, "bytes": path.stat().st_size, "sha256": sha_file(path)})
-    return signed("stage_y_y2_whole_root_inventory", status, {
+    return signed(f"{DOCUMENT_PREFIX}_whole_root_inventory", status, {
         "root": ROOT.as_posix() if formal_root.as_posix().endswith(ROOT.as_posix()) else formal_root.as_posix(),
         "excluded": sorted(excluded),
         "files": rows,
@@ -453,7 +497,7 @@ def subset_registry(selected: Sequence[Mapping[str, Any]], namespace: str, count
 
 
 def selected_by_order(cohort_artifact: Mapping[str, Any]) -> list[dict[str, Any]]:
-    validate_signed(cohort_artifact)
+    validate_signed(cohort_artifact, allow_historical_y2=True)
     records = [dict(row) for row in cohort_artifact["payload"]["records"]]
     if [row["selection_order"] for row in records] != list(range(100)):
         raise StageYY2CohortError("cohort selection order drift")
@@ -632,7 +676,7 @@ def build_shard_manifests(
             "condition_roster": ["clean"],
             "resource_caps": dict(resource_projection["per_shard"][shard_id]),
         }
-        document = signed("stage_y_y2_shard_manifest", "PASS", payload)
+        document = signed(f"{DOCUMENT_PREFIX}_shard_manifest", "PASS", payload)
         shard_root = formal_root / "shards" / f"shard-{shard_id:02d}"
         manifest_path = shard_root / "shard_manifest.json"
         write_json_new(manifest_path, document); manifest_path.chmod(0o444)
@@ -641,20 +685,64 @@ def build_shard_manifests(
 
 
 def environment_digest(identity: Mapping[str, Any]) -> str:
-    required = {"python", "torch", "torchvision", "timm", "cuda", "driver", "checkpoint_sha256", "numeric_contract_digest"}
-    if set(identity) != required:
+    legacy_fields = {"python", "torch", "torchvision", "timm", "cuda", "driver", "checkpoint_sha256", "numeric_contract_digest"}
+    if not RECOVERY_MODE and set(identity) == legacy_fields:
+        return canonical_digest(dict(identity))
+    if set(identity) != ENVIRONMENT_IDENTITY_FIELDS:
         raise StageYY2ScheduleError("worker environment identity is not closed")
+    if identity["python_executable_realpath"] != os.path.realpath(str(identity["python_executable_realpath"])):
+        raise StageYY2ScheduleError("Python executable identity is not a realpath")
+    if identity["cublas_workspace_config"] != REQUIRED_CUBLAS_WORKSPACE_CONFIG:
+        raise StageYY2ScheduleError("cuBLAS workspace configuration drift")
+    if identity["deterministic_algorithms_enabled"] is not True or identity["deterministic_warn_only_enabled"] is not False:
+        raise StageYY2ScheduleError("deterministic algorithms are not fail-closed")
+    if identity["cudnn_benchmark"] is not False or identity["cudnn_deterministic"] is not True:
+        raise StageYY2ScheduleError("cuDNN deterministic flags drift")
+    if identity["cuda_matmul_allow_tf32"] is not False or identity["cudnn_allow_tf32"] is not False:
+        raise StageYY2ScheduleError("TF32 flags drift")
     return canonical_digest(dict(identity))
+
+
+def build_environment_identity(
+    torch_module: Any, torchvision_module: Any, timm_module: Any, *,
+    driver: str, checkpoint_sha256: str, numeric_contract_digest: str,
+) -> dict[str, Any]:
+    """Return the one closed identity shared by probe and formal workers."""
+    identity = {
+        "python_executable_realpath": os.path.realpath(sys.executable),
+        "python_version": platform.python_version(),
+        "torch_version": torch_module.__version__,
+        "torchvision_version": torchvision_module.__version__,
+        "timm_version": timm_module.__version__,
+        "cuda_version": torch_module.version.cuda,
+        "driver": str(driver),
+        "device_name": torch_module.cuda.get_device_name(0),
+        "cublas_workspace_config": os.environ.get("CUBLAS_WORKSPACE_CONFIG"),
+        "deterministic_algorithms_enabled": torch_module.are_deterministic_algorithms_enabled(),
+        "deterministic_warn_only_enabled": torch_module.is_deterministic_algorithms_warn_only_enabled(),
+        "cudnn_benchmark": torch_module.backends.cudnn.benchmark,
+        "cudnn_deterministic": torch_module.backends.cudnn.deterministic,
+        "cuda_matmul_allow_tf32": torch_module.backends.cuda.matmul.allow_tf32,
+        "cudnn_allow_tf32": torch_module.backends.cudnn.allow_tf32,
+        "checkpoint_sha256": checkpoint_sha256,
+        "numeric_contract_digest": numeric_contract_digest,
+    }
+    environment_digest(identity)
+    return identity
 
 
 def worker_binding(identity: Mapping[str, Any]) -> dict[str, Any]:
     required = {"physical_index", "cuda_visible_devices", "gpu_uuid", "pci_bus_id", "device_name", "hostname", "pid", "environment_digest"}
+    if RECOVERY_MODE:
+        required.add("environment_identity")
     if set(identity) != required:
         raise StageYY2ScheduleError("worker binding fields are not closed")
     if identity["device_name"] != "NVIDIA H20" or not identity["gpu_uuid"] or not identity["pci_bus_id"]:
         raise StageYY2ScheduleError("worker GPU identity violates H20 contract")
     if not isinstance(identity["pid"], int) or identity["pid"] <= 0:
         raise StageYY2ScheduleError("worker PID invalid")
+    if RECOVERY_MODE and environment_digest(identity["environment_identity"]) != identity["environment_digest"]:
+        raise StageYY2ScheduleError("worker environment identity/digest mismatch")
     return dict(identity)
 
 
@@ -700,7 +788,7 @@ def begin_unit(
     if y2_shard_id(selection_order, count) != shard_id:
         raise StageYY2ScheduleError("unit assigned to wrong shard")
     pending = unit_root / "completion" / "unit.pending.json"
-    value = signed("stage_y_y2_unit_pending", "PENDING", {
+    value = signed(f"{DOCUMENT_PREFIX}_unit_pending", "PENDING", {
         "shard_id": shard_id, "selection_order": selection_order,
         "shard_count": count,
         "source_object_id": source_object_id_value, "condition_id": "clean",
@@ -714,7 +802,7 @@ def append_attempt(unit_root: Path, attempt: Mapping[str, Any]) -> dict[str, Any
     attempts = unit_root / "attempts"
     index = len(list(attempts.glob("attempt-*.json"))) if attempts.exists() else 0
     path = attempts / f"attempt-{index:03d}.json"
-    document = signed("stage_y_y2_unit_attempt", "PASS", {"attempt_index": index, **dict(attempt)})
+    document = signed(f"{DOCUMENT_PREFIX}_unit_attempt", "PASS", {"attempt_index": index, **dict(attempt)})
     write_json_new(path, document)
     return file_record(path)
 
@@ -729,6 +817,8 @@ def finish_unit(
     if not attempts:
         raise StageYY2ScheduleError("unit terminal cannot omit all attempts")
     expected_keys = {"unit_digest", "attempt_id", "shard_id", "selection_order", "source_object_id", "condition_id", "failure_code", "target_identity", "source_binding", "checkpoint_sha256", "environment_digest", "numeric_contract_digest", "quadrature_attempts", "resource_telemetry", "scientific_record", "array_records", "attempt_records"}
+    if RECOVERY_MODE:
+        expected_keys.add("retry_identity")
     if set(payload) != expected_keys:
         raise StageYY2ProvenanceError("unit terminal payload is not closed")
     if status == "VALID":
@@ -745,7 +835,7 @@ def finish_unit(
     observed_attempts = [file_record(path) for path in attempts]
     if payload["attempt_records"] != observed_attempts:
         raise StageYY2ProvenanceError("unit terminal does not bind every retained attempt")
-    document = signed("stage_y_y2_unit_terminal", status, payload)
+    document = signed(f"{DOCUMENT_PREFIX}_unit_terminal", status, payload)
     publish_terminal(unit_root / "completion/unit.pending.json", unit_root / "completion/unit.json", document)
     return document
 
@@ -794,7 +884,7 @@ def reconcile_shards(formal_root: Path, *, minimum_valid: int = 90) -> dict[str,
         if not require_shard_terminal.is_file() or (root / "completion/shard.pending.json").exists():
             raise StageYY2ScheduleError(f"shard terminal transition incomplete in {name}")
         shard_terminal = read_json(require_shard_terminal); validate_signed(shard_terminal)
-        if shard_terminal["document_type"] != "stage_y_y2_shard_terminal" or shard_terminal["status"] not in UNIT_TERMINAL_STATES or shard_terminal["payload"]["shard_id"] != shard_id or shard_terminal["payload"]["shard_count"] != worker_count:
+        if shard_terminal["document_type"] != f"{DOCUMENT_PREFIX}_shard_terminal" or shard_terminal["status"] not in UNIT_TERMINAL_STATES or shard_terminal["payload"]["shard_id"] != shard_id or shard_terminal["payload"]["shard_count"] != worker_count:
             raise StageYY2ScheduleError(f"shard terminal invalid in {name}")
         if shard_terminal["payload"]["resource_caps"] != manifest["payload"]["resource_caps"]:
             raise StageYY2ProvenanceError(f"shard resource-cap link drift in {name}")
@@ -806,7 +896,7 @@ def reconcile_shards(formal_root: Path, *, minimum_valid: int = 90) -> dict[str,
             raise StageYY2ScheduleError(f"terminal count drift in {name}")
         for path in unit_paths:
             terminal = read_json(path); validate_signed(terminal)
-            if terminal["document_type"] != "stage_y_y2_unit_terminal" or terminal["status"] not in UNIT_TERMINAL_STATES:
+            if terminal["document_type"] != f"{DOCUMENT_PREFIX}_unit_terminal" or terminal["status"] not in UNIT_TERMINAL_STATES:
                 raise StageYY2ProvenanceError("invalid accepted unit terminal")
             payload = terminal["payload"]
             if payload["shard_id"] != shard_id or y2_shard_id(payload["selection_order"], worker_count) != shard_id or payload["condition_id"] != "clean":
@@ -827,6 +917,32 @@ def reconcile_shards(formal_root: Path, *, minimum_valid: int = 90) -> dict[str,
                 })
             ):
                 raise StageYY2ProvenanceError("unit source or identity binding drift")
+            if RECOVERY_MODE:
+                retry = payload.get("retry_identity")
+                if not isinstance(retry, Mapping) or set(retry) != {
+                    "supersedes_original_y2_unit", "original_y2_unit_path",
+                    "original_attempt_digest", "original_terminal_digest",
+                    "original_failure_code", "retry_reason", "retry_index",
+                    "scientific_scope_changed", "target_metric_tolerance_changed",
+                }:
+                    raise StageYY2ProvenanceError("Y2-R1 retry identity is not closed")
+                original_path = project_path(Path(str(retry["original_y2_unit_path"])))
+                original = read_json(original_path)
+                validate_signed(original, allow_historical_y2=True)
+                if (
+                    retry["supersedes_original_y2_unit"] is not True
+                    or retry["original_terminal_digest"] != original["canonical_digest"]
+                    or retry["original_attempt_digest"] != original["payload"]["attempt_records"][-1]["canonical_digest"]
+                    or retry["original_failure_code"] != original["payload"]["failure_code"]
+                    or retry["retry_reason"] != "CUBLAS_WORKSPACE_CONFIG_MISSING_BEFORE_TORCH_INITIALIZATION"
+                    or retry["retry_index"] != 1
+                    or retry["scientific_scope_changed"] is not False
+                    or retry["target_metric_tolerance_changed"] is not False
+                    or original["payload"]["selection_order"] != payload["selection_order"]
+                    or original["payload"]["source_object_id"] != payload["source_object_id"]
+                    or original["payload"]["source_binding"]["file_sha256"] != payload["source_binding"]["file_sha256"]
+                ):
+                    raise StageYY2ProvenanceError("Y2-R1 predecessor retry binding drift")
             if payload["environment_digest"] != identity_doc["payload"]["environment_digest"]:
                 raise StageYY2ScheduleError("unit environment does not match its worker identity")
             scientific_record = payload["scientific_record"]
@@ -841,7 +957,7 @@ def reconcile_shards(formal_root: Path, *, minimum_valid: int = 90) -> dict[str,
                     raise StageYY2ProvenanceError("scientific record drift")
                 bound_scientific_paths.add(scientific_path)
                 scientific = read_json(scientific_path); validate_signed(scientific)
-                if scientific["document_type"] != "stage_y_y2_unit_scientific_result" or scientific["status"] != "VALID":
+                if scientific["document_type"] != f"{DOCUMENT_PREFIX}_unit_scientific_result" or scientific["status"] != "VALID":
                     raise StageYY2ProvenanceError("invalid unit scientific result")
             elif scientific_record is not None:
                 raise StageYY2ProvenanceError("non-VALID unit cannot publish a scientific result")
@@ -935,11 +1051,35 @@ def reconcile_shards(formal_root: Path, *, minimum_valid: int = 90) -> dict[str,
     terminal_counts = {state: sum(row["status"] == state for row in terminals) for state in UNIT_TERMINAL_STATES}
     actual_retained_bytes = sum(path.stat().st_size for path in (formal_root / "shards").rglob("*") if path.is_file())
     totals["retained_bytes"] = actual_retained_bytes
+    original_resource_totals = None
+    recovery_resource_totals = {
+        **totals,
+        "h20_gpu_hours": totals["gpu_active_seconds"] / 3600.0,
+        "cpu_hours": totals["cpu_seconds"] / 3600.0,
+        "retained_storage_gib": totals["retained_bytes"] / 1024.0 ** 3,
+        "worker_critical_path_seconds": max(row["worker_elapsed_seconds"] for row in per_shard_resources),
+    }
+    accounting_totals = recovery_resource_totals
+    if RECOVERY_MODE:
+        original_reconciliation = read_json(PROJECT_ROOT / ORIGINAL_ROOT / "reconciliation.json")
+        validate_signed(original_reconciliation, allow_historical_y2=True)
+        original_resource_totals = original_reconciliation["payload"]["resource_totals"]
+        accounting_totals = {
+            **recovery_resource_totals,
+            "gpu_active_seconds": float(recovery_resource_totals["gpu_active_seconds"]) + float(original_resource_totals["gpu_active_seconds"]),
+            "cpu_seconds": float(recovery_resource_totals["cpu_seconds"]) + float(original_resource_totals["cpu_seconds"]),
+            "wall_seconds_sum": float(recovery_resource_totals["wall_seconds_sum"]) + float(original_resource_totals["wall_seconds_sum"]),
+            "retained_bytes": int(recovery_resource_totals["retained_bytes"]) + int(original_resource_totals["retained_bytes"]),
+            "peak_reserved_gpu_bytes_per_process": max(int(recovery_resource_totals["peak_reserved_gpu_bytes_per_process"]), int(original_resource_totals["peak_reserved_gpu_bytes_per_process"])),
+        }
+        accounting_totals["h20_gpu_hours"] = accounting_totals["gpu_active_seconds"] / 3600.0
+        accounting_totals["cpu_hours"] = accounting_totals["cpu_seconds"] / 3600.0
+        accounting_totals["retained_storage_gib"] = accounting_totals["retained_bytes"] / 1024.0 ** 3
     cap_failures = []
-    if totals["gpu_active_seconds"] / 3600.0 > 64.0: cap_failures.append("aggregate_h20_gpu_hours")
-    if totals["cpu_seconds"] / 3600.0 > 218.0: cap_failures.append("aggregate_cpu_hours")
-    if totals["retained_bytes"] / 1024.0 ** 3 > 6.0: cap_failures.append("aggregate_storage_gib")
-    if totals["peak_reserved_gpu_bytes_per_process"] / 1024.0 ** 3 > 21.0: cap_failures.append("peak_reserved_gpu_gib_per_process")
+    if accounting_totals["gpu_active_seconds"] / 3600.0 > 64.0: cap_failures.append("aggregate_h20_gpu_hours")
+    if accounting_totals["cpu_seconds"] / 3600.0 > 218.0: cap_failures.append("aggregate_cpu_hours")
+    if accounting_totals["retained_bytes"] / 1024.0 ** 3 > 6.0: cap_failures.append("aggregate_storage_gib")
+    if accounting_totals["peak_reserved_gpu_bytes_per_process"] / 1024.0 ** 3 > 21.0: cap_failures.append("peak_reserved_gpu_gib_per_process")
     overall_stage_wall_seconds = None
     if startup_gate is not None:
         overall_stage_wall_seconds = max(int(row["payload"]["completed_unix_ns"]) for row in shard_terminals) / 1e9 - int(startup_gate["payload"]["started_unix_ns"]) / 1e9
@@ -969,7 +1109,8 @@ def reconcile_shards(formal_root: Path, *, minimum_valid: int = 90) -> dict[str,
         "attempt_record_count": len(all_attempt_records),
         "fixed_initialization_records": fixed_initializations,
         "per_shard_resources": per_shard_resources,
-        "resource_totals": {**totals, "h20_gpu_hours": totals["gpu_active_seconds"] / 3600.0, "cpu_hours": totals["cpu_seconds"] / 3600.0, "retained_storage_gib": totals["retained_bytes"] / 1024.0 ** 3, "worker_critical_path_seconds": max(row["worker_elapsed_seconds"] for row in per_shard_resources)},
+        "resource_totals": recovery_resource_totals,
+        **({"original_y2_resource_totals": original_resource_totals, "cumulative_resource_totals": accounting_totals, "resource_accounting_includes_original_y2": True} if RECOVERY_MODE else {}),
         "overall_stage_wall_seconds": overall_stage_wall_seconds,
         "gpu_hours_accounting": "SUM_ACROSS_ALL_SHARDS_NOT_DIVIDED_BY_WORKER_COUNT",
         "budget_cap_failures": cap_failures,
@@ -978,4 +1119,4 @@ def reconcile_shards(formal_root: Path, *, minimum_valid: int = 90) -> dict[str,
         "bootstrap_executed": False, "holm_executed": False, "claim_decision_executed": False,
         "next_authorization": "STAGE_Y3_PERTURBATION_MECHANISM_PRODUCTION_ONLY" if stage_status == "PASS" else "NONE",
     }
-    return signed("stage_y_y2_reconciliation", stage_status, summary)
+    return signed(f"{DOCUMENT_PREFIX}_reconciliation", stage_status, summary)
