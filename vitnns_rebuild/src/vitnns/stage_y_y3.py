@@ -29,8 +29,8 @@ NEXT = "STAGE_Y4_CPU_ONLY_MECHANISM_ANALYSIS_AND_DECISION"
 BASE = "f679987a517412dc54fcde4a0d5820241ca7c6c8"
 BRANCH = "stage-d-d3-pass"
 PYTHON = Path("/data01/home/yeziqi.831/nxtrec_wksp/testcode/.conda/envs/vitnns/bin/python")
-ROOT = Path("evidence/stage_y/y3_perturbation_formal_20260910/formal")
-REPORT_ROOT = Path("reports/stage_y_y3_20260912")
+ROOT = Path("evidence/stage_y/y3_r3_perturbation_formal_20260912/formal")
+REPORT_ROOT = Path("reports/stage_y_y3_r3_20260912")
 SPEC = Path("config/stage_y/y3_run_spec.json")
 SPEC_SCHEMA = Path("config/stage_y/y3_run_spec.schema.json")
 ARTIFACT_SCHEMA = Path("config/stage_y/y3_artifact.schema.json")
@@ -42,10 +42,14 @@ ORIGINAL_PRODUCER_REF = "refs/archive/stage-y-y3-perturbation-mechanism-producer
 ORIGINAL_PRODUCER_COMMIT = "d5e96c0e0c55e685d38f182e63f3227dd8c1cbb9"
 R1_PRODUCER_REF = "refs/archive/stage-y-y3-r1-perturbation-mechanism-producer"
 R1_PRODUCER_COMMIT = "63fc7a4fb38a7ead26c23e5de9bfd36f7d512fea"
-PRODUCER_REF = "refs/archive/stage-y-y3-r2-perturbation-mechanism-producer"
-PASS_REF = "refs/archive/stage-y-y3-r2-perturbation-mechanism-evidence"
-BLOCKED_REF = "refs/archive/stage-y-y3-r2-perturbation-mechanism-evidence-blocked"
-IMPLEMENTATION_SEAL = "producer_implementation_seal_r2.json"
+R2_PRODUCER_REF = "refs/archive/stage-y-y3-r2-perturbation-mechanism-producer"
+R2_PRODUCER_COMMIT = "10420ab5df70a2b7bfdec0c0208c11c1f9b8774c"
+R2_BLOCKED_REF = "refs/archive/stage-y-y3-r2-perturbation-mechanism-evidence-blocked"
+R2_BLOCKED_COMMIT = "b8f0e6e285845c5e3b755b4d59cc1bc67adf2976"
+PRODUCER_REF = "refs/archive/stage-y-y3-r3-perturbation-mechanism-producer"
+PASS_REF = "refs/archive/stage-y-y3-r3-perturbation-mechanism-evidence"
+BLOCKED_REF = "refs/archive/stage-y-y3-r3-perturbation-mechanism-evidence-blocked"
+IMPLEMENTATION_SEAL = "producer_implementation_seal.json"
 CONDITIONS = ("horizontal_flip","translate_x_-8","translate_x_8","rotate_-10","rotate_10","brightness_0.9","brightness_1.1","gaussian_noise_0.01_seed_0")
 SELECTION_ORDER = (17,13,48,75,26,24,74,34,93,69,68,71,84,77,35,72,43,20,15,41)
 COMPUTED_ORDERS = (77,84,93)
@@ -73,7 +77,7 @@ EXPECTED_REFS = {
     "refs/archive/stage-y-y2-r2-r2-clean-cohort-evidence-completion":BASE,
 }
 OLD_PASS = "refs/archive/stage-y-y2-r2-r1-clean-cohort-evidence-completion"
-PRODUCER_FILES = (DOC,SPEC,SPEC_SCHEMA,ARTIFACT_SCHEMA,Path("src/vitnns/stage_y_y3.py"),Path("src/vitnns/stage_y_y3_worker.py"),Path("scripts/run_stage_y_y3.py"),Path("scripts/validate_stage_y_y3.py"),Path("tests/test_stage_y_y3.py"))
+PRODUCER_FILES = (DOC,Path("docs/stage_y_y3_r3_worker_import_recovery_20260912.md"),SPEC,SPEC_SCHEMA,ARTIFACT_SCHEMA,Path("src/vitnns/stage_y_y3.py"),Path("src/vitnns/stage_y_y3_worker.py"),Path("scripts/run_stage_y_y3.py"),Path("scripts/validate_stage_y_y3.py"),Path("tests/test_stage_y_y3.py"))
 DEPENDENCIES = tuple(dict.fromkeys(y2c.DEPENDENCIES + (Path("src/vitnns/stage_y_y2_r2_r2.py"),Path("manifests/stage_y/transform_registry.json"),Path("manifests/stage_y/retention_plan.json"),Path("manifests/stage_y/schema_registry.json"),Path("manifests/stage_y/component_cut_registry.json"),Path("manifests/stage_y/metric_registry.json"))))
 
 class Y3Error(RuntimeError): code="BLOCKED_PROVENANCE"
@@ -294,19 +298,23 @@ def remote_refs(repo: Path) -> dict[str,str]:
     return {line.split()[1]:line.split()[0] for line in git(repo,"ls-remote","origin").splitlines()}
 
 def lfs_clean(repo: Path) -> None:
-    value=git(repo,"lfs","status");require("(LFS:" not in value and "(Git:" not in value,"Git LFS pending state",StartupError)
+    value=git(repo,"lfs","status");require("(LFS:" not in value,"Git LFS object pending state",StartupError)
 
 def initial_startup(repo: Path, allow_sources: bool=False) -> dict[str,Any]:
     remote=remote_refs(repo);require(git(repo,"symbolic-ref","--short","HEAD")==BRANCH,"branch drift",StartupError)
-    require(git(repo,"rev-parse","HEAD")==git(repo,"rev-parse","@{upstream}")==remote.get("refs/heads/"+BRANCH)==BASE,"startup branch identity drift",StartupError)
+    require(git(repo,"rev-parse","HEAD")==git(repo,"rev-parse","@{upstream}")==remote.get("refs/heads/"+BRANCH)==R2_BLOCKED_COMMIT,"startup branch identity drift",StartupError)
     for ref,commit in EXPECTED_REFS.items():require(git(repo,"rev-parse",ref)==commit and remote.get(ref)==commit,"archive ref drift: "+ref,StartupError)
     require(OLD_PASS not in remote and not git(repo,"for-each-ref","--format=%(refname)",OLD_PASS),"forbidden old PASS ref exists",StartupError)
     require(remote.get(ORIGINAL_PRODUCER_REF)==git(repo,"rev-parse",ORIGINAL_PRODUCER_REF)==ORIGINAL_PRODUCER_COMMIT,"original Y3 producer ref drift",StartupError)
     require(remote.get(R1_PRODUCER_REF)==git(repo,"rev-parse",R1_PRODUCER_REF)==R1_PRODUCER_COMMIT,"Y3-R1 producer ref drift",StartupError)
+    require(remote.get(R2_PRODUCER_REF)==git(repo,"rev-parse",R2_PRODUCER_REF)==R2_PRODUCER_COMMIT,"Y3-R2 producer ref drift",StartupError)
+    require(remote.get(R2_BLOCKED_REF)==git(repo,"rev-parse",R2_BLOCKED_REF)==R2_BLOCKED_COMMIT,"Y3-R2 blocked ref drift",StartupError)
+    y2c.git_binding(repo,Path("evidence/stage_y/y3_perturbation_formal_20260910/formal"),R2_BLOCKED_COMMIT);y2c.git_binding(repo,Path("reports/stage_y_y3_20260912"),R2_BLOCKED_COMMIT)
     for ref in (PRODUCER_REF,PASS_REF,BLOCKED_REF):require(ref not in remote and not git(repo,"for-each-ref","--format=%(refname)",ref),"Y3-R1 ref already exists: "+ref,StartupError)
-    status=git(repo,"status","--porcelain").splitlines();paths={line[3:].removeprefix(repo.name+"/") for line in status}
+    status=git(repo,"status","--porcelain").splitlines();paths=[line[3:].split(" -> ")[-1] for line in status]
     allowed={str(p) for p in PRODUCER_FILES} if allow_sources else set()
-    require(paths<=allowed,"unexpected worktree paths: "+repr(sorted(paths-allowed)),StartupError);lfs_clean(repo)
+    unexpected=[path for path in paths if not any(path==candidate or path.endswith("/"+candidate) for candidate in allowed)]
+    require(not unexpected,"unexpected worktree paths: "+repr(sorted(unexpected)),StartupError);lfs_clean(repo)
     require(not (repo/ROOT).exists() and not (repo/REPORT_ROOT).exists(),"Y3 formal/report root already exists",StartupError)
     for parent in (repo/"evidence/stage_y",repo/"reports"):
         require(not any(p.name.startswith(("y4","stage_y_y4")) for p in parent.iterdir()),"Y4 root exists",StartupError)

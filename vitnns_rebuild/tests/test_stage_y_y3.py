@@ -75,6 +75,9 @@ def test_cublas_preimport_guard():
 def test_startup_probe_source_compiles_and_contains_no_nul():
     spec=importlib.util.spec_from_file_location("run_y3",REPO/"scripts/run_stage_y_y3.py");runner=importlib.util.module_from_spec(spec);spec.loader.exec_module(runner);source=runner.probe_script();assert "\0" not in source;compile(source,"<y3-probe>","exec")
 
+def test_worker_imports_y2_contract_before_use():
+    source=(REPO/"src/vitnns/stage_y_y3_worker.py").read_text();assert "from . import stage_y_y2_r2 as r2" in source;compile(source,"<y3-worker>","exec")
+
 def test_false_pass_audit_has_all_required_attacks():
     result=validator().false_pass_audit();assert result["attack_count"]==result["rejected_count"]>=40
 
