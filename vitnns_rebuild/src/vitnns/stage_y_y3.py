@@ -40,9 +40,12 @@ TRANSFORMS = Path("manifests/stage_y/transform_registry.json")
 Y2_COMPLETION = y2c.ROOT / "completion/y2_r2_r2.json"
 ORIGINAL_PRODUCER_REF = "refs/archive/stage-y-y3-perturbation-mechanism-producer"
 ORIGINAL_PRODUCER_COMMIT = "d5e96c0e0c55e685d38f182e63f3227dd8c1cbb9"
-PRODUCER_REF = "refs/archive/stage-y-y3-r1-perturbation-mechanism-producer"
-PASS_REF = "refs/archive/stage-y-y3-r1-perturbation-mechanism-evidence"
-BLOCKED_REF = "refs/archive/stage-y-y3-r1-perturbation-mechanism-evidence-blocked"
+R1_PRODUCER_REF = "refs/archive/stage-y-y3-r1-perturbation-mechanism-producer"
+R1_PRODUCER_COMMIT = "63fc7a4fb38a7ead26c23e5de9bfd36f7d512fea"
+PRODUCER_REF = "refs/archive/stage-y-y3-r2-perturbation-mechanism-producer"
+PASS_REF = "refs/archive/stage-y-y3-r2-perturbation-mechanism-evidence"
+BLOCKED_REF = "refs/archive/stage-y-y3-r2-perturbation-mechanism-evidence-blocked"
+IMPLEMENTATION_SEAL = "producer_implementation_seal_r2.json"
 CONDITIONS = ("horizontal_flip","translate_x_-8","translate_x_8","rotate_-10","rotate_10","brightness_0.9","brightness_1.1","gaussian_noise_0.01_seed_0")
 SELECTION_ORDER = (17,13,48,75,26,24,74,34,93,69,68,71,84,77,35,72,43,20,15,41)
 COMPUTED_ORDERS = (77,84,93)
@@ -299,6 +302,7 @@ def initial_startup(repo: Path, allow_sources: bool=False) -> dict[str,Any]:
     for ref,commit in EXPECTED_REFS.items():require(git(repo,"rev-parse",ref)==commit and remote.get(ref)==commit,"archive ref drift: "+ref,StartupError)
     require(OLD_PASS not in remote and not git(repo,"for-each-ref","--format=%(refname)",OLD_PASS),"forbidden old PASS ref exists",StartupError)
     require(remote.get(ORIGINAL_PRODUCER_REF)==git(repo,"rev-parse",ORIGINAL_PRODUCER_REF)==ORIGINAL_PRODUCER_COMMIT,"original Y3 producer ref drift",StartupError)
+    require(remote.get(R1_PRODUCER_REF)==git(repo,"rev-parse",R1_PRODUCER_REF)==R1_PRODUCER_COMMIT,"Y3-R1 producer ref drift",StartupError)
     for ref in (PRODUCER_REF,PASS_REF,BLOCKED_REF):require(ref not in remote and not git(repo,"for-each-ref","--format=%(refname)",ref),"Y3-R1 ref already exists: "+ref,StartupError)
     status=git(repo,"status","--porcelain").splitlines();paths={line[3:].removeprefix(repo.name+"/") for line in status}
     allowed={str(p) for p in PRODUCER_FILES} if allow_sources else set()
@@ -319,7 +323,7 @@ def source_files(repo: Path) -> list[dict[str,Any]]:
     return [file_record(repo/p,repo) for p in PRODUCER_FILES+DEPENDENCIES]
 
 def verify_implementation(repo: Path) -> str:
-    seal=read(repo/ROOT/"producer_implementation_seal.json");validate_document(seal);q=seal["payload"];commit=q["producer_commit"]
+    seal=read(repo/ROOT/IMPLEMENTATION_SEAL);validate_document(seal);q=seal["payload"];commit=q["producer_commit"]
     require(git(repo,"rev-parse",PRODUCER_REF)==commit,"producer ref drift")
     rows=source_files(repo);require(rows==q["source_files"] and canonical({"files":rows})==q["files_digest"],"producer source bytes drift")
     top=Path(git(repo,"rev-parse","--show-toplevel"))

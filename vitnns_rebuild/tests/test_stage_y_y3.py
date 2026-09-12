@@ -72,6 +72,9 @@ def test_cublas_preimport_guard():
     env=dict(os.environ);env.pop("CUBLAS_WORKSPACE_CONFIG",None);env["PYTHONPATH"]=str(REPO/"src");p=subprocess.run([str(y3.PYTHON),"-c","import vitnns.stage_y_y3_worker"],cwd=REPO,env=env,text=True,capture_output=True);assert p.returncode!=0 and "before Torch import" in p.stderr
     env["CUBLAS_WORKSPACE_CONFIG"]=":16:8";p=subprocess.run([str(y3.PYTHON),"-c","import vitnns.stage_y_y3_worker"],cwd=REPO,env=env,text=True,capture_output=True);assert p.returncode!=0
 
+def test_startup_probe_source_compiles_and_contains_no_nul():
+    spec=importlib.util.spec_from_file_location("run_y3",REPO/"scripts/run_stage_y_y3.py");runner=importlib.util.module_from_spec(spec);spec.loader.exec_module(runner);source=runner.probe_script();assert "\0" not in source;compile(source,"<y3-probe>","exec")
+
 def test_false_pass_audit_has_all_required_attacks():
     result=validator().false_pass_audit();assert result["attack_count"]==result["rejected_count"]>=40
 

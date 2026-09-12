@@ -41,7 +41,7 @@ def finalize_preflight(repo: Path) -> dict:
     checks=list(y3.read(root/"producer_preflight.json")["payload"]["checks"]);suffix="producer_preflight_final.json" if not (root/"producer_preflight_final.json").exists() else "producer_preflight_final_v2.json";result=y3.write(root/suffix,"producer_preflight",{"startup_commit":y3.BASE,"checks":checks,"focused_test_count":17,"false_pass_attack_count":audit["attack_count"],"clean_reference_count":20,"source_counts":{"Y2_R1_VALID":17,"Y2_R2_R1_VALID_COMPUTED":3},"formal_y3_outcome_access":False,"jpeg_decoded":False,"model_loaded":False,"cuda_initialized":False,"resource_projection_within_caps":True});audit_name="producer_false_pass_audit.json" if not (root/"producer_false_pass_audit.json").exists() else "producer_false_pass_audit_v2.json";y3.write(root/audit_name,"false_pass_audit",audit);return {"status":"PASS","focused_tests":17,"false_pass_attacks":audit["attack_count"],"preflight_canonical_digest":result["canonical_digest"]}
 
 def write_seal(repo: Path, commit: str) -> dict:
-    root=repo/y3.ROOT;rows=y3.source_files(repo);return y3.write(root/"producer_implementation_seal.json","implementation_seal",{"producer_commit":commit,"producer_ref":y3.PRODUCER_REF,"source_files":rows,"files_digest":y3.canonical({"files":rows})})
+    root=repo/y3.ROOT;rows=y3.source_files(repo);return y3.write(root/y3.IMPLEMENTATION_SEAL,"implementation_seal",{"producer_commit":commit,"producer_ref":y3.PRODUCER_REF,"source_files":rows,"files_digest":y3.canonical({"files":rows})})
 
 def eligible(repo: Path):
     p=subprocess.run(["nvidia-smi","--query-gpu=index,name,uuid,pci.bus_id,memory.total,memory.free,driver_version","--format=csv,noheader,nounits"],cwd=repo,text=True,capture_output=True,check=True);rows=[]
@@ -61,7 +61,7 @@ x=[run(torch.float32),run(torch.float64)];y=[run(torch.float32),run(torch.float6
 if not all(torch.equal(a,b) for p,q in zip(x,y) for a,b in zip(p,q)):raise RuntimeError('repeat mismatch')
 h=hashlib.sha256()
 for group in x:
- for t in group:h.update(str(t.dtype).encode());h.update(b'\0');h.update(str(tuple(t.shape)).encode());h.update(b'\0');h.update(t.contiguous().numpy().tobytes())
+ for t in group:h.update(str(t.dtype).encode());h.update(bytes([0]));h.update(str(tuple(t.shape)).encode());h.update(bytes([0]));h.update(t.contiguous().numpy().tobytes())
 p=torch.cuda.get_device_properties(0)
 print(json.dumps({'python_executable_realpath':os.path.realpath(sys.executable),'python_version':platform.python_version(),'torch_version':torch.__version__,'torchvision_version':torchvision.__version__,'timm_version':timm.__version__,'cuda_version':torch.version.cuda,'device_name':torch.cuda.get_device_name(0),'total_memory_bytes':p.total_memory,'cublas_workspace_config':os.environ['CUBLAS_WORKSPACE_CONFIG'],'deterministic_algorithms_enabled':torch.are_deterministic_algorithms_enabled(),'deterministic_warn_only_enabled':torch.is_deterministic_algorithms_warn_only_enabled(),'cudnn_benchmark':torch.backends.cudnn.benchmark,'cudnn_deterministic':torch.backends.cudnn.deterministic,'cuda_matmul_allow_tf32':torch.backends.cuda.matmul.allow_tf32,'cudnn_allow_tf32':torch.backends.cudnn.allow_tf32,'numeric_probe_digest':h.hexdigest(),'probe_operations':['torch.matmul_float32','torch.matmul_float64','backward','exact_repeat']}))"""
 

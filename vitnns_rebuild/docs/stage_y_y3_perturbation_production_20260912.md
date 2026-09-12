@@ -32,6 +32,12 @@ recheck treated authorized untracked Y3 files as historical dirt. That producer
 remains immutable. Y3-R1 prospectively supersedes it with those implementation-
 only repairs; scientific scope and all frozen identities remain unchanged.
 
+Y3-R1 was also archived before outcome access. Its startup probe source encoded
+the NUL separator as a literal NUL in a Python `-c` argument, which the OS
+rejected before process creation. Y3-R2 prospectively changes only that source
+serialization to `bytes([0])` and adds a compile/no-NUL test. No CUDA probe or
+Y3 outcome access occurred under either superseded producer.
+
 ## Execution boundary
 
 - Formal root: `evidence/stage_y/y3_perturbation_formal_20260910/formal/`.
