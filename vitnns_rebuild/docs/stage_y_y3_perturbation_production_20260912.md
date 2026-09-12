@@ -24,6 +24,14 @@ This correction does not change the frozen 20 images, their order, target,
 condition roster, scientific contract, evidence bytes, or any historical ref.
 It is recorded before Y3 outcome access and is purely a provenance correction.
 
+The first Y3 producer commit `d5e96c0e0c55e685d38f182e63f3227dd8c1cbb9`
+was archived before outcome access. Subsequent pre-execution false-pass review
+found that its array validator admitted a matching float64 record, its aggregate
+stage budget was not reserved across workers, and its final Y2 publication
+recheck treated authorized untracked Y3 files as historical dirt. That producer
+remains immutable. Y3-R1 prospectively supersedes it with those implementation-
+only repairs; scientific scope and all frozen identities remain unchanged.
+
 ## Execution boundary
 
 - Formal root: `evidence/stage_y/y3_perturbation_formal_20260910/formal/`.

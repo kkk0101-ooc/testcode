@@ -38,9 +38,11 @@ DOC = Path("docs/stage_y_y3_perturbation_production_20260912.md")
 SUBSET = Path("evidence/stage_y/y2_clean_formal_20260910/formal/perturbation_subset_registry.json")
 TRANSFORMS = Path("manifests/stage_y/transform_registry.json")
 Y2_COMPLETION = y2c.ROOT / "completion/y2_r2_r2.json"
-PRODUCER_REF = "refs/archive/stage-y-y3-perturbation-mechanism-producer"
-PASS_REF = "refs/archive/stage-y-y3-perturbation-mechanism-evidence"
-BLOCKED_REF = "refs/archive/stage-y-y3-perturbation-mechanism-evidence-blocked"
+ORIGINAL_PRODUCER_REF = "refs/archive/stage-y-y3-perturbation-mechanism-producer"
+ORIGINAL_PRODUCER_COMMIT = "d5e96c0e0c55e685d38f182e63f3227dd8c1cbb9"
+PRODUCER_REF = "refs/archive/stage-y-y3-r1-perturbation-mechanism-producer"
+PASS_REF = "refs/archive/stage-y-y3-r1-perturbation-mechanism-evidence"
+BLOCKED_REF = "refs/archive/stage-y-y3-r1-perturbation-mechanism-evidence-blocked"
 CONDITIONS = ("horizontal_flip","translate_x_-8","translate_x_8","rotate_-10","rotate_10","brightness_0.9","brightness_1.1","gaussian_noise_0.01_seed_0")
 SELECTION_ORDER = (17,13,48,75,26,24,74,34,93,69,68,71,84,77,35,72,43,20,15,41)
 COMPUTED_ORDERS = (77,84,93)
@@ -296,7 +298,8 @@ def initial_startup(repo: Path, allow_sources: bool=False) -> dict[str,Any]:
     require(git(repo,"rev-parse","HEAD")==git(repo,"rev-parse","@{upstream}")==remote.get("refs/heads/"+BRANCH)==BASE,"startup branch identity drift",StartupError)
     for ref,commit in EXPECTED_REFS.items():require(git(repo,"rev-parse",ref)==commit and remote.get(ref)==commit,"archive ref drift: "+ref,StartupError)
     require(OLD_PASS not in remote and not git(repo,"for-each-ref","--format=%(refname)",OLD_PASS),"forbidden old PASS ref exists",StartupError)
-    for ref in (PRODUCER_REF,PASS_REF,BLOCKED_REF):require(ref not in remote and not git(repo,"for-each-ref","--format=%(refname)",ref),"Y3 ref already exists: "+ref,StartupError)
+    require(remote.get(ORIGINAL_PRODUCER_REF)==git(repo,"rev-parse",ORIGINAL_PRODUCER_REF)==ORIGINAL_PRODUCER_COMMIT,"original Y3 producer ref drift",StartupError)
+    for ref in (PRODUCER_REF,PASS_REF,BLOCKED_REF):require(ref not in remote and not git(repo,"for-each-ref","--format=%(refname)",ref),"Y3-R1 ref already exists: "+ref,StartupError)
     status=git(repo,"status","--porcelain").splitlines();paths={line[3:].removeprefix(repo.name+"/") for line in status}
     allowed={str(p) for p in PRODUCER_FILES} if allow_sources else set()
     require(paths<=allowed,"unexpected worktree paths: "+repr(sorted(paths-allowed)),StartupError);lfs_clean(repo)
