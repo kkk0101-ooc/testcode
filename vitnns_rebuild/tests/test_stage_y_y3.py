@@ -15,6 +15,7 @@ def test_roster_coordinate_and_source_correction():
     assert y3.CONDITIONS==("horizontal_flip","translate_x_-8","translate_x_8","rotate_-10","rotate_10","brightness_0.9","brightness_1.1","gaussian_noise_0.01_seed_0")
     assert [y3.unit_index(r,c) for r in range(20) for c in range(8)]==list(range(160))
     assert y3.COMPUTED_ORDERS==(77,84,93) and 93 in y3.SELECTION_ORDER
+    assert y3.STARTUP_COMMIT==y3.R3_BLOCKED_COMMIT and y3.INHERITED_INDICES==(0,2)
 
 def test_subset_and_transform_binding_metadata_only():
     subset=y3.subset_records(REPO);transforms=y3.transform_records(REPO)
@@ -55,6 +56,7 @@ def test_all_nested_schemas_closed_and_run_spec_valid():
         elif isinstance(x,list):
             for v in x:walk(v)
     walk(y3.artifact_schema())
+    assert y3.artifact_schema()["$defs"]["startup_gate"]["properties"]["locked_worker_count"]=={"const":4}
 
 @pytest.mark.parametrize("attack",["unknown_array","wrong_shape","wrong_dtype","wrong_axes","nonfinite","wrong_digest"])
 def test_array_false_pass_rejections(tmp_path,attack):
@@ -93,3 +95,26 @@ def test_synthetic_worker_terminal_reconciliation_completion(tmp_path):
     rec=y3.write(root/"reconciliation.json","reconciliation",reconciliation);dummy=y3.file_record(root/"reconciliation.json",tmp_path)
     completion={"workflow_status":"PASS","denominator_images":20,"expected_nonclean_units":160,"clean_reference_count":20,"terminal_count":160,"complete_image_count":20,"formal_outcome_access":False,"bootstrap_executed":False,"holm_executed":False,"claim_decision_executed":False,"next_authorization":y3.NEXT,"reconciliation":dummy,"validation_report":dummy,"whole_root_inventory":dummy,"payload_manifest":dummy,"report":dummy,"failure":None}
     y3.publish_terminal(pending,root/"completion/y3.json",y3.signed("completion",completion));assert not pending.exists() and y3.read(root/"completion/y3.json")["status"]=="PASS"
+
+def test_r4_fixed_four_gpu_sharding_and_rebind_split():
+    clean=[{"subset_rank":rank,"selection_order":y3.SELECTION_ORDER[rank],"source_object_id":f"source:{rank}","source_terminal":{"path":f"clean/{rank}.json","bytes":1,"sha256":"0"*64,"canonical_digest":"1"*64},"target_identity":{"class_id":rank,"rule":"clean predicted-class raw logit"}} for rank in range(20)]
+    rows=y3.coordinate_records(clean,4);new=[x for x in rows if x["unit_index"] not in y3.INHERITED_INDICES]
+    assert [sum(x["expected_shard_owner"]==sid for x in new) for sid in range(4)]==[39,40,39,40]
+    assert len(new)==158 and {x["unit_index"] for x in rows}-{x["unit_index"] for x in new}=={0,2}
+
+def test_r3_rebind_sources_are_immutable_valid_terminals():
+    for index in y3.INHERITED_INDICES:
+        paths=list((REPO/y3.R3_ROOT).glob(f"shards/shard-*/units/unit-{index:03d}/completion/unit.json"));assert len(paths)==1
+        doc=y3.read(paths[0]);y3.validate_r3_document(REPO,doc);assert doc["status"]=="VALID" and doc["payload"]["unit_index"]==index
+
+def test_r4_run_spec_freezes_four_cards_and_external_rebinds():
+    spec=y3.read(REPO/y3.SPEC)
+    assert spec["startup_commit"]==y3.STARTUP_COMMIT
+    assert spec["schedule"]["required_physical_indices"]==[0,1,2,3]
+    assert spec["recovery"]=={"source_root":str(y3.R3_ROOT),"rebind_valid_unit_indices":[0,2],"interrupted_unit_indices":[1,3,5],"new_execution_count":158,"arrays_copied":False}
+
+def test_recovery_resource_reserve_is_positive_and_within_caps():
+    assert y3.R3_INTERRUPTED_GPU_RESERVE_SECONDS==3*y3.R3_INTERRUPTED_ELAPSED_UPPER_BOUND_SECONDS
+    assert y3.R3_INTERRUPTED_CPU_RESERVE_SECONDS==4*y3.R3_INTERRUPTED_GPU_RESERVE_SECONDS
+    assert y3.R3_INTERRUPTED_GPU_RESERVE_SECONDS/3600<y3.CAPS["h20_gpu_hours"]
+    assert y3.R3_INTERRUPTED_CPU_RESERVE_SECONDS/3600<y3.CAPS["cpu_hours"]

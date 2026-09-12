@@ -29,8 +29,8 @@ NEXT = "STAGE_Y4_CPU_ONLY_MECHANISM_ANALYSIS_AND_DECISION"
 BASE = "f679987a517412dc54fcde4a0d5820241ca7c6c8"
 BRANCH = "stage-d-d3-pass"
 PYTHON = Path("/data01/home/yeziqi.831/nxtrec_wksp/testcode/.conda/envs/vitnns/bin/python")
-ROOT = Path("evidence/stage_y/y3_r3_perturbation_formal_20260912/formal")
-REPORT_ROOT = Path("reports/stage_y_y3_r3_20260912")
+ROOT = Path("evidence/stage_y/y3_r4_perturbation_formal_20260912/formal")
+REPORT_ROOT = Path("reports/stage_y_y3_r4_20260912")
 SPEC = Path("config/stage_y/y3_run_spec.json")
 SPEC_SCHEMA = Path("config/stage_y/y3_run_spec.schema.json")
 ARTIFACT_SCHEMA = Path("config/stage_y/y3_artifact.schema.json")
@@ -46,9 +46,21 @@ R2_PRODUCER_REF = "refs/archive/stage-y-y3-r2-perturbation-mechanism-producer"
 R2_PRODUCER_COMMIT = "10420ab5df70a2b7bfdec0c0208c11c1f9b8774c"
 R2_BLOCKED_REF = "refs/archive/stage-y-y3-r2-perturbation-mechanism-evidence-blocked"
 R2_BLOCKED_COMMIT = "b8f0e6e285845c5e3b755b4d59cc1bc67adf2976"
-PRODUCER_REF = "refs/archive/stage-y-y3-r3-perturbation-mechanism-producer"
-PASS_REF = "refs/archive/stage-y-y3-r3-perturbation-mechanism-evidence"
-BLOCKED_REF = "refs/archive/stage-y-y3-r3-perturbation-mechanism-evidence-blocked"
+R3_PRODUCER_REF = "refs/archive/stage-y-y3-r3-perturbation-mechanism-producer"
+R3_PRODUCER_COMMIT = "2518c848db05d0eedc73993b3a4f789dc554261c"
+R3_BLOCKED_REF = "refs/archive/stage-y-y3-r3-perturbation-mechanism-evidence-blocked"
+R3_BLOCKED_COMMIT = "b75a326168974420c056819c713f422dc2f37d7a"
+STARTUP_COMMIT = R3_BLOCKED_COMMIT
+R3_ROOT = Path("evidence/stage_y/y3_r3_perturbation_formal_20260912/formal")
+R3_REPORT_ROOT = Path("reports/stage_y_y3_r3_20260912")
+INHERITED_INDICES = (0,2)
+INTERRUPTED_INDICES = (1,3,5)
+R3_INTERRUPTED_ELAPSED_UPPER_BOUND_SECONDS = 1882.0
+R3_INTERRUPTED_GPU_RESERVE_SECONDS = 3 * R3_INTERRUPTED_ELAPSED_UPPER_BOUND_SECONDS
+R3_INTERRUPTED_CPU_RESERVE_SECONDS = 4 * R3_INTERRUPTED_GPU_RESERVE_SECONDS
+PRODUCER_REF = "refs/archive/stage-y-y3-r4-perturbation-mechanism-producer"
+PASS_REF = "refs/archive/stage-y-y3-r4-perturbation-mechanism-evidence"
+BLOCKED_REF = "refs/archive/stage-y-y3-r4-perturbation-mechanism-evidence-blocked"
 IMPLEMENTATION_SEAL = "producer_implementation_seal.json"
 CONDITIONS = ("horizontal_flip","translate_x_-8","translate_x_8","rotate_-10","rotate_10","brightness_0.9","brightness_1.1","gaussian_noise_0.01_seed_0")
 SELECTION_ORDER = (17,13,48,75,26,24,74,34,93,69,68,71,84,77,35,72,43,20,15,41)
@@ -77,7 +89,7 @@ EXPECTED_REFS = {
     "refs/archive/stage-y-y2-r2-r2-clean-cohort-evidence-completion":BASE,
 }
 OLD_PASS = "refs/archive/stage-y-y2-r2-r1-clean-cohort-evidence-completion"
-PRODUCER_FILES = (DOC,Path("docs/stage_y_y3_r3_worker_import_recovery_20260912.md"),SPEC,SPEC_SCHEMA,ARTIFACT_SCHEMA,Path("src/vitnns/stage_y_y3.py"),Path("src/vitnns/stage_y_y3_worker.py"),Path("scripts/run_stage_y_y3.py"),Path("scripts/validate_stage_y_y3.py"),Path("tests/test_stage_y_y3.py"))
+PRODUCER_FILES = (DOC,Path("docs/stage_y_y3_r3_worker_import_recovery_20260912.md"),Path("docs/stage_y_y3_r4_four_gpu_recovery_20260912.md"),SPEC,SPEC_SCHEMA,ARTIFACT_SCHEMA,Path("src/vitnns/stage_y_y3.py"),Path("src/vitnns/stage_y_y3_worker.py"),Path("scripts/run_stage_y_y3.py"),Path("scripts/validate_stage_y_y3.py"),Path("tests/test_stage_y_y3.py"))
 DEPENDENCIES = tuple(dict.fromkeys(y2c.DEPENDENCIES + (Path("src/vitnns/stage_y_y2_r2_r2.py"),Path("manifests/stage_y/transform_registry.json"),Path("manifests/stage_y/retention_plan.json"),Path("manifests/stage_y/schema_registry.json"),Path("manifests/stage_y/component_cut_registry.json"),Path("manifests/stage_y/metric_registry.json"))))
 
 class Y3Error(RuntimeError): code="BLOCKED_PROVENANCE"
@@ -138,20 +150,20 @@ def artifact_schema() -> dict[str,Any]:
     science=obj({"y2_compatible":y2_science_schema(),"transformed_prediction":prediction,"endpoint_parity_max_abs_error":NN,"endpoint_parity_pass":B,"transform":transform,"inverse_materialization":obj({"stored_duplicate_inverse_arrays":{"const":False},"operator_name":{"const":"patch_inverse_operator"},"matrix_formula":{"const":"W @ T_transformed @ W.T"},"cls_formula":{"const":"W @ C_transformed"},"recompute_dtype":{"const":"float64_then_float32_little_endian_c_contiguous"},"fully_valid_pairs_only":{"const":True}}),"raw_attention_role":{"const":"descriptive structural reference only"},"audit_overlap":B})
     variants={
       "pending":obj({"started_unix_ns":I,"next_authorization":{"const":"NONE_WHILE_PENDING"}}),
-      "producer_preflight":obj({"startup_commit":{"const":BASE},"checks":arr(S),"focused_test_count":I,"false_pass_attack_count":I,"clean_reference_count":{"const":20},"source_counts":obj({"Y2_R1_VALID":{"const":17},"Y2_R2_R1_VALID_COMPUTED":{"const":3}}),"formal_y3_outcome_access":{"const":False},"jpeg_decoded":{"const":False},"model_loaded":{"const":False},"cuda_initialized":{"const":False},"resource_projection_within_caps":{"const":True}}),
+      "producer_preflight":obj({"startup_commit":{"const":STARTUP_COMMIT},"checks":arr(S),"focused_test_count":I,"false_pass_attack_count":I,"clean_reference_count":{"const":20},"source_counts":obj({"Y2_R1_VALID":{"const":17},"Y2_R2_R1_VALID_COMPUTED":{"const":3}}),"formal_y3_outcome_access":{"const":False},"jpeg_decoded":{"const":False},"model_loaded":{"const":False},"cuda_initialized":{"const":False},"resource_projection_within_caps":{"const":True}}),
       "binding":obj({"name":S,"files":arr(FILE),"files_digest":H,"canonical_digest_bound":nullable(H),"commit":nullable(G)}),
       "clean_reference":clean,"clean_reference_manifest":obj({"records":arr(clean,20),"record_count":{"const":20},"records_digest":H,"source_counts":obj({"Y2_R1_VALID":{"const":17},"Y2_R2_R1_VALID_COMPUTED":{"const":3}}),"clean_rerun_count":{"const":0}}),
       "coordinate_manifest":obj({"locked_worker_count":I,"records":arr(coordinate,160),"record_count":{"const":160},"records_digest":H,"mapping_rule":{"const":"unit_index mod locked_worker_count"},"clean_condition_included":{"const":False}}),
       "false_pass_audit":obj({"checks":arr(CHECK),"attack_count":I,"rejected_count":I}),
       "implementation_seal":obj({"producer_commit":G,"producer_ref":{"const":PRODUCER_REF},"source_files":arr(FILE),"files_digest":H}),
-      "startup_gate":obj({"locked_worker_count":{"type":"integer","minimum":1,"maximum":8},"devices":arr(device),"python_executable_realpath":S,"environment_digest":H,"numeric_probe_digest":H,"dynamic_rebalancing":{"const":False},"hot_add":{"const":False},"started_unix_ns":I}),
+      "startup_gate":obj({"locked_worker_count":{"const":4},"devices":arr(device,4),"python_executable_realpath":S,"environment_digest":H,"numeric_probe_digest":H,"dynamic_rebalancing":{"const":False},"hot_add":{"const":False},"started_unix_ns":I}),
       "shard_manifest":obj({"shard_id":I,"shard_count":I,"unit_count":I,"records":arr(coordinate),"records_digest":H,"mapping_rule":{"const":"unit_index mod locked_worker_count"},"dynamic_rebalancing":{"const":False}}),
       "shard_pending":obj({"shard_id":I,"shard_count":I,"started_unix_ns":I}),
       "worker_identity":worker,
       "unit_pending":obj({"unit_index":I,"subset_rank":I,"selection_order":I,"condition_index":I,"condition_id":S,"source_object_id":S,"attempt_id":S}),
       "attempt":obj({"unit_index":I,"attempt_id":S,"attempt_index":I,"record":attempt_record}),
       "transform":transform,"prediction":prediction,"resource":RESOURCE,"array_inventory":obj({"unit_index":I,"records":arr(ARRAY),"record_count":I,"records_digest":H}),"scientific_result":science,
-      "unit_terminal":obj({"unit_index":I,"subset_rank":I,"selection_order":I,"condition_index":I,"condition_id":S,"source_object_id":S,"shard_id":I,"attempt_id":S,"failure_code":nullable(S),"fixed_target":TARGET,"source_terminal":FILE,"source_jpeg_sha256":H,"checkpoint_sha256":H,"environment_digest":H,"transform_record":nullable(FILE),"prediction_record":nullable(FILE),"scientific_result":nullable(FILE),"resource_record":FILE,"array_inventory":nullable(FILE),"array_records":arr(ARRAY),"attempt_records":arr(FILE),"quadrature_attempts":arr(attempt_record),"clean_rerun":{"const":False},"retry_count":{"const":0}}),
+      "unit_terminal":obj({"unit_index":I,"subset_rank":I,"selection_order":I,"condition_index":I,"condition_id":S,"source_object_id":S,"shard_id":I,"attempt_id":S,"failure_code":nullable(S),"fixed_target":TARGET,"source_terminal":FILE,"source_jpeg_sha256":H,"checkpoint_sha256":H,"environment_digest":H,"transform_record":nullable(FILE),"prediction_record":nullable(FILE),"scientific_result":nullable(FILE),"resource_record":FILE,"array_inventory":nullable(FILE),"array_records":arr(ARRAY),"attempt_records":arr(FILE),"quadrature_attempts":arr(attempt_record),"clean_rerun":{"const":False},"retry_count":{"type":"integer","minimum":0,"maximum":1},"evidence_mode":{"enum":["NEW_COMPUTE","SOURCE_REBIND"]},"predecessor_terminal":nullable(FILE)}),
       "shard_terminal":obj({"shard_id":I,"shard_count":I,"expected_unit_count":I,"terminal_count":I,"terminal_counts":obj({k:I for k in TERMINAL_STATES}),"fixed_initialization_resource":RESOURCE,"worker_wall_seconds":NN,"completed_unix_ns":I}),
       "launch_roster":obj({"locked_worker_count":I,"commands":arr(obj({"shard_id":I,"physical_index":I,"cuda_visible_devices":S})),"concurrent_launch":{"const":True},"dynamic_rebalancing":{"const":False}}),
       "launch_results":obj({"results":arr(obj({"shard_id":I,"returncode":I,"stdout":S,"stderr":S})),"result_count":I}),
@@ -161,8 +173,8 @@ def artifact_schema() -> dict[str,Any]:
       "prediction_manifest":obj({"records":arr(obj({"unit_index":I,"subset_rank":I,"condition_id":S,"status":{"enum":list(TERMINAL_STATES)},"prediction_changed":B,"prediction_record":nullable(FILE)})),"record_count":I,"records_digest":H}),
       "condition_summaries":obj({"records":arr(obj({"condition_id":{"enum":list(CONDITIONS)},"terminal_counts":obj({k:I for k in TERMINAL_STATES})})),"record_count":{"const":8},"records_digest":H}),
       "unified_manifest":obj({"records":arr(obj({"subset_rank":I,"condition_id":{"enum":["clean",*CONDITIONS]},"status":{"enum":list(TERMINAL_STATES)}}),180),"record_count":{"const":180},"records_digest":H}),
-      "cumulative_resource":obj({"records":arr(obj({"stage":S,"measured_gpu_active_seconds":NN,"measured_cpu_seconds":NN,"critical_path_wall_seconds":nullable(NN),"retained_bytes":I,"missing_observation_ids":arr(S)}),2),"record_count":{"const":2},"records_digest":H}),
-      "resource_ledger":obj({"stage":S,"unit_count":I,"gpu_active_seconds":NN,"h20_gpu_hours":NN,"cpu_seconds":NN,"cpu_hours":NN,"worker_wall_seconds":arr(NN),"critical_path_wall_seconds":NN,"stage_wall_seconds":NN,"retained_bytes":I,"retained_storage_gib":NN,"download_bytes":I,"peak_reserved_gpu_bytes":I,"caps":obj({k:NN for k in CAPS}),"caps_pass":B,"missing_fields":arr(S)}),
+      "cumulative_resource":obj({"records":arr(obj({"stage":S,"measured_gpu_active_seconds":NN,"measured_cpu_seconds":NN,"accounted_gpu_active_seconds":NN,"accounted_cpu_seconds":NN,"conservative_gpu_reserve_seconds":NN,"conservative_cpu_reserve_seconds":NN,"critical_path_wall_seconds":nullable(NN),"retained_bytes":I,"missing_observation_ids":arr(S)}),2),"record_count":{"const":2},"records_digest":H}),
+      "resource_ledger":obj({"stage":{"const":"Y3-R3+Y3-R4"},"unit_count":{"const":160},"source_rebind_unit_count":{"const":2},"new_compute_unit_count":{"const":158},"r3_measured_valid_gpu_active_seconds":NN,"r3_measured_valid_cpu_seconds":NN,"r3_interrupted_elapsed_upper_bound_seconds":NN,"r3_interrupted_gpu_reserve_seconds":NN,"r3_interrupted_cpu_reserve_seconds":NN,"r4_measured_gpu_active_seconds":NN,"r4_measured_cpu_seconds":NN,"measured_gpu_active_seconds":NN,"measured_cpu_seconds":NN,"gpu_active_seconds":NN,"h20_gpu_hours":NN,"cpu_seconds":NN,"cpu_hours":NN,"worker_wall_seconds":arr(NN,4),"critical_path_wall_seconds":NN,"stage_wall_seconds":NN,"retained_bytes":I,"retained_storage_gib":NN,"download_bytes":I,"peak_reserved_gpu_bytes":I,"caps":obj({k:NN for k in CAPS}),"caps_pass":B,"missing_fields":arr(S)}),
       "access_audit":obj({"download_bytes":{"const":0},"external_accesses":{"const":[]},"clean_rerun_count":{"const":0},"display_files":{"const":[]},"later_stages_started":{"const":[]},"bootstrap_executed":{"const":False},"holm_executed":{"const":False},"claim_decision_executed":{"const":False}}),
       "validation_report":obj({"checks":arr(S),"source_recomputed":{"const":True},"terminal_count":I,"valid_count":I,"complete_image_count":I,"prediction_flip_count":I,"records_digest":H}),
       "reconciliation":obj({"denominator_images":{"const":20},"expected_nonclean_units":{"const":160},"clean_reference_count":{"const":20},"terminal_count":I,"valid_count":I,"complete_image_count":I,"prediction_flip_count":I,"condition_counts":obj({c:obj({k:I for k in TERMINAL_STATES}) for c in CONDITIONS}),"shard_counts":arr(obj({"shard_id":I,"terminal_counts":obj({k:I for k in TERMINAL_STATES})})),"unified_condition_count":I,"blocking_states":arr(S),"bootstrap_executed":{"const":False},"holm_executed":{"const":False},"claim_decision_executed":{"const":False},"next_authorization":{"enum":[NEXT,"NONE"]}}),
@@ -302,15 +314,17 @@ def lfs_clean(repo: Path) -> None:
 
 def initial_startup(repo: Path, allow_sources: bool=False) -> dict[str,Any]:
     remote=remote_refs(repo);require(git(repo,"symbolic-ref","--short","HEAD")==BRANCH,"branch drift",StartupError)
-    require(git(repo,"rev-parse","HEAD")==git(repo,"rev-parse","@{upstream}")==remote.get("refs/heads/"+BRANCH)==R2_BLOCKED_COMMIT,"startup branch identity drift",StartupError)
+    require(git(repo,"rev-parse","HEAD")==git(repo,"rev-parse","@{upstream}")==remote.get("refs/heads/"+BRANCH)==STARTUP_COMMIT,"startup branch identity drift",StartupError)
     for ref,commit in EXPECTED_REFS.items():require(git(repo,"rev-parse",ref)==commit and remote.get(ref)==commit,"archive ref drift: "+ref,StartupError)
     require(OLD_PASS not in remote and not git(repo,"for-each-ref","--format=%(refname)",OLD_PASS),"forbidden old PASS ref exists",StartupError)
     require(remote.get(ORIGINAL_PRODUCER_REF)==git(repo,"rev-parse",ORIGINAL_PRODUCER_REF)==ORIGINAL_PRODUCER_COMMIT,"original Y3 producer ref drift",StartupError)
     require(remote.get(R1_PRODUCER_REF)==git(repo,"rev-parse",R1_PRODUCER_REF)==R1_PRODUCER_COMMIT,"Y3-R1 producer ref drift",StartupError)
     require(remote.get(R2_PRODUCER_REF)==git(repo,"rev-parse",R2_PRODUCER_REF)==R2_PRODUCER_COMMIT,"Y3-R2 producer ref drift",StartupError)
     require(remote.get(R2_BLOCKED_REF)==git(repo,"rev-parse",R2_BLOCKED_REF)==R2_BLOCKED_COMMIT,"Y3-R2 blocked ref drift",StartupError)
-    y2c.git_binding(repo,Path("evidence/stage_y/y3_perturbation_formal_20260910/formal"),R2_BLOCKED_COMMIT);y2c.git_binding(repo,Path("reports/stage_y_y3_20260912"),R2_BLOCKED_COMMIT)
-    for ref in (PRODUCER_REF,PASS_REF,BLOCKED_REF):require(ref not in remote and not git(repo,"for-each-ref","--format=%(refname)",ref),"Y3-R1 ref already exists: "+ref,StartupError)
+    require(remote.get(R3_PRODUCER_REF)==git(repo,"rev-parse",R3_PRODUCER_REF)==R3_PRODUCER_COMMIT,"Y3-R3 producer ref drift",StartupError)
+    require(remote.get(R3_BLOCKED_REF)==git(repo,"rev-parse",R3_BLOCKED_REF)==R3_BLOCKED_COMMIT,"Y3-R3 blocked ref drift",StartupError)
+    y2c.git_binding(repo,Path("evidence/stage_y/y3_perturbation_formal_20260910/formal"),R2_BLOCKED_COMMIT);y2c.git_binding(repo,Path("reports/stage_y_y3_20260912"),R2_BLOCKED_COMMIT);y2c.git_binding(repo,R3_ROOT,R3_BLOCKED_COMMIT);y2c.git_binding(repo,R3_REPORT_ROOT,R3_BLOCKED_COMMIT)
+    for ref in (PRODUCER_REF,PASS_REF,BLOCKED_REF):require(ref not in remote and not git(repo,"for-each-ref","--format=%(refname)",ref),"Y3-R4 ref already exists: "+ref,StartupError)
     status=git(repo,"status","--porcelain").splitlines();paths=[line[3:].split(" -> ")[-1] for line in status]
     allowed={str(p) for p in PRODUCER_FILES} if allow_sources else set()
     unexpected=[path for path in paths if not any(path==candidate or path.endswith("/"+candidate) for candidate in allowed)]
@@ -325,7 +339,17 @@ def initial_startup(repo: Path, allow_sources: bool=False) -> dict[str,Any]:
     completion=y2c.checked(repo/Y2_COMPLETION)
     require(sha(repo/Y2_COMPLETION)=="f09205218a1c24d6b4e3be457f3bb22c60dd099c7cf73a0db7cb6a8e545e54d5" and completion["canonical_digest"]=="6387ff5fbd895340cacd189e7f86759840af1448f67d655d873352f35a692a3c","Y2-R2-R2 completion identity drift",StartupError)
     p=completion["payload"];require(completion["status"]=="PASS" and p["denominator"]==p["valid_clean_count"]==100 and p["source_counts"]=={"Y2_R1_COMPLETED_BUDGET_REBIND":3,"Y2_R1_VALID_REBIND":84,"Y2_R2_COMPUTED":13} and p["gpu_execution"] is False and p["new_scientific_attempt_count"]==0 and p["next_authorization"]==TOKEN,"Y2-R2-R2 completion semantics drift",StartupError)
-    subset_records(repo);transform_records(repo);return {"head":BASE,"remote_refs":len(remote)}
+    subset_records(repo);transform_records(repo);return {"head":STARTUP_COMMIT,"remote_refs":len(remote)}
+
+@lru_cache(None)
+def r3_artifact_schema(repo: Path) -> dict[str,Any]:
+    top=Path(git(repo,"rev-parse","--show-toplevel"))
+    rel=(repo/ARTIFACT_SCHEMA).relative_to(top)
+    return json.loads(subprocess.check_output(["git","show",f"{R3_PRODUCER_COMMIT}:{rel.as_posix()}"],cwd=repo))
+
+def validate_r3_document(repo: Path, value: Mapping[str,Any]) -> None:
+    validate_canonical(value)
+    Draft202012Validator(r3_artifact_schema(repo)).validate(value)
 
 def source_files(repo: Path) -> list[dict[str,Any]]:
     return [file_record(repo/p,repo) for p in PRODUCER_FILES+DEPENDENCIES]
