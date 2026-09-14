@@ -1,0 +1,116 @@
+{
+  "$schema": "s3_artifact.schema.json",
+  "canonical_digest": "bd7d251c6de45db7e671d30e4fe8f4789b5ad6ab28cd55cefaf6c978f36331ba",
+  "document_type": "s3_unit_terminal",
+  "payload": {
+    "access": {
+      "decode_count": 1,
+      "feature_extraction_count": 1,
+      "image_member_read_count": 0,
+      "mask_member_read_count": 1,
+      "prediction_count": 0
+    },
+    "annotation_sha256": "d6eba947bdea0a69330363c38515e40311b250a949eff10d14fb99cd96f945f4",
+    "annotation_wnid": "n03759954",
+    "arrays": [
+      {
+        "axes": [
+          "block",
+          "patch",
+          "channel"
+        ],
+        "bytes": 7225472,
+        "canonical_array_digest": "b7de6d81801a9a3e1137b614810455e9d96caae174a52a13971ec48b50341b75",
+        "dtype": "float32",
+        "path": "artifacts/nns_vit_patch_depth/s3_r3_20260914/units/unit-03495/block_features.npy",
+        "producer_commit": "2b529b4e5abd2dcd1af5819e137dae94231efa97",
+        "recomputation_rule": "rerun sealed S3 worker on bound source JPEG mask checkpoint preprocessing and implementation commit",
+        "sha256": "86f0bd76c51360d121b1ba03b1a78942732f244c7bc6fb3fc0d578c6e09e772f",
+        "shape": [
+          12,
+          196,
+          768
+        ],
+        "source_identity": "ILSVRC2012_TRAIN_OFFICIAL:n03759954/n03759954_15465.JPEG"
+      },
+      {
+        "axes": [
+          "patch",
+          "feature"
+        ],
+        "bytes": 4048,
+        "canonical_array_digest": "c11819d53e01fd3c3ed2911fbeece3205c18bae67d012129a3f67861422309f5",
+        "dtype": "float32",
+        "path": "artifacts/nns_vit_patch_depth/s3_r3_20260914/units/unit-03495/low_level_features.npy",
+        "producer_commit": "2b529b4e5abd2dcd1af5819e137dae94231efa97",
+        "recomputation_rule": "rerun sealed S3 worker on bound source JPEG mask checkpoint preprocessing and implementation commit",
+        "sha256": "512a8b1482d15b9a0fc4790f4440614e310dd74aad01ca71ca68e8c44939775e",
+        "shape": [
+          196,
+          5
+        ],
+        "source_identity": "ILSVRC2012_TRAIN_OFFICIAL:n03759954/n03759954_15465.JPEG"
+      },
+      {
+        "axes": [
+          "semantic_plane",
+          "patch"
+        ],
+        "bytes": 3264,
+        "canonical_array_digest": "46e24fd8bc80c59c8c5b9c71e7e35a9eb379240fdafdbb1e01824f79b598b199",
+        "dtype": "float32",
+        "path": "artifacts/nns_vit_patch_depth/s3_r3_20260914/units/unit-03495/occupancy.npy",
+        "producer_commit": "2b529b4e5abd2dcd1af5819e137dae94231efa97",
+        "recomputation_rule": "rerun sealed S3 worker on bound source JPEG mask checkpoint preprocessing and implementation commit",
+        "sha256": "ce5a3332047cdda98fdbb874fe24797c15b940c8d38ac09d73ad247a04ae3596",
+        "shape": [
+          4,
+          196
+        ],
+        "source_identity": "ILSVRC2012_TRAIN_OFFICIAL:n03759954/n03759954_15465.JPEG"
+      }
+    ],
+    "claim_path": "evidence/nns_vit_patch_depth/s3_r3_20260914/launches/train_validation-launch-001/claims/unit-03495.json",
+    "claim_time_ns": 1789401395939525456,
+    "completed_time_ns": 1789403284887989915,
+    "failure_reason": null,
+    "gpu_uuid": "CPU_ONLY_NO_GPU",
+    "image_sha256": "ed9d58c87ab65485b3c02d1131dcfdd77ce8e83313afe7c0d7ad4dcdd8a8a95b",
+    "launch_id": "s3_r5_cpu_rebind_launch_001",
+    "physical_gpu_index": 0,
+    "producer_commit": "de2f67d1987116d7d9464dd1964fa34883a38a87",
+    "python_executable_realpath": "/data01/home/yeziqi.831/nxtrec_wksp/testcode/.conda/envs/vitnns/bin/python3.10",
+    "resources": {
+      "cpu_seconds": 0.05707105100000831,
+      "gpu_active_seconds": 0.006481056213378906,
+      "peak_allocated_gpu_bytes": 427308032,
+      "peak_reserved_gpu_bytes": 480247808,
+      "retained_bytes": 7232784,
+      "unit_wall_seconds": 0.04679983202368021
+    },
+    "role_flags": {
+      "D1": false,
+      "D2": false,
+      "P1": false,
+      "P2": false,
+      "S4_NNS": false,
+      "S4_occlusion": false,
+      "probe_train": true,
+      "probe_validation": false
+    },
+    "schedule_index": 3495,
+    "source_image_id": "ILSVRC2012_TRAIN_OFFICIAL:n03759954/n03759954_15465.JPEG",
+    "split": "probe_train",
+    "started_time_ns": 1789403284887989686,
+    "target_model_class_index": 650,
+    "terminal_state": "VALID_FEATURE",
+    "worker_id": "cpu-rebind-00",
+    "worker_pid": 2507651
+  },
+  "producer_commit": "de2f67d1987116d7d9464dd1964fa34883a38a87",
+  "run_id": "s3_r5_20260915",
+  "schema_version": 1,
+  "stage_id": "S3",
+  "status": "VALID_FEATURE",
+  "study_id": "NNS_VIT_PATCH_DEPTH_SEMANTICS"
+}
