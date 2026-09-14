@@ -242,17 +242,49 @@ def compute_unit(repo: Path, model: Any, image: Any, labels: np.ndarray, row: Ma
     return outcome, retained
 
 
-def execute(repo_root: str, evidence_root: str, shard_id: int, worker_count: int, indices: Sequence[int], mode: str = "parallel") -> dict[str, Any]:
+def _initialize_worker(repo: Path, visible: str) -> tuple[Any, dict[str, Any]]:
     runtime = runtime_gate()
-    visible = os.environ.get("CUDA_VISIBLE_DEVICES", ""); require(visible and "," not in visible, "worker must see exactly one physical GPU")
     import torch, torchvision, timm
     from .modeling import load_canonical_model
-    from . import nns_patch_depth_s1 as s1
-    repo = Path(repo_root).resolve(); root = Path(evidence_root).resolve(); spec = json.loads((repo / "config/nns_vit_patch_depth/s1_r1_run_spec.json").read_text()); schedule = json.loads((repo / "manifests/nns_vit_patch_depth/s1_pilot_schedule.json").read_text())["payload"]["records"]; by_index = {row["schedule_index"]: row for row in schedule}
     require(torch.cuda.device_count() == 1 and torch.cuda.get_device_name(0) == "NVIDIA H20", "one visible H20 required")
     torch.cuda.set_device(0); torch.use_deterministic_algorithms(True); torch.backends.cudnn.benchmark = False; torch.backends.cudnn.deterministic = True; torch.backends.cuda.matmul.allow_tf32 = False; torch.backends.cudnn.allow_tf32 = False
     a = torch.arange(1024, dtype=torch.float32, device="cuda:0", requires_grad=True).reshape(32, 32); b = torch.arange(1024, dtype=torch.float32, device="cuda:0").reshape(32, 32); (a @ b).square().sum().backward(); torch.cuda.synchronize()
     environment = {"sys_executable_realpath": os.path.realpath(__import__("sys").executable), "python": platform.python_version(), "torch": torch.__version__, "torchvision": torchvision.__version__, "timm": timm.__version__, "cuda": torch.version.cuda, "device_name": torch.cuda.get_device_name(0), "physical_index": int(visible), "cuda_visible_devices": visible, "hostname": socket.gethostname(), "pid": os.getpid(), "cublas_workspace_config": os.environ["CUBLAS_WORKSPACE_CONFIG"], "runtime": runtime, "startup_matmul_backward": "PASS"}
+    require(sha_file(repo / MODEL_PATH) == MODEL_SHA256, "checkpoint hash drift")
+    model = load_canonical_model(repo / MODEL_PATH, device="cuda:0", unfused_attention=True, expected_state_dict_sha256=MODEL_SHA256, expected_model_name=MODEL_NAME, expected_model_identity=MODEL_LOADER_IDENTITY, expected_canonical_tensor_digest=MODEL_TENSOR_DIGEST).eval()
+    return model, environment
+
+
+def _execute_one(repo: Path, root: Path, model: Any, spec: Mapping[str, Any], row: Mapping[str, Any], unit_root: Path, identity_extra: Mapping[str, Any], pending_payload: Mapping[str, Any]) -> str:
+    import torch
+    from . import nns_patch_depth_s1 as s1
+    pending = unit_root / "completion/unit.pending.json"; terminal = unit_root / "completion/unit.json"
+    require(not terminal.exists(), "immutable terminal already exists"); write_json_new(pending, signed("s1_unit_pending", "PENDING", pending_payload))
+    status = "VALID"; failure = None; geometry = {}; arrays_records = []; access = {"pilot_image_bytes_read": 0, "pilot_mask_bytes_read": 0, "forbidden_split_image_bytes_read": 0, "forbidden_split_mask_bytes_read": 0, "forbidden_split_outcomes_read": 0}
+    started_unix_ns = time.time_ns()
+    try:
+        image, labels, geometry, canonical_rgb = preprocess_pair(repo, row, "cuda:0"); access["pilot_image_bytes_read"] = int(geometry["image_raw_bytes"]); access["pilot_mask_bytes_read"] = int(geometry["mask_raw_bytes"])
+        outcome, retained = compute_unit(repo, model, image, labels, row, spec, canonical_rgb)
+        axes = {"source_signed": ["block", "source_patch"], "source_positive": ["block", "source_patch"], "source_negative": ["block", "source_patch"], "source_absolute": ["block", "source_patch"], "occupancy": ["semantic_plane", "patch"], "block_features": ["block", "patch", "channel"], "canonical_rgb": ["rgb", "pixel_y", "pixel_x"]}
+        for name, value in sorted(retained.items()):
+            item_axes = axes.get(name, ["source_patch", "destination_patch"] if name.endswith("_matrix") else ["source_patch"]); item = write_array_new(unit_root / "arrays" / f"{name}.npy", value, item_axes, "rerun sealed S1 worker on bound pilot JPEG mask checkpoint and implementation commit"); item["path"] = (unit_root / "arrays" / f"{name}.npy").relative_to(repo).as_posix(); arrays_records.append(item)
+        outcome["resources"]["retained_bytes"] = sum(item["bytes"] for item in arrays_records)
+    except s1.S1TypedNA as error:
+        status = error.code; outcome = {}; failure = {"code": error.code, "message": str(error), "failure_class": "TYPED_SCIENTIFIC_NA"}
+    except DataIntegrityError as error:
+        status = "BLOCKED_DATA_INTEGRITY"; outcome = {}; failure = {"code": status, "type": type(error).__name__, "message": str(error), "failure_class": "DATA_INTEGRITY"}
+    except torch.cuda.OutOfMemoryError as error:
+        status = "BLOCKED_INFRASTRUCTURE"; outcome = {}; failure = {"code": status, "type": type(error).__name__, "message": str(error), "failure_class": "INFRASTRUCTURE"}
+    except Exception as error:
+        status = "FAILED_NUMERICAL" if str(error).startswith("FAILED_NUMERICAL") else "FAILED_IMPLEMENTATION"; outcome = {}; failure = {"code": status, "type": type(error).__name__, "message": str(error), "failure_class": "NUMERICAL" if status == "FAILED_NUMERICAL" else "IMPLEMENTATION"}
+    identity = {key: row[key] for key in ("schedule_index", "source_image_id", "image_sha256", "annotation_sha256", "target_model_class_index", "target_annotation_label_id")} | dict(identity_extra)
+    payload = {"identity": identity, "execution": {"started_unix_ns": started_unix_ns, "completed_unix_ns": time.time_ns(), **dict(identity_extra)}, "access": access, "geometry": geometry, **outcome, "arrays": arrays_records, "failure": failure, "terminal": {"complete": True, "immutable": True}}
+    publish_terminal(pending, terminal, signed("s1_unit_terminal", status, payload)); return status
+
+
+def execute(repo_root: str, evidence_root: str, shard_id: int, worker_count: int, indices: Sequence[int], mode: str = "parallel") -> dict[str, Any]:
+    visible = os.environ.get("CUDA_VISIBLE_DEVICES", ""); require(visible and "," not in visible, "worker must see exactly one physical GPU")
+    repo = Path(repo_root).resolve(); root = Path(evidence_root).resolve(); spec = json.loads((repo / "config/nns_vit_patch_depth/s1_r1_run_spec.json").read_text()); schedule = json.loads((repo / "manifests/nns_vit_patch_depth/s1_pilot_schedule.json").read_text())["payload"]["records"]; by_index = {row["schedule_index"]: row for row in schedule}; model, environment = _initialize_worker(repo, visible)
     phase = "single_reference" if mode == "single_reference" else mode
     shard_root = root / phase / "shards" / f"shard-{shard_id:02d}"
     shard_pending = shard_root / "completion/shard.pending.json"; shard_terminal_path = shard_root / "completion/shard.json"
@@ -260,34 +292,31 @@ def execute(repo_root: str, evidence_root: str, shard_id: int, worker_count: int
         return json.loads(shard_terminal_path.read_text())
     write_json_new(shard_pending, signed("s1_shard_pending", "PENDING", {"shard_id": shard_id, "worker_count": worker_count, "mode": mode, "schedule_indices": list(indices)}))
     write_json_new(shard_root / "worker_identity.json", signed("s1_worker_identity", "PASS", environment))
-    require(sha_file(repo / MODEL_PATH) == MODEL_SHA256, "checkpoint hash drift")
-    model = load_canonical_model(repo / MODEL_PATH, device="cuda:0", unfused_attention=True, expected_state_dict_sha256=MODEL_SHA256, expected_model_name=MODEL_NAME, expected_model_identity=MODEL_LOADER_IDENTITY, expected_canonical_tensor_digest=MODEL_TENSOR_DIGEST).eval()
     counts: dict[str, int] = {}; shard_started = time.monotonic()
     for index in indices:
         row = by_index[int(index)]; unit_root = shard_root / "units" / f"unit-{index:04d}"; pending = unit_root / "completion/unit.pending.json"; terminal = unit_root / "completion/unit.json"
         if terminal.exists():
             old = json.loads(terminal.read_text()); counts[old["status"]] = counts.get(old["status"], 0) + 1; continue
-        write_json_new(pending, signed("s1_unit_pending", "PENDING", {"schedule_index": index, "source_image_id": row["source_image_id"], "shard_id": shard_id, "worker_count": worker_count, "mode": mode}))
-        status = "VALID"; failure = None; geometry = {}; arrays_records = []; access = {"pilot_image_bytes_read": 0, "pilot_mask_bytes_read": 0, "forbidden_split_image_bytes_read": 0, "forbidden_split_mask_bytes_read": 0, "forbidden_split_outcomes_read": 0}
-        try:
-            image, labels, geometry, canonical_rgb = preprocess_pair(repo, row, "cuda:0"); access["pilot_image_bytes_read"] = int(geometry["image_raw_bytes"]); access["pilot_mask_bytes_read"] = int(geometry["mask_raw_bytes"])
-            outcome, retained = compute_unit(repo, model, image, labels, row, spec, canonical_rgb)
-            axes = {"source_signed": ["block", "source_patch"], "source_positive": ["block", "source_patch"], "source_negative": ["block", "source_patch"], "source_absolute": ["block", "source_patch"], "occupancy": ["semantic_plane", "patch"], "block_features": ["block", "patch", "channel"], "canonical_rgb": ["rgb", "pixel_y", "pixel_x"]}
-            for name, value in sorted(retained.items()):
-                item_axes = axes.get(name, ["source_patch", "destination_patch"] if name.endswith("_matrix") else ["source_patch"]); item = write_array_new(unit_root / "arrays" / f"{name}.npy", value, item_axes, "rerun sealed S1 worker on bound pilot JPEG mask checkpoint and implementation commit"); item["path"] = (unit_root / "arrays" / f"{name}.npy").relative_to(repo).as_posix(); arrays_records.append(item)
-            outcome["resources"]["retained_bytes"] = sum(item["bytes"] for item in arrays_records)
-        except s1.S1TypedNA as error:
-            status = error.code; outcome = {}; failure = {"code": error.code, "message": str(error), "failure_class": "TYPED_SCIENTIFIC_NA"}
-        except DataIntegrityError as error:
-            status = "BLOCKED_DATA_INTEGRITY"; outcome = {}; failure = {"code": status, "type": type(error).__name__, "message": str(error), "failure_class": "DATA_INTEGRITY"}
-        except torch.cuda.OutOfMemoryError as error:
-            status = "BLOCKED_INFRASTRUCTURE"; outcome = {}; failure = {"code": status, "type": type(error).__name__, "message": str(error), "failure_class": "INFRASTRUCTURE"}
-        except Exception as error:
-            status = "FAILED_NUMERICAL" if str(error).startswith("FAILED_NUMERICAL") else "FAILED_IMPLEMENTATION"; outcome = {}; failure = {"code": status, "type": type(error).__name__, "message": str(error), "failure_class": "NUMERICAL" if status == "FAILED_NUMERICAL" else "IMPLEMENTATION"}
-        identity = {key: row[key] for key in ("schedule_index", "source_image_id", "image_sha256", "annotation_sha256", "target_model_class_index", "target_annotation_label_id")} | {"shard_id": shard_id, "worker_count": worker_count, "mode": mode}
-        payload = {"identity": identity, "access": access, "geometry": geometry, **outcome, "arrays": arrays_records, "failure": failure, "terminal": {"complete": True, "immutable": True}}
-        publish_terminal(pending, terminal, signed("s1_unit_terminal", status, payload)); counts[status] = counts.get(status, 0) + 1
+        extra = {"shard_id": shard_id, "worker_count": worker_count, "mode": mode, "worker_id": f"static-shard-{shard_id:02d}", "worker_pid": os.getpid(), "physical_gpu_index": int(visible), "gpu_uuid": environment.get("gpu_uuid"), "claim_unix_ns": None}
+        status = _execute_one(repo, root, model, spec, row, unit_root, extra, {"schedule_index": index, "source_image_id": row["source_image_id"], "shard_id": shard_id, "worker_count": worker_count, "mode": mode}); counts[status] = counts.get(status, 0) + 1
         print(json.dumps({"event": "unit_terminal", "schedule_index": index, "status": status, "shard_id": shard_id, "mode": mode}), flush=True)
     shard_terminal = signed("s1_shard_terminal", "PASS" if counts.get("FAILED_IMPLEMENTATION", 0) == 0 else "FAILED_IMPLEMENTATION", {"shard_id": shard_id, "worker_count": worker_count, "mode": mode, "schedule_indices": list(indices), "terminal_counts": dict(sorted(counts.items())), "worker_wall_seconds": time.monotonic() - shard_started})
     publish_terminal(shard_pending, shard_terminal_path, shard_terminal)
     return shard_terminal
+
+
+def execute_dynamic(repo_root: str, evidence_root: str, launch_id: str, worker_id: str, candidate_indices: Sequence[int], physical_gpu_index: int, gpu_uuid: str) -> dict[str, Any]:
+    visible = os.environ.get("CUDA_VISIBLE_DEVICES", ""); require(visible == str(int(physical_gpu_index)), "dynamic worker GPU visibility drift")
+    repo = Path(repo_root).resolve(); root = Path(evidence_root).resolve(); launch_root = root / "dynamic_launches" / launch_id
+    spec = json.loads((repo / "config/nns_vit_patch_depth/s1_r1_run_spec.json").read_text()); schedule = json.loads((repo / "manifests/nns_vit_patch_depth/s1_pilot_schedule.json").read_text())["payload"]["records"]; by_index = {row["schedule_index"]: row for row in schedule}
+    model, environment = _initialize_worker(repo, visible); environment.update({"worker_id": worker_id, "launch_id": launch_id, "gpu_uuid": gpu_uuid, "dynamic_claim_mode": True}); worker_root = launch_root / "workers" / worker_id; write_json_new(worker_root / "worker_identity.json", signed("s1_r1_a2_worker_identity", "PASS", environment))
+    from . import nns_patch_depth_s1_queue as queue
+    counts: dict[str, int] = {}; claimed = []; started = time.monotonic()
+    while True:
+        claim = queue.claim_next(launch_root, candidate_indices, root, {"worker_id": worker_id, "worker_pid": os.getpid(), "physical_gpu_index": int(physical_gpu_index), "gpu_uuid": gpu_uuid}, by_index)
+        if claim is None: break
+        index = int(claim["schedule_index"]); unit_root = launch_root / "dynamic_units" / f"unit-{index:04d}" / "attempts" / launch_id; row = by_index[index]
+        extra = {"mode": "dynamic_claim", "launch_id": launch_id, "worker_id": worker_id, "worker_pid": os.getpid(), "physical_gpu_index": int(physical_gpu_index), "gpu_uuid": gpu_uuid, "claim_unix_ns": int(claim["claimed_unix_ns"]), "claim_path": str(Path(claim["claim_path"]).relative_to(repo))}
+        status = _execute_one(repo, root, model, spec, row, unit_root, extra, {"schedule_index": index, "source_image_id": row["source_image_id"], **extra}); counts[status] = counts.get(status, 0) + 1; claimed.append(index); print(json.dumps({"event": "dynamic_unit_terminal", "schedule_index": index, "status": status, "worker_id": worker_id, "physical_gpu_index": physical_gpu_index}), flush=True)
+    terminal = signed("s1_r1_a2_worker_terminal", "PASS", {"launch_id": launch_id, "worker_id": worker_id, "physical_gpu_index": int(physical_gpu_index), "gpu_uuid": gpu_uuid, "claimed_indices": claimed, "terminal_counts": dict(sorted(counts.items())), "worker_wall_seconds": time.monotonic() - started})
+    write_json_new(worker_root / "worker_terminal.json", terminal); return terminal

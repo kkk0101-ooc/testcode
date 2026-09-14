@@ -218,6 +218,30 @@ def freeze_a1() -> None:
     print(json.dumps({"status": "PASS", "commit": head, "smoke_units": 6, "smoke_shards": 3, "smoke_files": len(smoke_files), "new_P2_gate": 0.90}, sort_keys=True))
 
 
+def freeze_a2() -> None:
+    require(ROOT.is_dir() and (ROOT / "completion/s1.pending.json").is_file() and not (ROOT / "terminal_receipt.json").exists(), "S1-R1 is not active")
+    for name in ("intermediate_baseline_binding.json", "a2_implementation_seal.json", "s1_r1_a2_amendment.json"):
+        require(not (ROOT / name).exists(), "A2 already frozen: " + name)
+    require(not (ROOT / "full_pilot").exists() and not (ROOT / "dynamic_launches").exists(), "A2 must precede full/dynamic access"); status_lines = [line for line in git("status", "--porcelain").splitlines() if line and line != "?? ../.root_cleanup_quarantine/"]; require(not status_lines, "worktree must be clean before A2 seal: " + repr(status_lines))
+    head = git("rev-parse", "HEAD"); source_paths = ["config/nns_vit_patch_depth/s1_r1_run_spec.json", "config/nns_vit_patch_depth/s1_r1_run_spec.schema.json", "docs/nns_vit_patch_depth_s1_r1_a2_dynamic_queue_20260914.md", "src/vitnns/nns_patch_depth_s1_queue.py", "src/vitnns/nns_patch_depth_s1_worker.py", "scripts/freeze_nns_vit_patch_depth_s1.py", "scripts/run_nns_vit_patch_depth_s1.py", "scripts/validate_nns_vit_patch_depth_s1.py", "tests/test_nns_patch_depth_s1.py"]
+    sources=[]
+    for relative in source_paths:
+        live=record(REPO/relative); blob=git_blob_record(head,relative); require(live["sha256"]==blob["sha256"],"A2 live/Git drift: "+relative); sources.append({**live,"commit":head,"git_blob_oid":blob["git_blob_oid"],"git_mode":blob["git_mode"]})
+    terminals=[]
+    for phase in ("smoke","intermediate"):
+        for path in ROOT.glob(f"{phase}/shards/shard-*/units/unit-*/completion/unit.json"):
+            value=read_signed(path); terminals.append({"schedule_index":value["payload"]["identity"]["schedule_index"],"status":value["status"],**record(path)})
+    terminals.sort(key=lambda item:item["schedule_index"]); require([item["schedule_index"] for item in terminals]==list(range(24)),"A2 baseline coverage drift"); counts={}
+    for item in terminals: counts[item["status"]]=counts.get(item["status"],0)+1
+    require(counts=={"NA_VOID_MASK":1,"VALID":23},"A2 baseline terminal counts drift")
+    shard_files=[record(path) for path in sorted((ROOT/"intermediate/shards").glob("shard-*/completion/shard.json"))]; require(len(shard_files)==8,"A2 baseline shard count drift"); require(not list((ROOT/"intermediate").rglob("*.pending.json")),"A2 baseline has pending units")
+    baseline=signed("s1_r1_a2_intermediate_baseline_binding","PASS",{"terminal_count":24,"terminal_counts":counts,"terminals":terminals,"shard_terminal_count":8,"shard_terminals":shard_files,"pending_count":0,"writer_count":0,"indices_0_to_23_immutable_and_never_recomputed":True})
+    seal=signed("s1_r1_a2_implementation_seal","FROZEN",{"commit":head,"files":sources,"files_digest":digest(sources),"applies_after_intermediate_before_full_or_recovery":True})
+    spec=json.loads(SPEC.read_text()); amendment=signed("s1_r1_a2_prospective_amendment","FROZEN",{"amendment_id":"S1-R1-A2","owner_authorized":True,"amendment_document":record(REPO/spec["execution_amendment_a2"]["path"]),"intermediate_baseline_digest":baseline["canonical_digest"],"fixed_gpu_set_per_launch":True,"one_long_lived_worker_per_gpu":True,"atomic_claim":"O_CREAT_O_EXCL_PLUS_FSYNC","fresh_recovery_launch_ignores_stale_prior_claims":True,"skip_all_immutable_terminals":True,"scientific_seed_depends_only_on":["schedule_index","source_image_id"],"unit_resource_accounting_only":True,"scientific_contract_changed":False})
+    for name,value in (("intermediate_baseline_binding.json",baseline),("a2_implementation_seal.json",seal),("s1_r1_a2_amendment.json",amendment)): write_new(ROOT/name,value)
+    print(json.dumps({"status":"PASS","commit":head,"terminal_counts":counts,"shards":8},sort_keys=True))
+
+
 def freeze_root() -> None:
     require(not ROOT.exists(), "S1 evidence root already exists")
     require(not git("status", "--porcelain"), "worktree must be clean before implementation seal")
@@ -255,10 +279,11 @@ def freeze_root() -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(); parser.add_argument("command", choices=("generate", "freeze-root", "freeze-a1")); args = parser.parse_args()
+    parser = argparse.ArgumentParser(); parser.add_argument("command", choices=("generate", "freeze-root", "freeze-a1", "freeze-a2")); args = parser.parse_args()
     if args.command == "generate": generate()
     elif args.command == "freeze-root": freeze_root()
-    else: freeze_a1()
+    elif args.command == "freeze-a1": freeze_a1()
+    else: freeze_a2()
 
 
 if __name__ == "__main__":

@@ -304,6 +304,93 @@
       ],
       "type": "object"
     },
+    "execution_amendment_a2": {
+      "additionalProperties": false,
+      "properties": {
+        "applies_to": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "claim_creation": {
+          "type": "string"
+        },
+        "claim_scope": {
+          "type": "string"
+        },
+        "does_not_apply_to": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "fixed_gpu_set_per_launch": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "one_long_lived_worker_per_gpu": {
+          "type": "boolean"
+        },
+        "owner_authorized": {
+          "type": "boolean"
+        },
+        "path": {
+          "type": "string"
+        },
+        "queue_order": {
+          "type": "string"
+        },
+        "recovery": {
+          "type": "string"
+        },
+        "resource_accounting": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "unit_execution_fields": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "unit_seed_forbidden_inputs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "unit_seed_inputs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "applies_to",
+        "claim_creation",
+        "claim_scope",
+        "does_not_apply_to",
+        "fixed_gpu_set_per_launch",
+        "id",
+        "one_long_lived_worker_per_gpu",
+        "owner_authorized",
+        "path",
+        "queue_order",
+        "recovery",
+        "resource_accounting",
+        "status",
+        "unit_execution_fields",
+        "unit_seed_forbidden_inputs",
+        "unit_seed_inputs"
+      ],
+      "type": "object"
+    },
     "formal_root": {
       "type": "string"
     },
@@ -559,7 +646,7 @@
           "type": "string"
         },
         "dynamic_rebalancing": {
-          "type": "boolean"
+          "type": "string"
         },
         "eligible_devices": {
           "type": "string"
@@ -763,6 +850,7 @@
     "data_access",
     "escalation",
     "escalation_policy",
+    "execution_amendment_a2",
     "formal_root",
     "geometry",
     "model",

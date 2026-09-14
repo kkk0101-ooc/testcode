@@ -99,17 +99,25 @@ def nvidia_rows(spec: Mapping[str, Any]) -> list[dict[str, Any]]:
 
 
 def startup() -> None:
-    require((ROOT / "a1_implementation_seal.json").is_file() and (ROOT / "smoke_baseline_binding.json").is_file() and (ROOT / "s1_r1_a1_amendment.json").is_file() and (ROOT / "completion/s1.pending.json").is_file(), "S1-R1-A1 is not frozen")
-    implementation = json.loads((ROOT / "a1_implementation_seal.json").read_text()); require(implementation["payload"]["commit"] == subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip(), "A1 implementation commit drift")
+    spec = json.loads(SPEC_PATH.read_text()); a2_active = spec.get("execution_amendment_a2", {}).get("id") == "S1-R1-A2"
+    required = [ROOT / "a1_implementation_seal.json", ROOT / "smoke_baseline_binding.json", ROOT / "s1_r1_a1_amendment.json", ROOT / "completion/s1.pending.json"]
+    if a2_active: required.extend([ROOT / "a2_implementation_seal.json", ROOT / "intermediate_baseline_binding.json", ROOT / "s1_r1_a2_amendment.json"] )
+    require(all(path.is_file() for path in required), "active S1-R1 amendment is not frozen")
+    implementation_path = ROOT / ("a2_implementation_seal.json" if a2_active else "a1_implementation_seal.json"); implementation = json.loads(implementation_path.read_text()); require(implementation["payload"]["commit"] == subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip(), "active implementation commit drift")
     require(not subprocess.check_output(["git", "-C", str(REPO), "status", "--porcelain"], text=True).strip(), "worktree dirty at startup")
     root_free = shutil.disk_usage("/").free; data_free = shutil.disk_usage(str(RUNTIME_ROOT)).free; require(root_free >= 1024**3, "root filesystem below 1 GiB free")
-    spec = json.loads(SPEC_PATH.read_text()); rows = nvidia_rows(spec); devices = [row for row in rows if row["eligible"]][:int(spec["parallel"]["maximum_workers"])]; require(len(devices) >= int(spec["parallel"]["minimum_workers"]), "no eligible H20 under A1 thresholds")
-    payload = {"status": "PASS", "amendment_id": spec["amendment"]["id"], "implementation_commit": implementation["payload"]["commit"], "sys_executable_realpath": os.path.realpath(sys.executable), "environment": {key: env()[key] for key in RUNTIME_KEYS} | {"CUBLAS_WORKSPACE_CONFIG": ":4096:8"}, "root_free_bytes": root_free, "data_free_bytes": data_free, "device_probe": rows, "eligibility_contract": spec["parallel"], "locked_devices": devices, "locked_worker_count": len(devices), "fewer_than_eight_is_failure_or_blocked": False, "startup_probe_required": ["torch.matmul", "backward"], "outcome_access_at_gate": False}
-    gate_path = ROOT / ("startup_gate_a1.json" if (ROOT / "startup_gate.json").exists() else "startup_gate.json"); write_new(gate_path, signed("s1_r1_a1_startup_gate", "PASS", payload)); print(json.dumps(payload, sort_keys=True))
+    rows = nvidia_rows(spec); devices = [row for row in rows if row["eligible"]][:int(spec["parallel"]["maximum_workers"])]; require(len(devices) >= int(spec["parallel"]["minimum_workers"]), "no eligible H20 under frozen thresholds")
+    payload = {"status": "PASS", "amendment_id": spec["execution_amendment_a2"]["id"] if a2_active else spec["amendment"]["id"], "implementation_commit": implementation["payload"]["commit"], "sys_executable_realpath": os.path.realpath(sys.executable), "environment": {key: env()[key] for key in RUNTIME_KEYS} | {"CUBLAS_WORKSPACE_CONFIG": ":4096:8"}, "root_free_bytes": root_free, "data_free_bytes": data_free, "device_probe": rows, "eligibility_contract": spec["parallel"], "locked_devices": devices, "locked_worker_count": len(devices), "fewer_than_eight_is_failure_or_blocked": False, "startup_probe_required": ["torch.matmul", "backward"], "outcome_access_at_gate": False}
+    gate_name = "startup_gate_a2.json" if spec.get("execution_amendment_a2", {}).get("id") == "S1-R1-A2" and (ROOT / "startup_gate_a1.json").exists() else "startup_gate_a1.json" if (ROOT / "startup_gate.json").exists() else "startup_gate.json"; gate_path = ROOT / gate_name; write_new(gate_path, signed("s1_r1_a2_startup_gate" if gate_name.endswith("a2.json") else "s1_r1_a1_startup_gate", "PASS", payload)); print(json.dumps(payload, sort_keys=True))
 
 
 def worker_command(root: Path, shard: int, count: int, indices: Sequence[int], mode: str) -> list[str]:
     code = "from vitnns.nns_patch_depth_s1_worker import execute; import json; print(json.dumps(execute(%r,%r,%d,%d,%r,%r),sort_keys=True))" % (str(REPO), str(root), shard, count, list(indices), mode)
+    return [str(PYTHON), "-c", code]
+
+
+def dynamic_worker_command(launch_id: str, worker_id: str, indices: Sequence[int], device: Mapping[str, Any]) -> list[str]:
+    code = "from vitnns.nns_patch_depth_s1_worker import execute_dynamic; import json; print(json.dumps(execute_dynamic(%r,%r,%r,%r,%r,%d,%r),sort_keys=True))" % (str(REPO), str(ROOT), launch_id, worker_id, list(indices), int(device["physical_index"]), str(device["gpu_uuid"]))
     return [str(PYTHON), "-c", code]
 
 
@@ -137,6 +145,33 @@ def run_level(level: str, workers: int | None = None) -> None:
         for handle in locks:
             fcntl.flock(handle.fileno(), fcntl.LOCK_UN); handle.close()
     require(not failures, "worker process failures: " + json.dumps(failures)); print(json.dumps({"status": "PASS", "level": level, "workers": count}, sort_keys=True))
+
+
+def run_dynamic(level: str, launch_id: str) -> None:
+    from vitnns import nns_patch_depth_s1_queue as queue
+    require(level in ("full_pilot",), "A2 dynamic launch is prospective for full/recovery only")
+    spec = json.loads(SPEC_PATH.read_text()); require(spec["execution_amendment_a2"]["id"] == "S1-R1-A2", "A2 contract not active")
+    gate_path = ROOT / "startup_gate_a2.json"; require(gate_path.is_file(), "A2 startup gate absent"); gate = json.loads(gate_path.read_text())["payload"]; devices = gate["locked_devices"]; require(1 <= len(devices) <= 8, "A2 fixed GPU set invalid")
+    schedule = json.loads(SCHEDULE_PATH.read_text())["payload"]; level_row = next(row for row in schedule["levels"] if row["name"] == level); candidates = list(level_row["cumulative_schedule_indices"]); missing = queue.missing_indices(ROOT, candidates); launch_root = ROOT / "dynamic_launches" / launch_id
+    require(not launch_root.exists(), "dynamic launch root already exists"); launch_root.mkdir(parents=True)
+    manifest = signed("s1_r1_a2_dynamic_launch", "FROZEN", {"amendment_id": "S1-R1-A2", "launch_id": launch_id, "level": level, "fixed_worker_count": len(devices), "fixed_devices": devices, "candidate_indices": candidates, "missing_indices_at_launch": missing, "already_terminal_count": len(candidates) - len(missing), "queue_order": "ascending_missing_schedule_index", "claim_creation": "O_CREAT_O_EXCL_then_fsync_file_and_directory", "dynamic_gpu_add_or_migration": False, "scientific_seed_depends_on_worker_gpu_or_claim_order": False})
+    write_new(launch_root / "launch_manifest.json", manifest)
+    if not missing:
+        resource = queue.aggregate_unit_resources(ROOT, candidates); write_new(launch_root / "resource_reconciliation.json", signed("s1_r1_a2_dynamic_resource_reconciliation", "PASS", resource)); write_new(launch_root / "launch_terminal.json", signed("s1_r1_a2_dynamic_launch_terminal", "PASS", {"launch_id": launch_id, "missing_at_launch": 0, "claimed_count": 0, "terminal_count": len(candidates), "no_gpu_worker_started": True})); print(json.dumps({"status": "PASS", "launch_id": launch_id, "missing": 0, "workers_started": 0}, sort_keys=True)); return
+    import fcntl
+    locks = []; processes = []; failures = []
+    try:
+        current = {row["physical_index"]: row for row in nvidia_rows(spec)}
+        for slot, device in enumerate(devices):
+            physical = int(device["physical_index"]); require(current[physical]["eligible"], f"A2 GPU {physical} no longer eligible"); lock_path = RUNTIME_ROOT / "gpu_locks" / f"nns-patch-depth-s1-gpu-{physical}.lock"; lock_path.parent.mkdir(parents=True, exist_ok=True); handle = lock_path.open("a+"); fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB); locks.append(handle)
+        for slot, device in enumerate(devices):
+            worker_id = f"worker-{slot:02d}"; child_env = env(); child_env["CUDA_VISIBLE_DEVICES"] = str(device["physical_index"]); log = (launch_root / "workers" / worker_id / "worker.log"); log.parent.mkdir(parents=True); handle = log.open("xb"); processes.append((worker_id, subprocess.Popen(dynamic_worker_command(launch_id, worker_id, candidates, device), cwd=REPO, env=child_env, stdout=handle, stderr=subprocess.STDOUT), handle))
+        for worker_id, process, handle in processes:
+            code = process.wait(); handle.flush(); os.fsync(handle.fileno()); handle.close()
+            if code != 0: failures.append({"worker_id": worker_id, "exit_code": code})
+    finally:
+        for handle in locks: fcntl.flock(handle.fileno(), fcntl.LOCK_UN); handle.close()
+    remaining = queue.missing_indices(ROOT, candidates); resource = queue.aggregate_unit_resources(ROOT, candidates); write_new(launch_root / "resource_reconciliation.json", signed("s1_r1_a2_dynamic_resource_reconciliation", "PASS" if not failures else "BLOCKED_INFRASTRUCTURE", resource)); status = "PASS" if not failures and not remaining else "BLOCKED_INFRASTRUCTURE"; terminal = signed("s1_r1_a2_dynamic_launch_terminal", status, {"launch_id": launch_id, "worker_process_failures": failures, "remaining_indices": remaining, "claims": len(list((launch_root / "claims").glob("*.claim.json"))), "resource_accounting": "UNIT_TERMINAL_ONLY"}); write_new(launch_root / "launch_terminal.json", terminal); require(status == "PASS", "A2 dynamic launch incomplete"); print(json.dumps({"status": status, "launch_id": launch_id, "remaining": remaining}, sort_keys=True))
 
 
 def single_reference() -> None:
@@ -220,9 +255,10 @@ def seal_terminal(level: str) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(); sub = parser.add_subparsers(dest="command", required=True); sub.add_parser("startup"); run = sub.add_parser("run-level"); run.add_argument("level", choices=("single_reference", "smoke", "intermediate", "full_pilot")); run.add_argument("--workers", type=int); rec = sub.add_parser("reconcile"); rec.add_argument("level", choices=("single_reference", "smoke", "intermediate", "full_pilot")); sub.add_parser("compare-repeat"); reports = sub.add_parser("reports"); reports.add_argument("level", choices=("intermediate", "full_pilot")); seal = sub.add_parser("seal"); seal.add_argument("level", choices=("intermediate", "full_pilot")); args = parser.parse_args()
+    parser = argparse.ArgumentParser(); sub = parser.add_subparsers(dest="command", required=True); sub.add_parser("startup"); run = sub.add_parser("run-level"); run.add_argument("level", choices=("single_reference", "smoke", "intermediate", "full_pilot")); run.add_argument("--workers", type=int); dynamic = sub.add_parser("run-dynamic"); dynamic.add_argument("level", choices=("full_pilot",)); dynamic.add_argument("--launch-id", required=True); rec = sub.add_parser("reconcile"); rec.add_argument("level", choices=("single_reference", "smoke", "intermediate", "full_pilot")); sub.add_parser("compare-repeat"); reports = sub.add_parser("reports"); reports.add_argument("level", choices=("intermediate", "full_pilot")); seal = sub.add_parser("seal"); seal.add_argument("level", choices=("intermediate", "full_pilot")); args = parser.parse_args()
     if args.command == "startup": startup()
     elif args.command == "run-level": run_level(args.level, args.workers)
+    elif args.command == "run-dynamic": run_dynamic(args.level, args.launch_id)
     elif args.command == "reconcile": print(json.dumps(reconcile_level(args.level), sort_keys=True))
     elif args.command == "compare-repeat": compare_single_multi()
     elif args.command == "reports": generate_reports(args.level)

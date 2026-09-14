@@ -55,6 +55,39 @@ def test_a1_amendment_is_prospective_and_smoke_bound() -> None:
     assert "must not issue `SUPPORTED` or `NOT_SUPPORTED`" in text
 
 
+def test_a2_contract_is_fixed_gpu_dynamic_claim() -> None:
+    value = json.loads((ROOT / "config/nns_vit_patch_depth/s1_r1_run_spec.json").read_text())["execution_amendment_a2"]
+    assert value["id"] == "S1-R1-A2"
+    assert value["fixed_gpu_set_per_launch"] and value["one_long_lived_worker_per_gpu"]
+    assert value["queue_order"] == "ascending_missing_schedule_index"
+    assert value["claim_creation"] == "O_CREAT_O_EXCL_then_fsync_file_and_directory"
+    assert value["unit_seed_inputs"] == ["schedule_index", "source_image_id"]
+    assert "physical_gpu" in value["unit_seed_forbidden_inputs"]
+
+
+def test_a2_atomic_claim_skips_terminal_and_is_single_winner(tmp_path: Path) -> None:
+    from vitnns import nns_patch_depth_s1_queue as queue
+    from concurrent.futures import ThreadPoolExecutor
+    stage = tmp_path / "stage"; launch = stage / "dynamic_launches/launch-001"; existing = stage / "smoke/shards/shard-00/units/unit-0000/completion/unit.json"; existing.parent.mkdir(parents=True)
+    existing.write_text(json.dumps({"document_type": "s1_unit_terminal", "status": "VALID", "payload": {"identity": {"schedule_index": 0}}}))
+    schedule = {i: {"source_image_id": f"source-{i}", "image_sha256": f"{i:064x}"} for i in range(3)}; worker = {"worker_id": "worker-00", "worker_pid": 123, "physical_gpu_index": 2, "gpu_uuid": "GPU-x"}
+    workers = [{**worker, "worker_id": f"worker-{index}", "worker_pid": 123 + index} for index in range(4)]
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        claims = list(pool.map(lambda args: queue.claim_next(launch, [0, 1, 2], stage, args[1], schedule, now_ns=10 + args[0]), enumerate(workers)))
+    won = sorted(item["schedule_index"] for item in claims if item is not None)
+    assert won == [1, 2] and len(list((launch / "claims").glob("*.claim.json"))) == 2
+    assert queue.claim_next(launch, [0, 1, 2], stage, worker, schedule) is None
+    assert queue.missing_indices(stage, [0, 1, 2]) == [1, 2]
+
+
+def test_a2_fresh_launch_ignores_stale_claim_and_resource_is_unit_based(tmp_path: Path) -> None:
+    from vitnns import nns_patch_depth_s1_queue as queue
+    stage = tmp_path / "stage"; old = stage / "dynamic_launches/old"; new = stage / "dynamic_launches/new"; schedule = {5: {"source_image_id": "source-5", "image_sha256": "5" * 64}}; worker = {"worker_id": "w", "worker_pid": 1, "physical_gpu_index": 0, "gpu_uuid": "GPU"}
+    assert queue.claim_next(old, [5], stage, worker, schedule, now_ns=1)["schedule_index"] == 5
+    assert queue.claim_next(new, [5], stage, worker, schedule, now_ns=2)["schedule_index"] == 5
+    assert queue.aggregate_unit_resources(stage, [5])["static_shard_inference_used"] is False
+
+
 def test_geometry_preserves_four_semantics_and_patch_occupancy() -> None:
     labels = np.zeros((224, 224), dtype=np.int32)
     labels[:16, :16] = 7
