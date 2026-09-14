@@ -125,10 +125,21 @@ def main() -> int:
     s3.require(len(by_class) == 872, "probe class count drift")
     result_root = REPO / s3.ROOT_REL / "probe_classes"
     result_root.mkdir(parents=True, exist_ok=True)
-    missing = [wnid for wnid in sorted(by_class) if not (result_root / f"{wnid}.json").exists()]
+    complete: dict[str, list[Mapping[str, Any]]] = {}
+    incomplete = []
+    for wnid in sorted(by_class):
+        train_rows = [row for row in by_class[wnid] if row["split"] == "probe_train"]
+        validation_rows = [row for row in by_class[wnid] if row["split"] == "probe_validation"]
+        train_states = [terminal_for(int(row["schedule_index"]))["payload"]["terminal_state"] for row in train_rows]
+        validation_states = [terminal_for(int(row["schedule_index"]))["payload"]["terminal_state"] for row in validation_rows]
+        if train_states == ["VALID_FEATURE"] * 6 and validation_states == ["VALID_FEATURE"] * 2:
+            complete[wnid] = by_class[wnid]
+        else:
+            incomplete.append({"annotation_wnid":wnid,"terminal_state":"NA_D2_REQUIRED_SPLIT_OR_MODEL_MISSING","train_states":train_states,"validation_states":validation_states,"replacement_used":False,"weight_fit":False})
+    missing = [wnid for wnid in sorted(complete) if not (result_root / f"{wnid}.json").exists()]
     started = time.monotonic()
     with ProcessPoolExecutor(max_workers=args.processes) as executor:
-        futures = {executor.submit(fit_class, wnid, by_class[wnid], producer_commit):wnid for wnid in missing}
+        futures = {executor.submit(fit_class, wnid, complete[wnid], producer_commit):wnid for wnid in missing}
         for count, future in enumerate(as_completed(futures), 1):
             wnid = futures[future]
             result = future.result()
@@ -137,21 +148,22 @@ def main() -> int:
             if count % 25 == 0 or count == len(missing):
                 print(json.dumps({"completed_this_launch":count,"missing_at_start":len(missing),"last_class":wnid,"elapsed_seconds":time.monotonic()-started}), flush=True)
     documents = [json.loads(path.read_text()) for path in sorted(result_root.glob("*.json"))]
-    s3.require(len(documents) == 872 and all(s3.verify_signed(item) and item["status"] == "PASS" for item in documents), "class probe terminal completeness failed")
+    s3.require(len(documents) == len(complete) and all(s3.verify_signed(item) and item["status"] == "PASS" for item in documents), "class probe terminal completeness failed")
     weight_records = [item["payload"]["weights"] for item in documents]
     alpha_ledger = [{"annotation_wnid":item["payload"]["annotation_wnid"],"feature":[{"block":row["block"],"candidates":row["candidates"],"selected_alpha":row["selected_alpha"]} for row in item["payload"]["validation_ledger"]],"control_candidates":item["payload"]["control_validation_ledger"],"selected_control_alpha":item["payload"]["selected_control_alpha"]} for item in documents]
     normalization = [{"annotation_wnid":item["payload"]["annotation_wnid"],"weight_bundle_sha256":item["payload"]["weights"]["sha256"],"source_ids":item["payload"]["train_source_ids"],"fit_scope":"train_only"} for item in documents]
     crossfit_rows = [{"annotation_wnid":item["payload"]["annotation_wnid"],"feature":item["payload"]["crossfit"],"control":item["payload"]["control_crossfit"]} for item in documents]
     outputs = {
-        "alpha_grid_validation_ledger.json": s3.signed("s3_alpha_validation_ledger", "PASS", {"records":alpha_ledger,"records_digest":s3.records_digest(alpha_ledger),"class_count":872,"selection_role":"validation_only","final_fit_role":"train_only"}, producer_commit=producer_commit),
-        "normalization_manifest.json": s3.signed("s3_normalization_manifest", "PASS", {"records":normalization,"records_digest":s3.records_digest(normalization),"class_count":872,"fit_scope":"train_only_ddof_0_zero_scale_to_one"}, producer_commit=producer_commit),
-        "class_block_probe_weight_manifest.json": s3.signed("s3_probe_weight_manifest", "PASS", {"records":weight_records,"records_digest":s3.records_digest(weight_records),"class_count":872,"block_count_per_class":12}, producer_commit=producer_commit),
-        "low_level_control_weight_manifest.json": s3.signed("s3_control_weight_manifest", "PASS", {"records":weight_records,"records_digest":s3.records_digest(weight_records),"class_count":872,"features":["x","y","R_mean","G_mean","B_mean"]}, producer_commit=producer_commit),
-        "train_only_crossfit_report.json": s3.signed("s3_crossfit_report", "PASS", {"records":crossfit_rows,"records_digest":s3.records_digest(crossfit_rows),"class_count":872,"held_out_exactly_once":True,"alpha_source":"validation_selected","formal_denominator_contribution":False}, producer_commit=producer_commit)
+        "alpha_grid_validation_ledger.json": s3.signed("s3_alpha_validation_ledger", "PASS", {"records":alpha_ledger,"records_digest":s3.records_digest(alpha_ledger),"valid_class_count":len(complete),"typed_na_class_count":len(incomplete),"selection_role":"validation_only","final_fit_role":"train_only"}, producer_commit=producer_commit),
+        "normalization_manifest.json": s3.signed("s3_normalization_manifest", "PASS", {"records":normalization,"records_digest":s3.records_digest(normalization),"valid_class_count":len(complete),"typed_na_class_count":len(incomplete),"fit_scope":"train_only_ddof_0_zero_scale_to_one"}, producer_commit=producer_commit),
+        "class_block_probe_weight_manifest.json": s3.signed("s3_probe_weight_manifest", "PASS", {"records":weight_records,"records_digest":s3.records_digest(weight_records),"valid_class_count":len(complete),"typed_na_class_count":len(incomplete),"block_count_per_valid_class":12}, producer_commit=producer_commit),
+        "low_level_control_weight_manifest.json": s3.signed("s3_control_weight_manifest", "PASS", {"records":weight_records,"records_digest":s3.records_digest(weight_records),"valid_class_count":len(complete),"typed_na_class_count":len(incomplete),"features":["x","y","R_mean","G_mean","B_mean"]}, producer_commit=producer_commit),
+        "train_only_crossfit_report.json": s3.signed("s3_crossfit_report", "PASS", {"records":crossfit_rows,"records_digest":s3.records_digest(crossfit_rows),"valid_class_count":len(complete),"typed_na_class_count":len(incomplete),"held_out_exactly_once":True,"alpha_source":"validation_selected","formal_denominator_contribution":False}, producer_commit=producer_commit),
+        "probe_class_typed_na_report.json": s3.signed("s3_probe_class_typed_na_report", "PASS", {"records":incomplete,"records_digest":s3.records_digest(incomplete),"valid_class_count":len(complete),"typed_na_class_count":len(incomplete),"replacement_used":False}, producer_commit=producer_commit)
     }
     for name, document in outputs.items():
         s3.write_json_new(REPO / s3.ROOT_REL / name, document)
-    print(json.dumps({"status":"PASS","class_count":872,"weight_records_digest":s3.records_digest(weight_records),"elapsed_seconds":time.monotonic()-started}, sort_keys=True))
+    print(json.dumps({"status":"PASS","valid_class_count":len(complete),"typed_na_class_count":len(incomplete),"weight_records_digest":s3.records_digest(weight_records),"elapsed_seconds":time.monotonic()-started}, sort_keys=True))
     return 0
 
 

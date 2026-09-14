@@ -1,0 +1,5 @@
+# S3-R3-A2 prospective typed-NA probe-class handling amendment
+
+After the complete immutable train/validation feature ledger was available, 21 scheduled images had the prespecified terminal NA_TARGET_DISAPPEARED_AFTER_CROP: 17 train images and 4 validation images across 13 classes. S2 requires each class probe to use the original six train and two validation images, forbids substitution, and defines NA_D2_REQUIRED_SPLIT_OR_MODEL_MISSING. Fitting a smaller or replacement set would violate the frozen estimator.
+
+Before probe fitting, A2 therefore marks those 13 classes NA_D2_REQUIRED_SPLIT_OR_MODEL_MISSING and fits weights only for the 859 classes with all six train and two validation units VALID_FEATURE. No scheduled source is deleted or replaced. D2 test rows in the 13 typed-NA classes will receive typed terminals without reading their JPEG/mask members; they cannot receive predictions. The typed-NA fraction remains below the frozen 10 percent ceiling. No alpha, normalization, target, block, weighting, solver, cohort, or test access rule changes.

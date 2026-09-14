@@ -94,7 +94,7 @@ def validate_terminals(phase: str) -> dict[str, Any]:
         terminal=json.loads(path.read_text());verify(terminal);payload=terminal["payload"]
         require(payload["source_image_id"]==row["source_image_id"] and payload["split"]==row["split"],"terminal identity drift")
         state=payload["terminal_state"];counts[state]=counts.get(state,0)+1
-        require(state in ("VALID_FEATURE","NA_GEOMETRY_SIZE_MISMATCH","NA_TARGET_DISAPPEARED_AFTER_CROP","NA_MASK_LABEL_OUT_OF_RANGE","NA_VOID_MASK","FAILED_NUMERICAL","FAILED_FEATURE_EXTRACTION","BLOCKED_DATA_INTEGRITY","BLOCKED_INFRASTRUCTURE","FAILED_IMPLEMENTATION"),"unknown terminal state")
+        require(state in ("VALID_FEATURE","NA_GEOMETRY_SIZE_MISMATCH","NA_TARGET_DISAPPEARED_AFTER_CROP","NA_MASK_LABEL_OUT_OF_RANGE","NA_VOID_MASK","NA_D2_REQUIRED_SPLIT_OR_MODEL_MISSING","FAILED_NUMERICAL","FAILED_FEATURE_EXTRACTION","BLOCKED_DATA_INTEGRITY","BLOCKED_INFRASTRUCTURE","FAILED_IMPLEMENTATION"),"unknown terminal state")
         if state=="VALID_FEATURE":
             valid+=1;require(len(payload["arrays"])==(7 if phase=="test" else 3),"VALID array count drift")
     return {"status":"PASS","phase":phase,"scheduled":len(selected),"valid":valid,"terminal_counts":counts}

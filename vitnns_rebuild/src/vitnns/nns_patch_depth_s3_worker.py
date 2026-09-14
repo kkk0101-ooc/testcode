@@ -198,7 +198,7 @@ def claim_next(repo: Path, launch_root: Path, schedule: list[Mapping[str, Any]],
     return None
 
 
-def execute_unit(repo: Path, model: Any, captured: list[Any], row: Mapping[str, Any], claim: Mapping[str, Any], worker: Mapping[str, Any], mask_archive: zipfile.ZipFile, jpeg_archive: tarfile.TarFile | None, weight_cache: dict[str, dict[str, np.ndarray]]) -> str:
+def execute_unit(repo: Path, model: Any, captured: list[Any], row: Mapping[str, Any], claim: Mapping[str, Any], worker: Mapping[str, Any], mask_archive: zipfile.ZipFile, jpeg_archive: tarfile.TarFile | None, weight_cache: dict[str, dict[str, np.ndarray]], typed_na_classes: set[str]) -> str:
     index = int(row["schedule_index"])
     terminal_path = repo / s3.ROOT_REL / "unit_terminals" / f"unit-{index:05d}.json"
     pending_path = repo / s3.ROOT_REL / "unit_pending" / worker["launch_id"] / f"unit-{index:05d}.json"
@@ -212,6 +212,8 @@ def execute_unit(repo: Path, model: Any, captured: list[Any], row: Mapping[str, 
     unit_started = time.monotonic()
     unit_cpu_started = time.process_time()
     try:
+        if row["split"] == "d2_test" and str(row["annotation_wnid"]) in typed_na_classes:
+            raise s3.TypedUnitError("NA_D2_REQUIRED_SPLIT_OR_MODEL_MISSING", "class lacks all six VALID train and two VALID validation units; D2 bytes not read")
         raw_image, raw_mask, access = read_pair(repo, row, mask_archive, jpeg_archive)
         image, labels, rgb, geometry = preprocess(raw_image, raw_mask, row)
         access["decode_count"] = 1
@@ -289,6 +291,13 @@ def main() -> int:
     jpeg_archive = tarfile.open(repo / JPEG_TAR, mode="r:") if arguments.phase == "test" else None
     counts: dict[str, int] = {}
     weight_cache: dict[str, dict[str, np.ndarray]] = {}
+    typed_na_classes: set[str] = set()
+    if arguments.phase == "test":
+        report_path = repo / s3.ROOT_REL / "probe_class_typed_na_report.json"
+        s3.require(report_path.is_file(), "probe class typed-NA report missing")
+        report = json.loads(report_path.read_text())
+        s3.require(s3.verify_signed(report) and report["status"] == "PASS", "probe class typed-NA report invalid")
+        typed_na_classes = {str(row["annotation_wnid"]) for row in report["payload"]["records"]}
     try:
         cursor = 0
         while True:
@@ -296,7 +305,7 @@ def main() -> int:
             if claimed is None:
                 break
             row, claim, cursor = claimed
-            state = execute_unit(repo, model, captured=captured, row=row, claim=claim, worker=worker, mask_archive=mask_archive, jpeg_archive=jpeg_archive, weight_cache=weight_cache)
+            state = execute_unit(repo, model, captured=captured, row=row, claim=claim, worker=worker, mask_archive=mask_archive, jpeg_archive=jpeg_archive, weight_cache=weight_cache, typed_na_classes=typed_na_classes)
             counts[state] = counts.get(state, 0) + 1
     finally:
         if jpeg_archive is not None:

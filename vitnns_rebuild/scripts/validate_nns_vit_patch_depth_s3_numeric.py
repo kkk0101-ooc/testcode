@@ -53,7 +53,7 @@ def weights()->dict[str,Any]:
     manifests=["alpha_grid_validation_ledger.json","normalization_manifest.json","class_block_probe_weight_manifest.json","low_level_control_weight_manifest.json","train_only_crossfit_report.json"]
     for name in manifests: require((REPO/s3.ROOT_REL/name).is_file(),f"missing {name}")
     weight_manifest=json.loads((REPO/s3.ROOT_REL/"class_block_probe_weight_manifest.json").read_text())["payload"]
-    require(weight_manifest["class_count"]==872 and len(weight_manifest["records"])==872,"weight class count drift")
+    require(weight_manifest["valid_class_count"]==859 and weight_manifest["typed_na_class_count"]==13 and len(weight_manifest["records"])==859,"weight class count drift")
     for record in weight_manifest["records"]:
         path=REPO/record["path"];require(s3.sha_file(path)==record["sha256"],"weight bundle SHA drift")
         with np.load(path,allow_pickle=False) as bundle:
@@ -62,7 +62,7 @@ def weights()->dict[str,Any]:
             for key,shape in expected.items(): require(bundle[key].shape==shape and bundle[key].dtype==np.float64 and np.isfinite(bundle[key]).all(),"weight numeric contract failed")
             require(set(bundle["feature_alpha"].tolist()).issubset(set(s3.ALPHAS)) and float(bundle["control_alpha"]) in s3.ALPHAS,"selected alpha outside grid")
             require(np.all(bundle["feature_scale"]>0) and np.all(bundle["control_scale"]>0),"normalization scale not positive")
-    return {"status":"PASS","weight_class_count":872,"ridge_recompute_tolerance":{"atol":1e-10,"rtol":1e-10}}
+    return {"status":"PASS","weight_class_count":859,"typed_na_class_count":13,"ridge_recompute_tolerance":{"atol":1e-10,"rtol":1e-10}}
 
 
 def main()->int:
