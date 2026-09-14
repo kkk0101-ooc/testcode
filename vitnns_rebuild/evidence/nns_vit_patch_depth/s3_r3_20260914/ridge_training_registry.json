@@ -1,3 +1,40 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:b8cb0db6d60ea5b40badee5d9cc476698d5cd8c1a9ca857358ea2bfa32afe55d
-size 1560
+{
+  "$schema": "s3_artifact.schema.json",
+  "canonical_digest": "e7a7e84ad56f953868e0672cc592a4df2c5bad50591e5a56f28abd0c13c88816",
+  "document_type": "s3_ridge_registry",
+  "payload": {
+    "details": {
+      "alpha_grid": [
+        0.01,
+        0.1,
+        1.0,
+        10.0,
+        100.0
+      ],
+      "blas_threads_per_numeric_process": 2,
+      "final_fit": "original_six_train_images_only_validation_never_refit",
+      "independent_recompute_atol": 1e-10,
+      "independent_recompute_rtol": 1e-10,
+      "intercept": "unregularized_train_target_population_mean",
+      "normalization": "train_patches_population_mean_and_std_ddof_0_zero_scale_to_1",
+      "numeric_dtype": "float64",
+      "numeric_processes": 48,
+      "roundtrip_atol": 0.0,
+      "roundtrip_rtol": 0.0,
+      "scope": "one_independent_probe_per_annotation_class_per_block_and_one_low_level_control_per_class",
+      "serialization": "little_endian_float64_NPZ_allow_pickle_false",
+      "solver": "centered_primal_symmetric_eigendecomposition_numpy_linalg_eigh_reused_across_alpha_grid",
+      "solver_negative_eigenvalue_rule": "clip_roundoff_below_zero_to_zero",
+      "tie_rule": "minimum_MSE_then_numeric_smallest_alpha",
+      "train_weight": "equal_image_then_equal_patch",
+      "validation": "equal_image_weight_MSE",
+      "validation_weight": "equal_image_then_equal_patch"
+    },
+    "test_participation_in_fit": false
+  },
+  "run_id": "s3_r3_20260914",
+  "schema_version": 1,
+  "stage_id": "S3",
+  "status": "FROZEN",
+  "study_id": "NNS_VIT_PATCH_DEPTH_SEMANTICS"
+}

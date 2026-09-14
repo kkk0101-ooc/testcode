@@ -1,3 +1,27 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:18841fac50bcf2f09f32349927c967af935b987f3654723ba536be380175ee57
-size 748
+{
+  "$schema": "s3_artifact.schema.json",
+  "canonical_digest": "ec6baffd15ec33e54d173ba337e3c759daa1d8d6be21bbb4f7bcfd534d01e96a",
+  "document_type": "s3_route_authorization",
+  "payload": {
+    "authorization": "S3_REPRESENTATION_AND_PROBE_TRAINING_ONLY",
+    "forbidden_operations": [
+      "NNS",
+      "attribution",
+      "occlusion",
+      "P1_permutation",
+      "P2_matched_controls",
+      "cohort_level_D2_inference"
+    ],
+    "forbidden_stages": [
+      "S4",
+      "S5"
+    ],
+    "nonpass_next_authorization": "NONE",
+    "pass_next_authorization": "S4_NNS_AND_OCCLUSION_EXECUTION_ONLY"
+  },
+  "run_id": "s3_r3_20260914",
+  "schema_version": 1,
+  "stage_id": "S3",
+  "status": "PASS",
+  "study_id": "NNS_VIT_PATCH_DEPTH_SEMANTICS"
+}
