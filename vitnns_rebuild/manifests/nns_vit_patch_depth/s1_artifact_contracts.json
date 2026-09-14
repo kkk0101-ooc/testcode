@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "study_id": "NNS_VIT_PATCH_DEPTH_SEMANTICS",
+  "stage_id": "S1",
+  "status": "FROZEN_BEFORE_PILOT_OUTCOME_ACCESS",
+  "signed_envelope": {
+    "additionalProperties": false,
+    "required": ["schema_version", "study_id", "stage_id", "run_id", "document_type", "status", "payload", "canonical_digest"]
+  },
+  "unit_terminal": {
+    "additionalProperties": false,
+    "identity_fields": ["schedule_index", "source_image_id", "image_sha256", "annotation_sha256", "target_model_class_index", "target_annotation_label_id", "shard_id", "worker_count"],
+    "payload_fields": ["identity", "access", "geometry", "native_hooked_parity", "nns", "p1", "p2", "d1", "probe_features", "arrays", "resources", "failure", "terminal"]
+  },
+  "array_contracts": {
+    "source_scores": {"dtype": "float32", "shape": [12, 196], "axes": ["block", "source_patch"]},
+    "occupancy": {"dtype": "float32", "shape": [4, 196], "axes": ["semantic_plane", "patch"]},
+    "block_features": {"dtype": "float32", "shape": [12, 196, 768], "axes": ["block", "patch", "channel"]},
+    "raw_complete_cut_storage": "local_ignored_arrays_with_manifest_sha256_shape_dtype_axes_and_recompute_rule"
+  },
+  "terminal_contract": {
+    "allowed": ["PASS", "BLOCKED_SCIENTIFIC_VALIDITY", "BLOCKED_DATA_INTEGRITY", "BLOCKED_INFRASTRUCTURE", "FAILED_IMPLEMENTATION"],
+    "pass_next_authorization": "S2_PROTOCOL_AND_POWER_FREEZE_ONLY",
+    "scientific_claim_decision": null
+  }
+}

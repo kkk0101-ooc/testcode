@@ -1,0 +1,676 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "d1": {
+      "additionalProperties": false,
+      "properties": {
+        "all_12_blocks_diagnostic": {
+          "type": "boolean"
+        },
+        "deep_blocks": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "metric": {
+          "type": "string"
+        },
+        "middle_blocks": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "primary_contrast": {
+          "type": "string"
+        },
+        "shallow_blocks": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "all_12_blocks_diagnostic",
+        "deep_blocks",
+        "metric",
+        "middle_blocks",
+        "primary_contrast",
+        "shallow_blocks"
+      ],
+      "type": "object"
+    },
+    "d2": {
+      "additionalProperties": false,
+      "properties": {
+        "control": {
+          "type": "string"
+        },
+        "engineering_only": {
+          "type": "boolean"
+        },
+        "features": {
+          "type": "string"
+        },
+        "normalization": {
+          "type": "string"
+        },
+        "probe": {
+          "type": "string"
+        },
+        "required_tests": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "ridge_alpha": {
+          "type": "number"
+        },
+        "seed_namespace": {
+          "type": "string"
+        },
+        "split": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "control",
+        "engineering_only",
+        "features",
+        "normalization",
+        "probe",
+        "required_tests",
+        "ridge_alpha",
+        "seed_namespace",
+        "split"
+      ],
+      "type": "object"
+    },
+    "data_access": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_outcome_split": {
+          "type": "string"
+        },
+        "allowed_pilot_count": {
+          "type": "integer"
+        },
+        "confirmatory_result_label": {
+          "type": "string"
+        },
+        "forbidden_claim": {
+          "type": "string"
+        },
+        "forbidden_outcome_splits": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "forbidden_split_allowed_metadata": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "forbidden_split_bytes_and_outcomes_access_limit": {
+          "type": "integer"
+        },
+        "pilot_permanently_development_only": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "allowed_outcome_split",
+        "allowed_pilot_count",
+        "confirmatory_result_label",
+        "forbidden_claim",
+        "forbidden_outcome_splits",
+        "forbidden_split_allowed_metadata",
+        "forbidden_split_bytes_and_outcomes_access_limit",
+        "pilot_permanently_development_only"
+      ],
+      "type": "object"
+    },
+    "escalation": {
+      "additionalProperties": false,
+      "properties": {
+        "class_then_source_sha256_order": {
+          "type": "boolean"
+        },
+        "engineering_stop_conditions": {
+          "additionalProperties": false,
+          "properties": {
+            "all_four_chains_executable": {
+              "type": "boolean"
+            },
+            "all_numeric_contracts_pass_for_valid_units": {
+              "type": "boolean"
+            },
+            "all_required_synthetic_and_negative_tests_pass": {
+              "type": "boolean"
+            },
+            "maximum_variance_relative_standard_error": {
+              "type": "number"
+            },
+            "minimum_control_matching_fraction": {
+              "type": "number"
+            },
+            "minimum_terminal_coverage": {
+              "type": "number"
+            },
+            "minimum_valid_fraction": {
+              "type": "number"
+            },
+            "single_multi_repeatability_required": {
+              "type": "boolean"
+            },
+            "variance_relative_standard_error_formula": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "all_four_chains_executable",
+            "all_numeric_contracts_pass_for_valid_units",
+            "all_required_synthetic_and_negative_tests_pass",
+            "maximum_variance_relative_standard_error",
+            "minimum_control_matching_fraction",
+            "minimum_terminal_coverage",
+            "minimum_valid_fraction",
+            "single_multi_repeatability_required",
+            "variance_relative_standard_error_formula"
+          ],
+          "type": "object"
+        },
+        "levels": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "class_count": {
+                "type": "integer"
+              },
+              "image_count": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "class_count",
+              "image_count",
+              "name"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "minimum_stop_level": {
+          "type": "string"
+        },
+        "ordering_namespace": {
+          "type": "string"
+        },
+        "outcome_direction_pvalue_or_visual_appearance_are_stop_forbidden": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "class_then_source_sha256_order",
+        "engineering_stop_conditions",
+        "levels",
+        "minimum_stop_level",
+        "ordering_namespace",
+        "outcome_direction_pvalue_or_visual_appearance_are_stop_forbidden"
+      ],
+      "type": "object"
+    },
+    "escalation_policy": {
+      "additionalProperties": false,
+      "properties": {
+        "cost_is_reporting_only": {
+          "type": "boolean"
+        },
+        "forbidden_terminals": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "terminal_states": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "unit_states": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "cost_is_reporting_only",
+        "forbidden_terminals",
+        "terminal_states",
+        "unit_states"
+      ],
+      "type": "object"
+    },
+    "formal_root": {
+      "type": "string"
+    },
+    "geometry": {
+      "additionalProperties": false,
+      "properties": {
+        "mask": {
+          "type": "string"
+        },
+        "patch_grid": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "patch_pixels": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "rgb": {
+          "type": "string"
+        },
+        "semantics": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "typed_na": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "mask",
+        "patch_grid",
+        "patch_pixels",
+        "rgb",
+        "semantics",
+        "typed_na"
+      ],
+      "type": "object"
+    },
+    "model": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline": {
+          "type": "string"
+        },
+        "blocks": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "canonical_tensor_digest": {
+          "type": "string"
+        },
+        "checkpoint_path": {
+          "type": "string"
+        },
+        "checkpoint_sha256": {
+          "type": "string"
+        },
+        "component": {
+          "type": "string"
+        },
+        "loader_identity": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "baseline",
+        "blocks",
+        "canonical_tensor_digest",
+        "checkpoint_path",
+        "checkpoint_sha256",
+        "component",
+        "loader_identity",
+        "name",
+        "target"
+      ],
+      "type": "object"
+    },
+    "next_authorization_on_pass": {
+      "type": "string"
+    },
+    "next_authorization_otherwise": {
+      "type": "string"
+    },
+    "nns": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregation_order": {
+          "type": "string"
+        },
+        "alpha_chunk": {
+          "type": "integer"
+        },
+        "component_vjp_chunk": {
+          "type": "integer"
+        },
+        "first_all_contract_pass_selected": {
+          "type": "boolean"
+        },
+        "full_dense_pixel_hidden_jacobian": {
+          "type": "boolean"
+        },
+        "hooked_native_logits_atol": {
+          "type": "number"
+        },
+        "hooked_native_logits_rtol": {
+          "type": "number"
+        },
+        "quadrature_schedule": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "retain": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "single_multi_max_abs_tolerance": {
+          "type": "number"
+        },
+        "source_patch_jvp_chunk": {
+          "type": "integer"
+        },
+        "source_patch_score": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "aggregation_order",
+        "alpha_chunk",
+        "component_vjp_chunk",
+        "first_all_contract_pass_selected",
+        "full_dense_pixel_hidden_jacobian",
+        "hooked_native_logits_atol",
+        "hooked_native_logits_rtol",
+        "quadrature_schedule",
+        "retain",
+        "single_multi_max_abs_tolerance",
+        "source_patch_jvp_chunk",
+        "source_patch_score"
+      ],
+      "type": "object"
+    },
+    "p1": {
+      "additionalProperties": false,
+      "properties": {
+        "permutations": {
+          "type": "integer"
+        },
+        "position_strata": {
+          "type": "string"
+        },
+        "seed_namespace": {
+          "type": "string"
+        },
+        "tie_rule": {
+          "type": "string"
+        },
+        "zero_positive_mass_terminal": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "permutations",
+        "position_strata",
+        "seed_namespace",
+        "tie_rule",
+        "zero_positive_mass_terminal"
+      ],
+      "type": "object"
+    },
+    "p2": {
+      "additionalProperties": false,
+      "properties": {
+        "control_attempts": {
+          "type": "integer"
+        },
+        "control_failure_terminal": {
+          "type": "string"
+        },
+        "controls_per_coordinate": {
+          "type": "integer"
+        },
+        "forward_batch_size": {
+          "type": "integer"
+        },
+        "operator_candidates": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "operator_selection": {
+          "type": "string"
+        },
+        "patch_budgets": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "position_matching": {
+          "type": "string"
+        },
+        "seed_namespace": {
+          "type": "string"
+        },
+        "shape_matching": {
+          "type": "string"
+        },
+        "tie_rule": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "control_attempts",
+        "control_failure_terminal",
+        "controls_per_coordinate",
+        "forward_batch_size",
+        "operator_candidates",
+        "operator_selection",
+        "patch_budgets",
+        "position_matching",
+        "seed_namespace",
+        "shape_matching",
+        "tie_rule"
+      ],
+      "type": "object"
+    },
+    "parallel": {
+      "additionalProperties": false,
+      "properties": {
+        "cublas_workspace_config": {
+          "type": "string"
+        },
+        "dynamic_rebalancing": {
+          "type": "boolean"
+        },
+        "eligible_devices": {
+          "type": "string"
+        },
+        "gpu_hours_accounting": {
+          "type": "string"
+        },
+        "maximum_workers": {
+          "type": "integer"
+        },
+        "minimum_workers": {
+          "type": "integer"
+        },
+        "sharding": {
+          "type": "string"
+        },
+        "startup_probe": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "worker_device": {
+          "type": "string"
+        },
+        "worker_shard_roots_disjoint": {
+          "type": "boolean"
+        },
+        "worker_visible_devices": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "cublas_workspace_config",
+        "dynamic_rebalancing",
+        "eligible_devices",
+        "gpu_hours_accounting",
+        "maximum_workers",
+        "minimum_workers",
+        "sharding",
+        "startup_probe",
+        "worker_device",
+        "worker_shard_roots_disjoint",
+        "worker_visible_devices"
+      ],
+      "type": "object"
+    },
+    "predecessor": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_digest": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "required_next_authorization": {
+          "type": "string"
+        },
+        "required_status": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "canonical_digest",
+        "path",
+        "required_next_authorization",
+        "required_status",
+        "sha256"
+      ],
+      "type": "object"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "runtime": {
+      "additionalProperties": false,
+      "properties": {
+        "required_environment_variables": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "required_prefix": {
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        },
+        "root_filesystem_minimum_free_bytes": {
+          "type": "integer"
+        },
+        "wrong_cache_or_temp_location_terminal": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "required_environment_variables",
+        "required_prefix",
+        "root",
+        "root_filesystem_minimum_free_bytes",
+        "wrong_cache_or_temp_location_terminal"
+      ],
+      "type": "object"
+    },
+    "schema_version": {
+      "type": "integer"
+    },
+    "scientific_decisions_allowed": {
+      "type": "boolean"
+    },
+    "stage_id": {
+      "type": "string"
+    },
+    "stage_token": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "study_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "d1",
+    "d2",
+    "data_access",
+    "escalation",
+    "escalation_policy",
+    "formal_root",
+    "geometry",
+    "model",
+    "next_authorization_on_pass",
+    "next_authorization_otherwise",
+    "nns",
+    "p1",
+    "p2",
+    "parallel",
+    "predecessor",
+    "run_id",
+    "runtime",
+    "schema_version",
+    "scientific_decisions_allowed",
+    "stage_id",
+    "stage_token",
+    "status",
+    "study_id"
+  ],
+  "title": "Closed S1 run specification",
+  "type": "object"
+}

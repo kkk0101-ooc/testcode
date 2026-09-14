@@ -1,0 +1,19 @@
+# NNS ViT Patch/Depth S1 prospective pilot protocol
+
+S1 is an isolated engineering pilot under `S1_PILOT_ONLY`. It validates P1, P2, D1, and D2 measurement execution, typed failures, deterministic single/multi-GPU behavior, and resource scaling. It makes no `SUPPORTED` or `NOT_SUPPORTED` scientific decision.
+
+Only the 1,744 S0-R5 `pilot` images and masks may be decoded. `probe_train`, `probe_validation`, and the public-validation confirmatory holdout remain byte- and outcome-sealed; only source ID, image SHA-256, split label, and counts may be processed for startup disjointness checks. Every accessed pilot remains development-only permanently.
+
+The target is the annotation-class raw logit and never changes after occlusion. The primary component is the all-head aggregate attention branch at the first residual addition in blocks 0–11. Source score is `sum_q T[b,p,q] + C[b,p]`; signed values are summed inside the native source patch before taking the positive part, while negative, absolute, cancellation, matrix, and CLS masses remain separate.
+
+Image and mask share resize-shorter-side 248 and the same integer center-crop coordinates. Image interpolation is bicubic with antialiasing; the discrete label mask uses nearest-neighbor. Background, non-target category, void, and target are distinct. Size mismatch, target disappearance, invalid category, and remaining void have typed terminal states.
+
+P1 uses 64 deterministic within-position-stratum permutations in seven Chebyshev rings. P2 uses budgets 4/8/16 and four exact-position-stratum controls with frozen boundary-complexity tolerance; inability to match is `NA_MATCHED_CONTROL_UNAVAILABLE`. Candidate operators are normalized zero and image channel mean. The S2 recommendation is selected only by geometry validity, seam artifact score, repeatability, and matching success, never by logit drop. P2 forwards are batched.
+
+D1 reuses P1 block alignment exactly: blocks 0–3 versus 8–11 is primary and all 12 blocks are diagnostic. D2 extracts frozen block-output patch tokens and performs a deterministic one-train/one-validation image split per class inside pilot. It verifies class-conditional ridge fitting, prediction, serialization, image-level split isolation, train-only normalization, constant features, and label shuffle. Pilot probe values are engineering diagnostics, not test performance.
+
+The frozen escalation is 3 classes/6 images (smoke), 12 classes/24 images (intermediate), then at most 872 classes/1,744 images (full pilot), ordered by namespace SHA-256. Expansion never depends on effect direction, p-values, or visual appearance. The earliest allowed engineering stop is intermediate, when all contracts pass, terminal coverage is 100%, valid fraction is at least 85%, matched-control success at least 98%, single/multi-GPU repeatability passes, all four chains execute, and variance relative standard error is at most 0.16. Cost is reporting-only.
+
+Execution uses all actually idle H20 devices available at launch, K=1..8. A worker sees one physical GPU through `CUDA_VISIBLE_DEVICES` and uses `cuda:0`; assignment is schedule index modulo K with no dynamic rebalancing. `CUBLAS_WORKSPACE_CONFIG=:4096:8` is set before Torch initialization. Startup probes include matrix multiplication and backward. Each unit and shard transitions from pending to an fsync-and-replace terminal.
+
+All temporary and cache variables named in the run spec must resolve below `/data01`; a root or `/tmp` target is `BLOCKED_INFRASTRUCTURE`. Large arrays may stay local ignored, but their SHA-256, array digest, size, shape, dtype, axes, provenance, and recomputation rule are committed. A standard-library validator recomputes metadata, hashes, manifests, denominators, terminal status, and authorization; false-pass mutations must be rejected.

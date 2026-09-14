@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "study_id": "NNS_VIT_PATCH_DEPTH_SEMANTICS",
+  "stage_id": "S1",
+  "run_id": "s1_pilot_20260914",
+  "stage_token": "S1_PILOT_ONLY",
+  "status": "FROZEN_PROSPECTIVELY_BEFORE_PILOT_IMAGE_MASK_MODEL_OR_OUTCOME_ACCESS",
+  "formal_root": "evidence/nns_vit_patch_depth/s1_pilot_20260914",
+  "predecessor": {
+    "path": "evidence/nns_vit_patch_depth/s0_r5_20260914/terminal_receipt.json",
+    "sha256": "c6b06de9259f47d91e4bda170f406c5c13e6dc1bfcfc64b703106ae0312305bd",
+    "canonical_digest": "41559be8fde6dffaab104d02c1026259884a1c925783e05f524cc9d7c1f033af",
+    "required_status": "PASS",
+    "required_next_authorization": "S1_PILOT_ONLY"
+  },
+  "data_access": {
+    "allowed_outcome_split": "pilot",
+    "allowed_pilot_count": 1744,
+    "forbidden_outcome_splits": ["probe_train", "probe_validation", "confirmatory_holdout"],
+    "forbidden_split_allowed_metadata": ["source_image_id", "image_sha256", "final_split"],
+    "forbidden_split_bytes_and_outcomes_access_limit": 0,
+    "pilot_permanently_development_only": true,
+    "confirmatory_result_label": "public-validation confirmatory holdout",
+    "forbidden_claim": "ImageNet-S official test result"
+  },
+  "runtime": {
+    "root": "/data01/home/yeziqi.831/nxtrec_wksp/testcode/.runtime",
+    "required_prefix": "/data01/",
+    "required_environment_variables": ["TMPDIR", "TMP", "TEMP", "XDG_CACHE_HOME", "PIP_CACHE_DIR", "CONDA_PKGS_DIRS", "HF_HOME", "HF_DATASETS_CACHE", "TRANSFORMERS_CACHE", "TORCH_HOME", "TORCH_EXTENSIONS_DIR", "TORCHINDUCTOR_CACHE_DIR", "TRITON_CACHE_DIR", "CUDA_CACHE_PATH", "MPLCONFIGDIR", "NUMBA_CACHE_DIR"],
+    "root_filesystem_minimum_free_bytes": 1073741824,
+    "wrong_cache_or_temp_location_terminal": "BLOCKED_INFRASTRUCTURE"
+  },
+  "model": {
+    "name": "vit_base_patch16_224.augreg2_in21k_ft_in1k",
+    "checkpoint_path": "assets/models/vit_base_patch16_224_weights.semantic_candidate.pth",
+    "checkpoint_sha256": "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d",
+    "canonical_tensor_digest": "150234d8117a50057f62aa14a97f46bbf1da92b00b386c10c71cc7000c5d51dd",
+    "loader_identity": "F3C1_DIRECT_PIN_OF_RECOVERY_V2_BYTES",
+    "target": "annotation_class_raw_logit_fixed_before_and_after_occlusion",
+    "component": "first_residual_addition_all_head_aggregate_attention_branch",
+    "blocks": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+    "baseline": "normalized_zero"
+  },
+  "geometry": {
+    "rgb": "RGB_bicubic_antialias_resize_shorter_side_248_then_integer_center_crop_224",
+    "mask": "RGB_label_nearest_resize_shorter_side_248_then_same_integer_center_crop_224",
+    "patch_grid": [14, 14],
+    "patch_pixels": [16, 16],
+    "semantics": ["background_0", "other_category_1_to_919_except_target", "void_1000", "target_annotation_label"],
+    "typed_na": ["NA_GEOMETRY_SIZE_MISMATCH", "NA_TARGET_DISAPPEARED_AFTER_CROP", "NA_MASK_LABEL_OUT_OF_RANGE", "NA_VOID_MASK"]
+  },
+  "nns": {
+    "source_patch_score": "a[b,p]=sum_q T[b,p,q]+C[b,p]",
+    "aggregation_order": "signed_sum_within_source_patch_then_positive_part",
+    "retain": ["signed", "positive", "negative", "absolute", "cancellation", "matrix_mass", "cls_mass"],
+    "quadrature_schedule": [128, 256, 512, 1024, 2048, 4096, 8192],
+    "alpha_chunk": 4,
+    "source_patch_jvp_chunk": 8,
+    "component_vjp_chunk": 16,
+    "first_all_contract_pass_selected": true,
+    "full_dense_pixel_hidden_jacobian": false,
+    "hooked_native_logits_atol": 0.000001,
+    "hooked_native_logits_rtol": 0.000001,
+    "single_multi_max_abs_tolerance": 0.00001
+  },
+  "p1": {
+    "position_strata": "seven_Chebyshev_rings_on_14x14_center",
+    "seed_namespace": "NNS_VIT_PATCH_DEPTH_S1_P1_POSITION_PERMUTATION_V1",
+    "permutations": 64,
+    "tie_rule": "SHA256_namespace_source_id_block_repeat_patch_index",
+    "zero_positive_mass_terminal": "NA_ZERO_POSITIVE_MASS"
+  },
+  "p2": {
+    "patch_budgets": [4, 8, 16],
+    "operator_candidates": ["normalized_zero", "image_channel_mean"],
+    "operator_selection": "minimum_mean_outcome_blind_seam_energy_then_lexicographic_tie",
+    "controls_per_coordinate": 4,
+    "control_attempts": 512,
+    "position_matching": "exact_seven_Chebyshev_ring_counts",
+    "shape_matching": "four_neighbor_boundary_absolute_error_lte_max_4_or_25_percent",
+    "seed_namespace": "NNS_VIT_PATCH_DEPTH_S1_P2_MATCHED_CONTROL_V1",
+    "tie_rule": "SHA256_namespace_source_id_block_budget_patch_index",
+    "control_failure_terminal": "NA_MATCHED_CONTROL_UNAVAILABLE",
+    "forward_batch_size": 64
+  },
+  "d1": {
+    "metric": "P1_corrected_alignment",
+    "shallow_blocks": [0, 1, 2, 3],
+    "middle_blocks": [4, 5, 6, 7],
+    "deep_blocks": [8, 9, 10, 11],
+    "primary_contrast": "deep_mean_minus_shallow_mean",
+    "all_12_blocks_diagnostic": true
+  },
+  "d2": {
+    "engineering_only": true,
+    "split": "one_train_and_one_validation_pilot_image_per_selected_class_by_SHA256_namespace_order",
+    "seed_namespace": "NNS_VIT_PATCH_DEPTH_S1_PROBE_V1",
+    "features": "frozen_backbone_block_output_patch_tokens",
+    "probe": "class_conditional_linear_ridge_occupancy",
+    "ridge_alpha": 1.0,
+    "normalization": "train_only_per_class_per_block",
+    "control": "class_conditional_position_plus_patch_RGB_mean",
+    "required_tests": ["label_shuffle", "constant_feature", "split_leakage", "train_only_normalization", "repeat_serialization"]
+  },
+  "escalation": {
+    "ordering_namespace": "NNS_VIT_PATCH_DEPTH_S1_CLASS_THEN_SOURCE_V1",
+    "class_then_source_sha256_order": true,
+    "levels": [
+      {"name": "smoke", "class_count": 3, "image_count": 6},
+      {"name": "intermediate", "class_count": 12, "image_count": 24},
+      {"name": "full_pilot", "class_count": 872, "image_count": 1744}
+    ],
+    "minimum_stop_level": "intermediate",
+    "engineering_stop_conditions": {
+      "all_required_synthetic_and_negative_tests_pass": true,
+      "all_numeric_contracts_pass_for_valid_units": true,
+      "minimum_terminal_coverage": 1.0,
+      "minimum_valid_fraction": 0.85,
+      "minimum_control_matching_fraction": 0.98,
+      "single_multi_repeatability_required": true,
+      "all_four_chains_executable": true,
+      "variance_relative_standard_error_formula": "sqrt(2/(n_valid-1))",
+      "maximum_variance_relative_standard_error": 0.35
+    },
+    "outcome_direction_pvalue_or_visual_appearance_are_stop_forbidden": true
+  },
+  "parallel": {
+    "eligible_devices": "idle_NVIDIA_H20_with_at_least_21_GiB_free_and_zero_compute_PIDs",
+    "minimum_workers": 1,
+    "maximum_workers": 8,
+    "worker_visible_devices": 1,
+    "worker_device": "cuda:0",
+    "sharding": "unit_schedule_index_mod_K",
+    "dynamic_rebalancing": false,
+    "worker_shard_roots_disjoint": true,
+    "cublas_workspace_config": ":4096:8",
+    "startup_probe": ["torch.matmul", "backward"],
+    "gpu_hours_accounting": "stable_sort_then_math_fsum_never_divide_by_K"
+  },
+  "escalation_policy": {
+    "cost_is_reporting_only": true,
+    "forbidden_terminals": ["BLOCKED_BUDGET", "BLOCKED_WALL_TIME", "FAIL_COST"],
+    "terminal_states": ["PASS", "BLOCKED_SCIENTIFIC_VALIDITY", "BLOCKED_DATA_INTEGRITY", "BLOCKED_INFRASTRUCTURE", "FAILED_IMPLEMENTATION"],
+    "unit_states": ["VALID", "NA_GEOMETRY_SIZE_MISMATCH", "NA_TARGET_DISAPPEARED_AFTER_CROP", "NA_MASK_LABEL_OUT_OF_RANGE", "NA_VOID_MASK", "NA_ZERO_POSITIVE_MASS", "NA_MATCHED_CONTROL_UNAVAILABLE", "FAILED_NUMERICAL", "BLOCKED_DATA_INTEGRITY", "BLOCKED_INFRASTRUCTURE", "FAILED_IMPLEMENTATION"]
+  },
+  "scientific_decisions_allowed": false,
+  "next_authorization_on_pass": "S2_PROTOCOL_AND_POWER_FREEZE_ONLY",
+  "next_authorization_otherwise": "NONE"
+}

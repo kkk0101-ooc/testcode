@@ -1,0 +1,125 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+from vitnns import nns_patch_depth_s1 as s1
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_run_spec_is_closed_and_pilot_only() -> None:
+    value = json.loads((ROOT / "config/nns_vit_patch_depth/s1_run_spec.json").read_text())
+    assert value["stage_token"] == "S1_PILOT_ONLY"
+    assert value["data_access"]["allowed_outcome_split"] == "pilot"
+    assert value["data_access"]["forbidden_outcome_splits"] == ["probe_train", "probe_validation", "confirmatory_holdout"]
+    assert value["p1"]["permutations"] == 64
+    assert value["p2"]["patch_budgets"] == [4, 8, 16]
+    assert value["d1"]["shallow_blocks"] == [0, 1, 2, 3]
+    assert value["d1"]["deep_blocks"] == [8, 9, 10, 11]
+    assert value["scientific_decisions_allowed"] is False
+
+
+def test_geometry_preserves_four_semantics_and_patch_occupancy() -> None:
+    labels = np.zeros((224, 224), dtype=np.int32)
+    labels[:16, :16] = 7
+    labels[:16, 16:32] = 8
+    result = s1.patch_occupancy(labels, 7)
+    assert set(result) == {"background", "other_category", "void", "target"}
+    assert result["target"][0] == 1.0 and result["other_category"][1] == 1.0
+    np.testing.assert_array_equal(sum(result.values()), np.ones(196))
+
+
+def test_geometry_typed_na_paths() -> None:
+    with pytest.raises(s1.S1TypedNA, match="integer") as mismatch:
+        s1.patch_occupancy(np.zeros((223, 224), dtype=np.int32), 1)
+    assert mismatch.value.code == "NA_GEOMETRY_SIZE_MISMATCH"
+    with pytest.raises(s1.S1TypedNA) as empty:
+        s1.patch_occupancy(np.zeros((224, 224), dtype=np.int32), 1)
+    assert empty.value.code == "NA_TARGET_DISAPPEARED_AFTER_CROP"
+    value = np.zeros((224, 224), dtype=np.int32); value[0, 0] = 1; value[1, 1] = 1000
+    with pytest.raises(s1.S1TypedNA) as void:
+        s1.patch_occupancy(value, 1)
+    assert void.value.code == "NA_VOID_MASK"
+
+
+def test_matrix_plus_cls_source_score_and_signed_bookkeeping() -> None:
+    matrix = np.zeros((196, 196)); matrix[:, 0] = np.arange(196) - 98
+    cls = np.linspace(-1, 1, 196)
+    result = s1.source_patch_scores(matrix, cls)
+    np.testing.assert_allclose(result["signed"], matrix.sum(1) + cls)
+    assert result["negative_mass"] <= 0 <= result["positive_mass"]
+    assert result["absolute_mass"] >= abs(result["signed_mass"])
+    assert result["matrix_signed_mass"] + result["cls_signed_mass"] == pytest.approx(result["signed_mass"])
+
+
+def test_p1_synthetic_centered_constant_position_empty_and_void() -> None:
+    target = np.zeros(196); center = np.flatnonzero(s1.POSITION_STRATA == 0); target[center] = 1.0
+    semantic = np.zeros(196); semantic[center] = 1.0
+    aligned = s1.p1_alignment(semantic, target, "centered", 0, 64)
+    assert aligned["corrected_alignment"] == pytest.approx(0.0)  # one stratum: no semantic claim beyond position
+    constant = s1.p1_alignment(np.ones(196), target, "constant", 0, 64)
+    assert constant["corrected_alignment"] == pytest.approx(0.0, abs=1e-15)
+    position = s1.p1_alignment((7 - s1.POSITION_STRATA).astype(float), target, "position", 0, 64)
+    assert position["corrected_alignment"] == pytest.approx(0.0, abs=1e-15)
+    with pytest.raises(s1.S1TypedNA) as empty:
+        s1.p1_alignment(np.zeros(196), target, "empty", 0, 64)
+    assert empty.value.code == "NA_ZERO_POSITIVE_MASS"
+
+
+def test_p1_detects_within_stratum_semantic_alignment() -> None:
+    target = np.zeros(196); ring = np.flatnonzero(s1.POSITION_STRATA == 3); target[ring[:10]] = 1.0
+    score = np.zeros(196); score[ring[:10]] = 1.0
+    assert s1.p1_alignment(score, target, "semantic", 2, 64)["corrected_alignment"] > 0.5
+
+
+def test_p2_matched_controls_and_failure_are_typed() -> None:
+    score = np.linspace(1, 0, 196)
+    result = s1.topk_and_controls(score, "fixture", 3, 8, 4, 512, 0.25)
+    selected_counts = np.bincount(s1.POSITION_STRATA[result["selected"]], minlength=7)
+    for control in result["controls"]:
+        np.testing.assert_array_equal(np.bincount(s1.POSITION_STRATA[control["indices"]], minlength=7), selected_counts)
+        assert len(control["indices"]) == 8
+    with pytest.raises(s1.S1TypedNA) as failed:
+        s1.matched_controls(list(range(196)), "fixture", 0, 196, 1, 1, 0.0)
+    assert failed.value.code == "NA_MATCHED_CONTROL_UNAVAILABLE"
+
+
+def test_d1_requires_complete_trajectory() -> None:
+    rows = [{"block": block, "status": "VALID", "corrected_alignment": float(block)} for block in range(12)]
+    value = s1.d1_contrast(rows)
+    assert value["deep_minus_shallow"] == 8.0 and value["scientific_decision"] is None
+    with pytest.raises(s1.S1TypedNA) as incomplete:
+        s1.d1_contrast(rows[:-1])
+    assert incomplete.value.code == "NA_INCOMPLETE_DEPTH_TRAJECTORY"
+
+
+def test_probe_train_only_normalization_constant_and_shuffle() -> None:
+    rng = np.random.Generator(np.random.PCG64(7))
+    train = rng.normal(size=(80, 8)); validation = rng.normal(size=(40, 8)); truth = train[:, 0] * 0.4 - train[:, 1] * 0.2
+    model = s1.fit_ridge(train, truth, 1.0)
+    assert not np.allclose(model.mean, np.vstack((train, validation)).mean(0))
+    assert np.mean((s1.predict_ridge(model, train) - truth) ** 2) < 0.01
+    constant = np.ones((20, 5)); constant_model = s1.fit_ridge(constant, np.linspace(0, 1, 20), 1.0)
+    assert np.isfinite(s1.predict_ridge(constant_model, constant)).all()
+    shuffled = rng.permutation(truth); shuffled_model = s1.fit_ridge(train, shuffled, 1.0)
+    assert np.mean((s1.predict_ridge(shuffled_model, validation) - (validation[:, 0] * 0.4 - validation[:, 1] * 0.2)) ** 2) > 0.01
+    assert s1.serialize_ridge(model) == s1.serialize_ridge(s1.fit_ridge(train, truth, 1.0))
+
+
+def test_probe_split_is_image_level_disjoint_and_detects_wrong_class_count() -> None:
+    records = [
+        {"annotation_wnid": "a", "source_image_id": "a1"},
+        {"annotation_wnid": "a", "source_image_id": "a2"},
+        {"annotation_wnid": "b", "source_image_id": "b1"},
+        {"annotation_wnid": "b", "source_image_id": "b2"},
+    ]
+    train, validation = s1.probe_split(records)
+    assert len(train) == len(validation) == 2
+    assert not ({row["source_image_id"] for row in train} & {row["source_image_id"] for row in validation})
+    with pytest.raises(s1.S1Error):
+        s1.probe_split(records[:-1])
