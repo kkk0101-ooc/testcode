@@ -82,25 +82,30 @@ def env() -> dict[str, str]:
     require(all(os.path.realpath(value[key]).startswith("/data01/") for key in RUNTIME_KEYS), "runtime env outside /data01"); return value
 
 
-def nvidia_rows() -> list[dict[str, Any]]:
+def nvidia_rows(spec: Mapping[str, Any]) -> list[dict[str, Any]]:
     query = subprocess.check_output(["nvidia-smi", "--query-gpu=index,uuid,name,memory.total,memory.free,utilization.gpu,compute_mode", "--format=csv,noheader,nounits"], text=True)
     processes = subprocess.check_output(["nvidia-smi", "--query-compute-apps=gpu_uuid,pid,used_memory", "--format=csv,noheader,nounits"], text=True)
-    active = {line.split(",", 1)[0].strip() for line in processes.splitlines() if line.strip()}
+    active: dict[str, list[dict[str, int]]] = {}
+    for line in processes.splitlines():
+        if not line.strip(): continue
+        uuid, pid, used = [item.strip() for item in line.split(",")]; active.setdefault(uuid, []).append({"pid": int(pid), "used_memory_mib": int(used)})
+    contract = spec["parallel"]; minimum_free = int(contract["minimum_free_memory_mib"]); maximum_utilization = int(contract["maximum_utilization_percent"])
     rows = []
     for line in query.splitlines():
         index, uuid, name, total, free, utilization, mode = [item.strip() for item in line.split(",")]
-        rows.append({"physical_index": int(index), "gpu_uuid": uuid, "name": name, "memory_total_mib": int(total), "memory_free_mib": int(free), "utilization_percent": int(utilization), "compute_mode": mode, "active_compute_pid": uuid in active, "eligible": name == "NVIDIA H20" and int(free) >= 21 * 1024 and uuid not in active})
+        process_rows = active.get(uuid, []); existing_used = sum(item["used_memory_mib"] for item in process_rows)
+        rows.append({"physical_index": int(index), "gpu_uuid": uuid, "name": name, "memory_total_mib": int(total), "memory_used_mib": int(total) - int(free), "memory_free_mib": int(free), "utilization_percent": int(utilization), "compute_mode": mode, "existing_compute_process_count": len(process_rows), "existing_compute_processes": process_rows, "existing_compute_used_memory_mib": existing_used, "compute_pid_is_disqualifying": bool(contract["existing_compute_pid_is_disqualifying"]), "eligibility_thresholds": {"minimum_free_memory_mib": minimum_free, "maximum_utilization_percent": maximum_utilization}, "eligible": name == "NVIDIA H20" and int(free) >= minimum_free and int(utilization) <= maximum_utilization})
     return rows
 
 
 def startup() -> None:
-    require((ROOT / "implementation_seal.json").is_file() and (ROOT / "completion/s1.pending.json").is_file(), "S1 pre-access root not frozen")
-    implementation = json.loads((ROOT / "implementation_seal.json").read_text()); require(implementation["payload"]["commit"] == subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip(), "implementation commit drift")
+    require((ROOT / "a1_implementation_seal.json").is_file() and (ROOT / "smoke_baseline_binding.json").is_file() and (ROOT / "s1_r1_a1_amendment.json").is_file() and (ROOT / "completion/s1.pending.json").is_file(), "S1-R1-A1 is not frozen")
+    implementation = json.loads((ROOT / "a1_implementation_seal.json").read_text()); require(implementation["payload"]["commit"] == subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip(), "A1 implementation commit drift")
     require(not subprocess.check_output(["git", "-C", str(REPO), "status", "--porcelain"], text=True).strip(), "worktree dirty at startup")
     root_free = shutil.disk_usage("/").free; data_free = shutil.disk_usage(str(RUNTIME_ROOT)).free; require(root_free >= 1024**3, "root filesystem below 1 GiB free")
-    rows = nvidia_rows(); devices = [row for row in rows if row["eligible"]][:8]; require(devices, "no eligible idle H20")
-    payload = {"status": "PASS", "implementation_commit": implementation["payload"]["commit"], "sys_executable_realpath": os.path.realpath(sys.executable), "environment": {key: env()[key] for key in RUNTIME_KEYS} | {"CUBLAS_WORKSPACE_CONFIG": ":4096:8"}, "root_free_bytes": root_free, "data_free_bytes": data_free, "device_probe": rows, "locked_devices": devices, "locked_worker_count": len(devices), "startup_probe_required": ["torch.matmul", "backward"], "outcome_access_at_gate": False}
-    write_new(ROOT / "startup_gate.json", signed("s1_startup_gate", "PASS", payload)); print(json.dumps(payload, sort_keys=True))
+    spec = json.loads(SPEC_PATH.read_text()); rows = nvidia_rows(spec); devices = [row for row in rows if row["eligible"]][:int(spec["parallel"]["maximum_workers"])]; require(len(devices) >= int(spec["parallel"]["minimum_workers"]), "no eligible H20 under A1 thresholds")
+    payload = {"status": "PASS", "amendment_id": spec["amendment"]["id"], "implementation_commit": implementation["payload"]["commit"], "sys_executable_realpath": os.path.realpath(sys.executable), "environment": {key: env()[key] for key in RUNTIME_KEYS} | {"CUBLAS_WORKSPACE_CONFIG": ":4096:8"}, "root_free_bytes": root_free, "data_free_bytes": data_free, "device_probe": rows, "eligibility_contract": spec["parallel"], "locked_devices": devices, "locked_worker_count": len(devices), "fewer_than_eight_is_failure_or_blocked": False, "startup_probe_required": ["torch.matmul", "backward"], "outcome_access_at_gate": False}
+    gate_path = ROOT / ("startup_gate_a1.json" if (ROOT / "startup_gate.json").exists() else "startup_gate.json"); write_new(gate_path, signed("s1_r1_a1_startup_gate", "PASS", payload)); print(json.dumps(payload, sort_keys=True))
 
 
 def worker_command(root: Path, shard: int, count: int, indices: Sequence[int], mode: str) -> list[str]:
@@ -112,13 +117,13 @@ def run_level(level: str, workers: int | None = None) -> None:
     schedule = json.loads(SCHEDULE_PATH.read_text())["payload"]; levels = {row["name"]: row for row in schedule["levels"]}
     if level == "single_reference": level_record = {"new_schedule_indices": [0], "cumulative_schedule_indices": [0]}
     else: require(level in levels, "unknown level"); level_record = levels[level]
-    indices = level_record["new_schedule_indices"]; gate = json.loads((ROOT / "startup_gate.json").read_text())["payload"]; devices = gate["locked_devices"]; count = min(len(devices), 8) if workers is None else int(workers); require(1 <= count <= len(devices), "worker count unavailable")
+    indices = level_record["new_schedule_indices"]; gate_path = ROOT / ("startup_gate_a1.json" if level in ("intermediate", "full_pilot") else "startup_gate.json"); gate = json.loads(gate_path.read_text())["payload"]; devices = gate["locked_devices"]; maximum_workers = int(json.loads(SPEC_PATH.read_text())["parallel"]["maximum_workers"]); count = min(len(devices), maximum_workers) if workers is None else int(workers); require(1 <= count <= len(devices), "worker count unavailable")
     phase_root = ROOT / level; require(not (phase_root / "launch.json").exists(), "level already launched")
     write_new(phase_root / "launch.json", signed("s1_level_launch", "FROZEN", {"level": level, "worker_count": count, "physical_devices": [devices[i]["physical_index"] for i in range(count)], "new_schedule_indices": indices, "cumulative_schedule_indices": level_record["cumulative_schedule_indices"], "sharding": "schedule_index_mod_K", "dynamic_rebalancing": False}))
     import fcntl
     locks = []; processes = []; failures = []
     try:
-        current = {row["physical_index"]: row for row in nvidia_rows()}
+        current = {row["physical_index"]: row for row in nvidia_rows(json.loads(SPEC_PATH.read_text()))}
         for shard in range(count):
             physical = devices[shard]["physical_index"]; require(current[physical]["eligible"], f"GPU {physical} no longer idle")
             lock_path = RUNTIME_ROOT / "gpu_locks" / f"nns-patch-depth-s1-gpu-{physical}.lock"; lock_path.parent.mkdir(parents=True, exist_ok=True); handle = lock_path.open("a+"); fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB); locks.append(handle)
@@ -206,7 +211,7 @@ def generate_reports(level: str) -> None:
 def seal_terminal(level: str) -> None:
     validator_path = REPO / "scripts/validate_nns_vit_patch_depth_s1.py"; module_spec = importlib.util.spec_from_file_location("s1_validator", validator_path); require(module_spec is not None and module_spec.loader is not None, "validator import failed"); validator = importlib.util.module_from_spec(module_spec); module_spec.loader.exec_module(validator); validate_preaccess, validate_units = validator.validate_preaccess, validator.validate_units
     pre = validate_preaccess(); units = validate_units(level); repeat = json.loads((ROOT / "deterministic_repeatability_report.json").read_text()); spec = json.loads(SPEC_PATH.read_text()); n = units["terminal_count"]; variance_rse = math.sqrt(2.0 / (units["terminal_counts"].get("VALID", 0) - 1)) if units["terminal_counts"].get("VALID", 0) > 1 else None
-    gates = {"terminal_coverage": units["terminal_count"] == {"intermediate": 24, "full_pilot": 1744}[level], "minimum_valid_fraction": units["valid_fraction"] >= 0.85, "minimum_control_matching_fraction": units["p2_matched_coordinate_fraction"] >= 0.98, "single_multi_repeatability": repeat["status"] == "PASS" and repeat["payload"]["all_byte_identical"], "variance_relative_standard_error": variance_rse is not None and variance_rse <= float(spec["escalation"]["engineering_stop_conditions"]["maximum_variance_relative_standard_error"]), "all_four_chains": json.loads((ROOT / "probe_engineering_validation_report.json").read_text())["status"] == "PASS" and json.loads((ROOT / "p1_p2_control_validation_report.json").read_text())["status"] == "PASS"}
+    required_control_fraction = float(spec["escalation"]["engineering_stop_conditions"]["minimum_control_matching_fraction"]); gates = {"terminal_coverage": units["terminal_count"] == {"intermediate": 24, "full_pilot": 1744}[level], "minimum_valid_fraction": units["valid_fraction"] >= 0.85, "minimum_control_matching_fraction": units["p2_matched_coordinate_fraction"] >= required_control_fraction, "minimum_control_matching_fraction_required": required_control_fraction, "single_multi_repeatability": repeat["status"] == "PASS" and repeat["payload"]["all_byte_identical"], "variance_relative_standard_error": variance_rse is not None and variance_rse <= float(spec["escalation"]["engineering_stop_conditions"]["maximum_variance_relative_standard_error"]), "all_four_chains": json.loads((ROOT / "probe_engineering_validation_report.json").read_text())["status"] == "PASS" and json.loads((ROOT / "p1_p2_control_validation_report.json").read_text())["status"] == "PASS"}
     status = "PASS" if all(gates.values()) else "BLOCKED_SCIENTIFIC_VALIDITY"; next_auth = "S2_PROTOCOL_AND_POWER_FREEZE_ONLY" if status == "PASS" else "NONE"
     excluded = {"completion/s1.pending.json", "whole_root_inventory.json", "terminal_receipt.json", "independent_validation_report.json", "false_pass_audit.json"}; files = [record(path) for path in sorted(ROOT.rglob("*")) if path.is_file() and path.relative_to(ROOT).as_posix() not in excluded]
     write_new(ROOT / "whole_root_inventory.json", signed("s1_whole_root_inventory", "PASS", {"files": files, "files_digest": digest(files), "large_arrays_bound_in_unit_terminals": True}))

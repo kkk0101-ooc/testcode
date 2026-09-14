@@ -2,6 +2,48 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
+    "amendment": {
+      "additionalProperties": false,
+      "properties": {
+        "applies_to": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "does_not_apply_to": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "owner_authorized": {
+          "type": "boolean"
+        },
+        "path": {
+          "type": "string"
+        },
+        "smoke_state_at_freeze": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "applies_to",
+        "does_not_apply_to",
+        "id",
+        "owner_authorized",
+        "path",
+        "smoke_state_at_freeze",
+        "status"
+      ],
+      "type": "object"
+    },
     "d1": {
       "additionalProperties": false,
       "properties": {
@@ -522,14 +564,29 @@
         "eligible_devices": {
           "type": "string"
         },
+        "existing_compute_pid_is_disqualifying": {
+          "type": "boolean"
+        },
+        "fewer_than_eight_workers_is_failure_or_blocked": {
+          "type": "boolean"
+        },
         "gpu_hours_accounting": {
           "type": "string"
+        },
+        "maximum_utilization_percent": {
+          "type": "integer"
         },
         "maximum_workers": {
           "type": "integer"
         },
+        "minimum_free_memory_mib": {
+          "type": "integer"
+        },
         "minimum_workers": {
           "type": "integer"
+        },
+        "record_existing_compute_pid_and_used_memory": {
+          "type": "boolean"
         },
         "sharding": {
           "type": "string"
@@ -554,9 +611,14 @@
         "cublas_workspace_config",
         "dynamic_rebalancing",
         "eligible_devices",
+        "existing_compute_pid_is_disqualifying",
+        "fewer_than_eight_workers_is_failure_or_blocked",
         "gpu_hours_accounting",
+        "maximum_utilization_percent",
         "maximum_workers",
+        "minimum_free_memory_mib",
         "minimum_workers",
+        "record_existing_compute_pid_and_used_memory",
         "sharding",
         "startup_probe",
         "worker_device",
@@ -695,6 +757,7 @@
     }
   },
   "required": [
+    "amendment",
     "d1",
     "d2",
     "data_access",

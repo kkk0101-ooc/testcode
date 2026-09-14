@@ -55,6 +55,21 @@ def record(path: Path) -> dict[str, Any]:
     return value
 
 
+def git_blob_record(commit: str, path: str) -> dict[str, Any]:
+    tree_path = "vitnns_rebuild/" + path
+    line = subprocess.check_output(["git", "-C", str(REPO), "ls-tree", "--full-tree", "-l", commit, "--", tree_path], text=True).strip()
+    require(bool(line), "missing Git blob: " + tree_path); metadata, observed_path = line.split("\t", 1); mode, kind, oid, blob_bytes = metadata.split(); require(kind == "blob" and observed_path == tree_path, "Git tree identity drift")
+    blob = subprocess.check_output(["git", "-C", str(REPO), "cat-file", "blob", oid])
+    return {"path": path, "commit": commit, "git_mode": mode, "git_blob_oid": oid, "tree_blob_bytes": int(blob_bytes), "content_bytes": len(blob), "sha256": hashlib.sha256(blob).hexdigest()}
+
+
+def validate_smoke_baseline(value: Mapping[str, Any]) -> None:
+    payload = value["payload"]; require(payload["unit_count"] == 6 and payload["unit_terminal_counts"] == {"VALID": 6}, "A1 smoke unit baseline drift"); require(payload["shard_count"] == 3 and payload["shard_terminal_counts"] == {"PASS": 3}, "A1 smoke shard baseline drift"); require([row["schedule_index"] for row in payload["units"]] == list(range(6)), "A1 smoke indices drift"); require(payload["pending_count"] == payload["writer_count"] == 0, "A1 smoke was not quiescent")
+    files = payload["all_smoke_files"]; require(payload["all_smoke_files_digest"] == digest(files), "A1 smoke file list digest drift")
+    for item in files:
+        observed = record(REPO / item["path"]); require(observed["bytes"] == item["bytes"] and observed["sha256"] == item["sha256"], "immutable smoke file drift: " + item["path"]); require(observed.get("canonical_digest") == item.get("canonical_digest"), "immutable smoke canonical drift: " + item["path"])
+
+
 def npy_header(path: Path) -> tuple[str, list[int]]:
     with path.open("rb") as stream:
         require(stream.read(6) == b"\x93NUMPY", "not npy: " + str(path)); major, minor = stream.read(2)
@@ -76,8 +91,11 @@ def validate_preaccess() -> dict[str, Any]:
     require(payload["forbidden_split_counts"] == {"probe_train": 5232, "probe_validation": 1744, "confirmatory_holdout": 1744}, "forbidden counts drift")
     implementation = read_signed(ROOT / "implementation_seal.json"); require(implementation["payload"]["pilot_or_model_outcome_access_before_seal"] is False, "pre-seal access attestation drift")
     for item in implementation["payload"]["files"]:
-        path = REPO / item["path"]; require(record(path)["sha256"] == item["sha256"], "implementation file drift: " + item["path"]); require(bool(subprocess.check_output(["git", "-C", str(REPO), "ls-tree", "--full-tree", implementation["payload"]["commit"], "--", "vitnns_rebuild/" + item["path"]], text=True).strip()), "file absent from seal commit")
-    return {"pilot_count": len(records), "pilot_forbidden_source_intersection": 0, "pilot_forbidden_hash_intersection": 0, "implementation_file_count": len(implementation["payload"]["files"]), "implementation_commit": implementation["payload"]["commit"]}
+        observed = git_blob_record(implementation["payload"]["commit"], item["path"]); require(observed["sha256"] == item["sha256"], "original sealed Git blob drift: " + item["path"])
+    a1 = read_signed(ROOT / "s1_r1_a1_amendment.json"); a1_seal = read_signed(ROOT / "a1_implementation_seal.json"); baseline = read_signed(ROOT / "smoke_baseline_binding.json"); require(a1["payload"]["amendment_id"] == spec["amendment"]["id"] == "S1-R1-A1" and a1["payload"]["new_aggregate_p2_gate"] == 0.90, "A1 identity/gate drift"); validate_smoke_baseline(baseline); require(a1["payload"]["smoke_baseline_digest"] == baseline["canonical_digest"], "A1 smoke binding mismatch")
+    for item in a1_seal["payload"]["files"]:
+        path = REPO / item["path"]; observed = record(path); blob = git_blob_record(a1_seal["payload"]["commit"], item["path"]); require(observed["sha256"] == item["sha256"] == blob["sha256"], "A1 implementation drift: " + item["path"]); require(blob["git_blob_oid"] == item["git_blob_oid"], "A1 blob oid drift")
+    return {"pilot_count": len(records), "pilot_forbidden_source_intersection": 0, "pilot_forbidden_hash_intersection": 0, "original_implementation_file_count": len(implementation["payload"]["files"]), "original_implementation_commit": implementation["payload"]["commit"], "a1_implementation_file_count": len(a1_seal["payload"]["files"]), "a1_implementation_commit": a1_seal["payload"]["commit"], "smoke_unit_count": 6, "smoke_shard_count": 3, "aggregate_p2_gate": 0.90}
 
 
 def unit_paths(level: str) -> list[Path]:
@@ -107,7 +125,7 @@ def validate_final() -> dict[str, Any]:
     pre = validate_preaccess(); terminal = read_signed(ROOT / "terminal_receipt.json"); require(terminal["status"] in TERMINALS and terminal["payload"]["status"] == terminal["status"], "terminal state invalid"); require(terminal["payload"]["scientific_claim_decision"] is None, "S1 cannot decide scientific claims")
     if terminal["status"] == "PASS": require(terminal["payload"]["next_authorization"] == "S2_PROTOCOL_AND_POWER_FREEZE_ONLY", "PASS authorization drift")
     else: require(terminal["payload"]["next_authorization"] == "NONE", "blocked/failed authorization drift")
-    level = terminal["payload"]["actual_level"]; units = validate_units(level); require(units["valid_fraction"] >= 0.85 and units["p2_matched_coordinate_fraction"] >= 0.98, "validity denominator gate failed")
+    level = terminal["payload"]["actual_level"]; units = validate_units(level); required_control_fraction = float(json.loads(SPEC.read_text())["escalation"]["engineering_stop_conditions"]["minimum_control_matching_fraction"]); require(units["valid_fraction"] >= 0.85 and units["p2_matched_coordinate_fraction"] >= required_control_fraction, "validity denominator gate failed")
     repeat = read_signed(ROOT / "deterministic_repeatability_report.json"); require(repeat["status"] == "PASS" and repeat["payload"]["all_byte_identical"], "deterministic repeatability failed")
     for name in ("synthetic_negative_test_report.json", "geometry_mask_validation_report.json", "nns_reconstruction_parity_report.json", "p1_p2_control_validation_report.json", "probe_engineering_validation_report.json", "resource_scaling_ledger.json", "failure_na_denominator_report.json", "s2_design_recommendation.json"):
         require(read_signed(ROOT / name)["status"] == "PASS", name + " not PASS")

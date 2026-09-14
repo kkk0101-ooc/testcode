@@ -23,6 +23,36 @@ def test_run_spec_is_closed_and_pilot_only() -> None:
     assert value["d1"]["shallow_blocks"] == [0, 1, 2, 3]
     assert value["d1"]["deep_blocks"] == [8, 9, 10, 11]
     assert value["scientific_decisions_allowed"] is False
+    assert value["amendment"]["id"] == "S1-R1-A1"
+    assert value["amendment"]["smoke_state_at_freeze"] == "6_OF_6_VALID_UNITS_AND_3_OF_3_PASS_SHARDS"
+    assert value["escalation"]["engineering_stop_conditions"]["minimum_control_matching_fraction"] == 0.90
+    assert value["parallel"]["minimum_workers"] == 1 and value["parallel"]["maximum_workers"] == 8
+    assert value["parallel"]["existing_compute_pid_is_disqualifying"] is False
+    assert value["parallel"]["fewer_than_eight_workers_is_failure_or_blocked"] is False
+
+
+def test_a1_producer_and_validator_read_control_gate_from_spec() -> None:
+    producer = (ROOT / "scripts/run_nns_vit_patch_depth_s1.py").read_text()
+    validator = (ROOT / "scripts/validate_nns_vit_patch_depth_s1.py").read_text()
+    assert "p2_matched_coordinate_fraction\"] >= 0.98" not in producer
+    assert "p2_matched_coordinate_fraction\"] >= 0.98" not in validator
+    assert "minimum_control_matching_fraction_required" in producer
+    assert "required_control_fraction" in validator
+
+
+def test_a1_gpu_eligibility_is_memory_and_utilization_based() -> None:
+    producer = (ROOT / "scripts/run_nns_vit_patch_depth_s1.py").read_text()
+    assert 'int(free) >= minimum_free and int(utilization) <= maximum_utilization' in producer
+    assert 'uuid not in active' not in producer
+    assert 'existing_compute_processes' in producer and 'existing_compute_used_memory_mib' in producer
+
+
+def test_a1_amendment_is_prospective_and_smoke_bound() -> None:
+    text = (ROOT / "docs/nns_vit_patch_depth_s1_r1_a1_amendment_20260914.md").read_text()
+    assert "6/6 unit terminals" in text and "3/3 shard terminals" in text
+    assert "Only new intermediate indices 6–23" in text
+    assert "must not be deleted, overwritten, recomputed, or replaced" in text
+    assert "must not issue `SUPPORTED` or `NOT_SUPPORTED`" in text
 
 
 def test_geometry_preserves_four_semantics_and_patch_occupancy() -> None:

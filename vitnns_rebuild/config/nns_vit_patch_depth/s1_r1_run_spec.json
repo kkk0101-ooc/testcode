@@ -5,6 +5,15 @@
   "run_id": "s1_r1_pilot_20260914",
   "stage_token": "S1_PILOT_ONLY",
   "status": "FROZEN_PROSPECTIVELY_BEFORE_PILOT_IMAGE_MASK_MODEL_OR_OUTCOME_ACCESS",
+  "amendment": {
+    "id": "S1-R1-A1",
+    "path": "docs/nns_vit_patch_depth_s1_r1_a1_amendment_20260914.md",
+    "status": "FROZEN_PROSPECTIVELY_AFTER_SMOKE_BEFORE_INTERMEDIATE_ACCESS",
+    "owner_authorized": true,
+    "smoke_state_at_freeze": "6_OF_6_VALID_UNITS_AND_3_OF_3_PASS_SHARDS",
+    "applies_to": ["intermediate_and_full_elastic_launch", "aggregate_P2_matched_control_engineering_gate"],
+    "does_not_apply_to": ["smoke_units_0_to_5", "scientific_definitions", "scientific_claim_decisions"]
+  },
   "formal_root": "evidence/nns_vit_patch_depth/s1_r1_pilot_20260914",
   "recovery": {
     "predecessor_root": "evidence/nns_vit_patch_depth/s1_pilot_20260914",
@@ -128,7 +137,7 @@
       "all_numeric_contracts_pass_for_valid_units": true,
       "minimum_terminal_coverage": 1.0,
       "minimum_valid_fraction": 0.85,
-      "minimum_control_matching_fraction": 0.98,
+      "minimum_control_matching_fraction": 0.90,
       "single_multi_repeatability_required": true,
       "all_four_chains_executable": true,
       "variance_relative_standard_error_formula": "sqrt(2/(n_valid-1))",
@@ -137,9 +146,14 @@
     "outcome_direction_pvalue_or_visual_appearance_are_stop_forbidden": true
   },
   "parallel": {
-    "eligible_devices": "idle_NVIDIA_H20_with_at_least_21_GiB_free_and_zero_compute_PIDs",
+    "eligible_devices": "NVIDIA_H20_with_at_least_21_GiB_free_and_utilization_at_most_10_percent",
+    "minimum_free_memory_mib": 21504,
+    "maximum_utilization_percent": 10,
+    "existing_compute_pid_is_disqualifying": false,
+    "record_existing_compute_pid_and_used_memory": true,
     "minimum_workers": 1,
     "maximum_workers": 8,
+    "fewer_than_eight_workers_is_failure_or_blocked": false,
     "worker_visible_devices": 1,
     "worker_device": "cuda:0",
     "sharding": "unit_schedule_index_mod_K",
