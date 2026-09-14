@@ -254,10 +254,18 @@ def execute_unit(repo: Path, model: Any, captured: list[Any], row: Mapping[str, 
         "completed_time_ns": time.time_ns(), "python_executable_realpath": os.path.realpath(sys.executable), "producer_commit": worker["producer_commit"],
         "arrays": arrays, "resources": resources, "terminal_state": state, "failure_reason": reason, "access": access,
     }
+    terminal_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = terminal_path.with_name(terminal_path.name + f".tmp-{worker['launch_id']}-{worker['worker_id']}-{os.getpid()}")
+    s3.write_json_new(temporary, s3.signed("s3_unit_terminal", state, payload, producer_commit=worker["producer_commit"]))
     try:
-        s3.write_json_new(terminal_path, s3.signed("s3_unit_terminal", state, payload, producer_commit=worker["producer_commit"]))
+        os.link(temporary, terminal_path)
+        s3.fsync_directory(terminal_path.parent)
     except FileExistsError:
         raise s3.S3Error(f"duplicate immutable terminal attempt for {index}")
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+            s3.fsync_directory(temporary.parent)
     return state
 
 

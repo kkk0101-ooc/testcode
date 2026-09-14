@@ -1,0 +1,5 @@
+# S3-R3-A1 prospective concurrent terminal publication amendment
+
+Train/validation launch 001 exposed a concurrency bug after formal access began. Unit terminals were created with O_EXCL and written in place; another worker could observe the directory entry before the JSON payload and fsync completed. Six workers failed while parsing such a transient empty terminal. One healthy worker continued claiming and completing units, as required. All completed unit arrays and terminals, all claims, pending files, worker logs, and the launch manifest remain immutable evidence.
+
+Before any recovery launch, A1 changes only unit-terminal publication: write and fsync a launch/worker/PID-specific temporary file, atomically publish it with a same-filesystem hard link that fails if the immutable destination exists, fsync the terminal directory, then unlink the temporary file and fsync again. Claim semantics, source schedule, model, preprocessing, arrays, numeric contracts, access order, and scientific contracts do not change. Recovery must use a fresh launch and scan only globally missing terminals after all launch-001 workers exit.
