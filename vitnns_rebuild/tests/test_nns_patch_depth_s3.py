@@ -37,6 +37,9 @@ def test_ridge_train_normalization_alpha_tie_and_roundtrip() -> None:
         record = s3.write_array_atomic(path, model.weight, dtype="<f8", axes=["feature"], producer_commit="0"*40, source_identity="synthetic", recomputation_rule="synthetic")
         assert record["sha256"] == s3.sha_file(path)
         np.testing.assert_array_equal(np.load(path,allow_pickle=False),model.weight)
+        scalar_path = Path(directory)/"scalar.npy"
+        scalar_record = s3.write_array_atomic(scalar_path, np.asarray(0.25,dtype="<f8"), dtype="<f8", axes=[], producer_commit="0"*40, source_identity="synthetic", recomputation_rule="synthetic")
+        assert scalar_record["shape"] == [] and np.load(scalar_path,allow_pickle=False).shape == ()
 
 
 def test_label_shuffle_constant_feature_and_equal_image_weight() -> None:

@@ -159,7 +159,9 @@ def array_digest(value: np.ndarray) -> str:
 
 
 def write_array_atomic(path: Path, value: np.ndarray, *, dtype: str, axes: Sequence[str], producer_commit: str, source_identity: str, recomputation_rule: str) -> dict[str, Any]:
-    array = np.ascontiguousarray(value, dtype=np.dtype(dtype))
+    array = np.asarray(value, dtype=np.dtype(dtype))
+    if not array.flags.c_contiguous:
+        array = np.ascontiguousarray(array)
     require(array.dtype.byteorder in ("<", "=", "|"), "array must be little endian on this environment")
     require(np.isfinite(array).all(), "array contains non-finite values")
     path.parent.mkdir(parents=True, exist_ok=True)
