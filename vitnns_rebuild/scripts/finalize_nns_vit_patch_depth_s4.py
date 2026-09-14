@@ -13,8 +13,8 @@ import time
 from typing import Any
 
 REPO = Path(__file__).resolve().parents[1]
-ROOT = REPO / "evidence/nns_vit_patch_depth/s4_r3_20260915"
-PAYLOAD = REPO / "artifacts/nns_vit_patch_depth/s4_r3_20260915"
+ROOT = REPO / "evidence/nns_vit_patch_depth/s4_r4_20260915"
+PAYLOAD = REPO / "artifacts/nns_vit_patch_depth/s4_r4_20260915"
 PYTHON = REPO.parent / ".conda/envs/vitnns/bin/python"
 sys.path.insert(0, str(REPO / "src"))
 from vitnns import nns_patch_depth_s4 as s4  # noqa: E402

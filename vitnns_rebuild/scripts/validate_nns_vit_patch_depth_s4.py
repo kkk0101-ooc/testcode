@@ -14,8 +14,8 @@ import sys
 from typing import Any, Callable, Mapping
 
 REPO = Path(__file__).resolve().parents[1]
-ROOT = REPO / "evidence/nns_vit_patch_depth/s4_r3_20260915"
-SCHEDULE = REPO / "manifests/nns_vit_patch_depth/s4_r3_source_schedule.json"
+ROOT = REPO / "evidence/nns_vit_patch_depth/s4_r4_20260915"
+SCHEDULE = REPO / "manifests/nns_vit_patch_depth/s4_r4_source_schedule.json"
 SPEC = REPO / "config/nns_vit_patch_depth/s4_run_spec.json"
 S3_TERMINAL = REPO / "evidence/nns_vit_patch_depth/s3_r7_20260915/terminal_receipt.json"
 EXPECTED_S3_COMMIT = "a2fa81082ba9b49e0aa44407cbbb373de18accff"
@@ -60,7 +60,7 @@ def load(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text())
 
 
-def verify_signed(value: Mapping[str, Any], *, run_id: str = "s4_r3_20260915") -> None:
+def verify_signed(value: Mapping[str, Any], *, run_id: str = "s4_r4_20260915") -> None:
     expected = {"$schema", "schema_version", "study_id", "stage_id", "run_id", "document_type", "status", "payload", "canonical_digest"}
     if "producer_commit" in value:
         expected.add("producer_commit")
@@ -108,7 +108,7 @@ def validate_preaccess_documents() -> dict[str, Any]:
         "elastic_gpu_startup_and_lock_contract.json", "typed_failure_na_propagation_contract.json",
         "retention_and_audit_subset_registry.json", "resource_and_scaling_projection.json",
         "formal_access_audit_pre_implementation_seal.json", "startup_git_environment_audit.json",
-        "completion/s4.pending.json",
+        "s4_r3_failure_binding.json", "completion/s4.pending.json",
     }
     for name in expected:
         document = load(ROOT / name)

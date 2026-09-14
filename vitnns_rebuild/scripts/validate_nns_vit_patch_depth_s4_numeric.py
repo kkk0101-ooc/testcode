@@ -13,7 +13,7 @@ from typing import Any
 import numpy as np
 
 REPO = Path(__file__).resolve().parents[1]
-ROOT = REPO / "evidence/nns_vit_patch_depth/s4_r3_20260915"
+ROOT = REPO / "evidence/nns_vit_patch_depth/s4_r4_20260915"
 sys.path.insert(0, str(REPO / "src"))
 from vitnns import nns_patch_depth_s4 as s4  # noqa: E402
 

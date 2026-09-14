@@ -20,10 +20,10 @@ from typing import Any, Mapping
 import zipfile
 
 REPO = Path(__file__).resolve().parents[1]
-ROOT = REPO / "evidence/nns_vit_patch_depth/s4_r3_20260915"
-PAYLOAD = REPO / "artifacts/nns_vit_patch_depth/s4_r3_20260915"
+ROOT = REPO / "evidence/nns_vit_patch_depth/s4_r4_20260915"
+PAYLOAD = REPO / "artifacts/nns_vit_patch_depth/s4_r4_20260915"
 PYTHON = REPO.parent / ".conda/envs/vitnns/bin/python"
-RUNTIME = REPO.parent / ".runtime/nns_vit_patch_depth_s4_r3"
+RUNTIME = REPO.parent / ".runtime/nns_vit_patch_depth_s4_r4"
 sys.path.insert(0, str(REPO / "src"))
 from vitnns import nns_patch_depth_s4 as s4  # noqa: E402
 
@@ -66,12 +66,12 @@ def verify_remote_seal(*, allow_postseal_evidence: bool = False) -> tuple[str, d
     implementation = seal["payload"]["implementation_commit"]
     subprocess.check_call(["git", "-C", str(REPO), "merge-base", "--is-ancestor", implementation, head])
     tracked = git("ls-tree", "-r", "--name-only", head).splitlines()
-    seal_tree_path = "evidence/nns_vit_patch_depth/s4_r3_20260915/implementation_seal.json"
+    seal_tree_path = "evidence/nns_vit_patch_depth/s4_r4_20260915/implementation_seal.json"
     s4.require(seal_tree_path in tracked or "vitnns_rebuild/" + seal_tree_path in tracked, "seal not published in Git tree")
     porcelain = git("status", "--porcelain=v2", "--untracked-files=all").splitlines()
-    allowed = ["? ../.root_cleanup_quarantine/", "? artifacts/nns_vit_patch_depth/s4_r3_20260915/"]
+    allowed = ["? ../.root_cleanup_quarantine/", "? artifacts/nns_vit_patch_depth/s4_r4_20260915/"]
     if allow_postseal_evidence:
-        allowed.append("? evidence/nns_vit_patch_depth/s4_r3_20260915/selected_member_materialization.json")
+        allowed.append("? evidence/nns_vit_patch_depth/s4_r4_20260915/selected_member_materialization.json")
     unexpected = [line for line in porcelain if not any(line.startswith(prefix) for prefix in allowed)]
     s4.require(not unexpected, "unexplained worktree changes at formal access gate: " + repr(unexpected[:10]))
     return head, seal
@@ -110,47 +110,60 @@ def materialize() -> None:
     s4.require(jpeg_archive.stat().st_size == s4.JPEG_ARCHIVE_BYTES and s4.sha_file(jpeg_archive) == s4.JPEG_ARCHIVE_SHA256, "JPEG archive identity drift")
     s4.require(s4.sha_file(mask_archive) == s4.MASK_ARCHIVE_SHA256, "mask archive identity drift")
     from PIL import Image
+    predecessor_root = REPO / "evidence/nns_vit_patch_depth/s4_r3_20260915"
+    predecessor_payload = REPO / "artifacts/nns_vit_patch_depth/s4_r3_20260915"
+    predecessor_materialization_path = predecessor_root / "selected_member_materialization.json"
+    s4.require(predecessor_materialization_path.is_file(), "S4-R3 selected-member materialization evidence absent")
+    predecessor_materialization = json.loads(predecessor_materialization_path.read_text())
+    s4.require(s4.verify_signed(predecessor_materialization) and predecessor_materialization["status"] == "PASS", "S4-R3 selected-member materialization evidence invalid")
+    s4.require(predecessor_materialization["payload"]["selected_JPEG_member_reads"] == 1744 and predecessor_materialization["payload"]["selected_mask_member_reads"] == 1744 and predecessor_materialization["payload"]["D2_only_member_read_count"] == 0, "S4-R3 access ledger drift")
+    predecessor_records = {int(row["schedule_index"]): row for row in predecessor_materialization["payload"]["records"]}
+    s4.require(len(predecessor_records) == 1744, "S4-R3 cache registry count drift")
     records = []
-    jpeg_reads = mask_reads = image_decodes = mask_decodes = 0
-    with tarfile.open(jpeg_archive, "r:") as tar, zipfile.ZipFile(mask_archive) as masks:
-        for row in schedule:
-            index = int(row["schedule_index"])
-            image_path, mask_path = (PAYLOAD / "selected_member_cache/images" / f"{index:04d}.jpeg", PAYLOAD / "selected_member_cache/masks" / f"{index:04d}.png")
-            image_member = tar.getmember(row["image_archive_member"])
-            stream = tar.extractfile(image_member)
-            s4.require(stream is not None, "selected JPEG member unreadable")
-            image_bytes = stream.read(); jpeg_reads += 1
-            mask_bytes = masks.read(row["mask_archive_member"]); mask_reads += 1
-            if len(image_bytes) != int(row["image_bytes"]) or s4.sha_bytes(image_bytes) != row["image_sha256"]:
-                raise s4.DataIntegrityError(f"selected JPEG identity mismatch at {index}")
-            if s4.sha_bytes(mask_bytes) != row["annotation_sha256"]:
-                raise s4.DataIntegrityError(f"selected mask identity mismatch at {index}")
-            with Image.open(io.BytesIO(image_bytes)) as image:
-                image.load(); image_size = list(image.size); image_decodes += 1
-            with Image.open(io.BytesIO(mask_bytes)) as mask:
-                mask.load(); mask_size = list(mask.size); mask_decodes += 1
-            if image_size != [row["image_width"], row["image_height"]] or mask_size != [row["mask_width"], row["mask_height"]]:
-                raise s4.DataIntegrityError(f"selected member geometry mismatch at {index}")
-            s4.write_bytes_atomic(image_path, image_bytes)
-            s4.write_bytes_atomic(mask_path, mask_bytes)
-            records.append({
-                "schedule_index": index, "source_id": row["source_image_id"],
-                "image_member": row["image_archive_member"], "image_cache_path": image_path.relative_to(REPO).as_posix(),
-                "image_bytes": len(image_bytes), "image_sha256": s4.sha_bytes(image_bytes), "image_size_wh": image_size,
-                "mask_member": row["mask_archive_member"], "mask_cache_path": mask_path.relative_to(REPO).as_posix(),
-                "mask_bytes": len(mask_bytes), "mask_sha256": s4.sha_bytes(mask_bytes), "mask_size_wh": mask_size,
-            })
+    cache_image_reads = cache_mask_reads = image_decodes = mask_decodes = 0
+    for row in schedule:
+        index = int(row["schedule_index"])
+        predecessor = predecessor_records[index]
+        s4.require(predecessor["source_id"] == row["source_image_id"] and predecessor["image_member"] == row["image_archive_member"] and predecessor["mask_member"] == row["mask_archive_member"], f"S4-R3 cache source binding drift at {index}")
+        source_image_path = REPO / predecessor["image_cache_path"]
+        source_mask_path = REPO / predecessor["mask_cache_path"]
+        s4.require(source_image_path.is_relative_to(predecessor_payload) and source_mask_path.is_relative_to(predecessor_payload), "S4-R3 cache path escaped predecessor payload root")
+        image_bytes = source_image_path.read_bytes(); cache_image_reads += 1
+        mask_bytes = source_mask_path.read_bytes(); cache_mask_reads += 1
+        if len(image_bytes) != int(row["image_bytes"]) or s4.sha_bytes(image_bytes) != row["image_sha256"]:
+            raise s4.DataIntegrityError(f"S4-R3 cached JPEG identity mismatch at {index}")
+        if s4.sha_bytes(mask_bytes) != row["annotation_sha256"]:
+            raise s4.DataIntegrityError(f"S4-R3 cached mask identity mismatch at {index}")
+        with Image.open(io.BytesIO(image_bytes)) as image:
+            image.load(); image_size = list(image.size); image_decodes += 1
+        with Image.open(io.BytesIO(mask_bytes)) as mask:
+            mask.load(); mask_size = list(mask.size); mask_decodes += 1
+        if image_size != [row["image_width"], row["image_height"]] or mask_size != [row["mask_width"], row["mask_height"]]:
+            raise s4.DataIntegrityError(f"S4-R3 cached member geometry mismatch at {index}")
+        image_path, mask_path = (PAYLOAD / "selected_member_cache/images" / f"{index:04d}.jpeg", PAYLOAD / "selected_member_cache/masks" / f"{index:04d}.png")
+        s4.write_bytes_atomic(image_path, image_bytes)
+        s4.write_bytes_atomic(mask_path, mask_bytes)
+        records.append({
+            "schedule_index": index, "source_id": row["source_image_id"],
+            "image_member": row["image_archive_member"], "image_cache_path": image_path.relative_to(REPO).as_posix(),
+            "image_bytes": len(image_bytes), "image_sha256": s4.sha_bytes(image_bytes), "image_size_wh": image_size,
+            "mask_member": row["mask_archive_member"], "mask_cache_path": mask_path.relative_to(REPO).as_posix(),
+            "mask_bytes": len(mask_bytes), "mask_sha256": s4.sha_bytes(mask_bytes), "mask_size_wh": mask_size,
+        })
     document = s4.signed("s4_selected_member_materialization", "PASS", {
-        "implementation_seal": {"path": "evidence/nns_vit_patch_depth/s4_r3_20260915/implementation_seal.json", "sha256": s4.sha_file(ROOT / "implementation_seal.json"), "canonical_digest": seal["canonical_digest"]},
+        "implementation_seal": {"path": "evidence/nns_vit_patch_depth/s4_r4_20260915/implementation_seal.json", "sha256": s4.sha_file(ROOT / "implementation_seal.json"), "canonical_digest": seal["canonical_digest"]},
         "producer_commit": producer_commit, "JPEG_archive": {"path": s4.JPEG_ARCHIVE_REL.as_posix(), "bytes": s4.JPEG_ARCHIVE_BYTES, "sha256": s4.JPEG_ARCHIVE_SHA256},
         "mask_archive": {"path": s4.MASK_ARCHIVE_REL.as_posix(), "bytes": mask_archive.stat().st_size, "sha256": s4.MASK_ARCHIVE_SHA256},
-        "authorized_source_count": 1744, "selected_JPEG_member_reads": jpeg_reads, "selected_mask_member_reads": mask_reads,
+        "rebind_source": {"path": predecessor_materialization_path.relative_to(REPO).as_posix(), "sha256": s4.sha_file(predecessor_materialization_path), "canonical_digest": predecessor_materialization["canonical_digest"]},
+        "authorized_source_count": 1744, "selected_JPEG_member_reads": 1744, "selected_mask_member_reads": 1744,
+        "incremental_archive_JPEG_member_reads": 0, "incremental_archive_mask_member_reads": 0,
+        "revalidated_cache_JPEG_reads": cache_image_reads, "revalidated_cache_mask_reads": cache_mask_reads,
         "image_decode_count": image_decodes, "mask_decode_count": mask_decodes, "D2_only_member_read_count": 0,
         "full_archive_extraction": False, "records_digest": s4.records_digest(records), "records": records,
         "S3_D2_prediction_error_numeric_read_count": 0, "cohort_level_inference_count": 0,
     }, producer_commit=producer_commit)
     s4.write_json_new(ROOT / "selected_member_materialization.json", document)
-    print(json.dumps({"status": "PASS", "JPEG_reads": jpeg_reads, "mask_reads": mask_reads, "decodes": image_decodes + mask_decodes, "D2_only_reads": 0}, sort_keys=True))
+    print(json.dumps({"status": "PASS", "cumulative_JPEG_member_reads": 1744, "cumulative_mask_member_reads": 1744, "incremental_archive_member_reads": 0, "cache_revalidation_reads": cache_image_reads + cache_mask_reads, "decodes": image_decodes + mask_decodes, "D2_only_reads": 0}, sort_keys=True))
 
 
 def worker_command(launch_id: str, worker_id: str, device: Mapping[str, Any], producer_commit: str) -> list[str]:

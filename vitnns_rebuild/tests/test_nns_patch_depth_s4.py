@@ -119,6 +119,16 @@ def test_no_static_shard_or_forbidden_seed_inputs_in_s4_source() -> None:
     assert "CUBLAS_WORKSPACE_CONFIG" in worker and "@ right" in worker and "backward()" in worker
 
 
+def test_r4_p2_artifact_json_normalizes_numpy_scalars(tmp_path: Path) -> None:
+    from vitnns import nns_patch_depth_s4_worker as worker
+    path = tmp_path / "p2_coordinate_plan.json"
+    record = worker._artifact_json(tmp_path, path, {"coordinate": {"selected_positive_count": np.int64(4), "indices": np.asarray([1, 2], dtype=np.int16)}})
+    value = json.loads(path.read_text())
+    assert value["coordinate"] == {"selected_positive_count": 4, "indices": [1, 2]}
+    assert record["path"] == "p2_coordinate_plan.json"
+    assert value["canonical_digest"] == record["canonical_digest"]
+
+
 def test_s1_pilot_only_nns_and_occlusion_evidence_is_bound() -> None:
     terminal = json.loads((ROOT / "evidence/nns_vit_patch_depth/s1_r1_pilot_20260914/terminal_receipt.json").read_text())
     repeat = json.loads((ROOT / "evidence/nns_vit_patch_depth/s1_r1_pilot_20260914/deterministic_repeatability_report.json").read_text())

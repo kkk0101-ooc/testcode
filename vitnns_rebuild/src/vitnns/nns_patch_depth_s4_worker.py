@@ -218,7 +218,7 @@ def _record_path(repo: Path, record: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _artifact_json(repo: Path, path: Path, value: Mapping[str, Any]) -> dict[str, Any]:
-    document = dict(value)
+    document = s4.jsonable(dict(value))
     document["canonical_digest"] = s4.canonical_digest(document)
     s4.write_bytes_atomic(path, json.dumps(document, sort_keys=True, indent=2, ensure_ascii=False, allow_nan=False).encode() + b"\n")
     return {

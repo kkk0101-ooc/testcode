@@ -18,12 +18,12 @@ import numpy as np
 
 STUDY_ID = "NNS_VIT_PATCH_DEPTH_SEMANTICS"
 STAGE_ID = "S4"
-RUN_ID = "s4_r3_20260915"
-ROOT_REL = Path("evidence/nns_vit_patch_depth/s4_r3_20260915")
-PAYLOAD_REL = Path("artifacts/nns_vit_patch_depth/s4_r3_20260915")
-CACHE_REL = Path("artifacts/nns_vit_patch_depth/s4_r3_20260915/selected_member_cache")
-SCHEDULE_REL = Path("manifests/nns_vit_patch_depth/s4_r3_source_schedule.json")
-PATH_REGISTRY_REL = Path("manifests/nns_vit_patch_depth/s4_r3_path_resolution_registry.json")
+RUN_ID = "s4_r4_20260915"
+ROOT_REL = Path("evidence/nns_vit_patch_depth/s4_r4_20260915")
+PAYLOAD_REL = Path("artifacts/nns_vit_patch_depth/s4_r4_20260915")
+CACHE_REL = Path("artifacts/nns_vit_patch_depth/s4_r4_20260915/selected_member_cache")
+SCHEDULE_REL = Path("manifests/nns_vit_patch_depth/s4_r4_source_schedule.json")
+PATH_REGISTRY_REL = Path("manifests/nns_vit_patch_depth/s4_r4_path_resolution_registry.json")
 SPEC_REL = Path("config/nns_vit_patch_depth/s4_run_spec.json")
 SCHEMA_REL = Path("config/nns_vit_patch_depth/s4_artifact.schema.json")
 S3_COMMIT = "a2fa81082ba9b49e0aa44407cbbb373de18accff"

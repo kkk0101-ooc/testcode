@@ -12,7 +12,7 @@ import time
 from typing import Any
 
 REPO = Path(__file__).resolve().parents[1]
-ROOT = REPO / "evidence/nns_vit_patch_depth/s4_r3_20260915"
+ROOT = REPO / "evidence/nns_vit_patch_depth/s4_r4_20260915"
 sys.path.insert(0, str(REPO / "src"))
 from vitnns import nns_patch_depth_s4 as s4  # noqa: E402
 
@@ -36,7 +36,7 @@ def preaccess() -> None:
     environment["PYTHONPATH"] = str(REPO / "src")
     pytest_root = REPO.parent / ".runtime/pytest-s4-seal"
     output = run([str(python), "-m", "pytest", "-q", "tests/test_nns_patch_depth_s4.py", "--basetemp", str(pytest_root)], env=environment)
-    require_test = "8 passed" in output
+    require_test = "9 passed" in output
     if not require_test:
         raise RuntimeError("S4 pre-access tests did not pass")
     false_pass = json.loads(run(["python3", "scripts/validate_nns_vit_patch_depth_s4.py", "false-pass"]))
@@ -52,8 +52,8 @@ def preaccess() -> None:
     reports = {
         "synthetic_queue_concurrency_crash_recovery_report.json": s4.signed("s4_synthetic_queue_concurrency_crash_recovery_report", "PASS", {
             "test_command": str(python) + " -m pytest -q tests/test_nns_patch_depth_s4.py",
-            "test_output": output, "test_count": 8,
-            "checks": ["P1_hash_permutation_and_raw_storage", "P1_zero_mass", "P2_exact_strata_boundary_and_determinism", "dynamic_single_winner_claim", "dependency_ready_without_round_barrier", "fresh_launch_ignores_stale_claim", "global_terminal_skip", "atomic_hardlink_no_overwrite", "no_static_shard", "forbidden_read_guard"],
+            "test_output": output, "test_count": 9,
+            "checks": ["P1_hash_permutation_and_raw_storage", "P1_zero_mass", "P2_exact_strata_boundary_and_determinism", "P2_NumPy_scalar_JSON_native_serialization_regression", "dynamic_single_winner_claim", "dependency_ready_without_round_barrier", "fresh_launch_ignores_stale_claim", "global_terminal_skip", "atomic_hardlink_no_overwrite", "no_static_shard", "forbidden_read_guard"],
             "formal_member_access_count": 0,
         }),
         "s1_pilot_only_nns_occlusion_validation_report.json": s4.signed("s4_s1_pilot_only_nns_occlusion_validation_report", "PASS", {
@@ -105,8 +105,8 @@ def seal(implementation_commit: str) -> None:
         "config/nns_vit_patch_depth/s4_run_spec.json", "config/nns_vit_patch_depth/s4_artifact.schema.json",
         "config/nns_vit_patch_depth/s4_unit_terminal.schema.json", "config/nns_vit_patch_depth/s4_source_schedule.schema.json",
         "config/nns_vit_patch_depth/s4_claim.schema.json",
-        "manifests/nns_vit_patch_depth/s4_r3_source_schedule.json",
-        "manifests/nns_vit_patch_depth/s4_r3_path_resolution_registry.json",
+        "manifests/nns_vit_patch_depth/s4_r4_source_schedule.json",
+        "manifests/nns_vit_patch_depth/s4_r4_path_resolution_registry.json",
     ]
     if not all(item in tracked or "vitnns_rebuild/" + item in tracked for item in required):
         raise RuntimeError("implementation commit lacks required files")
@@ -118,6 +118,7 @@ def seal(implementation_commit: str) -> None:
             "deterministic_single_multi_gpu_repeatability_report.json",
             "dependent_unit_schedule_and_queue_contract.json", "elastic_gpu_startup_and_lock_contract.json",
             "typed_failure_na_propagation_contract.json", "retention_and_audit_subset_registry.json",
+            "s4_r3_failure_binding.json",
         )
     }
     seal_document = s4.signed("s4_implementation_seal", "PASS", {
