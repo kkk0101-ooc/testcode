@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Metadata-only final publication rebind for S3-R6."""
+"""Metadata-only final publication rebind for S3-R7."""
 from __future__ import annotations
 import json,math,os,subprocess,sys,time
 from pathlib import Path
 from typing import Any,Mapping
 REPO=Path(__file__).resolve().parents[1];sys.path.insert(0,str(REPO/"src"))
 from vitnns import nns_patch_depth_s3 as s3  # noqa:E402
-SOURCE=REPO/"evidence/nns_vit_patch_depth/s3_r5_20260915";R3=REPO/"evidence/nns_vit_patch_depth/s3_r3_20260914";ROOT=REPO/"evidence/nns_vit_patch_depth/s3_r6_20260915";PAYLOAD=REPO/"artifacts/nns_vit_patch_depth/s3_r5_20260915"
+SOURCE=REPO/"evidence/nns_vit_patch_depth/s3_r5_20260915";R3=REPO/"evidence/nns_vit_patch_depth/s3_r3_20260914";ROOT=REPO/"evidence/nns_vit_patch_depth/s3_r7_20260915";PAYLOAD=REPO/"artifacts/nns_vit_patch_depth/s3_r5_20260915"
 def sign(kind:str,status:str,payload:Mapping[str,Any],commit:str)->dict[str,Any]:
- value={"$schema":"s3_artifact.schema.json","schema_version":1,"study_id":s3.STUDY_ID,"stage_id":"S3","run_id":"s3_r6_20260915","document_type":kind,"status":status,"producer_commit":commit,"payload":s3.jsonable(dict(payload))};value["canonical_digest"]=s3.canonical_digest(value);return value
+ value={"$schema":"s3_r7_publication.schema.json","schema_version":1,"study_id":s3.STUDY_ID,"stage_id":"S3","run_id":"s3_r7_20260915","document_type":kind,"status":status,"producer_commit":commit,"payload":s3.jsonable(dict(payload))};value["canonical_digest"]=s3.canonical_digest(value);return value
 def main()->int:
- s3.require(not ROOT.exists(),"fresh S3-R6 root unavailable");s3.require(os.environ.get("CUDA_VISIBLE_DEVICES","")=="","finalizer must be CPU-only");commit=subprocess.check_output(["git","rev-parse","HEAD"],cwd=REPO,text=True).strip();branch=subprocess.check_output(["git","symbolic-ref","--short","HEAD"],cwd=REPO,text=True).strip();remote=subprocess.check_output(["git","ls-remote","origin",f"refs/heads/{branch}"],cwd=REPO,text=True).split()[0];s3.require(remote==commit,"finalizer implementation commit is not remote HEAD");ROOT.mkdir(parents=True)
+ s3.require(not ROOT.exists(),"fresh S3-R7 root unavailable");s3.require(os.environ.get("CUDA_VISIBLE_DEVICES","")=="","finalizer must be CPU-only");commit=subprocess.check_output(["git","rev-parse","HEAD"],cwd=REPO,text=True).strip();branch=subprocess.check_output(["git","symbolic-ref","--short","HEAD"],cwd=REPO,text=True).strip();remote=subprocess.check_output(["git","ls-remote","origin",f"refs/heads/{branch}"],cwd=REPO,text=True).split()[0];s3.require(remote==commit,"finalizer implementation commit is not remote HEAD");ROOT.mkdir(parents=True)
  schedule=json.loads((REPO/s3.SCHEDULE_REL).read_text())["payload"]["records"];terminal_records=[];prediction_records=[];arrays=[];resources=[];states={};splits={};access={"probe_train_JPEG_raw_byte_access_count":0,"probe_train_mask_member_access_count":0,"probe_train_decode_count":0,"probe_train_feature_extraction_count":0,"probe_validation_JPEG_raw_byte_access_count":0,"probe_validation_mask_member_access_count":0,"probe_validation_decode_count":0,"probe_validation_feature_extraction_count":0,"D2_test_JPEG_member_raw_byte_access_count":0,"D2_test_mask_member_raw_byte_access_count":0,"D2_test_decode_count":0,"D2_test_feature_extraction_count":0,"D2_test_prediction_count":0}
  for row in schedule:
   index=int(row["schedule_index"]);source_path=SOURCE/"unit_terminals"/f"unit-{index:05d}.json";doc=json.loads(source_path.read_text());s3.require(s3.verify_signed(doc),f"terminal digest {index}");p=doc["payload"];s3.require(p["source_image_id"]==row["source_image_id"],f"terminal identity {index}");state=p["terminal_state"];states[state]=states.get(state,0)+1;splits.setdefault(p["split"],{});splits[p["split"]][state]=splits[p["split"]].get(state,0)+1;resources.append(p["resources"]);arrays.extend(p["arrays"])
