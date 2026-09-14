@@ -1,11 +1,23 @@
 {
   "schema_version": 1,
   "study_id": "NNS_VIT_PATCH_DEPTH_SEMANTICS",
-  "stage_id": "S1",
-  "run_id": "s1_pilot_20260914",
+  "stage_id": "S1-R1",
+  "run_id": "s1_r1_pilot_20260914",
   "stage_token": "S1_PILOT_ONLY",
   "status": "FROZEN_PROSPECTIVELY_BEFORE_PILOT_IMAGE_MASK_MODEL_OR_OUTCOME_ACCESS",
-  "formal_root": "evidence/nns_vit_patch_depth/s1_pilot_20260914",
+  "formal_root": "evidence/nns_vit_patch_depth/s1_r1_pilot_20260914",
+  "recovery": {
+    "predecessor_root": "evidence/nns_vit_patch_depth/s1_pilot_20260914",
+    "predecessor_terminal_sha256": "22b7d4b25db657b3ce28cc929c9cc5cb39a0f79a740169b69cc42c746c37afe8",
+    "predecessor_terminal_canonical_digest": "fd91a1385dcc8aa87ceac6ce6d4dd32f90b37454611c07234c9632568d54a524",
+    "predecessor_status": "FAILED_IMPLEMENTATION",
+    "failure_code": "UNIT_TERMINAL_SERIALIZATION_NUMPY_INT64",
+    "repair": "recursively normalize NumPy scalars and arrays to JSON-native values before canonical serialization",
+    "scientific_contract_changed": false,
+    "schedule_changed": false,
+    "old_partial_arrays_valid_unit_count": 0,
+    "old_partial_arrays_use": "SHA256-revalidated single-GPU deterministic comparison only"
+  },
   "predecessor": {
     "path": "evidence/nns_vit_patch_depth/s0_r5_20260914/terminal_receipt.json",
     "sha256": "c6b06de9259f47d91e4bda170f406c5c13e6dc1bfcfc64b703106ae0312305bd",

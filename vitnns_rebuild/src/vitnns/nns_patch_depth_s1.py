@@ -16,7 +16,7 @@ import numpy as np
 
 STUDY_ID = "NNS_VIT_PATCH_DEPTH_SEMANTICS"
 STAGE_ID = "S1"
-RUN_ID = "s1_pilot_20260914"
+RUN_ID = "s1_r1_pilot_20260914"
 PATCH_GRID = 14
 PATCH_COUNT = 196
 BLOCKS = tuple(range(12))

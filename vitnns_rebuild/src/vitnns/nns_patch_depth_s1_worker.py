@@ -49,7 +49,19 @@ def sha_file(path: Path) -> str:
 
 
 def canonical(value: Any) -> bytes:
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()
+    return json.dumps(jsonable(value), sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()
+
+
+def jsonable(value: Any) -> Any:
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, Mapping):
+        return {str(key): jsonable(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [jsonable(item) for item in value]
+    return value
 
 
 def digest(value: Any) -> str:
@@ -57,14 +69,14 @@ def digest(value: Any) -> str:
 
 
 def signed(document_type: str, status: str, payload: Mapping[str, Any]) -> dict[str, Any]:
-    value = {"schema_version": 1, "study_id": "NNS_VIT_PATCH_DEPTH_SEMANTICS", "stage_id": "S1", "run_id": "s1_pilot_20260914", "document_type": document_type, "status": status, "payload": dict(payload)}
+    value = {"schema_version": 1, "study_id": "NNS_VIT_PATCH_DEPTH_SEMANTICS", "stage_id": "S1-R1", "run_id": "s1_r1_pilot_20260914", "document_type": document_type, "status": status, "payload": jsonable(dict(payload))}
     value["canonical_digest"] = digest(value); return value
 
 
 def write_json_new(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True); descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
     with os.fdopen(descriptor, "wb") as stream:
-        stream.write(json.dumps(value, sort_keys=True, indent=2, ensure_ascii=False, allow_nan=False).encode() + b"\n"); stream.flush(); os.fsync(stream.fileno())
+        stream.write(json.dumps(jsonable(value), sort_keys=True, indent=2, ensure_ascii=False, allow_nan=False).encode() + b"\n"); stream.flush(); os.fsync(stream.fileno())
     directory = os.open(path.parent, os.O_RDONLY)
     try: os.fsync(directory)
     finally: os.close(directory)
@@ -74,7 +86,7 @@ def publish_terminal(pending: Path, terminal: Path, value: Any) -> None:
     require(pending.is_file() and not terminal.exists(), "pending to terminal transition unavailable")
     temporary = pending.with_name(pending.name + ".terminal.tmp")
     with temporary.open("xb") as stream:
-        stream.write(json.dumps(value, sort_keys=True, indent=2, ensure_ascii=False, allow_nan=False).encode() + b"\n"); stream.flush(); os.fsync(stream.fileno())
+        stream.write(json.dumps(jsonable(value), sort_keys=True, indent=2, ensure_ascii=False, allow_nan=False).encode() + b"\n"); stream.flush(); os.fsync(stream.fileno())
     os.replace(temporary, terminal); pending.unlink()
     directory = os.open(terminal.parent, os.O_RDONLY)
     try: os.fsync(directory)
@@ -236,7 +248,7 @@ def execute(repo_root: str, evidence_root: str, shard_id: int, worker_count: int
     import torch, torchvision, timm
     from .modeling import load_canonical_model
     from . import nns_patch_depth_s1 as s1
-    repo = Path(repo_root).resolve(); root = Path(evidence_root).resolve(); spec = json.loads((repo / "config/nns_vit_patch_depth/s1_run_spec.json").read_text()); schedule = json.loads((repo / "manifests/nns_vit_patch_depth/s1_pilot_schedule.json").read_text())["payload"]["records"]; by_index = {row["schedule_index"]: row for row in schedule}
+    repo = Path(repo_root).resolve(); root = Path(evidence_root).resolve(); spec = json.loads((repo / "config/nns_vit_patch_depth/s1_r1_run_spec.json").read_text()); schedule = json.loads((repo / "manifests/nns_vit_patch_depth/s1_pilot_schedule.json").read_text())["payload"]["records"]; by_index = {row["schedule_index"]: row for row in schedule}
     require(torch.cuda.device_count() == 1 and torch.cuda.get_device_name(0) == "NVIDIA H20", "one visible H20 required")
     torch.cuda.set_device(0); torch.use_deterministic_algorithms(True); torch.backends.cudnn.benchmark = False; torch.backends.cudnn.deterministic = True; torch.backends.cuda.matmul.allow_tf32 = False; torch.backends.cudnn.allow_tf32 = False
     a = torch.arange(1024, dtype=torch.float32, device="cuda:0", requires_grad=True).reshape(32, 32); b = torch.arange(1024, dtype=torch.float32, device="cuda:0").reshape(32, 32); (a @ b).square().sum().backward(); torch.cuda.synchronize()

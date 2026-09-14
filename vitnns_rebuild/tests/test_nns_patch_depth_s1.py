@@ -13,7 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_run_spec_is_closed_and_pilot_only() -> None:
-    value = json.loads((ROOT / "config/nns_vit_patch_depth/s1_run_spec.json").read_text())
+    value = json.loads((ROOT / "config/nns_vit_patch_depth/s1_r1_run_spec.json").read_text())
+    assert value["stage_id"] == "S1-R1"
     assert value["stage_token"] == "S1_PILOT_ONLY"
     assert value["data_access"]["allowed_outcome_split"] == "pilot"
     assert value["data_access"]["forbidden_outcome_splits"] == ["probe_train", "probe_validation", "confirmatory_holdout"]
@@ -123,3 +124,10 @@ def test_probe_split_is_image_level_disjoint_and_detects_wrong_class_count() -> 
     assert not ({row["source_image_id"] for row in train} & {row["source_image_id"] for row in validation})
     with pytest.raises(s1.S1Error):
         s1.probe_split(records[:-1])
+
+
+def test_worker_json_normalizes_numpy_scalars() -> None:
+    from vitnns import nns_patch_depth_s1_worker as worker
+    value = worker.signed("fixture", "PASS", {"index": np.int64(3), "array": np.asarray([1, 2], dtype=np.int64)})
+    json.dumps(value, allow_nan=False)
+    assert value["payload"] == {"index": 3, "array": [1, 2]}

@@ -13,12 +13,12 @@ from typing import Any, Mapping
 
 REPO = Path(__file__).resolve().parents[1]
 S0 = REPO / "evidence/nns_vit_patch_depth/s0_r5_20260914"
-SPEC = REPO / "config/nns_vit_patch_depth/s1_run_spec.json"
+SPEC = REPO / "config/nns_vit_patch_depth/s1_r1_run_spec.json"
 SCHEDULE = REPO / "manifests/nns_vit_patch_depth/s1_pilot_schedule.json"
-SCHEMA = REPO / "config/nns_vit_patch_depth/s1_run_spec.schema.json"
-ROOT = REPO / "evidence/nns_vit_patch_depth/s1_pilot_20260914"
+SCHEMA = REPO / "config/nns_vit_patch_depth/s1_r1_run_spec.schema.json"
+ROOT = REPO / "evidence/nns_vit_patch_depth/s1_r1_pilot_20260914"
 STUDY = "NNS_VIT_PATCH_DEPTH_SEMANTICS"
-RUN = "s1_pilot_20260914"
+RUN = "s1_r1_pilot_20260914"
 NAMESPACE = "NNS_VIT_PATCH_DEPTH_S1_CLASS_THEN_SOURCE_V1"
 
 
@@ -36,7 +36,7 @@ def digest(value: Any) -> str:
 
 
 def signed(document_type: str, status: str, payload: Mapping[str, Any], **extra: Any) -> dict[str, Any]:
-    value = {"schema_version": 1, "study_id": STUDY, "stage_id": "S1", "run_id": RUN, "document_type": document_type, "status": status, "payload": dict(payload), **extra}
+    value = {"schema_version": 1, "study_id": STUDY, "stage_id": "S1-R1", "run_id": RUN, "document_type": document_type, "status": status, "payload": dict(payload), **extra}
     value["canonical_digest"] = digest(value)
     return value
 
@@ -172,6 +172,7 @@ def freeze_root() -> None:
     sources = [
         SPEC, SCHEMA, SCHEDULE, REPO / "manifests/nns_vit_patch_depth/s1_artifact_contracts.json",
         REPO / "docs/nns_vit_patch_depth_s1_protocol_20260914.md", REPO / "src/vitnns/nns_patch_depth_s1.py",
+        REPO / "docs/nns_vit_patch_depth_s1_r1_recovery_20260914.md",
         REPO / "src/vitnns/nns_patch_depth_s1_worker.py", REPO / "scripts/run_nns_vit_patch_depth_s1.py",
         REPO / "scripts/validate_nns_vit_patch_depth_s1.py", REPO / "tests/test_nns_patch_depth_s1.py",
         REPO / "scripts/nns_patch_depth_s1_env.sh", REPO / "src/vitnns/stage_y_y1.py",
@@ -188,8 +189,10 @@ def freeze_root() -> None:
         "forbidden": [{"split": name, "allowed_fields": ["source_image_id", "image_sha256", "final_split"], "byte_access_limit": 0, "outcome_access_limit": 0} for name in ("probe_train", "probe_validation", "confirmatory_holdout")],
         "pilot_permanently_development_only": True, "confirmatory_label": "public-validation confirmatory holdout", "forbidden_claim": "ImageNet-S official test result",
     })
-    implementation = signed("s1_implementation_seal", "FROZEN", {"commit": head, "files": records, "files_digest": digest(records), "pilot_or_model_outcome_access_before_seal": False})
-    protocol = signed("s1_prospective_protocol_binding", "FROZEN", {"protocol": record(REPO / "docs/nns_vit_patch_depth_s1_protocol_20260914.md"), "run_spec": record(SPEC), "run_spec_schema": record(SCHEMA), "artifact_contracts": record(REPO / "manifests/nns_vit_patch_depth/s1_artifact_contracts.json"), "scientific_decisions_allowed": False})
+    failed_terminal = REPO / "evidence/nns_vit_patch_depth/s1_pilot_20260914/terminal_receipt.json"
+    failed = read_signed(failed_terminal); require(failed["status"] == "FAILED_IMPLEMENTATION" and failed["payload"]["valid_unit_count"] == 0, "failed predecessor identity drift")
+    implementation = signed("s1_r1_implementation_seal", "FROZEN", {"commit": head, "files": records, "files_digest": digest(records), "pilot_or_model_outcome_access_before_seal": False, "recovery_predecessor": {**record(failed_terminal), "canonical_digest": failed["canonical_digest"]}, "repair_scope": "JSON_NATIVE_NUMPY_SCALAR_SERIALIZATION_ONLY", "scientific_contract_changed": False})
+    protocol = signed("s1_r1_prospective_protocol_binding", "FROZEN", {"protocol": record(REPO / "docs/nns_vit_patch_depth_s1_protocol_20260914.md"), "recovery_amendment": record(REPO / "docs/nns_vit_patch_depth_s1_r1_recovery_20260914.md"), "run_spec": record(SPEC), "run_spec_schema": record(SCHEMA), "artifact_contracts": record(REPO / "manifests/nns_vit_patch_depth/s1_artifact_contracts.json"), "scientific_decisions_allowed": False})
     escalation = signed("s1_deterministic_escalation_manifest", "FROZEN", {"schedule": record(SCHEDULE), "levels": json.loads(SCHEDULE.read_text())["payload"]["levels"], "minimum_stop_level": "intermediate", "decision_inputs": ["numeric_contracts", "typed_failure_rate", "control_matching_success", "deterministic_repeatability", "runtime_memory_storage", "variance_estimate_precision"], "forbidden_decision_inputs": ["effect_direction", "p_value", "heatmap_appearance", "support_convenience"]})
     source_manifest = signed("s1_pilot_source_manifest", "FROZEN", {"schedule": record(SCHEDULE), "pilot_count": 1744, "pilot_records_digest": json.loads(SCHEDULE.read_text())["payload"]["records_digest"], "permanent_use": "DEVELOPMENT_ONLY", "image_bytes_accessed": 0, "mask_bytes_accessed": 0, "model_loaded": False})
     for name, value in (("pilot_access_policy.json", policy), ("implementation_seal.json", implementation), ("prospective_protocol.json", protocol), ("deterministic_escalation_manifest.json", escalation), ("pilot_source_manifest.json", source_manifest)):

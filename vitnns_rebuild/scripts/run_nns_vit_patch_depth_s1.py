@@ -16,8 +16,9 @@ import time
 from typing import Any, Mapping, Sequence
 
 REPO = Path(__file__).resolve().parents[1]
-ROOT = REPO / "evidence/nns_vit_patch_depth/s1_pilot_20260914"
-SPEC_PATH = REPO / "config/nns_vit_patch_depth/s1_run_spec.json"
+ROOT = REPO / "evidence/nns_vit_patch_depth/s1_r1_pilot_20260914"
+FAILED_ROOT = REPO / "evidence/nns_vit_patch_depth/s1_pilot_20260914"
+SPEC_PATH = REPO / "config/nns_vit_patch_depth/s1_r1_run_spec.json"
 SCHEDULE_PATH = REPO / "manifests/nns_vit_patch_depth/s1_pilot_schedule.json"
 PYTHON = REPO.parent / ".conda/envs/vitnns/bin/python"
 RUNTIME_ROOT = REPO.parent / ".runtime"
@@ -37,7 +38,7 @@ def digest(value: Any) -> str:
 
 
 def signed(document_type: str, status: str, payload: Mapping[str, Any]) -> dict[str, Any]:
-    value = {"schema_version": 1, "study_id": "NNS_VIT_PATCH_DEPTH_SEMANTICS", "stage_id": "S1", "run_id": "s1_pilot_20260914", "document_type": document_type, "status": status, "payload": dict(payload)}; value["canonical_digest"] = digest(value); return value
+    value = {"schema_version": 1, "study_id": "NNS_VIT_PATCH_DEPTH_SEMANTICS", "stage_id": "S1-R1", "run_id": "s1_r1_pilot_20260914", "document_type": document_type, "status": status, "payload": dict(payload)}; value["canonical_digest"] = digest(value); return value
 
 
 def sha_file(path: Path) -> str:
@@ -151,9 +152,9 @@ def reconcile_level(level: str) -> dict[str, Any]:
 
 
 def compare_single_multi() -> None:
-    reference = json.loads(next((ROOT / "single_reference/shards").glob("shard-*/units/unit-*/completion/unit.json")).read_text()); parallel_path = next(path for path in (ROOT / "smoke/shards").glob("shard-*/units/unit-0000/completion/unit.json")); parallel = json.loads(parallel_path.read_text()); require(reference["status"] == parallel["status"] == "VALID", "repeatability unit not valid")
-    left = {Path(row["path"]).name: row for row in reference["payload"]["arrays"]}; right = {Path(row["path"]).name: row for row in parallel["payload"]["arrays"]}; names = sorted(set(left) & set(right)); comparisons = [{"name": name, "left_array_digest": left[name]["array_digest"], "right_array_digest": right[name]["array_digest"], "byte_identical": left[name]["sha256"] == right[name]["sha256"]} for name in names]
-    value = {"status": "PASS" if all(row["byte_identical"] for row in comparisons) else "FAILED_IMPLEMENTATION", "schedule_index": 0, "comparison_count": len(comparisons), "all_byte_identical": all(row["byte_identical"] for row in comparisons), "comparisons": comparisons}
+    failed_terminal = json.loads((FAILED_ROOT / "single_reference/shards/shard-00/units/unit-0000/completion/unit.json").read_text()); require(failed_terminal["status"] == "FAILED_IMPLEMENTATION", "predecessor reference terminal drift"); parallel_path = next(path for path in (ROOT / "smoke/shards").glob("shard-*/units/unit-0000/completion/unit.json")); parallel = json.loads(parallel_path.read_text()); require(parallel["status"] == "VALID", "parallel repeatability unit not valid")
+    left = {Path(row["path"]).name: row for row in failed_terminal["payload"]["partial_array_records"]}; right = {Path(row["path"]).name: row for row in parallel["payload"]["arrays"]}; names = sorted(set(left) & set(right)); require(names == sorted(right), "predecessor reference array set incomplete"); comparisons = [{"name": name, "left_sha256": left[name]["sha256"], "right_sha256": right[name]["sha256"], "byte_identical": left[name]["sha256"] == right[name]["sha256"]} for name in names]
+    value = {"status": "PASS" if all(row["byte_identical"] for row in comparisons) else "FAILED_IMPLEMENTATION", "schedule_index": 0, "comparison_count": len(comparisons), "all_byte_identical": all(row["byte_identical"] for row in comparisons), "single_gpu_source": record(FAILED_ROOT / "single_reference/shards/shard-00/units/unit-0000/completion/unit.json"), "single_gpu_source_status": "FAILED_IMPLEMENTATION_AFTER_ARRAY_COMPUTE_BEFORE_TERMINAL_SERIALIZATION", "source_arrays_revalidated_by_sha256": True, "multi_gpu_source": record(parallel_path), "comparisons": comparisons}
     write_new(ROOT / "deterministic_repeatability_report.json", signed("s1_deterministic_repeatability_report", value["status"], value)); require(value["status"] == "PASS", "single/multi deterministic mismatch")
 
 

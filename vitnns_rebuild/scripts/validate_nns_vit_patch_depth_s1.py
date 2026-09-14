@@ -16,9 +16,9 @@ import tempfile
 from typing import Any, Mapping
 
 REPO = Path(__file__).resolve().parents[1]
-ROOT = REPO / "evidence/nns_vit_patch_depth/s1_pilot_20260914"
+ROOT = REPO / "evidence/nns_vit_patch_depth/s1_r1_pilot_20260914"
 S0 = REPO / "evidence/nns_vit_patch_depth/s0_r5_20260914"
-SPEC = REPO / "config/nns_vit_patch_depth/s1_run_spec.json"
+SPEC = REPO / "config/nns_vit_patch_depth/s1_r1_run_spec.json"
 SCHEDULE = REPO / "manifests/nns_vit_patch_depth/s1_pilot_schedule.json"
 TERMINALS = ("PASS", "BLOCKED_SCIENTIFIC_VALIDITY", "BLOCKED_DATA_INTEGRITY", "BLOCKED_INFRASTRUCTURE", "FAILED_IMPLEMENTATION")
 NA_STATES = ("NA_GEOMETRY_SIZE_MISMATCH", "NA_TARGET_DISAPPEARED_AFTER_CROP", "NA_MASK_LABEL_OUT_OF_RANGE", "NA_VOID_MASK", "NA_ZERO_POSITIVE_MASS", "NA_MATCHED_CONTROL_UNAVAILABLE")
@@ -66,6 +66,7 @@ def npy_header(path: Path) -> tuple[str, list[int]]:
 def validate_preaccess() -> dict[str, Any]:
     spec = json.loads(SPEC.read_text()); schedule = read_signed(SCHEDULE); s0 = read_signed(S0 / "terminal_receipt.json")
     require(spec["stage_token"] == "S1_PILOT_ONLY" and spec["scientific_decisions_allowed"] is False, "S1 scope drift")
+    failed_path = REPO / spec["recovery"]["predecessor_root"] / "terminal_receipt.json"; failed = read_signed(failed_path); require(failed["status"] == spec["recovery"]["predecessor_status"] == "FAILED_IMPLEMENTATION", "recovery predecessor status drift"); require(sha_file(failed_path) == spec["recovery"]["predecessor_terminal_sha256"] and failed["canonical_digest"] == spec["recovery"]["predecessor_terminal_canonical_digest"], "recovery predecessor binding drift")
     require(spec["predecessor"]["sha256"] == sha_file(S0 / "terminal_receipt.json") and spec["predecessor"]["canonical_digest"] == s0["canonical_digest"], "S0 binding drift")
     require(s0["payload"]["status"] == "PASS" and s0["payload"]["next_authorization"] == "S1_PILOT_ONLY", "S0 authorization invalid")
     payload = schedule["payload"]; records = payload["records"]; require(len(records) == payload["pilot_count"] == 1744 and payload["records_digest"] == digest(records), "pilot schedule drift")
@@ -138,7 +139,7 @@ def false_pass_audit() -> dict[str, Any]:
 def write_final_reports() -> dict[str, Any]:
     validation = validate_final(); audit = false_pass_audit()
     for name, document_type, payload in (("independent_validation_report.json", "s1_independent_source_recomputing_validation_report", validation), ("false_pass_audit.json", "s1_false_pass_audit", audit)):
-        path = ROOT / name; require(not path.exists(), "refusing overwrite: " + name); value = {"schema_version": 1, "study_id": "NNS_VIT_PATCH_DEPTH_SEMANTICS", "stage_id": "S1", "run_id": "s1_pilot_20260914", "document_type": document_type, "status": "PASS", "payload": payload}; value["canonical_digest"] = digest(value)
+        path = ROOT / name; require(not path.exists(), "refusing overwrite: " + name); value = {"schema_version": 1, "study_id": "NNS_VIT_PATCH_DEPTH_SEMANTICS", "stage_id": "S1-R1", "run_id": "s1_r1_pilot_20260914", "document_type": document_type, "status": "PASS", "payload": payload}; value["canonical_digest"] = digest(value)
         descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
         with os.fdopen(descriptor, "wb") as stream:
             stream.write(json.dumps(value, sort_keys=True, indent=2, ensure_ascii=False, allow_nan=False).encode() + b"\n"); stream.flush(); os.fsync(stream.fileno())

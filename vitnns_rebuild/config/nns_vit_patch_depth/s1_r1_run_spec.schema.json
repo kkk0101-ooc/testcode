@@ -593,6 +593,54 @@
       ],
       "type": "object"
     },
+    "recovery": {
+      "additionalProperties": false,
+      "properties": {
+        "failure_code": {
+          "type": "string"
+        },
+        "old_partial_arrays_use": {
+          "type": "string"
+        },
+        "old_partial_arrays_valid_unit_count": {
+          "type": "integer"
+        },
+        "predecessor_root": {
+          "type": "string"
+        },
+        "predecessor_status": {
+          "type": "string"
+        },
+        "predecessor_terminal_canonical_digest": {
+          "type": "string"
+        },
+        "predecessor_terminal_sha256": {
+          "type": "string"
+        },
+        "repair": {
+          "type": "string"
+        },
+        "schedule_changed": {
+          "type": "boolean"
+        },
+        "scientific_contract_changed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "failure_code",
+        "old_partial_arrays_use",
+        "old_partial_arrays_valid_unit_count",
+        "predecessor_root",
+        "predecessor_status",
+        "predecessor_terminal_canonical_digest",
+        "predecessor_terminal_sha256",
+        "repair",
+        "schedule_changed",
+        "scientific_contract_changed"
+      ],
+      "type": "object"
+    },
     "run_id": {
       "type": "string"
     },
@@ -662,6 +710,7 @@
     "p2",
     "parallel",
     "predecessor",
+    "recovery",
     "run_id",
     "runtime",
     "schema_version",
