@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "study_id": "NNS_VIT_PATCH_DEPTH_SEMANTICS",
+  "stage_id": "S2-R8",
+  "run_id": "s2_r8_20260914",
+  "authorization": "S2_R8_ONLY",
+  "prospective_status": "R8_CREATED_AFTER_R7_DESIGN_POWER_AND_ICC_WERE_KNOWN_NOT_ORIGINAL_BLIND_PREREGISTRATION",
+  "predecessor": {
+    "root": "evidence/nns_vit_patch_depth/s2_r7_20260914",
+    "required_status": "BLOCKED_SCIENTIFIC_VALIDITY",
+    "required_next_authorization": "NONE",
+    "required_D2_power": 0.82161,
+    "required_target_power": 0.9,
+    "required_ICC_point": 0.02898917255778338,
+    "required_ICC_upper": 0.3588231446203747,
+    "required_D2_image_count": 11557
+  },
+  "frozen_changes_only": {
+    "target_power": 0.8,
+    "target_power_basis": "prospective_owner_authorized_type_II_error_and_resource_tradeoff_before_any_formal_outcome_access",
+    "multiplicity": "serial_gatekeeping_primary_Holm_then_D2",
+    "D2_candidate_caps_per_class": [2,3,4]
+  },
+  "unchanged": {
+    "effect_thresholds": {"P1":0.02,"P2":0.1,"D1":0.02,"D2":0.01},
+    "design_alternatives": {"P1":0.04,"P2":0.2,"D1_absolute":0.04,"D2_absolute":0.02},
+    "D2_scale": 0.13320415057793725,
+    "D2_ICC": 0.3588231446203747,
+    "missingness_fraction": 0.08333333333333333,
+    "class_count": 872,
+    "estimand": "equal_class_equal_within_class",
+    "test_directions": {"P1":"one_sided_positive","P2":"one_sided_positive","D1":"two_sided_substantial","D2":"two_sided_substantial"}
+  },
+  "gatekeeping": {
+    "primary_family": ["P1","P2","D1"],
+    "primary_method": "Holm_step_down",
+    "primary_FWER": 0.05,
+    "tie_rule": "P1_then_P2_then_D1",
+    "D2_gate": "open_only_if_P1_P2_D1_all_reject",
+    "D2_when_open": "two_sided_substantial_difference_alpha_0.05",
+    "D2_critical_z": 1.959963984540054,
+    "D2_when_closed": "NOT_TESTED_GATE_CLOSED_descriptive_estimate_allowed_no_confirmatory_claim",
+    "strong_FWER_proof": "If_any_primary_null_is_true_every_familywise_error_event_requires_at_least_one_false_primary_rejection_and_is_bounded_by_primary_Holm_FWER_0.05;_if_all_primary_nulls_are_false_the_only_possible_true_null_is_D2_which_is_tested_only_after_the_gate_at_alpha_0.05;_therefore_supremum_FWER_over_all_nonempty_true-null_configurations_is_at_most_0.05"
+  },
+  "candidate_manifests": {
+    "caps": [2,3,4],
+    "source": "evidence/nns_vit_patch_depth/s2_r7_20260914/expanded_d2_confirmatory_manifest.json",
+    "within_class_order": "ascending_R7_selection_key_then_source_image_id",
+    "must_include_original_two": true,
+    "nested": true,
+    "selection_outcome_blind": true,
+    "expected_counts_recomputed_not_trusted": true
+  },
+  "probe_training_redesign": {
+    "final_fit": "all_6_probe_train_images_per_class",
+    "hyperparameter_selection": "2_probe_validation_images_per_class_only",
+    "alpha_grid": [0.01, 0.1, 1.0, 10.0, 100.0],
+    "tie_rule": "minimum_equal_image_weight_validation_MSE_then_smallest_alpha",
+    "train_only_normalization": true,
+    "three_fold_train_only_cross_fit": "hash_assign_6_train_images_to_3_folds_of_2_train_on_4_predict_held_out_2",
+    "cross_fit_role": "stability_and_leakage_gate_only_not_confirmatory_denominator_or_alpha_selection",
+    "repeat_training_role": "deterministic_repeatability_only_not_independent_observation",
+    "patch_random_split_forbidden": true
+  },
+  "power": {
+    "replicates": 1000000,
+    "seed_namespace": "NNS_VIT_PATCH_DEPTH_S2_R8_HIERARCHICAL_POWER_V1",
+    "random_algorithm": "Python_random_Random_MT19937_gauss_with_SHA256_first_8_byte_big_endian_seed",
+    "correlation_scenarios": ["R4_CLASS_LEVEL_CORRELATION","D2_CROSS_CORRELATIONS_ZERO","D2_CROSS_CORRELATIONS_SIGN_FLIPPED"],
+    "conservative_joint_estimate": "minimum_across_three_frozen_correlation_scenarios",
+    "Monte_Carlo_lower_bound": "one_sided_95_percent_Wilson_lower_bound_z_1.6448536269514722",
+    "correlation_independent_joint_lower_bound": "max_0_sum_of_four_marginal_powers_minus_3",
+    "PASS_rule": "smallest_m_with_primary_marginal_gates_validity_coverage_calibration_precision_conservative_joint_point_MC_lower_and_Frechet_lower_all_at_least_or_within_frozen_thresholds",
+    "conditional_D2_definition": "joint_success_count_divided_by_gate_open_count",
+    "unconditional_joint_definition": "P_primary_Holm_all_reject_and_D2_two_sided_reject"
+  },
+  "calibration": {
+    "replicates": 1000000,
+    "seed_namespace": "NNS_VIT_PATCH_DEPTH_S2_R8_STRONG_FWER_CALIBRATION_V1",
+    "true_null_configurations": "all_15_nonempty_subsets_of_P1_P2_D1_D2",
+    "shared_draws_across_configurations": true,
+    "false_null_noncentrality": "corresponding_frozen_design_alternative_margin_and_candidate_standard_error",
+    "point_gate": "maximum_empirical_FWER_lte_0.0525",
+    "upper_gate": "maximum_one_sided_95_percent_Wilson_upper_lte_0.055",
+    "coverage_gate": "each_marginal_normal_95_percent_coverage_in_0.948_to_0.952"
+  },
+  "validity_and_precision": {
+    "P1_P2_D1_scheduled_images": 1744,
+    "P1_P2_D1_conservative_valid_images": 1598,
+    "minimum_valid_fraction": 0.9,
+    "maximum_NA_fraction": 0.1,
+    "D2_missingness": "per_class_effective_m=max_1_floor_11_times_scheduled_m_divided_by_12",
+    "precision_half_width_max": 0.01
+  },
+  "resource_limits": {
+    "probe_train": 5232,
+    "probe_validation": 1744,
+    "D2_test_max": 3482,
+    "S3_source_image_forward_max": 10458,
+    "S3_original_forward_count": 8720,
+    "S3_increment_max": 1738,
+    "S3_increment_fraction_max": 0.2,
+    "S4_NNS_occlusion_image_count": 1744,
+    "cap_above_4_forbidden": true,
+    "all_11557_forbidden": true
+  },
+  "extra_D2_role_flags": {"P1":false,"P2":false,"D1":false,"D2":true,"S4_NNS":false,"S4_occlusion":false},
+  "data_boundary": {"CPU_only":true,"formal_metadata_only_before_S3":true,"formal_image_mask_feature_prediction_endpoint_access":false,"model_GPU_attribution_probe_occlusion":false},
+  "next_authorization_on_PASS": "S3_REPRESENTATION_AND_PROBE_TRAINING_ONLY",
+  "next_authorization_otherwise": "NONE",
+  "scientific_claim_decision_allowed": false
+}
