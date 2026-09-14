@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "study_id": "NNS_VIT_PATCH_DEPTH_SEMANTICS",
+  "stage_id": "S2-R7",
+  "run_id": "s2_r7_20260914",
+  "authorization": "S2_D2_EFFICIENCY_REDESIGN_ONLY",
+  "predecessor": {
+    "root": "evidence/nns_vit_patch_depth/s2_r6_20260914",
+    "required_status": "BLOCKED_SCIENTIFIC_VALIDITY",
+    "required_reason": "ALL_872_CLASSES_STRUCTURALLY_UNDERPOWERED_FOR_FROZEN_D2_DESIGN_ALTERNATIVE_UNDER_CONSERVATIVE_SMALL_PILOT_SCALE",
+    "required_next_authorization": "NONE"
+  },
+  "unchanged_scientific_contract": {
+    "effect_thresholds": {"P1": 0.02, "P2": 0.1, "D1": 0.02, "D2": 0.01},
+    "target_power": 0.9,
+    "family": ["P1", "P2", "D1", "D2"],
+    "FWER": 0.05,
+    "D2_design_alternative_absolute": 0.02,
+    "D2_margin_beyond_threshold": 0.01,
+    "D2_conservative_scale": 0.13320415057793725,
+    "class_count": 872,
+    "P1_P2_D1_confirmatory_images_per_class": 2,
+    "probe_train_images_per_class": 6,
+    "probe_validation_images_per_class": 2
+  },
+  "redesigned_D2_test_cohort": {
+    "source_universe": "S0-R4_QC_ELIGIBLE_PUBLIC_VALIDATION_RECORDS_FOR_THE_872_S0-R5_SELECTED_CLASSES",
+    "selection": "all_eligible_records_no_outcome_dependent_filtering",
+    "expected_class_count": 872,
+    "expected_image_count": 11557,
+    "expected_per_class_minimum": 2,
+    "expected_per_class_maximum": 29,
+    "original_1744_confirmatory_images_included": true,
+    "additional_reserved_images_expected": 9813,
+    "estimand": "equal_weight_mean_over_872_fixed_classes_of_equal_weight_within_class_D2_image_endpoints",
+    "image_is_observation_class_is_resampling_stratum": true,
+    "generalization_beyond_fixed_classes_forbidden": true
+  },
+  "probe_training_redesign": {
+    "final_fit": "all_6_probe_train_images_per_class",
+    "hyperparameter_selection": "2_probe_validation_images_per_class_only",
+    "alpha_grid": [0.01, 0.1, 1.0, 10.0, 100.0],
+    "tie_rule": "minimum_equal_image_weight_validation_MSE_then_smallest_alpha",
+    "train_only_normalization": true,
+    "three_fold_train_only_cross_fit": "hash_assign_6_train_images_to_3_folds_of_2; train_on_4_predict_held_out_2",
+    "cross_fit_role": "stability_and_leakage_gate_only_not_confirmatory_denominator_or_alpha_selection",
+    "repeat_training_role": "deterministic_repeatability_only_not_independent_observation",
+    "patch_random_split_forbidden": true
+  },
+  "pilot_ICC_design": {
+    "eligible_pilot_classes": 11,
+    "two_direction_values": "fit_A_predict_B_and_fit_B_predict_A_using_fixed_alpha_1.0_and_train-only_normalization",
+    "ICC": "one_way_random_effects_ICC_1_1_on_11_class_pairs",
+    "bootstrap_unit": "class_pair",
+    "bootstrap_replicates": 100000,
+    "seed_namespace": "NNS_VIT_PATCH_DEPTH_S2_R7_D2_ICC_BOOTSTRAP_V1",
+    "conservative_ICC": "clip_max_0_1_of_one_sided_95_percent_percentile_upper_bound",
+    "pilot_D2_mean_sign_pvalue_forbidden": true
+  },
+  "cluster_aware_power": {
+    "per_class_effective_variance_factor": "rho_upper + (1-rho_upper)/m_c",
+    "equal_class_weight_variance": "sigma_D2_squared_times_sum_class_factors_divided_by_872_squared",
+    "missingness": "deterministically_reduce_each_class_count_to_max_1_floor_11_times_m_c_divided_by_12",
+    "two_sided_worst_Holm_critical": "Phi_inverse_1_minus_0.05_divided_by_8",
+    "power_replicates": 100000,
+    "seed_namespace": "NNS_VIT_PATCH_DEPTH_S2_R7_CLUSTER_POWER_V1",
+    "power_gate": 0.9,
+    "precision_gate": "normal_95_percent_half_width_lte_0.01",
+    "decision": "PASS_only_if_metadata_capacity_exact_ICC_upper_power_and_precision_all_pass_else_BLOCKED_SCIENTIFIC_VALIDITY"
+  },
+  "data_boundary": {
+    "preseal_access": "metadata_capacity_only",
+    "postseal_pilot_access": "S1_retained_arrays_for_bidirectional_D2_ICC_only",
+    "formal_source_access": "S0-R3_and_S0-R4_existing_metadata_only_no_raw_byte_rehash_required",
+    "formal_decode_or_outcome_access": false,
+    "model_GPU_attribution_probe_training_occlusion": false
+  },
+  "next_authorization_on_PASS": "S3_REPRESENTATION_AND_PROBE_TRAINING_ONLY",
+  "next_authorization_otherwise": "NONE",
+  "scientific_claim_allowed": false
+}
