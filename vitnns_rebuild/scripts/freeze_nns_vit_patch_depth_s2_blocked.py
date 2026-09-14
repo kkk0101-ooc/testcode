@@ -13,7 +13,7 @@ import tempfile
 from typing import Any
 
 REPO = Path(__file__).resolve().parents[1]
-ROOT = REPO / "evidence/nns_vit_patch_depth/s2_r2_20260914"
+ROOT = REPO / "evidence/nns_vit_patch_depth/s2_r3_20260914"
 S0 = REPO / "evidence/nns_vit_patch_depth/s0_r5_20260914"
 S1 = REPO / "evidence/nns_vit_patch_depth/s1_r1_pilot_20260914"
 INITIAL_COMMIT = "07a2d44f89fb12b6d794bd3d2601cb3b676ea668"
@@ -91,6 +91,18 @@ def command(*args: str) -> str:
     return subprocess.check_output(args, cwd=REPO, text=True).strip()
 
 
+def implementation_record(relative: str, commit: str) -> dict[str, Any]:
+    result = record(REPO / relative)
+    line = subprocess.check_output(["git", "-C", str(REPO.parent), "ls-tree", commit, "--", "vitnns_rebuild/" + relative], text=True).strip()
+    require(bool(line), "implementation file is not committed: " + relative)
+    metadata, tree_path = line.split("\t", 1); mode, kind, blob_oid = metadata.split()
+    require(kind == "blob" and tree_path == "vitnns_rebuild/" + relative, "implementation tree binding drift")
+    blob = subprocess.check_output(["git", "-C", str(REPO.parent), "cat-file", "blob", blob_oid])
+    require(hashlib.sha256(blob).hexdigest() == result["sha256"], "working implementation differs from committed bytes: " + relative)
+    result["git_blob_oid"] = blob_oid
+    return result
+
+
 def recompute_s0() -> tuple[list[dict[str, Any]], dict[str, Any]]:
     terminal = read_signed(S0 / "terminal_receipt.json")
     expected = {row["name"]: row for row in terminal["payload"]["artifacts"]}
@@ -134,7 +146,7 @@ def create() -> None:
     repeat = read_signed(S1 / "deterministic_repeatability_report.json")["payload"]
     startup = signed("s2_startup_gate_report", "PASS", {
         "authorization": "S2_PROTOCOL_AND_POWER_FREEZE_ONLY",
-        "fresh_revision": {"root": "evidence/nns_vit_patch_depth/s2_r2_20260914", "predecessor_terminal_root": "evidence/nns_vit_patch_depth/s2_r1_20260914", "predecessor_empty_root": "evidence/nns_vit_patch_depth/s2_20260914", "predecessor_empty_root_file_count": 0, "reason": "r1_terminal_independent_audit_found_missing_live_implementation_hash_recomputation_and_nonmaterialized_final_reports"},
+        "fresh_revision": {"root": "evidence/nns_vit_patch_depth/s2_r3_20260914", "predecessor_terminal_root": "evidence/nns_vit_patch_depth/s2_r2_20260914", "predecessor_empty_root": "evidence/nns_vit_patch_depth/s2_20260914", "predecessor_empty_root_file_count": 0, "reason": "publish_final_root_after_blocked_implementation_and_validator_commit_so_live_files_and_git_blobs_share_one_frozen_identity"},
         "local_head": INITIAL_COMMIT, "tracking_ref": "origin/stage-d-d3-pass", "tracking_ref_sha": INITIAL_COMMIT, "remote_branch_ref": "refs/heads/stage-d-d3-pass", "remote_ref_sha": INITIAL_COMMIT,
         "initial_git_status_porcelain_v2": {"branch_ab": "+0 -0", "tracked_or_staged_changes": [], "vitnns_rebuild_untracked_changes": [], "external_untracked_entries": [
             "../.root_cleanup_quarantine/20260914-root-tmp-cleanup/kv_chapter_reordered.md",
@@ -149,7 +161,7 @@ def create() -> None:
         },
         "only_external_quarantine_untracked": True, "external_quarantine_excluded_untouched": True,
         "lfs_status_clean": True, "lfs_fsck_ok": True,
-        "predecessor_terminals": {"s0_terminal": record(S0 / "terminal_receipt.json"), "s1_terminal": record(S1 / "terminal_receipt.json"), "s2_r1_terminal": record(REPO / "evidence/nns_vit_patch_depth/s2_r1_20260914/terminal_receipt.json")},
+        "predecessor_terminals": {"s0_terminal": record(S0 / "terminal_receipt.json"), "s1_terminal": record(S1 / "terminal_receipt.json"), "s2_r1_terminal": record(REPO / "evidence/nns_vit_patch_depth/s2_r1_20260914/terminal_receipt.json"), "s2_r2_terminal": record(REPO / "evidence/nns_vit_patch_depth/s2_r2_20260914/terminal_receipt.json")},
         "s0_artifact_recomputation": {"all_match": True, "files": s0_rows, "source_recomputing_validation": s0_validation},
         "s1_artifact_recomputation": {"all_match": True, "files": s1_rows, "source_recomputing_validation": s1_validation, "whole_root_inventory_recomputed": True},
         "s0_split_invariants_recomputed": {"pilot": 1744, "probe_train": 5232, "probe_validation": 1744, "confirmatory_holdout": 1744, "class_count": 872, "per_class_quota": "2/6/2/2"},
@@ -178,9 +190,10 @@ def create() -> None:
         "power_simulation_performed": False, "cohort_selected": False, "sample_size_decided": False, "effect_thresholds_frozen": False,
         "recovery_requires": "new_explicitly_authorized_independent_S2_revision_with_pre_power_seal_created_by_an_outcome-blind_process_before_any_pilot_endpoint_access",
     })
+    implementation_commit = command("git", "rev-parse", "HEAD")
     implementation = signed("s2_implementation_seal", "PASS", {
-        "implementation_commit": command("git", "rev-parse", "HEAD"),
-        "files": [record(REPO / name) for name in ("scripts/freeze_nns_vit_patch_depth_s2_blocked.py", "scripts/validate_nns_vit_patch_depth_s2.py", "tests/test_nns_patch_depth_s2_terminal.py")],
+        "implementation_commit": implementation_commit,
+        "files": [implementation_record(name, implementation_commit) for name in ("scripts/freeze_nns_vit_patch_depth_s2_blocked.py", "scripts/validate_nns_vit_patch_depth_s2.py", "tests/test_nns_patch_depth_s2_terminal.py")],
         "standard_library_validator": True, "torch_imported_by_validator": False, "gpu_required_by_validator": False,
     })
     for name, value in (("startup_gate_report.json", startup), ("formal_access_audit.json", access), ("protocol_order_incident_report.json", incident), ("implementation_seal.json", implementation)):

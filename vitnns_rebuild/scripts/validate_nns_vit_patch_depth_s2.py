@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 REPO = Path(__file__).resolve().parents[1]
-DEFAULT_ROOT = REPO / "evidence/nns_vit_patch_depth/s2_r2_20260914"
+DEFAULT_ROOT = REPO / "evidence/nns_vit_patch_depth/s2_r3_20260914"
 ALLOWED = {"PASS", "BLOCKED_SCIENTIFIC_VALIDITY", "BLOCKED_DATA_INTEGRITY", "BLOCKED_INFRASTRUCTURE", "FAILED_IMPLEMENTATION"}
 FORBIDDEN = {"BLOCKED_BUDGET", "BLOCKED_WALL_TIME", "FAIL_COST"}
 PREDECESSORS = {
@@ -17,12 +17,12 @@ PREDECESSORS = {
     "s1_terminal": REPO / "evidence/nns_vit_patch_depth/s1_r1_pilot_20260914/terminal_receipt.json",
 }
 EXCLUDED_FROM_INVENTORY = {"whole_root_inventory.json", "terminal_receipt.json", "independent_validation_report.json", "false_pass_audit.json"}
-R2_FRESH_REVISION = {
-    "root": "evidence/nns_vit_patch_depth/s2_r2_20260914",
-    "predecessor_terminal_root": "evidence/nns_vit_patch_depth/s2_r1_20260914",
+ACTIVE_FRESH_REVISION = {
+    "root": "evidence/nns_vit_patch_depth/s2_r3_20260914",
+    "predecessor_terminal_root": "evidence/nns_vit_patch_depth/s2_r2_20260914",
     "predecessor_empty_root": "evidence/nns_vit_patch_depth/s2_20260914",
     "predecessor_empty_root_file_count": 0,
-    "reason": "r1_terminal_independent_audit_found_missing_live_implementation_hash_recomputation_and_nonmaterialized_final_reports",
+    "reason": "publish_final_root_after_blocked_implementation_and_validator_commit_so_live_files_and_git_blobs_share_one_frozen_identity",
 }
 
 
@@ -93,13 +93,13 @@ def validate(root: Path) -> dict[str, Any]:
     require(ap["pilot_endpoint_payload_exposed_before_pre_power_seal"] is True, "incident hidden")
     require(incident["status"] == "BLOCKED_SCIENTIFIC_VALIDITY" and incident["payload"]["pre_power_seal_existed_at_access"] is False, "incident status drift")
     sp = startup["payload"]
-    require(sp["fresh_revision"] == R2_FRESH_REVISION, "fresh revision binding drift")
+    require(sp["fresh_revision"] == ACTIVE_FRESH_REVISION, "fresh revision binding drift")
     empty_predecessor = REPO / sp["fresh_revision"]["predecessor_empty_root"]
     require((not empty_predecessor.exists()) or (empty_predecessor.is_dir() and not any(empty_predecessor.iterdir())), "empty predecessor root drift")
-    r1_terminal_path = REPO / R2_FRESH_REVISION["predecessor_terminal_root"] / "terminal_receipt.json"
-    r1_terminal = read_signed(r1_terminal_path)
-    require(r1_terminal["status"] == "BLOCKED_SCIENTIFIC_VALIDITY" and r1_terminal["payload"]["next_authorization"] == "NONE", "r1 predecessor terminal drift")
-    require(record(r1_terminal_path, REPO) == sp["predecessor_terminals"]["s2_r1_terminal"], "r1 predecessor binding mismatch")
+    prior_terminal_path = REPO / ACTIVE_FRESH_REVISION["predecessor_terminal_root"] / "terminal_receipt.json"
+    prior_terminal = read_signed(prior_terminal_path)
+    require(prior_terminal["status"] == "BLOCKED_SCIENTIFIC_VALIDITY" and prior_terminal["payload"]["next_authorization"] == "NONE", "prior S2 predecessor terminal drift")
+    require(record(prior_terminal_path, REPO) == sp["predecessor_terminals"]["s2_r2_terminal"], "prior S2 predecessor binding mismatch")
     require(sp["local_head"] == sp["tracking_ref_sha"] == sp["remote_ref_sha"] == "07a2d44f89fb12b6d794bd3d2601cb3b676ea668", "startup Git identity mismatch")
     require(sp["lfs_status_clean"] and sp["lfs_fsck_ok"], "LFS gate failed")
     require(sp["only_external_quarantine_untracked"] and sp["external_quarantine_excluded_untouched"], "workspace cleanliness gate failed")
@@ -118,7 +118,15 @@ def validate(root: Path) -> dict[str, Any]:
     require(startup["payload"]["s0_split_invariants_recomputed"] == {"pilot": 1744, "probe_train": 5232, "probe_validation": 1744, "confirmatory_holdout": 1744, "class_count": 872, "per_class_quota": "2/6/2/2"}, "S0 split invariant mismatch")
     for expected in implementation["payload"]["files"]:
         observed = record(REPO / expected["path"], REPO)
-        require(observed == expected, "live implementation drift: " + expected["path"])
+        require(all(observed[key] == expected[key] for key in ("path", "bytes", "sha256")), "live implementation drift: " + expected["path"])
+        commit = implementation["payload"]["implementation_commit"]
+        tree_path = "vitnns_rebuild/" + expected["path"]
+        line = __import__("subprocess").check_output(["git", "-C", str(REPO.parent), "ls-tree", commit, "--", tree_path], text=True).strip()
+        require(bool(line), "implementation file absent from commit: " + expected["path"])
+        metadata, observed_tree_path = line.split("\t", 1); mode, kind, blob_oid = metadata.split()
+        require(kind == "blob" and observed_tree_path == tree_path and blob_oid == expected["git_blob_oid"], "implementation Git blob drift: " + expected["path"])
+        blob = __import__("subprocess").check_output(["git", "-C", str(REPO.parent), "cat-file", "blob", blob_oid])
+        require(hashlib.sha256(blob).hexdigest() == expected["sha256"], "implementation committed bytes drift: " + expected["path"])
     require(implementation["payload"]["standard_library_validator"] is True and implementation["payload"]["torch_imported_by_validator"] is False and implementation["payload"]["gpu_required_by_validator"] is False, "implementation boundary drift")
     observed_files = [record(path, root) for path in sorted(root.rglob("*")) if path.is_file() and path.relative_to(root).as_posix() not in EXCLUDED_FROM_INVENTORY]
     require(inventory["payload"]["files"] == observed_files, "whole-root inventory file drift")
