@@ -124,6 +124,8 @@ def dynamic_worker_command(launch_id: str, worker_id: str, indices: Sequence[int
 
 
 def run_level(level: str, workers: int | None = None) -> None:
+    if level == "full_pilot" and json.loads(SPEC_PATH.read_text()).get("execution_amendment_a2", {}).get("id") == "S1-R1-A2":
+        raise ValueError("static full_pilot launch is disabled by S1-R1-A2; use run-dynamic")
     schedule = json.loads(SCHEDULE_PATH.read_text())["payload"]; levels = {row["name"]: row for row in schedule["levels"]}
     if level == "single_reference": level_record = {"new_schedule_indices": [0], "cumulative_schedule_indices": [0]}
     else: require(level in levels, "unknown level"); level_record = levels[level]
@@ -181,8 +183,7 @@ def single_reference() -> None:
 
 
 def reconcile_level(level: str) -> dict[str, Any]:
-    phases = {"single_reference": ("single_reference",), "smoke": ("smoke",), "intermediate": ("smoke", "intermediate"), "full_pilot": ("smoke", "intermediate", "full_pilot")}[level]
-    paths = sorted(path for phase in phases for path in (ROOT / phase / "shards").glob("shard-*/units/unit-*/completion/unit.json")); require(paths, "no unit terminals")
+    paths = terminal_paths(level); require(paths, "no unit terminals")
     terminals = [json.loads(path.read_text()) for path in paths]; rows = [item["payload"] for item in terminals]; counts: dict[str, int] = {}
     for item in terminals: counts[item["status"]] = counts.get(item["status"], 0) + 1
     resources = [row.get("resources") for row in rows if row.get("resources")]; stable = sorted(zip(paths, resources), key=lambda item: item[0].as_posix()); gpu = math.fsum(float(row["gpu_active_seconds"]) for _, row in stable); cpu = math.fsum(float(row["cpu_seconds"]) for _, row in stable); wall = math.fsum(float(row["wall_seconds"]) for _, row in stable); retained = sum(int(row["retained_bytes"]) for _, row in stable)
@@ -201,8 +202,14 @@ def compare_single_multi() -> None:
 
 
 def terminal_documents(level: str) -> list[tuple[Path, dict[str, Any]]]:
-    phases = {"smoke": ("smoke",), "intermediate": ("smoke", "intermediate"), "full_pilot": ("smoke", "intermediate", "full_pilot")}[level]
-    return [(path, json.loads(path.read_text())) for phase in phases for path in sorted((ROOT / phase / "shards").glob("shard-*/units/unit-*/completion/unit.json"))]
+    return [(path, json.loads(path.read_text())) for path in terminal_paths(level)]
+
+
+def terminal_paths(level: str) -> list[Path]:
+    phases = {"single_reference": ("single_reference",), "smoke": ("smoke",), "intermediate": ("smoke", "intermediate"), "full_pilot": ("smoke", "intermediate", "full_pilot")}[level]
+    paths = [path for phase in phases for path in (ROOT / phase / "shards").glob("shard-*/units/unit-*/completion/unit.json")]
+    if level == "full_pilot": paths.extend(ROOT.glob("dynamic_launches/*/dynamic_units/unit-*/attempts/*/completion/unit.json"))
+    return sorted(paths)
 
 
 def generate_reports(level: str) -> None:

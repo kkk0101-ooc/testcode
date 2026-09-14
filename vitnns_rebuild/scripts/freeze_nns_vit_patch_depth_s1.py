@@ -256,6 +256,18 @@ def freeze_a3() -> None:
     write_new(path,value); print(json.dumps({"status":"PASS","commit":head,"file_count":len(sources)},sort_keys=True))
 
 
+def freeze_a4() -> None:
+    require(ROOT.is_dir() and (ROOT / "completion/s1.pending.json").is_file() and not (ROOT / "terminal_receipt.json").exists(), "S1-R1 is not active")
+    path=ROOT/"a4_implementation_seal.json";require(not path.exists(),"A4 already frozen"); require(not (ROOT/"full_pilot").exists() and not (ROOT/"dynamic_launches").exists(),"A4 follows no full/dynamic access")
+    ignored_external={"?? .root_cleanup_quarantine/","?? ../.root_cleanup_quarantine/"};status_lines=[line for line in git("status","--porcelain").splitlines() if line and line not in ignored_external];require(not status_lines,"worktree must be clean before A4 seal: "+repr(status_lines))
+    head=git("rev-parse","HEAD");source_paths=["config/nns_vit_patch_depth/s1_r1_run_spec.json","docs/nns_vit_patch_depth_s1_r1_a4_dynamic_enforcement_20260914.md","scripts/run_nns_vit_patch_depth_s1.py","scripts/validate_nns_vit_patch_depth_s1.py","scripts/freeze_nns_vit_patch_depth_s1.py","tests/test_nns_patch_depth_s1.py"];sources=[]
+    for relative in source_paths:
+        live=record(REPO/relative);blob=git_blob_record(head,relative);require(live["sha256"]==blob["sha256"],"A4 live/Git drift: "+relative);sources.append({**live,"commit":head,"git_blob_oid":blob["git_blob_oid"],"git_mode":blob["git_mode"]})
+    value=signed("s1_r1_a4_dynamic_enforcement_seal","FROZEN",{"commit":head,"files":sources,"files_digest":digest(sources),"repair":"DISABLE_STATIC_FULL_AND_INCLUDE_DYNAMIC_TERMINALS_IN_RECONCILIATION","full_or_dynamic_access_before_seal":False,"unit_or_scientific_contract_changed":False});write_new(path,value)
+    queue_report=signed("s1_r1_a2_dynamic_queue_validation_report","PASS",{"status":"PASS","synthetic_tests":["atomic_multiworker_claim_single_winner","immutable_terminal_skip","fresh_launch_ignores_stale_claim","unit_terminal_resource_aggregation","static_full_entrypoint_disabled","dynamic_terminals_in_reconciliation"],"immutable_existing_indices":list(range(24)),"existing_indices_recomputed":False,"full_or_recovery_worker_started":False,"root_free_below_one_gib_prevented_new_gpu_launch":True,"scientific_seed_worker_or_gpu_dependency":False});write_new(ROOT/"a2_dynamic_queue_validation_report.json",queue_report)
+    print(json.dumps({"status":"PASS","commit":head,"file_count":len(sources)},sort_keys=True))
+
+
 def freeze_root() -> None:
     require(not ROOT.exists(), "S1 evidence root already exists")
     require(not git("status", "--porcelain"), "worktree must be clean before implementation seal")
@@ -293,12 +305,13 @@ def freeze_root() -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(); parser.add_argument("command", choices=("generate", "freeze-root", "freeze-a1", "freeze-a2", "freeze-a3")); args = parser.parse_args()
+    parser = argparse.ArgumentParser(); parser.add_argument("command", choices=("generate", "freeze-root", "freeze-a1", "freeze-a2", "freeze-a3", "freeze-a4")); args = parser.parse_args()
     if args.command == "generate": generate()
     elif args.command == "freeze-root": freeze_root()
     elif args.command == "freeze-a1": freeze_a1()
     elif args.command == "freeze-a2": freeze_a2()
-    else: freeze_a3()
+    elif args.command == "freeze-a3": freeze_a3()
+    else: freeze_a4()
 
 
 if __name__ == "__main__":

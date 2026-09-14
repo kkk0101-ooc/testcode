@@ -88,6 +88,15 @@ def test_a2_fresh_launch_ignores_stale_claim_and_resource_is_unit_based(tmp_path
     assert queue.aggregate_unit_resources(stage, [5])["static_shard_inference_used"] is False
 
 
+def test_a4_disables_static_full_and_includes_dynamic_terminals() -> None:
+    runner = (ROOT / "scripts/run_nns_vit_patch_depth_s1.py").read_text()
+    validator = (ROOT / "scripts/validate_nns_vit_patch_depth_s1.py").read_text()
+    assert "static full_pilot launch is disabled by S1-R1-A2" in runner
+    pattern = "dynamic_launches/*/dynamic_units/unit-*/attempts/*/completion/unit.json"
+    assert pattern in runner and pattern in validator
+    assert '"dynamic_claim"' in validator
+
+
 def test_geometry_preserves_four_semantics_and_patch_occupancy() -> None:
     labels = np.zeros((224, 224), dtype=np.int32)
     labels[:16, :16] = 7

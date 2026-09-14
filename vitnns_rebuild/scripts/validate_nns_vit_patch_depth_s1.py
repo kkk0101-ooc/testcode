@@ -84,8 +84,13 @@ def validate_a2() -> dict[str, Any]:
     a3 = read_signed(ROOT / "a3_implementation_seal.json")
     for item in a3["payload"]["files"]:
         observed = record(REPO / item["path"]); blob = git_blob_record(a3["payload"]["commit"], item["path"])
-        require(observed["sha256"] == item["sha256"] == blob["sha256"] and item["git_blob_oid"] == blob["git_blob_oid"], "A3 live implementation drift: " + item["path"])
-    return {"status": "PASS", "implementation_commit": seal["payload"]["commit"], "report_implementation_commit": a3["payload"]["commit"], "immutable_terminal_count": 24, "terminal_counts": payload["terminal_counts"], "dynamic_queue_verified": True}
+        require(item["sha256"] == blob["sha256"] and item["git_blob_oid"] == blob["git_blob_oid"], "A3 historical implementation drift: " + item["path"])
+    a4 = read_signed(ROOT / "a4_implementation_seal.json")
+    for item in a4["payload"]["files"]:
+        observed = record(REPO / item["path"]); blob = git_blob_record(a4["payload"]["commit"], item["path"])
+        require(observed["sha256"] == item["sha256"] == blob["sha256"] and item["git_blob_oid"] == blob["git_blob_oid"], "A4 live implementation drift: " + item["path"])
+    queue_report = read_signed(ROOT / "a2_dynamic_queue_validation_report.json"); require(queue_report["status"] == "PASS" and queue_report["payload"]["immutable_existing_indices"] == list(range(24)) and queue_report["payload"]["existing_indices_recomputed"] is False, "A2 queue validation report drift")
+    return {"status": "PASS", "implementation_commit": seal["payload"]["commit"], "report_implementation_commit": a3["payload"]["commit"], "enforcement_implementation_commit": a4["payload"]["commit"], "immutable_terminal_count": 24, "terminal_counts": payload["terminal_counts"], "dynamic_queue_verified": True}
 
 
 def npy_header(path: Path) -> tuple[str, list[int]]:
@@ -118,7 +123,9 @@ def validate_preaccess() -> dict[str, Any]:
 
 def unit_paths(level: str) -> list[Path]:
     phases = {"single_reference": ("single_reference",), "smoke": ("smoke",), "intermediate": ("smoke", "intermediate"), "full_pilot": ("smoke", "intermediate", "full_pilot")}[level]
-    return sorted(path for phase in phases for path in (ROOT / phase / "shards").glob("shard-*/units/unit-*/completion/unit.json"))
+    paths = [path for phase in phases for path in (ROOT / phase / "shards").glob("shard-*/units/unit-*/completion/unit.json")]
+    if level == "full_pilot": paths.extend(ROOT.glob("dynamic_launches/*/dynamic_units/unit-*/attempts/*/completion/unit.json"))
+    return sorted(paths)
 
 
 def validate_units(level: str) -> dict[str, Any]:
@@ -126,7 +133,7 @@ def validate_units(level: str) -> dict[str, Any]:
     seen = set(); counts = collections.Counter(); gpu = []; cpu = []; wall = []; retained = 0; matched = 0; p1_valid = 0
     for path in paths:
         document = read_signed(path); require(document["document_type"] == "s1_unit_terminal", "wrong unit document type"); payload = document["payload"]; identity = payload["identity"]; index = identity["schedule_index"]; require(index not in seen, "duplicate schedule index"); seen.add(index); counts[document["status"]] += 1
-        require(identity["mode"] in ("single_reference", "smoke", "intermediate", "full_pilot"), "mode drift"); require(payload["access"]["forbidden_split_image_bytes_read"] == payload["access"]["forbidden_split_mask_bytes_read"] == payload["access"]["forbidden_split_outcomes_read"] == 0, "forbidden access nonzero")
+        require(identity["mode"] in ("single_reference", "smoke", "intermediate", "full_pilot", "dynamic_claim"), "mode drift"); require(payload["access"]["forbidden_split_image_bytes_read"] == payload["access"]["forbidden_split_mask_bytes_read"] == payload["access"]["forbidden_split_outcomes_read"] == 0, "forbidden access nonzero")
         require(payload["terminal"] == {"complete": True, "immutable": True}, "terminal marker drift")
         if document["status"] == "VALID":
             require(payload["native_hooked_parity"]["status"] == "PASS" and payload["nns"]["closure"]["status"] == "PASS", "numeric contract failed in valid unit"); require(payload["d1"]["scientific_decision"] is None and payload["p1"]["scientific_decision"] is None and payload["p2"]["scientific_decision"] is None, "pilot scientific decision present")
@@ -145,7 +152,7 @@ def validate_final() -> dict[str, Any]:
     else: require(terminal["payload"]["next_authorization"] == "NONE", "blocked/failed authorization drift")
     level = terminal["payload"]["actual_level"]; units = validate_units(level); required_control_fraction = float(json.loads(SPEC.read_text())["escalation"]["engineering_stop_conditions"]["minimum_control_matching_fraction"]); require(units["valid_fraction"] >= 0.85 and units["p2_matched_coordinate_fraction"] >= required_control_fraction, "validity denominator gate failed")
     repeat = read_signed(ROOT / "deterministic_repeatability_report.json"); require(repeat["status"] == "PASS" and repeat["payload"]["all_byte_identical"], "deterministic repeatability failed")
-    for name in ("synthetic_negative_test_report.json", "geometry_mask_validation_report.json", "nns_reconstruction_parity_report.json", "p1_p2_control_validation_report.json", "probe_engineering_validation_report.json", "resource_scaling_ledger.json", "failure_na_denominator_report.json", "s2_design_recommendation.json"):
+    for name in ("synthetic_negative_test_report.json", "a2_dynamic_queue_validation_report.json", "geometry_mask_validation_report.json", "nns_reconstruction_parity_report.json", "p1_p2_control_validation_report.json", "probe_engineering_validation_report.json", "resource_scaling_ledger.json", "failure_na_denominator_report.json", "s2_design_recommendation.json"):
         require(read_signed(ROOT / name)["status"] == "PASS", name + " not PASS")
     inventory = read_signed(ROOT / "whole_root_inventory.json"); files = inventory["payload"]["files"]; require(inventory["payload"]["files_digest"] == digest(files), "inventory digest drift"); excluded = {"completion/s1.pending.json", "whole_root_inventory.json", "terminal_receipt.json", "independent_validation_report.json", "false_pass_audit.json"}; observed = [record(path) for path in sorted(ROOT.rglob("*")) if path.is_file() and path.relative_to(ROOT).as_posix() not in excluded]; require(files == observed, "whole-root inventory drift")
     return {"status": "PASS", "preaccess": pre, "a2": a2, "units": units, "terminal_status": terminal["status"], "next_authorization": terminal["payload"]["next_authorization"], "inventory_file_count": len(files)}
