@@ -76,8 +76,10 @@ def gate(phase: str) -> tuple[str, Mapping[str, Any]]:
         test_gate = json.loads(gate_path.read_text())
         weight = json.loads(weight_path.read_text())
         s3.require(s3.verify_signed(test_gate) and s3.verify_signed(weight) and test_gate["status"] == "PASS" and weight["status"] == "PASS", "test gate or weight seal invalid")
-        gate_commit = str(test_gate["payload"]["publication_commit"])
-        s3.require(gate_commit == head and remote_tip() == head, "weight-seal commit not present as local and remote published HEAD")
+        weight_seal_commit = str(test_gate["payload"]["weight_seal_commit"])
+        s3.require(subprocess.run(["git","merge-base","--is-ancestor",weight_seal_commit,head], cwd=REPO).returncode == 0, "weight-seal commit is not an ancestor of HEAD")
+        s3.require(remote_tip() == head, "local test-access gate HEAD is not the remote branch HEAD")
+        subprocess.run(["git","cat-file","-e",f"{head}:vitnns_rebuild/evidence/nns_vit_patch_depth/s3_r3_20260914/test_access_gate.json"], cwd=REPO, check=True)
         s3.require(s3.sha_file(REPO / "assets/imagenet/ILSVRC2012_img_val.tar") == s3.JPEG_ARCHIVE_SHA256, "D2 JPEG archive SHA drift")
         s3.require(s3.sha_file(REPO / "assets/imagenet/ImageNetS919-5f7f58ae1003d21da9409a8576bf7680.zip") == s3.MASK_ARCHIVE_SHA256, "mask archive SHA drift")
     return head, seal
