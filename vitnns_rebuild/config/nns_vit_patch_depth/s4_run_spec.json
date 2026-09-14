@@ -1,0 +1,170 @@
+{
+  "schema_version": 1,
+  "study_id": "NNS_VIT_PATCH_DEPTH_SEMANTICS",
+  "stage_id": "S4",
+  "run_id": "s4_r3_20260915",
+  "stage_token": "S4_NNS_AND_OCCLUSION_EXECUTION_ONLY",
+  "formal_root": "evidence/nns_vit_patch_depth/s4_r3_20260915",
+  "large_array_root": "artifacts/nns_vit_patch_depth/s4_r3_20260915",
+  "fresh_root": true,
+  "initialization_amendment": {
+    "id": "S4-R3-A3",
+    "path": "docs/nns_vit_patch_depth_s4_r3_amendment_20260915.md",
+    "predecessor_failed_roots": ["evidence/nns_vit_patch_depth/s4_20260915", "evidence/nns_vit_patch_depth/s4_r1_20260915", "evidence/nns_vit_patch_depth/s4_r2_20260915"],
+    "change": "bind S2-R4 formal class ranks for audit subset and close final unit telemetry schemas",
+    "scientific_contract_changed": false,
+    "formal_access_before_amendment": 0
+  },
+  "predecessor": {
+    "publication_commit": "a2fa81082ba9b49e0aa44407cbbb373de18accff",
+    "terminal_path": "evidence/nns_vit_patch_depth/s3_r7_20260915/terminal_receipt.json",
+    "terminal_sha256": "8c1a4f82d3bb553246cc4c019e4e2286a8dfb7dfd8b058265af93ad5f1e192d4",
+    "terminal_canonical_digest": "1b6f7308f135dc69ad0146635a31eb529cfac703710fe5a340c009c56ce1215d",
+    "status": "PASS",
+    "next_authorization": "S4_NNS_AND_OCCLUSION_EXECUTION_ONLY"
+  },
+  "cohort": {
+    "source_manifest": "evidence/nns_vit_patch_depth/s2_r8_20260914/candidate_m4_manifest.json",
+    "sha256": "9309a73c1cc2d91cc4c6ca2dc6a13e5b6ed3fed680ed20bc35e1152fc259e4f8",
+    "canonical_digest": "2260a21c949f364eafc21fc3d722243a65c2f05aa82873c9aeb7779a8b1c3f6b",
+    "records_digest": "d5e9d5a4873d51b6ddedfe3ed2c9cb08be50fac4a8cfc053d8782c83ffafbd16",
+    "selection": "all_S4_NNS_S4_occlusion_P1_P2_D1_D2_role_flags_true",
+    "source_image_count": 1744,
+    "class_count": 872,
+    "images_per_class": 2,
+    "D2_only_excluded_count": 1738,
+    "pilot_probe_train_probe_validation_excluded": true,
+    "missing_D2_probe_classes_do_not_change_S4": true
+  },
+  "model": {
+    "name": "vit_base_patch16_224.augreg2_in21k_ft_in1k",
+    "checkpoint_path": "assets/models/vit_base_patch16_224_weights.semantic_candidate.pth",
+    "checkpoint_bytes": 346329934,
+    "checkpoint_sha256": "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d",
+    "canonical_tensor_digest": "150234d8117a50057f62aa14a97f46bbf1da92b00b386c10c71cc7000c5d51dd",
+    "eval": true,
+    "parameters_frozen": true,
+    "statistics_updates": false,
+    "random_augmentation": false
+  },
+  "preprocessing": {
+    "image": "RGB_bicubic_antialias_shorter_side_248_integer_center_crop_224",
+    "mask": "nearest_shorter_side_248_same_integer_center_crop_224",
+    "mean": [0.5, 0.5, 0.5],
+    "std": [0.5, 0.5, 0.5],
+    "target": "annotation_class_raw_logit_fixed_for_clean_occlusion_controls"
+  },
+  "nns": {
+    "component": "first_residual_addition_all_head_aggregate_attention_branch",
+    "blocks": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+    "source_patch_score": "a[b,p]=sum_q_T[b,p,q]+C[b,p]",
+    "aggregation_order": "signed_sum_within_source_patch_then_positive_part",
+    "retained_mass": ["signed", "positive", "negative", "absolute", "cancellation", "matrix", "CLS"],
+    "block11_zero_patch_destination": "explicit_zero_mass_and_CLS_routing_no_epsilon_no_drop_no_substitution",
+    "quadrature_schedule": [128, 256, 512, 1024, 2048, 4096, 8192],
+    "selection": "first_steps_passing_all_numeric_closure_contracts",
+    "exhaustion_terminal": "FAILED_NUMERICAL",
+    "alpha_chunk": 4,
+    "source_patch_jvp_chunk": 8,
+    "component_vjp_chunk": 16,
+    "full_dense_pixel_hidden_jacobian": false,
+    "hooked_native_logits_atol": 1e-6,
+    "hooked_native_logits_rtol": 1e-6,
+    "single_multi_max_abs_tolerance": 1e-5
+  },
+  "p1": {
+    "position_strata": "seven_14x14_Chebyshev_rings",
+    "permutations": 64,
+    "namespace": "NNS_VIT_PATCH_DEPTH_S2_R4_P1_POSITION_PERMUTATION_V1",
+    "tie_rule": "SHA256_namespace_source_id_block_repeat_patch_index",
+    "zero_positive_mass": "NA_ZERO_POSITIVE_MASS",
+    "retention": "per_block_observed_and_64_permutation_numerators_denominators_indices_positive_mass_seed_digest",
+    "cohort_level_analysis": false
+  },
+  "p2": {
+    "patch_budgets": [4, 8, 16],
+    "controls_per_coordinate": 4,
+    "position_match": "exact_seven_strata_counts",
+    "boundary_rule": "absolute_error_lte_max_4_or_ceil_0.25_times_selected_boundary",
+    "maximum_attempts": 512,
+    "failure": "NA_MATCHED_CONTROL_UNAVAILABLE",
+    "required_coordinates_per_image": 36,
+    "forward_batch_size": 64,
+    "primary_operator": "image_channel_mean",
+    "sensitivity_operator": "normalized_zero",
+    "shared_coordinate_plan": true,
+    "selected_control_overlap_allowed": true,
+    "outcome_dependent_selection": false,
+    "aggregate_matching_gate_deferred_to_later_validity_stage": 0.9,
+    "cohort_level_analysis": false
+  },
+  "unit_topology": {
+    "source_completion_records": 1744,
+    "scheduled_unit_terminals": 5232,
+    "types": [
+      {"unit_type": "NNS_IMAGE", "count": 1744, "dependency": null},
+      {"unit_type": "OCCLUSION_PRIMARY", "count": 1744, "dependency": "same_source_NNS_IMAGE_terminal", "operator": "image_channel_mean"},
+      {"unit_type": "OCCLUSION_SENSITIVITY", "count": 1744, "dependency": "same_source_NNS_IMAGE_terminal", "operator": "normalized_zero"}
+    ],
+    "scheduler": "shared_global_work_conserving_dependency_aware_ready_queue",
+    "source_major_ready_scan_no_round_barrier": true,
+    "static_shards": false,
+    "worker_model_loads_per_launch": 1
+  },
+  "parallel": {
+    "scan_once_per_launch": true,
+    "eligible_name": "NVIDIA H20",
+    "minimum_free_memory_mib": 21504,
+    "maximum_utilization_percent": 10,
+    "K_min": 1,
+    "K_max": 8,
+    "eight_eligible_requires_eight_workers": true,
+    "existing_compute_pid_is_disqualifying": false,
+    "GPU_UUID_keyed_atomic_lock": true,
+    "fixed_GPU_set_per_launch": true,
+    "worker_visible_GPU_count": 1,
+    "worker_device": "cuda:0",
+    "CUBLAS_WORKSPACE_CONFIG_before_any_Torch_CUDA_import": ":4096:8",
+    "startup_probe": ["torch.matmul", "backward"]
+  },
+  "atomicity": {
+    "claim": "launch_specific_O_CREAT_O_EXCL_fsync_file_fsync_directory",
+    "terminal": "worker_PID_launch_temporary_fsync_hardlink_no_overwrite_fsync_directory",
+    "global_terminal_always_skipped": true,
+    "stale_claim_only_blocks_own_launch": true,
+    "fresh_launch_only_missing_units": true
+  },
+  "scientific_randomness": {
+    "allowed_seed_inputs": ["frozen_namespace", "unit_type", "schedule_index", "source_image_id", "block", "budget", "repeat", "operator", "patch_index"],
+    "forbidden_seed_inputs": ["worker_id", "PID", "GPU_index", "GPU_UUID", "claim_order", "completion_order", "launch_id", "wall_clock", "worker_speed"]
+  },
+  "retention": {
+    "all_valid_source_arrays": ["signed_positive_negative_absolute_4x12x196", "occupancy_4x196", "block_features_12x196x768", "P1_raw_records", "P2_plan_and_operator_logits"],
+    "audit_subset_namespace": "NNS_VIT_PATCH_DEPTH_S2_R4_AUDIT_SUBSET_V1",
+    "audit_subset_count": 64,
+    "audit_retain": ["first_attention_T_12x196x196", "first_attention_C_12x196"]
+  },
+  "access_boundary": {
+    "pre_seal_formal_selected_JPEG_member_reads": 0,
+    "pre_seal_formal_selected_mask_member_reads": 0,
+    "forbidden_S3_D2_prediction_error_numeric_reads": 0,
+    "forbidden_D2_only_member_reads": 0,
+    "cohort_level_inference_count": 0,
+    "S5_execution_count": 0,
+    "S6_execution_count": 0
+  },
+  "resource_projection": {
+    "H20_GPU_hours": 977.56,
+    "CPU_hours": 1014.07,
+    "retained_GiB": 15.8,
+    "peak_reserved_GiB_per_worker": 21.93,
+    "wall_hours_by_K": {"1": 977.56, "2": 488.78, "3": 325.8533333333333, "4": 244.39, "5": 195.512, "6": 162.92666666666665, "7": 139.65142857142857, "8": 122.195},
+    "reporting_and_reservation_only": true,
+    "budget_or_wall_time_terminal_allowed": false
+  },
+  "terminal_states": ["PASS", "BLOCKED_SCIENTIFIC_VALIDITY", "BLOCKED_DATA_INTEGRITY", "BLOCKED_INFRASTRUCTURE", "FAILED_IMPLEMENTATION"],
+  "forbidden_terminal_states": ["BLOCKED_BUDGET", "BLOCKED_WALL_TIME", "FAIL_COST"],
+  "scientific_claim_decision": null,
+  "next_authorization_on_pass": "S5_D2_MISSING_CLASS_RECONCILIATION_GATE_ONLY",
+  "next_authorization_otherwise": "NONE"
+}

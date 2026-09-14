@@ -1,0 +1,5 @@
+# S4-R1 prospective initialization amendment
+
+This amendment is frozen after the first S4 initialization attempt failed and before any formal S4 JPEG or mask member access. The immutable `s4_20260915` root records `S3_TERMINAL_COUNT_FIELD_NAME_MISMATCH`: the initializer requested `D2_prediction_count` directly from the S3-R7 terminal although the closed terminal field is `test_prediction_count`. No formal member was read, no image was decoded, no model forward was run, and no NNS or occlusion result exists in that root.
+
+S4-R1 changes only initialization metadata binding. It reads `terminal_count=10458` and `test_prediction_count=3424` from the already authorized S3-R7 terminal, and records the publication validator's externally named `D2_prediction_count=3424` as an alias. Scientific definitions, cohort, order, target, numerical contract, P1/P2 registries, unit topology, seeds, operators, typed failures, and retention are unchanged. All production paths move prospectively to `evidence/nns_vit_patch_depth/s4_r1_20260915/` and `artifacts/nns_vit_patch_depth/s4_r1_20260915/`; the failed root is never overwritten or reused.

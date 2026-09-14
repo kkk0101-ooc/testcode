@@ -1,0 +1,5 @@
+# S4-R2 pre-seal implementation amendment
+
+This amendment is frozen before the implementation commit, before the implementation seal, and before any formal S4 JPEG or mask member access. After the first final pre-access report set was written, source review added: exact S0 confirmatory-holdout identity checks, explicit per-unit quadrature attempt and model-forward summaries, separate P1 raw alignment and permutation-draw arrays, P1 positive-mass retention, coordinate-local P2 typed matching status, dedicated closed schedule/claim schemas, and complete finalization plus numeric-validation scripts.
+
+These are prospective implementation and evidence-completeness hardenings only. They do not change the cohort, source order, model, target, component, quadrature schedule, P1/P2 definitions, matching rule, operator set, typed failures, seed inputs, retention scope, or scientific boundary. Earlier pre-access reports remain immutable; the authoritative pre-seal report set is suffixed `_v3`. Formal selected-member access remains zero.

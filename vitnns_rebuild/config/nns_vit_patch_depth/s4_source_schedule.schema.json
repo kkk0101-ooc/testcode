@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Closed S4 source schedule",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "study_id", "stage_id", "run_id", "document_type", "status", "payload", "canonical_digest"],
+  "properties": {
+    "$schema": {"const": "s4_artifact.schema.json"},
+    "schema_version": {"const": 1}, "study_id": {"const": "NNS_VIT_PATCH_DEPTH_SEMANTICS"},
+    "stage_id": {"const": "S4"}, "run_id": {"const": "s4_r3_20260915"},
+    "document_type": {"const": "s4_source_schedule"}, "status": {"const": "FROZEN"},
+    "canonical_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "payload": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_image_count", "class_count", "images_per_class", "source_id_unique", "image_sha256_unique", "candidate_m4_D2_only_excluded_count", "pilot_probe_train_probe_validation_excluded", "order_rule", "records_digest", "audit_subset_schedule_indices", "audit_subset_namespace", "records"],
+      "properties": {
+        "source_image_count": {"const": 1744}, "class_count": {"const": 872}, "images_per_class": {"const": 2},
+        "source_id_unique": {"const": true}, "image_sha256_unique": {"const": true},
+        "candidate_m4_D2_only_excluded_count": {"const": 1738}, "pilot_probe_train_probe_validation_excluded": {"const": true},
+        "order_rule": {"const": "candidate_m4_record_order_filtered_by_all_six_S4_roles"},
+        "records_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "audit_subset_schedule_indices": {"type": "array", "minItems": 64, "maxItems": 64, "uniqueItems": true, "items": {"type": "integer", "minimum": 0, "maximum": 1743}},
+        "audit_subset_namespace": {"const": "NNS_VIT_PATCH_DEPTH_S2_R4_AUDIT_SUBSET_V1"},
+        "records": {"type": "array", "minItems": 1744, "maxItems": 1744, "items": {"$ref": "#/definitions/record"}}
+      }
+    }
+  },
+  "definitions": {
+    "record": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schedule_index", "source_image_id", "source_role", "image_sha256", "image_bytes", "image_width", "image_height", "annotation_sha256", "annotation_wnid", "annotation_label_id", "formal_class_rank", "mask_width", "mask_height", "target_model_class_index", "role_flags", "selection_key_sha256", "image_archive_member", "mask_archive_member", "resolution_join"],
+      "properties": {
+        "schedule_index": {"type": "integer", "minimum": 0, "maximum": 1743}, "source_image_id": {"type": "string"}, "source_role": {"type": "string"},
+        "image_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "image_bytes": {"type": "integer", "minimum": 1}, "image_width": {"type": "integer", "minimum": 1}, "image_height": {"type": "integer", "minimum": 1},
+        "annotation_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "annotation_wnid": {"type": "string"}, "annotation_label_id": {"type": "integer", "minimum": 1, "maximum": 919}, "formal_class_rank": {"type": "integer", "minimum": 0, "maximum": 871},
+        "mask_width": {"type": "integer", "minimum": 1}, "mask_height": {"type": "integer", "minimum": 1}, "target_model_class_index": {"type": "integer", "minimum": 0, "maximum": 999},
+        "role_flags": {"type": "object", "additionalProperties": false, "required": ["S4_NNS", "S4_occlusion", "P1", "P2", "D1", "D2", "pilot", "probe_train", "probe_validation"], "properties": {"S4_NNS": {"const": true}, "S4_occlusion": {"const": true}, "P1": {"const": true}, "P2": {"const": true}, "D1": {"const": true}, "D2": {"const": true}, "pilot": {"const": false}, "probe_train": {"const": false}, "probe_validation": {"const": false}}},
+        "selection_key_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "image_archive_member": {"type": "string"}, "mask_archive_member": {"type": "string"}, "resolution_join": {"const": "S0_R3_EXACT_SEVEN_FIELD_IDENTITY_ONE_TO_ONE"}
+      }
+    }
+  }
+}

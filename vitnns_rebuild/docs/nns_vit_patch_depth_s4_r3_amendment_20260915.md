@@ -1,0 +1,5 @@
+# S4-R3 prospective pre-access amendment
+
+This amendment is frozen before any formal S4 JPEG or mask member access. Review of the S4-R2 pre-seal package found that the audit subset used a hash order for classes instead of binding the first 64 classes in the frozen S2-R4 formal class cohort order. It also identified missing explicit top-level unit-terminal fields for quadrature attempts and model-forward counts, and added dedicated closed schedule and claim schemas.
+
+S4-R3 corrects the audit subset to: take class ranks 0 through 63 from `formal_class_cohort_manifest.json`, then select the first audit-namespace hash-ordered confirmatory image within each class. It moves all production evidence and payload paths to fresh roots `evidence/nns_vit_patch_depth/s4_r3_20260915/` and `artifacts/nns_vit_patch_depth/s4_r3_20260915/`. The S4-R2 root and its reports remain immutable pre-access history. No cohort, source order, model, target, NNS definition, quadrature schedule, P1/P2 definition, operator, typed failure, seed rule, or scientific boundary changes. The implementation-seal commit must include this amendment and all S4-R3 pre-access evidence.

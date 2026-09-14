@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Closed NNS patch-depth S4 artifact envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "study_id", "stage_id", "run_id", "document_type", "status", "payload", "canonical_digest"],
+  "properties": {
+    "$schema": {"const": "s4_artifact.schema.json"},
+    "schema_version": {"const": 1},
+    "study_id": {"const": "NNS_VIT_PATCH_DEPTH_SEMANTICS"},
+    "stage_id": {"const": "S4"},
+    "run_id": {"const": "s4_r3_20260915"},
+    "document_type": {"type": "string", "minLength": 1},
+    "status": {"type": "string", "minLength": 1},
+    "producer_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "payload": {"$ref": "#/definitions/json_object"},
+    "canonical_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "definitions": {
+    "json_object": {
+      "type": "object",
+      "patternProperties": {"^.*$": {"$ref": "#/definitions/json_value"}},
+      "additionalProperties": false
+    },
+    "json_array": {"type": "array", "items": {"$ref": "#/definitions/json_value"}},
+    "json_value": {
+      "oneOf": [
+        {"type": "null"}, {"type": "boolean"}, {"type": "number"}, {"type": "string"},
+        {"$ref": "#/definitions/json_object"}, {"$ref": "#/definitions/json_array"}
+      ]
+    }
+  }
+}
