@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version","study_id","stage_id","run_id","authorization","recovery","data_boundary","pre_power","cohort","estimands","statistics","execution_contract","retention","stage_routes","terminal_states","forbidden_terminals","scientific_claim_decision_allowed"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "study_id": {"const": "NNS_VIT_PATCH_DEPTH_SEMANTICS"},
+    "stage_id": {"const": "S2-R4"},
+    "run_id": {"const": "s2_r4_20260914"},
+    "authorization": {"const": "S2_PROTOCOL_AND_POWER_FREEZE_ONLY"},
+    "recovery": {"type": "object", "additionalProperties": false, "minProperties": 8},
+    "data_boundary": {"type": "object", "additionalProperties": false, "minProperties": 8},
+    "pre_power": {"type": "object", "additionalProperties": false, "minProperties": 18},
+    "cohort": {"type": "object", "additionalProperties": false, "minProperties": 11},
+    "estimands": {"type": "object", "additionalProperties": false, "required": ["common","P1","P2","D1","D2"]},
+    "statistics": {"type": "object", "additionalProperties": false, "minProperties": 17},
+    "execution_contract": {"type": "object", "additionalProperties": false, "minProperties": 23},
+    "retention": {"type": "object", "additionalProperties": false, "required": ["all_images","audit_subset","ignored_large_array_manifest_fields"]},
+    "stage_routes": {"type": "object", "additionalProperties": false, "minProperties": 5},
+    "terminal_states": {"type": "array", "minItems": 5, "maxItems": 5, "uniqueItems": true},
+    "forbidden_terminals": {"type": "array", "minItems": 3, "maxItems": 3, "uniqueItems": true},
+    "scientific_claim_decision_allowed": {"const": false}
+  }
+}
