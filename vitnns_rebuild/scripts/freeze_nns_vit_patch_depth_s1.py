@@ -179,7 +179,7 @@ def freeze_root() -> None:
     records = []
     for path in sources:
         item = record(path); tree_path = "vitnns_rebuild/" + item["path"]
-        line = git("ls-tree", "-l", head, "--", tree_path)
+        line = git("ls-tree", "--full-tree", "-l", head, "--", tree_path)
         require(bool(line), "implementation source absent from seal commit: " + item["path"]); item["seal_commit"] = head
         records.append(item)
     ROOT.mkdir(parents=True)

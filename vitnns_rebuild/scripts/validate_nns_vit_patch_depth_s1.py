@@ -75,7 +75,7 @@ def validate_preaccess() -> dict[str, Any]:
     require(payload["forbidden_split_counts"] == {"probe_train": 5232, "probe_validation": 1744, "confirmatory_holdout": 1744}, "forbidden counts drift")
     implementation = read_signed(ROOT / "implementation_seal.json"); require(implementation["payload"]["pilot_or_model_outcome_access_before_seal"] is False, "pre-seal access attestation drift")
     for item in implementation["payload"]["files"]:
-        path = REPO / item["path"]; require(record(path)["sha256"] == item["sha256"], "implementation file drift: " + item["path"]); require(bool(subprocess.check_output(["git", "-C", str(REPO), "ls-tree", implementation["payload"]["commit"], "--", "vitnns_rebuild/" + item["path"]], text=True).strip()), "file absent from seal commit")
+        path = REPO / item["path"]; require(record(path)["sha256"] == item["sha256"], "implementation file drift: " + item["path"]); require(bool(subprocess.check_output(["git", "-C", str(REPO), "ls-tree", "--full-tree", implementation["payload"]["commit"], "--", "vitnns_rebuild/" + item["path"]], text=True).strip()), "file absent from seal commit")
     return {"pilot_count": len(records), "pilot_forbidden_source_intersection": 0, "pilot_forbidden_hash_intersection": 0, "implementation_file_count": len(implementation["payload"]["files"]), "implementation_commit": implementation["payload"]["commit"]}
 
 
