@@ -34,6 +34,7 @@ def arrays(phase:str,root:Path|None=None)->dict[str,Any]:
         corrected=[record for record in terminal["payload"]["arrays"] if "corrected_control_mse" in record["path"] and record["axes"]==[] and record["dtype"]=="float64" and record["shape"]==[]]
         if corrected:
             require("control_mse.npy" not in by_name and len(corrected)==1,"ambiguous corrected control MSE")
+            by_name.pop(Path(corrected[0]["path"]).name)
             by_name["control_mse.npy"]=corrected[0]
         require(set(by_name)==set(expected),"array inventory name drift")
         loaded={}
