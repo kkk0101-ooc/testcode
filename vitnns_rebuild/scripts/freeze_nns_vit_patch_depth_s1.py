@@ -242,6 +242,20 @@ def freeze_a2() -> None:
     print(json.dumps({"status":"PASS","commit":head,"terminal_counts":counts,"shards":8},sort_keys=True))
 
 
+def freeze_a3() -> None:
+    require(ROOT.is_dir() and (ROOT / "completion/s1.pending.json").is_file() and not (ROOT / "terminal_receipt.json").exists(), "S1-R1 is not active")
+    path = ROOT / "a3_implementation_seal.json"; require(not path.exists(), "A3 already frozen")
+    for name in ("synthetic_negative_test_report.json", "geometry_mask_validation_report.json", "probe_engineering_validation_report.json"):
+        require(not (ROOT / name).exists(), "A3 must precede report output")
+    ignored_external = {"?? .root_cleanup_quarantine/", "?? ../.root_cleanup_quarantine/"}; status_lines = [line for line in git("status", "--porcelain").splitlines() if line and line not in ignored_external]; require(not status_lines, "worktree must be clean before A3 seal: " + repr(status_lines))
+    head = git("rev-parse", "HEAD"); source_paths = ["docs/nns_vit_patch_depth_s1_r1_a3_report_recovery_20260914.md", "scripts/run_nns_vit_patch_depth_s1.py", "scripts/validate_nns_vit_patch_depth_s1.py", "scripts/freeze_nns_vit_patch_depth_s1.py"]
+    sources=[]
+    for relative in source_paths:
+        live=record(REPO/relative); blob=git_blob_record(head,relative); require(live["sha256"]==blob["sha256"],"A3 live/Git drift: "+relative); sources.append({**live,"commit":head,"git_blob_oid":blob["git_blob_oid"],"git_mode":blob["git_mode"]})
+    amendment=record(REPO/"docs/nns_vit_patch_depth_s1_r1_a3_report_recovery_20260914.md"); value=signed("s1_r1_a3_report_implementation_seal","FROZEN",{"commit":head,"files":sources,"files_digest":digest(sources),"amendment":amendment,"repair":"ADD_MISSING_NUMPY_IMPORT_FOR_CPU_REPORT_REDUCTION_ONLY","unit_or_scientific_contract_changed":False,"new_image_mask_model_or_cuda_access_allowed":False})
+    write_new(path,value); print(json.dumps({"status":"PASS","commit":head,"file_count":len(sources)},sort_keys=True))
+
+
 def freeze_root() -> None:
     require(not ROOT.exists(), "S1 evidence root already exists")
     require(not git("status", "--porcelain"), "worktree must be clean before implementation seal")
@@ -279,11 +293,12 @@ def freeze_root() -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(); parser.add_argument("command", choices=("generate", "freeze-root", "freeze-a1", "freeze-a2")); args = parser.parse_args()
+    parser = argparse.ArgumentParser(); parser.add_argument("command", choices=("generate", "freeze-root", "freeze-a1", "freeze-a2", "freeze-a3")); args = parser.parse_args()
     if args.command == "generate": generate()
     elif args.command == "freeze-root": freeze_root()
     elif args.command == "freeze-a1": freeze_a1()
-    else: freeze_a2()
+    elif args.command == "freeze-a2": freeze_a2()
+    else: freeze_a3()
 
 
 if __name__ == "__main__":

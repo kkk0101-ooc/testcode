@@ -15,6 +15,8 @@ import sys
 import time
 from typing import Any, Mapping, Sequence
 
+import numpy as np
+
 REPO = Path(__file__).resolve().parents[1]
 ROOT = REPO / "evidence/nns_vit_patch_depth/s1_r1_pilot_20260914"
 FAILED_ROOT = REPO / "evidence/nns_vit_patch_depth/s1_pilot_20260914"

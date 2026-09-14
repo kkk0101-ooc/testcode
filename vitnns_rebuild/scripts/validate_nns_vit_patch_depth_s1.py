@@ -79,8 +79,13 @@ def validate_a2() -> dict[str, Any]:
     for item in payload["terminals"] + payload["shard_terminals"]:
         observed = record(REPO / item["path"]); require(observed["sha256"] == item["sha256"] and observed.get("canonical_digest") == item.get("canonical_digest"), "A2 immutable baseline file drift: " + item["path"])
     for item in seal["payload"]["files"]:
-        observed = record(REPO / item["path"]); blob = git_blob_record(seal["payload"]["commit"], item["path"]); require(observed["sha256"] == item["sha256"] == blob["sha256"] and item["git_blob_oid"] == blob["git_blob_oid"], "A2 implementation drift: " + item["path"])
-    return {"status": "PASS", "implementation_commit": seal["payload"]["commit"], "immutable_terminal_count": 24, "terminal_counts": payload["terminal_counts"], "dynamic_queue_verified": True}
+        blob = git_blob_record(seal["payload"]["commit"], item["path"])
+        require(item["sha256"] == blob["sha256"] and item["git_blob_oid"] == blob["git_blob_oid"], "A2 historical implementation drift: " + item["path"])
+    a3 = read_signed(ROOT / "a3_implementation_seal.json")
+    for item in a3["payload"]["files"]:
+        observed = record(REPO / item["path"]); blob = git_blob_record(a3["payload"]["commit"], item["path"])
+        require(observed["sha256"] == item["sha256"] == blob["sha256"] and item["git_blob_oid"] == blob["git_blob_oid"], "A3 live implementation drift: " + item["path"])
+    return {"status": "PASS", "implementation_commit": seal["payload"]["commit"], "report_implementation_commit": a3["payload"]["commit"], "immutable_terminal_count": 24, "terminal_counts": payload["terminal_counts"], "dynamic_queue_verified": True}
 
 
 def npy_header(path: Path) -> tuple[str, list[int]]:
