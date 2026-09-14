@@ -222,7 +222,7 @@ def freeze_a2() -> None:
     require(ROOT.is_dir() and (ROOT / "completion/s1.pending.json").is_file() and not (ROOT / "terminal_receipt.json").exists(), "S1-R1 is not active")
     for name in ("intermediate_baseline_binding.json", "a2_implementation_seal.json", "s1_r1_a2_amendment.json"):
         require(not (ROOT / name).exists(), "A2 already frozen: " + name)
-    require(not (ROOT / "full_pilot").exists() and not (ROOT / "dynamic_launches").exists(), "A2 must precede full/dynamic access"); status_lines = [line for line in git("status", "--porcelain").splitlines() if line and line != "?? ../.root_cleanup_quarantine/"]; require(not status_lines, "worktree must be clean before A2 seal: " + repr(status_lines))
+    require(not (ROOT / "full_pilot").exists() and not (ROOT / "dynamic_launches").exists(), "A2 must precede full/dynamic access"); ignored_external = {"?? .root_cleanup_quarantine/", "?? ../.root_cleanup_quarantine/"}; status_lines = [line for line in git("status", "--porcelain").splitlines() if line and line not in ignored_external]; require(not status_lines, "worktree must be clean before A2 seal: " + repr(status_lines))
     head = git("rev-parse", "HEAD"); source_paths = ["config/nns_vit_patch_depth/s1_r1_run_spec.json", "config/nns_vit_patch_depth/s1_r1_run_spec.schema.json", "docs/nns_vit_patch_depth_s1_r1_a2_dynamic_queue_20260914.md", "src/vitnns/nns_patch_depth_s1_queue.py", "src/vitnns/nns_patch_depth_s1_worker.py", "scripts/freeze_nns_vit_patch_depth_s1.py", "scripts/run_nns_vit_patch_depth_s1.py", "scripts/validate_nns_vit_patch_depth_s1.py", "tests/test_nns_patch_depth_s1.py"]
     sources=[]
     for relative in source_paths:
