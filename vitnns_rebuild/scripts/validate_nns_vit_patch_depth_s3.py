@@ -13,6 +13,7 @@ from typing import Any, Mapping
 
 REPO = Path(__file__).resolve().parents[1]
 ROOT = REPO / "evidence/nns_vit_patch_depth/s3_r3_20260914"
+FINAL_ROOT = REPO / "evidence/nns_vit_patch_depth/s3_r5_20260915"
 SCHEDULE = REPO / "manifests/nns_vit_patch_depth/s3_r3_source_schedule.json"
 
 
@@ -84,12 +85,12 @@ def validate_implementation() -> dict[str, Any]:
     return report
 
 
-def validate_terminals(phase: str) -> dict[str, Any]:
+def validate_terminals(phase: str, root: Path = ROOT) -> dict[str, Any]:
     rows=schedule_rows(); allowed={"probe_train","probe_validation"} if phase=="train_validation" else {"d2_test"}
     selected=[row for row in rows if row["split"] in allowed]
     counts={}; valid=0
     for row in selected:
-        path=ROOT/"unit_terminals"/f"unit-{int(row['schedule_index']):05d}.json"
+        path=root/"unit_terminals"/f"unit-{int(row['schedule_index']):05d}.json"
         require(path.is_file(),f"missing terminal {row['schedule_index']}")
         terminal=json.loads(path.read_text());verify(terminal);payload=terminal["payload"]
         require(payload["source_image_id"]==row["source_image_id"] and payload["split"]==row["split"],"terminal identity drift")
@@ -112,11 +113,13 @@ def mutation_audit() -> dict[str, Any]:
 
 
 def main() -> int:
-    parser=argparse.ArgumentParser();parser.add_argument("mode",choices=("pre-access","implementation","train-validation","test","false-pass"));args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument("mode",choices=("pre-access","implementation","train-validation","test","final","false-pass"));args=parser.parse_args()
     if args.mode=="pre-access": result=validate_pre_access()
     elif args.mode=="implementation": result=validate_implementation()
     elif args.mode=="train-validation": result=validate_terminals("train_validation")
     elif args.mode=="test": result=validate_terminals("test")
+    elif args.mode=="final":
+        train=validate_terminals("train_validation",FINAL_ROOT);test=validate_terminals("test",FINAL_ROOT);result={"status":"PASS","root":FINAL_ROOT.relative_to(REPO).as_posix(),"terminal_count":train["scheduled"]+test["scheduled"],"train_validation":train,"test":test}
     else: result=mutation_audit()
     print(json.dumps(result,sort_keys=True));return 0
 

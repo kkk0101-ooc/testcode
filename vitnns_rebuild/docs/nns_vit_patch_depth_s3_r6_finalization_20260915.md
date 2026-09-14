@@ -1,0 +1,5 @@
+# S3-R6 prospective finalization amendment
+
+S3-R5 completed a valid bit-exact scalar reserialization and all 10,458 terminals, but its first finalizer was not yet committed when it generated summary artifacts, and its inherited false-pass report recorded expected rejection booleans instead of executing mutations. S3-R5 is retained as a complete computational recovery root but is not the publication terminal root.
+
+S3-R6 is a fresh metadata-only finalization root. It is created only after the R6 finalizer, executable false-pass audit, metadata validator, and numeric validator are committed and pushed. It rebinds all S3-R5 terminals and arrays without modifying them or accessing formal JPEG/mask bytes. The false-pass audit executes each mutation against exact frozen assertions and records the rejection exception. R6 then produces the inventory, independent validation reports, phased access audit, resource ledger, and terminal receipt. No model, feature, prediction, probe, alpha, normalization, endpoint, or scientific result is recomputed or changed.
