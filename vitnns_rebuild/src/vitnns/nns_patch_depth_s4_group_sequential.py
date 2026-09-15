@@ -21,10 +21,10 @@ from scipy.stats import _mvn, norm
 
 STUDY_ID = "NNS_VIT_PATCH_DEPTH_SEMANTICS"
 STAGE_ID = "S4-GROUP-SEQUENTIAL-RECOVERY"
-RUN_ID = "s4_r9_group_sequential_20260915"
-ROOT_REL = Path("evidence/nns_vit_patch_depth/s4_r9_group_sequential_20260915")
-PAYLOAD_REL = Path("artifacts/nns_vit_patch_depth/s4_r9_group_sequential_20260915")
-SCHEDULE_REL = Path("manifests/nns_vit_patch_depth/s4_r9_group_sequential_schedule.json")
+RUN_ID = "s4_r10_group_sequential_20260915"
+ROOT_REL = Path("evidence/nns_vit_patch_depth/s4_r10_group_sequential_20260915")
+PAYLOAD_REL = Path("artifacts/nns_vit_patch_depth/s4_r10_group_sequential_20260915")
+SCHEDULE_REL = Path("manifests/nns_vit_patch_depth/s4_r10_group_sequential_schedule.json")
 CLASS_NAMESPACE = "NNS_VIT_PATCH_DEPTH_S2_R4_FORMAL_CLASS_COHORT_V1"
 CALIBRATION_NAMESPACE = "NNS_VIT_PATCH_DEPTH_S4_R5_GROUP_SEQUENTIAL_CALIBRATION_V1"
 POWER_NAMESPACE = "NNS_VIT_PATCH_DEPTH_S4_R5_GROUP_SEQUENTIAL_POWER_V1"

@@ -57,6 +57,33 @@ def missing_units(root: Path, schedule: Sequence[Mapping[str, Any]], look: int) 
     return [(unit_type,int(row["schedule_index"])) for row in schedule if int(row["first_authorized_look"])<=look for unit_type in s4.UNIT_TYPES if resolved_terminal(root,unit_type,int(row["schedule_index"])) is None]
 
 
+def live_unresolved_claim_exists(launch_root: Path, root: Path) -> bool:
+    """Return whether another live worker can still unlock ready work.
+
+    Workers use this only to distinguish a transiently empty dependency queue
+    from a truly exhausted queue.  A dead worker's immutable claim remains
+    evidence and is deliberately not reclaimed inside the same launch.
+    """
+    for path in launch_root.glob("claims/*/*.claim.json"):
+        record = json.loads(path.read_text())
+        gs.require(gs.verify_signed(record), "claim canonical digest drift")
+        payload = record["payload"]
+        if resolved_terminal(root, str(payload["unit_type"]), int(payload["schedule_index"])) is not None:
+            continue
+        pid = int(payload["worker_pid"])
+        try:
+            os.kill(pid, 0)
+        except (ProcessLookupError, PermissionError):
+            continue
+        try:
+            if (Path("/proc") / str(pid) / "stat").read_text().split()[2] == "Z":
+                continue
+        except (FileNotFoundError, IndexError):
+            continue
+        return True
+    return False
+
+
 def terminal_counts(root: Path, schedule: Sequence[Mapping[str, Any]], look: int) -> dict[str, Any]:
     rows=[]
     for row in schedule:

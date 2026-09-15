@@ -1,6 +1,7 @@
 from __future__ import annotations
 import json
 from pathlib import Path
+import os
 import numpy as np
 from vitnns import nns_patch_depth_s4_group_sequential as gs
 from vitnns import nns_patch_depth_s4_group_queue as queue
@@ -30,3 +31,9 @@ def test_rebind_terminal_is_resolved_and_never_reclaims_nns(tmp_path):
  root=tmp_path/'recovery';source=tmp_path/'source.json';source_doc=s4.signed('s4_unit_terminal','VALID_NNS',{'unit_type':'NNS_IMAGE','schedule_index':0});source.write_text(json.dumps(source_doc));binding=queue.rebind_path(root,'NNS_IMAGE',0);binding.parent.mkdir(parents=True,exist_ok=True);binding.write_text(json.dumps(gs.signed('s4_r4_completed_unit_rebind','PASS',{'source_terminal_path':str(source),'source_terminal_sha256':gs.sha_file(source)})));schedule=[{'schedule_index':0,'source_image_id':'a','formal_class_rank':0,'first_authorized_look':1}];worker={'worker_id':'w','worker_pid':1,'physical_gpu_index':0,'gpu_uuid':'GPU'};claim=queue.claim_next(root/'launches/x',root,schedule,1,worker);assert queue.resolved_terminal(root,'NNS_IMAGE',0)[2]=='REBIND';assert claim['unit_type']=='OCCLUSION_PRIMARY'
 def test_fresh_launch_ignores_old_stale_claim(tmp_path):
  root=tmp_path/'stage';schedule=[{'schedule_index':0,'source_image_id':'a','formal_class_rank':0,'first_authorized_look':1}];worker={'worker_id':'w','worker_pid':1,'physical_gpu_index':0,'gpu_uuid':'GPU'};assert queue.claim_next(root/'launches/old',root,schedule,1,worker)['unit_type']=='NNS_IMAGE';assert queue.claim_next(root/'launches/new',root,schedule,1,worker)['unit_type']=='NNS_IMAGE'
+def test_group_worker_payloads_are_launch_namespaced():
+ source=(ROOT/'src/vitnns/nns_patch_depth_s4_worker.py').read_text();assert 'payload_root / "launch_payloads" / str(claim["launch_id"])' in source
+def test_live_inflight_dependency_keeps_ready_pool_open(tmp_path):
+ root=tmp_path/'stage';launch=root/'launches/live';schedule=[{'schedule_index':0,'source_image_id':'a','formal_class_rank':0,'first_authorized_look':1}];worker={'worker_id':'w','worker_pid':os.getpid(),'physical_gpu_index':0,'gpu_uuid':'GPU'};assert queue.claim_next(launch,root,schedule,1,worker)['unit_type']=='NNS_IMAGE';assert queue.live_unresolved_claim_exists(launch,root)
+def test_interim_requires_independent_numeric_receipt():
+ source=(ROOT/'scripts/adjudicate_nns_vit_patch_depth_s4_group_sequential.py').read_text();assert "look_{look}_numeric_validation_report.json" in source and 'independent numeric validation absent' in source

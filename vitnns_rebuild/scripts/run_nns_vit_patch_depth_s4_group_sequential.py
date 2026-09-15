@@ -15,8 +15,8 @@ import time
 from typing import Any, Mapping
 
 REPO=Path(__file__).resolve().parents[1]
-ROOT=REPO/'evidence/nns_vit_patch_depth/s4_r9_group_sequential_20260915'
-PAYLOAD=REPO/'artifacts/nns_vit_patch_depth/s4_r9_group_sequential_20260915'
+ROOT=REPO/'evidence/nns_vit_patch_depth/s4_r10_group_sequential_20260915'
+PAYLOAD=REPO/'artifacts/nns_vit_patch_depth/s4_r10_group_sequential_20260915'
 R4_ROOT=REPO/'evidence/nns_vit_patch_depth/s4_r4_20260915'
 R4_PAYLOAD=REPO/'artifacts/nns_vit_patch_depth/s4_r4_20260915'
 PYTHON=REPO.parent/'.conda/envs/vitnns/bin/python'
@@ -44,9 +44,9 @@ def environment()->dict[str,str]:
 def verify_remote_seal(allow_runtime:bool=False)->tuple[str,dict[str,Any]]:
     seal_path=ROOT/'implementation_seal.json'; require(seal_path.is_file(),'implementation seal absent'); seal=json.loads(seal_path.read_text()); require(gs.verify_signed(seal) and seal['status']=='PASS','implementation seal invalid')
     head=git('rev-parse','HEAD'); require(remote_oid()==head,'remote branch does not equal local seal HEAD'); implementation=seal['payload']['implementation_commit']; subprocess.check_call(['git','-C',str(REPO),'merge-base','--is-ancestor',implementation,head])
-    tracked=git('ls-tree','-r','--name-only',head).splitlines(); expected='evidence/nns_vit_patch_depth/s4_r9_group_sequential_20260915/implementation_seal.json'; require(expected in tracked or 'vitnns_rebuild/'+expected in tracked,'seal absent from Git tree')
-    porcelain=git('status','--porcelain=v2','--untracked-files=all').splitlines(); allowed=['? ../.root_cleanup_quarantine/','? artifacts/nns_vit_patch_depth/s4_r9_group_sequential_20260915/']
-    if allow_runtime: allowed += ['? evidence/nns_vit_patch_depth/s4_r9_group_sequential_20260915/']
+    tracked=git('ls-tree','-r','--name-only',head).splitlines(); expected='evidence/nns_vit_patch_depth/s4_r10_group_sequential_20260915/implementation_seal.json'; require(expected in tracked or 'vitnns_rebuild/'+expected in tracked,'seal absent from Git tree')
+    porcelain=git('status','--porcelain=v2','--untracked-files=all').splitlines(); allowed=['? ../.root_cleanup_quarantine/','? artifacts/nns_vit_patch_depth/s4_r10_group_sequential_20260915/']
+    if allow_runtime: allowed += ['? evidence/nns_vit_patch_depth/s4_r10_group_sequential_20260915/']
     unexpected=[line for line in porcelain if not any(line.startswith(prefix) for prefix in allowed)]; require(not unexpected,'unexpected worktree changes: '+repr(unexpected[:10])); return head,seal
 
 def gpu_rows()->list[dict[str,Any]]:
@@ -105,7 +105,7 @@ def launch(look:int,launch_id:str)->None:
             if code!=0: failures.append({'worker_id':worker_id,'exit_code':code})
     finally:
         for handle in locks: fcntl.flock(handle.fileno(),fcntl.LOCK_UN); handle.close()
-    remaining=queue.missing_units(ROOT,schedule,look); status='PASS' if not remaining and not failures else 'BLOCKED_INFRASTRUCTURE' if failures else 'FAILED_IMPLEMENTATION'; counts=queue.terminal_counts(ROOT,schedule,look)
+    remaining=queue.missing_units(ROOT,schedule,look); status='PASS' if not remaining else 'BLOCKED_INFRASTRUCTURE' if failures else 'FAILED_IMPLEMENTATION'; counts=queue.terminal_counts(ROOT,schedule,look)
     gs.write_json_new(launch_root/'launch_terminal.json',gs.signed('s4_group_sequential_launch_terminal',status,{'launch_id':launch_id,'look':look,'started_unix_ns':started_ns,'completed_unix_ns':time.time_ns(),'launch_elapsed_seconds':time.monotonic()-started,'selected_GPU_count':len(selected),'selected_GPUs':selected,'worker_process_failures':failures,'planned_unit_count':counts['planned'],'terminal_count_after_launch':counts['terminal'],'remaining_units':[{'unit_type':x,'schedule_index':i} for x,i in remaining],'future_tranche_claim_count':0,'cost_or_wall_time_termination_used':False},producer_commit=head))
     if status=='PASS': publish_look_completion(look,schedule,head)
     print(json.dumps({'status':status,'look':look,'remaining_units':len(remaining),'worker_failures':failures},sort_keys=True))
@@ -120,7 +120,8 @@ def publish_look_completion(look:int,schedule:list[dict[str,Any]],producer_commi
         d=json.loads(path.read_text()); p=d['payload'];
         if int(p.get('first_authorized_look',look))>look: future_claims.append(path.relative_to(REPO).as_posix())
     require(not future_claims,'future tranche claimed')
-    gs.write_json_new(destination,gs.signed('s4_group_sequential_look_completion','PASS',{'look':look,'class_count':gs.LOOK_CLASS_COUNTS[look-1],'image_count':gs.LOOK_IMAGE_COUNTS[look-1],'planned_unit_count':counts['planned'],'terminal_count':counts['terminal'],'state_counts':state_counts,'source_completion_count':sum((ROOT/'source_completions'/f"source-{int(row['schedule_index']):04d}.json").is_file() for row in schedule if int(row['first_authorized_look'])<=look),'future_tranche_claim_count':0,'scientific_aggregate_access_count':0},producer_commit=producer_commit))
+    source_completion_count=sum((ROOT/'source_completions'/f"source-{int(row['schedule_index']):04d}.json").is_file() for row in schedule if int(row['first_authorized_look'])<=look);require(source_completion_count==gs.LOOK_IMAGE_COUNTS[look-1],'look source completion topology incomplete')
+    gs.write_json_new(destination,gs.signed('s4_group_sequential_look_completion','PASS',{'look':look,'class_count':gs.LOOK_CLASS_COUNTS[look-1],'image_count':gs.LOOK_IMAGE_COUNTS[look-1],'planned_unit_count':counts['planned'],'terminal_count':counts['terminal'],'state_counts':state_counts,'source_completion_count':source_completion_count,'future_tranche_claim_count':0,'scientific_aggregate_access_count':0},producer_commit=producer_commit))
 
 def main()->int:
     parser=argparse.ArgumentParser(); sub=parser.add_subparsers(dest='command',required=True); sub.add_parser('cache-rebind'); launch_parser=sub.add_parser('launch'); launch_parser.add_argument('--look',type=int,required=True); launch_parser.add_argument('--launch-id',required=True); args=parser.parse_args(); cache_rebind() if args.command=='cache-rebind' else launch(args.look,args.launch_id); return 0

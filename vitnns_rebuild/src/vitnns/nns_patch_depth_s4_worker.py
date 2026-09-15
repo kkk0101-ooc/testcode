@@ -299,7 +299,13 @@ def _nns_unit(repo: Path, root: Path, payload_root: Path, model: Any, row: Mappi
         p2_plan = s4.build_p2_plan(positive, row["source_image_id"])
         p2_status = "MATCHED" if all(item["status"] == "MATCHED" for item in p2_plan) else "NA_MATCHED_CONTROL_UNAVAILABLE"
         p2_reason = None if p2_status == "MATCHED" else "one or more of 36 coordinates exhausted 512 matching attempts"
-        unit_dir = payload_root / "units" / f"unit-{int(row['schedule_index']):04d}"
+        # Group-sequential recovery launches retain every crash remnant.  Put
+        # newly produced arrays in a launch-specific namespace so a fresh
+        # launch can recompute an unterminated unit without overwriting the
+        # earlier launch's partial payload.  Legacy S4 launches retain their
+        # original layout because their claims have no group-sequential look.
+        unit_base = payload_root / "launch_payloads" / str(claim["launch_id"]) if "look" in claim else payload_root
+        unit_dir = unit_base / "units" / f"unit-{int(row['schedule_index']):04d}"
         values_to_write = [
             ("source_scores", score_arrays, "<f4", ("mass_kind_signed_positive_negative_absolute", "block", "source_patch")),
             ("occupancy", occupancy, "<f4", ("semantic_plane_background_other_void_target", "source_patch")),
@@ -474,7 +480,8 @@ def _occlusion_unit(repo: Path, root: Path, payload_root: Path, model: Any, row:
                     values.extend(float(item) for item in logits)
                     calls += 1
             masked_logits = np.asarray(values, dtype="<f4").reshape(36, 5)
-            output_path = payload_root / "units" / f"unit-{int(row['schedule_index']):04d}" / f"occlusion_{operator}_logits.npy"
+            unit_base = payload_root / "launch_payloads" / str(claim["launch_id"]) if "look" in claim else payload_root
+            output_path = unit_base / "units" / f"unit-{int(row['schedule_index']):04d}" / f"occlusion_{operator}_logits.npy"
             record = s4.write_array_atomic(output_path, masked_logits, dtype="<f4", axes=("block_budget_coordinate", "selected_then_four_controls"), producer_commit=producer_commit, source_identity=row["source_image_id"], recomputation_rule=f"rerun sealed S4 {unit_type} with frozen shared coordinate plan and {operator}")
             arrays.append(_record_path(repo, record))
             outcome = {
@@ -611,7 +618,14 @@ def execute_group_sequential(repo_root: str, evidence_root: str, payload_root: s
     counts: dict[str, int] = {}; claimed = []; started = time.monotonic()
     while True:
         claim = queue.claim_next(launch_root, root, schedule, int(look), {"worker_id": worker_id, "worker_pid": os.getpid(), "physical_gpu_index": int(physical_gpu_index), "gpu_uuid": gpu_uuid})
-        if claim is None: break
+        if claim is None:
+            # Do not let a fast worker leave while another live worker is
+            # producing an NNS dependency.  This keeps the shared pool
+            # work-conserving without reclaiming a dead worker's stale claim.
+            if queue.live_unresolved_claim_exists(launch_root, root):
+                time.sleep(0.25)
+                continue
+            break
         row = by_index[int(claim["schedule_index"])]
         s4.require(int(row["first_authorized_look"]) <= int(look), "future tranche claim reached worker")
         if claim["unit_type"] == "NNS_IMAGE": status, terminal_payload = _nns_unit(repo, root, payload, model, row, claim, producer_commit)

@@ -1,0 +1,9 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version","study_id","stage_id","run_id","document_type","status","payload","canonical_digest"],
+  "properties": {
+    "schema_version": {"const": 1}, "study_id": {"const": "NNS_VIT_PATCH_DEPTH_SEMANTICS"}, "stage_id": {"const": "S4-GROUP-SEQUENTIAL-RECOVERY"}, "run_id": {"const": "s4_r10_group_sequential_20260915"}, "document_type": {"const": "s4_group_sequential_unit_claim"}, "status": {"const": "CLAIMED"}, "canonical_digest": {"type": "string","pattern":"^[0-9a-f]{64}$"},
+    "payload": {"type":"object","additionalProperties":false,"required":["launch_id","look","unit_type","schedule_index","source_id","formal_class_rank","first_authorized_look","operator","component","worker_id","worker_pid","physical_gpu_index","gpu_uuid","claimed_unix_ns","claim_scope","future_tranche_claim","scientific_seed_depends_on_worker_gpu_claim_launch_or_time"],"properties":{"launch_id":{"type":"string"},"look":{"type":"integer","minimum":1,"maximum":5},"unit_type":{"enum":["NNS_IMAGE","OCCLUSION_PRIMARY","OCCLUSION_SENSITIVITY"]},"schedule_index":{"type":"integer","minimum":0,"maximum":1743},"source_id":{"type":"string"},"formal_class_rank":{"type":"integer","minimum":0,"maximum":871},"first_authorized_look":{"type":"integer","minimum":1,"maximum":5},"operator":{"type":["string","null"]},"component":{"type":["string","null"]},"worker_id":{"type":"string"},"worker_pid":{"type":"integer"},"physical_gpu_index":{"type":"integer"},"gpu_uuid":{"type":"string"},"claimed_unix_ns":{"type":"integer"},"claim_scope":{"const":"THIS_LAUNCH_AND_LOOK_ONLY"},"future_tranche_claim":{"const":false},"scientific_seed_depends_on_worker_gpu_claim_launch_or_time":{"const":false}}}
+  }
+}
