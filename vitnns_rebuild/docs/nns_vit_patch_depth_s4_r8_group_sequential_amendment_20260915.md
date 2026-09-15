@@ -1,0 +1,3 @@
+# S4-R8 final pre-interim implementation amendment
+
+S4-R7 was never sealed and never used for an interim; formal P1/P2/D1 aggregate access remained zero. S4-R8 makes no change to the five look cohorts, effect thresholds, directions, alpha spending, closed-testing rule, validity gates, or power gate. It explicitly implements the S2-R4 ordinary precision definition as a deterministic 20,000-replicate class-level BCa bootstrap and adds direct regression tests proving that validated S4-R4 terminals are skipped and stale old-launch claims do not block a fresh launch. S4-R5, R6, and R7 remain immutable pre-seal drafts.

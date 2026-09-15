@@ -1,0 +1,5 @@
+# S4-R6 pre-aggregate boundary-hardening amendment
+
+S4-R5 was a pre-seal design draft with zero P1/P2/D1 aggregate access. Before any interim analysis, S4-R6 makes the repeated-look inference rule directly invertible and conservative: every controlling local directional boundary is the exact normal quantile of the preregistered incremental-spend Bonferroni allocation. Canonical nested-look boundaries remain a noncontrolling sensitivity reference. The cumulative spending targets remain 0.025, 0.040, 0.045, 0.048, and 0.050.
+
+For an intersection of size m, look-j one-sided P1/P2 component alpha is incremental_alpha_j/m, while each D1 direction receives incremental_alpha_j/(2m). Summing over looks and components controls each local intersection at cumulative alpha; closure controls strong FWER at 0.05 under arbitrary endpoint correlation. The canonical boundary and 1,000,000-replicate calibration remain audit and power-calibration evidence. S4-R5 remains immutable as a superseded, never-sealed, never-used design draft.

@@ -425,8 +425,15 @@ def _occlusion_unit(repo: Path, root: Path, payload_root: Path, model: Any, row:
     gpu_end = torch.cuda.Event(enable_timing=True)
     gpu_start.record()
     nns_path = s4.terminal_path(root, "NNS_IMAGE", int(row["schedule_index"]))
-    nns = json.loads(nns_path.read_text())
-    s4.require(s4.verify_signed(nns), "NNS dependency digest invalid")
+    if nns_path.is_file():
+        nns = json.loads(nns_path.read_text())
+        dependency_provenance = "NEW"
+    else:
+        from . import nns_patch_depth_s4_group_queue as group_queue
+        resolved = group_queue.resolved_terminal(root, "NNS_IMAGE", int(row["schedule_index"]))
+        s4.require(resolved is not None, "NNS dependency terminal unavailable")
+        nns_path, nns, dependency_provenance = resolved
+    s4.require(s4.verify_signed(nns) or __import__("vitnns.nns_patch_depth_s4_group_sequential", fromlist=["verify_signed"]).verify_signed(nns), "NNS dependency digest invalid")
     arrays: list[dict[str, Any]] = []
     geometry: dict[str, Any] = {}
     failure = None
@@ -501,7 +508,7 @@ def _occlusion_unit(repo: Path, root: Path, payload_root: Path, model: Any, row:
         "image_sha256": row["image_sha256"], "mask_sha256": row["annotation_sha256"],
         "class_target": int(row["target_model_class_index"]), "annotation_label_id": int(row["annotation_label_id"]),
         "role_flags": row["role_flags"], "component": None, "operator": operator,
-        "dependency_terminal": {"path": nns_path.relative_to(repo).as_posix(), "sha256": s4.sha_file(nns_path), "canonical_digest": nns["canonical_digest"], "status": nns["status"]},
+        "dependency_terminal": {"path": nns_path.relative_to(repo).as_posix(), "sha256": s4.sha_file(nns_path), "canonical_digest": nns["canonical_digest"], "status": nns["status"], "provenance": dependency_provenance},
         "launch_id": claim["launch_id"], "claim_path": claim["claim_path"], "claim_time_unix_ns": claim["claimed_unix_ns"],
         "worker_id": claim["worker_id"], "worker_pid": claim["worker_pid"], "physical_gpu_index": claim["physical_gpu_index"], "gpu_uuid": claim["gpu_uuid"],
         "started_unix_ns": started_ns, "completed_unix_ns": time.time_ns(), "python_executable_realpath": os.path.realpath(sys.executable), "producer_commit": producer_commit,
@@ -568,4 +575,55 @@ def execute(repo_root: str, evidence_root: str, payload_root: str, launch_id: st
         "worker_wall_seconds": time.monotonic() - started, "model_load_count": 1,
     }, producer_commit=producer_commit)
     s4.write_json_new(worker_root / "worker_terminal.json", result)
+    return result
+
+
+def _publish_group_source_completion(repo: Path, root: Path, row: Mapping[str, Any], producer_commit: str) -> None:
+    from . import nns_patch_depth_s4_group_queue as queue
+    from . import nns_patch_depth_s4_group_sequential as gs
+    resolved = {unit_type: queue.resolved_terminal(root, unit_type, int(row["schedule_index"])) for unit_type in s4.UNIT_TYPES}
+    if not all(value is not None for value in resolved.values()):
+        return
+    destination = root / "source_completions" / f"source-{int(row['schedule_index']):04d}.json"
+    temporary = destination.with_name(destination.name + f".tmp-{os.getpid()}-{time.time_ns()}")
+    records = []
+    for unit_type in s4.UNIT_TYPES:
+        value = resolved[unit_type]
+        assert value is not None
+        path, terminal, provenance = value
+        records.append({"unit_type": unit_type, "path": path.relative_to(repo).as_posix(), "sha256": s4.sha_file(path), "canonical_digest": terminal["canonical_digest"], "status": terminal["status"], "provenance": provenance})
+    document = gs.signed("s4_group_sequential_source_completion", "COMPLETE", {"schedule_index": int(row["schedule_index"]), "source_id": row["source_image_id"], "formal_class_rank": int(row["formal_class_rank"]), "first_authorized_look": int(row["first_authorized_look"]), "unit_terminals": records, "all_three_units_terminal": True, "producer_commit": producer_commit, "scientific_claim_decision": None}, producer_commit=producer_commit)
+    s4.publish_json_no_overwrite(temporary, destination, document)
+
+
+def execute_group_sequential(repo_root: str, evidence_root: str, payload_root: str, launch_id: str, look: int, worker_id: str, physical_gpu_index: int, gpu_uuid: str, producer_commit: str) -> dict[str, Any]:
+    """Execute only units released for one frozen group-sequential look."""
+    from . import nns_patch_depth_s4_group_queue as queue
+    from . import nns_patch_depth_s4_group_sequential as gs
+    visible = os.environ.get("CUDA_VISIBLE_DEVICES", "")
+    s4.require(visible == str(int(physical_gpu_index)), "group worker GPU visibility drift")
+    repo = Path(repo_root).resolve(); root = Path(evidence_root).resolve(); payload = Path(payload_root).resolve(); launch_root = root / "launches" / launch_id
+    schedule = json.loads((repo / gs.SCHEDULE_REL).read_text())["payload"]["records"]; by_index = {int(row["schedule_index"]): row for row in schedule}
+    model, environment = _initialize_worker(repo, int(physical_gpu_index), gpu_uuid)
+    environment.update({"worker_id": worker_id, "launch_id": launch_id, "look": int(look), "producer_commit": producer_commit, "future_tranche_visible": False})
+    worker_root = launch_root / "workers" / worker_id
+    gs.write_json_new(worker_root / "worker_identity.json", gs.signed("s4_group_sequential_worker_identity", "PASS", environment, producer_commit=producer_commit))
+    counts: dict[str, int] = {}; claimed = []; started = time.monotonic()
+    while True:
+        claim = queue.claim_next(launch_root, root, schedule, int(look), {"worker_id": worker_id, "worker_pid": os.getpid(), "physical_gpu_index": int(physical_gpu_index), "gpu_uuid": gpu_uuid})
+        if claim is None: break
+        row = by_index[int(claim["schedule_index"])]
+        s4.require(int(row["first_authorized_look"]) <= int(look), "future tranche claim reached worker")
+        if claim["unit_type"] == "NNS_IMAGE": status, terminal_payload = _nns_unit(repo, root, payload, model, row, claim, producer_commit)
+        else: status, terminal_payload = _occlusion_unit(repo, root, payload, model, row, claim, producer_commit)
+        terminal_payload.update({"group_sequential_look": int(look), "formal_class_rank": int(row["formal_class_rank"]), "first_authorized_look": int(row["first_authorized_look"]), "future_look_outcome_access_count": 0})
+        terminal = gs.signed("s4_group_sequential_unit_terminal", status, terminal_payload, producer_commit=producer_commit)
+        destination = queue.new_terminal_path(root, str(claim["unit_type"]), int(claim["schedule_index"]))
+        temporary = destination.with_name(destination.name + f".tmp-{launch_id}-{worker_id}-{os.getpid()}-{time.time_ns()}")
+        s4.publish_json_no_overwrite(temporary, destination, terminal)
+        _publish_group_source_completion(repo, root, row, producer_commit)
+        counts[status] = counts.get(status, 0) + 1; claimed.append({"unit_type": claim["unit_type"], "schedule_index": claim["schedule_index"], "status": status})
+        print(json.dumps({"event": "s4_group_unit_terminal", "look": look, "unit_type": claim["unit_type"], "schedule_index": claim["schedule_index"], "status": status, "worker_id": worker_id, "gpu": physical_gpu_index}, sort_keys=True), flush=True)
+    result = gs.signed("s4_group_sequential_worker_terminal", "PASS", {"launch_id": launch_id, "look": int(look), "worker_id": worker_id, "worker_pid": os.getpid(), "physical_gpu_index": int(physical_gpu_index), "gpu_uuid": gpu_uuid, "claimed_units": claimed, "terminal_counts": dict(sorted(counts.items())), "worker_wall_seconds": time.monotonic() - started, "model_load_count": 1, "future_tranche_claim_count": 0}, producer_commit=producer_commit)
+    gs.write_json_new(worker_root / "worker_terminal.json", result)
     return result
