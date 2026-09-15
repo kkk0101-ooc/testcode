@@ -13,7 +13,7 @@ ROOT=REPO/r12.ROOT_REL
 def require(c,m):
  if not c:raise RuntimeError(m)
 def array(rec):
- p=REPO/rec['path'];require(p.is_file() and p.stat().st_size==rec['bytes'] and r12.sha_file(p)==rec['sha256'],'array identity');a=np.load(p,allow_pickle=False);require(list(a.shape)==rec['shape'] and str(a.dtype)==rec['dtype'] and bool(np.isfinite(a).all()),'array geometry');h=hashlib.sha256();x=np.ascontiguousarray(a);h.update(str(x.dtype).encode());h.update(b'\0');h.update(str(tuple(x.shape)).encode());h.update(b'\0');h.update(x.tobytes());require(h.hexdigest()==rec['canonical_array_digest'],'array digest');return a
+ p=REPO/rec['path'];require(p.is_file() and p.stat().st_size==rec['bytes'] and r12.sha_file(p)==rec['sha256'],'array identity');a=np.load(p,allow_pickle=False);require(list(a.shape)==rec['shape'] and str(a.dtype)==rec['dtype'],'array geometry/dtype');require(not np.issubdtype(a.dtype,np.number) or bool(np.isfinite(a).all()),'numeric array finiteness');h=hashlib.sha256();x=np.ascontiguousarray(a);h.update(str(x.dtype).encode());h.update(b'\0');h.update(str(tuple(x.shape)).encode());h.update(b'\0');h.update(x.tobytes());require(h.hexdigest()==rec['canonical_array_digest'],'array digest');return a
 def seed(*parts):return int.from_bytes(hashlib.sha256(('NNS_VIT_PATCH_DEPTH_S4_R5_GROUP_SEQUENTIAL_POWER_V1\0'+'\0'.join(str(x) for x in parts)).encode()).digest()[:8],'big')
 def bca(groups,e):
  g=[np.asarray(x,float) for x in groups];means=np.array([x.mean() for x in g]);est=float(means.mean());rng=np.random.Generator(np.random.PCG64(seed('ordinary_BCa',e,1,20000)));boot=np.empty(20000)

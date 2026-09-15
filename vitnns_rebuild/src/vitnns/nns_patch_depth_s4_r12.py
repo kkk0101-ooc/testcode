@@ -100,7 +100,7 @@ def verify_selection(repo:Path)->tuple[list[dict[str,Any]],dict[str,Any]]:
  return records,{**identity,'selected_source_count':len(records),'selected_terminal_count':sum(len(r['terminals']) for r in records),'selected_distinct_class_rank_count':len({r['formal_class_rank'] for r in records}),'cutoff_completion_unix_ns':records[-1]['source_completion_time_max_unix_ns'],'cutoff_schedule_index':records[-1]['schedule_index'],'terminal_state_counts':dict(states),'unexplained_failure_count':failures,'checks':checks,'all_checks_pass':all(checks.values())}
 
 def _array(repo:Path,rec:Mapping[str,Any])->np.ndarray:
- path=repo/rec['path'];require(path.is_file() and path.stat().st_size==rec['bytes'],'array file/bytes');require(sha_file(path)==rec['sha256'],'array SHA');a=np.load(path,allow_pickle=False);require(list(a.shape)==rec['shape'] and str(a.dtype)==rec['dtype'] and bool(np.isfinite(a).all()),'array geometry/finiteness');require(s4.array_digest(a)==rec['canonical_array_digest'],'array digest');return a
+ path=repo/rec['path'];require(path.is_file() and path.stat().st_size==rec['bytes'],'array file/bytes');require(sha_file(path)==rec['sha256'],'array SHA');a=np.load(path,allow_pickle=False);require(list(a.shape)==rec['shape'] and str(a.dtype)==rec['dtype'],'array geometry/dtype');require(not np.issubdtype(a.dtype,np.number) or bool(np.isfinite(a).all()),'numeric array finiteness');require(s4.array_digest(a)==rec['canonical_array_digest'],'array digest');return a
 
 def compute(repo:Path,records:Sequence[Mapping[str,Any]])->tuple[dict[str,Any],dict[str,Any]]:
  endpoint={e:[] for e in gs.ENDPOINTS};states=Counter();arrays=plans=matched=possible=0
