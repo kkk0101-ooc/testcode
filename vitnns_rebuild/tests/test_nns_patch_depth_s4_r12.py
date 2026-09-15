@@ -19,3 +19,5 @@ def test_actual_r11_records_have_both_corrected_digests_and_122_ranks():
  records=json.loads((ROOT/'evidence/nns_vit_patch_depth/s4_r11_posthoc_exploratory_20260916/exploratory_240_source_manifest.json').read_text())['payload']['records'];identity=r12.corrected_identity(records);assert len(records)==240 and len({x['formal_class_rank'] for x in records})==122;assert identity['full_manifest_records_digest']==r12.FULL_RECORDS_DIGEST and identity['membership_projection_digest']==r12.MEMBERSHIP_DIGEST
 def test_string_seed_array_uses_hash_shape_dtype_not_isfinite():
  source=(ROOT/'src/vitnns/nns_patch_depth_s4_r12.py').read_text();assert 'not np.issubdtype(a.dtype,np.number) or bool(np.isfinite(a).all())' in source
+def test_false_pass_recomputes_projection_digest():
+ source=(ROOT/'scripts/validate_nns_vit_patch_depth_s4_r12.py').read_text();assert "r12.canonical_digest(x['membership_projection'])==r12.MEMBERSHIP_DIGEST" in source

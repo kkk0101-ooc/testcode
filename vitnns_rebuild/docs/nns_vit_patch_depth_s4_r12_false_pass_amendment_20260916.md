@@ -1,0 +1,3 @@
+# S4-R12 false-pass validator amendment
+
+After the R12 producer wrote pre-terminal evidence, the independent numeric validator passed, but the mutation suite correctly refused to publish a false-pass report because its `records_order` mutation check compared only persisted digest constants rather than recomputing the digest from the mutated membership projection. No independent-validation report, false-pass report, inventory, or terminal was written. Prospectively, the validator recomputes the membership projection digest, recomputes all three class-count scopes from mutated fixtures, and performs an actual terminal-SHA mutation check. This changes no selected record, array, endpoint, threshold, gate, or producer output.
