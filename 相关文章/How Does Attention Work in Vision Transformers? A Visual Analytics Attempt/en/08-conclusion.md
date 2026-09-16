@@ -1,0 +1,3 @@
+# 8. Conclusion
+
+In this paper, we introduce a visual analytics solution to interpret ViTs. Our interpretation was carried out from three perspectives. First, we answer what heads are more important by introducing multiple head-importance metrics. Second, we explain why a head is important by disclosing its attention strength distribution across image patches in the 2D spatial context. Third, we adopt an unsupervised learning method to exhaustively summarize the possible attention patterns. Through concrete case studies conducted together with multiple experienced deep learning experts, we verify the efficacy of our visual interpretation solution.

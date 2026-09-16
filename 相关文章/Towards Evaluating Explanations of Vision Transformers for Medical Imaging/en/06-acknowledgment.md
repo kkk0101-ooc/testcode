@@ -1,0 +1,3 @@
+# Acknowledgment
+
+The work of Piotr Komorowski was supported by the European Union Regional Development Fund in the frame of the AI Tech project (POPC.03.02.00-00-0001/20-00) at the University of Warsaw, implemented under the supervision of the Chancellery of the Prime Minister of Poland. The experiments were conducted using the Entropy cluster funded by NVIDIA, Intel, the Polish National Science Center grant UMO2017/26/E/ST6/00622 and ERC Starting Grant TOTAL. This research was initiated as a team project with Szymon Antoniak and Kajetan Husiatyński during the XAI course at the University of Warsaw. We want to thank Maciej Chrabąszcz and Paulina Tomaszewska for their insightful comments.

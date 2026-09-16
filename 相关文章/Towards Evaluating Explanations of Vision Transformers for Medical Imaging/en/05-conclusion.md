@@ -1,0 +1,3 @@
+# 5. Conclusion
+
+Our study contributes to the advancement of the adoption of ViT explanations in practical fields, particularly in medicine where they are of great importance. The findings demonstrate that TransLRP outperforms other analyzed explanation methods on the COVID classification for CXR images. To our knowledge, this is the first work that comprehensively evaluates ViT explanations for medical imaging. In the future, this approach could be extended to other medical modalities, such as CT or MRI, for further exploration. The code is available at <https://github.com/piotr-komorowski/towards-evaluating-explanations-of-vit>.

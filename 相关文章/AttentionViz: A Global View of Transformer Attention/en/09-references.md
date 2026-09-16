@@ -1,0 +1,125 @@
+# References
+
+- Aflalo, Estelle, Meng Du, Shao-Yen Tseng, et al. 2022. “Vl-Interpret: An Interactive Visualization Tool for Interpreting Vision-Language Transformers.” *Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition* (New Orleans), 21406–15. .
+
+- Arendt, Dustin L, Nasheen Nur, Zhuanyi Huang, Gabriel Fair, and Wenwen Dou. 2020. “Parallel Embeddings: A Visualization Technique for Contrasting Learned Representations.” *Proceedings of the 25th International Conference on Intelligent User Interfaces* (Cagliari), 259–74. .
+
+- Boggust, Angie, Brandon Carter, and Arvind Satyanarayan. 2022. “Embedding Comparator: Visualizing Differences in Global Structure and Local Neighborhoods via Small Multiples.” *27th International Conference on Intelligent User Interfaces* (Helsinki), 746–66. .
+
+- Caron, Mathilde, Hugo Touvron, Ishan Misra, et al. 2021. “Emerging Properties in Self-Supervised Vision Transformers.” *Proceedings of the IEEE/CVF International Conference on Computer Vision* (Montreal), 9650–60. .
+
+- Carter, Shan, Zan Armstrong, Ludwig Schubert, Ian Johnson, and Chris Olah. 2019. “Activation Atlas.” *Distill* 4 (3). .
+
+- Chefer, Hila, Shir Gur, and Lior Wolf. 2021. “Transformer Interpretability Beyond Attention Visualization.” *Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition* (Online), 782–91. .
+
+- Chen, Liang-Chieh, George Papandreou, Florian Schroff, and Hartwig Adam. 2017. “Rethinking Atrous Convolution for Semantic Image Segmentation.” *arXiv Preprint*, ahead of print. .
+
+- Chi, Ethan A., John Hewitt, and Christopher D. Manning. 2020. “Finding Universal Grammatical Relations in Multilingual BERT.” *Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics* (Online), 5564–77. .
+
+- Clark, Kevin, Urvashi Khandelwal, Omer Levy, and Christopher D. Manning. 2019. “What Does BERT Look at? An Analysis of BERT’s Attention.” *Proceedings of the 2019 ACL Workshop BlackboxNLP: Analyzing and Interpreting Neural Networks for NLP* (Florence), 276–86. .
+
+- Cordonnier, Jean-Baptiste, Andreas Loukas, and Martin Jaggi. 2020. “On the Relationship Between Self-Attention and Convolutional Layers.” *Eighth International Conference on Learning Representations* (Addis Ababa). .
+
+- Dehghani, Mostafa, Josip Djolonga, Basil Mustafa, et al. 2023. “Scaling Vision Transformers to 22 Billion Parameters.” *arXiv Preprint*, ahead of print. .
+
+- DeRose, Joseph F, Jiayao Wang, and Matthew Berger. 2021. “Attention Flows: Analyzing and Comparing Attention Mechanisms in Language Models.” *IEEE Transactions on Visualization and Computer Graphics* 27 (2): 1160–70. .
+
+- Devlin, Jacob, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. 2018. “Bert: Pre-Training of Deep Bidirectional Transformers for Language Understanding.” *arXiv Preprint*, ahead of print. .
+
+- Dosovitskiy, Alexey, Lucas Beyer, Alexander Kolesnikov, et al. 2021. “An Image Is Worth 16x16 Words: Transformers for Image Recognition at Scale.” *Ninth International Conference on Learning Representations* (Online). .
+
+- Elhage, Nelson, Tristan Hume, Catherine Olsson, et al. 2022. “Toy Models of Superposition.” *arXiv Preprint*, ahead of print. .
+
+- Elhage, N, N Nanda, C Olsson, et al. 2021. “A Mathematical Framework for Transformer Circuits.” *Transformer Circuits Thread*.
+
+- Ghiasi, Amin, Hamid Kazemi, Eitan Borgnia, et al. 2022. “What Do Vision Transformers Learn? A Visual Exploration.” *arXiv Preprint*, ahead of print. .
+
+- Hohman, Fred, Minsuk Kahng, Robert Pienta, and Duen Horng Chau. 2018. “Visual Analytics in Deep Learning: An Interrogative Survey for the Next Frontiers.” *IEEE Transactions on Visualization and Computer Graphics* 25 (8): 2674–93. .
+
+- Hohman, Fred, Haekyu Park, Caleb Robinson, and Duen Horng Polo Chau. 2019. “Summit: Scaling Deep Learning Interpretability by Visualizing Activation and Attribution Summarizations.” *IEEE Transactions on Visualization and Computer Graphics* 26 (1): 1096–106. .
+
+- Hoover, Benjamin, Hendrik Strobelt, and Sebastian Gehrmann. 2020. “ExBERT: A Visual Analysis Tool to Explore Learned Representations in Transformer Models.” *Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics: System Demonstrations* (Online), 187–96. .
+
+- Jaunet, Théo, Corentin Kervadec, Romain Vuillemot, Grigory Antipov, Moez Baccouche, and Christian Wolf. 2022. “VisQA: X-Raying Vision and Language Reasoning in Transformers.” *IEEE Transactions on Visualization and Computer Graphics* (USA) 28 (1): 976–86. .
+
+- Ji, Xiaonan, Yamei Tu, Wenbin He, Junpeng Wang, Han-Wei Shen, and Po-Yin Yen. 2021. “USEVis: Visual Analytics of Attention-Based Neural Embedding in Information Retrieval.” *Visual Informatics* 5 (2): 1–12. .
+
+- Jiang, Chao, Mounica Maddela, Wuwei Lan, Yang Zhong, and Wei Xu. 2020. “Neural CRF Model for Sentence Alignment in Text Simplification.” *Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics* (Online), 7943–60. .
+
+- Jolliffe, I. T. 1986. “Principal Components in Regression Analysis.” In *Principal Component Analysis*. Springer. .
+
+- Kovaleva, Olga, Alexey Romanov, Anna Rogers, and Anna Rumshisky. 2019. “Revealing the Dark Secrets of BERT.” *Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing* (Hong Kong), 4365–74. .
+
+- Li, Quan, Kristanto Sean Njotoprawiro, Hammad Haleem, Qiaoan Chen, Chris Yi, and Xiaojuan Ma. 2018. “Embeddingvis: A Visual Analytics Approach to Comparative Network Embedding Inspection.” *2018 IEEE Conference on Visual Analytics Science and Technology* (Berlin), 48–59. .
+
+- Lidwell, William, Kritina Holden, and Jill Butler. 2010. *Universal Principles of Design, Revised and Updated: 125 Ways to Enhance Usability, Influence Perception, Increase Appeal, Make Better Design Decisions, and Teach Through Design*. Rockport Pub.
+
+- Lin, Tsung-Yi, Michael Maire, Serge Belongie, et al. 2014. “Microsoft Coco: Common Objects in Context.” *European Conference on Computer Vision* (Zurich), 740–55. .
+
+- Lin, Yongjie, Yi Chern Tan, and Robert Frank. 2019. “Open Sesame: Getting Inside BERT’s Linguistic Knowledge.” *Proceedings of the 2019 ACL Workshop BlackboxNLP: Analyzing and Interpreting Neural Networks for NLP* (Florence), 241–53. .
+
+- Liu, Shusen, Tao Li, Zhimin Li, Vivek Srikumar, Valerio Pascucci, and Peer-Timo Bremer. 2018. “Visual Interrogation of Attention-Based Models for Natural Language Inference and Machine Comprehension.” *Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing: System Demonstrations* (Brussels), 36–41. .
+
+- Ma, Jie, Yalong Bai, Bineng Zhong, Wei Zhang, Ting Yao, and Tao Mei. 2023. “Visualizing and Understanding Patch Interactions in Vision Transformer.” *IEEE Transactions on Neural Networks and Learning Systems*, 1–10. .
+
+- Maaten, Laurens van der, and Geoffrey Hinton. 2008. “Visualizing Data Using t-SNE.” *Journal of Machine Learning Research* 9 (86): 2579–605.
+
+- McInnes, Leland, John Healy, and James Melville. 2018. “Umap: Uniform Manifold Approximation and Projection for Dimension Reduction.” *arXiv Preprint*, ahead of print. .
+
+- Mehrani, Paria, and John K Tsotsos. 2023. “Self-Attention in Vision Transformers Performs Perceptual Grouping, Not Attention.” *arXiv Preprint*, ahead of print. .
+
+- Miaschi, Alessio, Dominique Brunato, Felice Dell’Orletta, and Giulia Venturi. 2020. “Linguistic Profiling of a Neural Language Model.” *Proceedings of the 28th International Conference on Computational Linguistics* (Barcelona), 745–56. .
+
+- Naseer, Muhammad Muzammal, Kanchana Ranasinghe, Salman H Khan, Munawar Hayat, Fahad Shahbaz Khan, and Ming-Hsuan Yang. 2021. “Intriguing Properties of Vision Transformers.” *Advances in Neural Information Processing Systems* (Online) 34: 23296–308. .
+
+- Olah, Chris, Alexander Mordvintsev, and Ludwig Schubert. 2017. “Feature Visualization.” *Distill* 2 (11). .
+
+- Olsson, Catherine, Nelson Elhage, Neel Nanda, et al. 2022. “In-Context Learning and Induction Heads.” *arXiv Preprint*, ahead of print. .
+
+- Oquab, Maxime, Timothée Darcet, Théo Moutakanni, et al. 2023. “Dinov2: Learning Robust Visual Features Without Supervision.” *arXiv Preprint*, ahead of print. .
+
+- Park, Cheonbok, Inyoup Na, Yongjang Jo, et al. 2019. “SANVis: Visual Analytics for Understanding Self-Attention Networks.” *2019 IEEE Visualization Conference* (Vancouver), 146–50. .
+
+- Park, Namuk, and Songkuk Kim. 2022. “How Do Vision Transformers Work?” *Tenth International Conference on Learning Representations* (Online). .
+
+- Radford, Alec, Karthik Narasimhan, Tim Salimans, Ilya Sutskever, et al. 2018. “Improving Language Understanding by Generative Pre-Training.” *OpenAI Blog*.
+
+- Radford, Alec, Jeffrey Wu, Rewon Child, et al. 2019. “Language Models Are Unsupervised Multitask Learners.” *OpenAI Blog*.
+
+- Reif, Emily, Ann Yuan, Martin Wattenberg, et al. 2019. “Visualizing and Measuring the Geometry of BERT.” *Advances in Neural Information Processing Systems* (Vancouver) 32. .
+
+- Russakovsky, Olga, Jia Deng, Hao Su, et al. 2015. “Imagenet Large Scale Visual Recognition Challenge.” *International Journal of Computer Vision* 115: 211–52. .
+
+- Sevastjanova, Rita, Eren Cakmak, Shauli Ravfogel, Ryan Cotterell, and Mennatallah El-Assady. 2022. “Visual Comparison of Language Model Adaptation.” *IEEE Transactions on Visualization and Computer Graphics* 29 (1): 1178–88. .
+
+- Sivaraman, Venkatesh, Yiwei Wu, and Adam Perer. 2022. “Emblaze: Illuminating Machine Learning Representations Through Interactive Comparison of Embedding Spaces.” *27th International Conference on Intelligent User Interfaces* (Helsinki), 418–32. .
+
+- Smilkov, Daniel, Nikhil Thorat, Charles Nicholson, Emily Reif, Fernanda B Viégas, and Martin Wattenberg. 2016. “Embedding Projector: Interactive Visualization and Interpretation of Embeddings.” *arXiv Preprint*, ahead of print. .
+
+- Strobelt, Hendrik, Sebastian Gehrmann, Michael Behrisch, Adam Perer, Hanspeter Pfister, and Alexander M. Rush. 2019. “Seq2seq-Vis: A Visual Debugging Tool for Sequence-to-Sequence Models.” *IEEE Transactions on Visualization and Computer Graphics* 25 (1): 353–63. .
+
+- Tenney, Ian, Dipanjan Das, and Ellie Pavlick. 2019. “BERT Rediscovers the Classical NLP Pipeline.” *Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics* (Florence), 4593–601. .
+
+- Vaswani, Ashish, Samy Bengio, Eugene Brevdo, et al. 2018. “Tensor2tensor for Neural Machine Translation.” *arXiv Preprint arXiv:1803.07416*.
+
+- Vaswani, Ashish, Noam Shazeer, Niki Parmar, et al. 2017. “Attention Is All You Need.” *Advances in Neural Information Processing Systems* (Long Beach) 30. .
+
+- Vig, Jesse. 2019. “A Multiscale Visualization of Attention in the Transformer Model.” *Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics: System Demonstrations* (Florence), 37–42. .
+
+- Vig, Jesse, and Yonatan Belinkov. 2019. “Analyzing the Structure of Attention in a Transformer Language Model.” *Proceedings of the 2019 ACL Workshop BlackboxNLP: Analyzing and Interpreting Neural Networks for NLP* (Florence), 63–76. .
+
+- Voita, Elena, David Talbot, Fedor Moiseev, Rico Sennrich, and Ivan Titov. 2019. “Analyzing Multi-Head Self-Attention: Specialized Heads Do the Heavy Lifting, the Rest Can Be Pruned.” *Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics* (Florence), 5797–808. .
+
+- Wang, Alex, Yada Pruksachatkun, Nikita Nangia, et al. 2019. “SuperGLUE: A Stickier Benchmark for General-Purpose Language Understanding Systems.” *Advances in Neural Information Processing Systems* (Vancouver) 32: 3266–80. .
+
+- Wang, Kevin, Alexandre Variengien, Arthur Conmy, Buck Shlegeris, and Jacob Steinhardt. 2022. “Interpretability in the Wild: A Circuit for Indirect Object Identification in GPT-2 Small.” *arXiv Preprint*, ahead of print. .
+
+- Wang, Yanshan, Sijia Liu, Naveed Afzal, et al. 2018. “A Comparison of Word Embeddings for the Biomedical Natural Language Processing.” *Journal of Biomedical Informatics* 87: 12–20. https://doi.org/.
+
+- Wang, Zijie J., Robert Turko, and Duen Horng Chau. 2021. “Dodrio: Exploring Transformer Models with Interactive Visualization.” *Proceedings of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing: System Demonstrations* (Online), 132–41. .
+
+- Wei, Jason, Yi Tay, Rishi Bommasani, et al. 2022. “Emergent Abilities of Large Language Models.” *Transactions on Machine Learning Research*, ahead of print. .
+
+- Yang, Sen, Zhibin Quan, Mu Nie, and Wankou Yang. 2021. “Transpose: Keypoint Localization via Transformer.” *Proceedings of the IEEE/CVF International Conference on Computer Vision* (Montreal), 11802–12. .
+
+- Zipf, George Kingsley. 1932. *Selected Studies of the Principle of Relative Frequency in Language*. Harvard University Press. .

@@ -1,0 +1,25 @@
+# 3. Related Work
+
+Many researchers have attempted to investigate the inner workings of transformers. (Chi et al. 2020; Miaschi et al. 2020) seek to understand the performance improvement from transformer-based language models by exploring learned linguistic representations, and (Tenney et al. 2019) observed that BERT recapitulates classic steps in natural language analysis, from part-of-speech tagging to relation classification. Another popular approach is mechanistic interpretability, i.e., reverse engineering transformer models (e.g., (Elhage et al. 2021; Olsson et al. 2022; Elhage et al. 2022)). Attention, the backbone of transformers, has also been studied intensively. For example, attention appears to relate to syntactic structures in NLP systems (Clark et al. 2019; Wang et al. 2022) and gestalt-like grouping in vision transformers (Mehrani and Tsotsos 2023). Researchers have compared ViT’s visual attention mechanism with convolutional filters as well, finding that attention is more robust against image occlusion, corruption, and high-frequency noise (Naseer et al. 2021; Park and Kim 2022). In our discussion of related work, we focus on visual approaches for studying transformer attention.
+
+## Visualizing Attention in a Single Input Sequence
+
+Attention patterns naturally lend themselves to visualization, in both language and vision transformers  (Park et al. 2019; DeRose et al. 2021; Jaunet et al. 2022; Ma et al. 2023; Caron et al. 2021). These visualizations are largely focused on visualizing attention weights between query and key tokens *in a single input sequence* using bipartite graphs (e.g., (Vig 2019; Vaswani et al. 2018; Liu et al. 2018; Strobelt et al. 2019)) or heatmaps (e.g.,  (Ji et al. 2021; Liu et al. 2018; Hoover et al. 2020; Reif et al. 2019; Kovaleva et al. 2019; Aflalo et al. 2022; Cordonnier et al. 2020)).
+
+A few visualizations have been proposed that allow comparison across multiple models or layers. For instance, Attention Flows (DeRose et al. 2021) supports users in comparing attention within and across layers of BERT, as well as among attention heads given a single sentence. Dodrio (Wang et al. 2021) uses a grid view, applied to single inputs, that enables direct comparison of attention heads. Another system, VisQA (Jaunet et al. 2022), visualizes attention at different heads for visual question-answering tasks by showing heatmaps of language self-attention, vision self-attention, and language-vision cross-attention. Even in these model-comparison systems, however, an analyst must look at different inputs, *one at a time*, to identify and verify patterns for a given attention head.
+
+## Beyond Single Inputs: Visualizing Embeddings and Activation Maximization
+
+It is natural to seek patterns that hold across multiple inputs. One technique that has proved effective toward this goal is visualizing collections of embedding vectors from multiple input sequences  (Hohman et al. 2018, 2019; Smilkov et al. 2016; Wang et al. 2018; Boggust et al. 2022; Sivaraman et al. 2022). For example, (Reif et al. 2019) visualized BERT embeddings for the same word used in many different contexts, and found clusters that corresponded to word senses. In an exploration of syntax processing, (Chi et al. 2020) visualized embeddings from a multilingual BERT model and once again found meaningful clusters that helped with interpretation. LMFingerprints  (Sevastjanova et al. 2022) uses a tree-based radial layout to compare embedding vectors across different language models.
+
+A second technique, used for vision transformers in (Ghiasi et al. 2022; Yang et al. 2021), aims to find images which maximize activations of particular units. Applied to embedding vectors, this technique produces clearly interpretable results. The authors note, however, that when applied to query and key vectors the technique does not seem to produce useful results.
+
+## Gaps in the Literature
+
+We note three gaps in the existing literature which motivate our work.
+
+First, visualizing embedding vectors has been shown to be an effective technique for analyzing patterns across multiple inputs, but we know of no systematic attempt to visualize query and key embeddings in transformer models. (Chefer et al. 2021) also argues that the intermediate artifacts of self-attention, such as queries and keys, are underexplored. These observations motivate our joint query-key embedding technique.
+
+Second, although visualization techniques have been proposed to compare multiple embeddings (e.g., (Li et al. 2018; Arendt et al. 2020; Boggust et al. 2022)), these methods are often limited to a few embeddings and cannot address our needs of comparing embeddings at different transformer heads and layers. Thus, we design a global matrix view to visualize query-key embeddings at scale.
+
+Finally, bipartite graph representations have proven helpful in analyzing NLP-based transformers, but we have not seen them applied to vision tasks. We explore this direction by creating bipartite-style visualizations to study image attention patterns in ViT.
