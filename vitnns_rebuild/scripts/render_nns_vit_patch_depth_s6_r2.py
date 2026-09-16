@@ -44,30 +44,54 @@ def analysis_text() -> str:
 """
 
 
+def paper_analysis_text() -> str:
+    return """# S6-R3 paper figure revision 图片分析
+
+本版本用于论文图表，集中展示端点分布、深度演化、D1/D2 关系以及匹配遮挡证据。
+
+## Image #1 — Evidence atlas
+
+四个端点以统一小倍图展示图像级分布、equal-class estimate 和 ordinary BCa 95% CI。
+
+## Image #2 — Depth progression
+
+分别展示 NNS corrected alignment 与 probe gain 随 ViT block 的变化。
+
+## Image #3 — D1/D2 relation
+
+展示共同有效图像上的两个深度对比；逐图相关接近零。
+
+## Image #4 — Matched occlusion evidence
+
+左图展示 primary 与 sensitivity operator 在 12 个 block、3 个 patch budget 下的 matched-control corrected logit drop。右图展示 image、coordinate 和 control 三个层级的 matching coverage。
+"""
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(); parser.add_argument("--replace-own-root", action="store_true"); args = parser.parse_args()
-    evidence = REPO / visual.ROOT_REL; report = REPO / visual.REPORT_REL
+    parser = argparse.ArgumentParser(); parser.add_argument("--replace-own-root", action="store_true"); parser.add_argument("--revision", choices=("r2", "r3"), default="r2"); args = parser.parse_args()
+    evidence_rel, report_rel = visual.revision_paths(args.revision); evidence = REPO / evidence_rel; report = REPO / report_rel
     for root in (evidence, report):
         if root.exists():
             if not args.replace_own_root: raise RuntimeError(f"fresh presentation root required: {root}")
             shutil.rmtree(root)
     evidence.mkdir(parents=True); report.mkdir(parents=True)
-    inputs, source_records = visual.load_inputs(REPO); commit = git("rev-parse", "HEAD")
+    inputs, source_records = visual.load_inputs(REPO, paper_safe=args.revision == "r3"); commit = git("rev-parse", "HEAD")
     source_payload = {"analysis_label": visual.LABEL, "title": "S6-R2 presentation source and style binding", "records": source_records, "records_digest": visual.canonical_digest(source_records), "S6_R1_modified": False, "new_scientific_analysis_count": 0, "visual_style_reference_only": True}
     visual.write_json_new(evidence / "source_binding.json", visual.signed("s6_r2_source_binding", "PASS_PRESENTATION_ONLY", source_payload, commit))
-    paths = visual.render(evidence / "figures", inputs)
+    paths = visual.render(evidence / "figures", inputs, paper_safe=args.revision == "r3")
     records = []
     for path in paths:
         item = visual.artifact(REPO, path); item["format"] = path.suffix[1:].upper(); item["geometry"] = visual.png_geometry(path) if path.suffix == ".png" else None; records.append(item)
     inventory = {"analysis_label": visual.LABEL, "title": "S6-R2 presentation figure inventory", "figures": records, "figure_count": len(records), "figures_digest": visual.canonical_digest(records), "formats": ["PDF", "PNG", "SVG"], "S6_R1_scientific_values_changed": False}
     visual.write_json_new(evidence / "figure_inventory.json", visual.signed("s6_r2_figure_inventory", "PASS_PRESENTATION_ONLY", inventory, commit))
-    explanation = analysis_text(); visual.write_text_new(evidence / "figure_analysis.md", explanation); visual.write_text_new(report / "figure_analysis.md", explanation)
+    explanation = analysis_text() if args.revision == "r2" else paper_analysis_text(); visual.write_text_new(evidence / "figure_analysis.md", explanation); visual.write_text_new(report / "figure_analysis.md", explanation)
     (report / "figures_png").mkdir()
     for path in paths:
         if path.suffix == ".png": shutil.copyfile(path, report / "figures_png" / path.name)
-    access = {"analysis_label": visual.LABEL, "title": "S6-R2 presentation isolation audit", "S5_or_S6_JSON_read_count": len(visual.SOURCE_FILES), "reference_JPEG_style_read_count": 0, "scientific_array_read_count": 0, "model_or_checkpoint_load_count": 0, "CUDA_or_GPU_initialization_count": 0, "new_scientific_analysis_count": 0, "S6_R1_write_count": 0}
+    source_count = len(visual.SOURCE_FILES if args.revision == "r3" else visual.BASE_SOURCE_FILES)
+    access = {"analysis_label": visual.LABEL, "title": "S6-R2 presentation isolation audit", "S5_or_S6_JSON_read_count": source_count, "reference_JPEG_style_read_count": 0, "scientific_array_read_count": 0, "model_or_checkpoint_load_count": 0, "CUDA_or_GPU_initialization_count": 0, "new_scientific_analysis_count": 0, "S6_R1_write_count": 0}
     visual.write_json_new(evidence / "access_audit.json", visual.signed("s6_r2_access_audit", "PASS_PRESENTATION_ONLY", access, commit))
-    print(json.dumps({"status": "PASS_PRESENTATION_ONLY", "figure_count": len(records), "evidence_root": visual.ROOT_REL.as_posix(), "report_root": visual.REPORT_REL.as_posix()}, sort_keys=True)); return 0
+    print(json.dumps({"status": "PASS_PRESENTATION_ONLY", "revision": args.revision, "figure_count": len(records), "evidence_root": evidence_rel.as_posix(), "report_root": report_rel.as_posix()}, sort_keys=True)); return 0
 
 
 if __name__ == "__main__": raise SystemExit(main())

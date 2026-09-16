@@ -22,14 +22,22 @@ REPORT_REL = Path("reports/nns_vit_patch_depth_s6_r2_presentation_revision_20260
 S5_ROOT = Path("evidence/nns_vit_patch_depth/s5_r1_posthoc_exploratory_20260916")
 S6_ROOT = Path("evidence/nns_vit_patch_depth/s6_r1_posthoc_exploratory_reporting_20260916")
 REFERENCE_ROOT = Path("../相关文章/Understanding neural network through neuron level visualization/assets/figures")
-SOURCE_FILES = (
+BASE_SOURCE_FILES = (
     S5_ROOT / "image_level_endpoint_values.json",
     S5_ROOT / "endpoint_decisions.json",
     S5_ROOT / "original_vs_posthoc_P2_comparison.json",
     S6_ROOT / "figure_data.json",
     S6_ROOT / "terminal_receipt.json",
 )
+INTERVENTION_SOURCE = S5_ROOT / "intervention_controls_and_matching_diagnostics.json"
+SOURCE_FILES = BASE_SOURCE_FILES[:3] + (INTERVENTION_SOURCE,) + BASE_SOURCE_FILES[3:]
 REFERENCE_FILES = ("fig-08.jpg", "fig-10.jpg", "fig-12.jpg", "fig-13.jpg", "fig-14.jpg")
+
+
+def revision_paths(revision: str) -> tuple[Path, Path]:
+    if revision == "r2": return ROOT_REL, REPORT_REL
+    if revision == "r3": return Path("evidence/nns_vit_patch_depth/s6_r3_paper_figure_revision_20260916"), Path("reports/nns_vit_patch_depth_s6_r3_paper_figure_revision_20260916")
+    raise VisualError(f"unknown presentation revision: {revision}")
 
 
 class VisualError(RuntimeError): pass
@@ -84,9 +92,10 @@ def artifact(repo: Path, path: Path) -> dict[str, Any]:
     return value
 
 
-def load_inputs(repo: Path) -> tuple[dict[str, dict], list[dict]]:
+def load_inputs(repo: Path, *, paper_safe: bool = False) -> tuple[dict[str, dict], list[dict]]:
     inputs = {}; records = []
-    for relative in SOURCE_FILES:
+    source_files = SOURCE_FILES if paper_safe else BASE_SOURCE_FILES
+    for relative in source_files:
         path = repo / relative; require(path.is_file(), f"missing source: {relative}")
         value = json.loads(path.read_text()); require(verify_signed(value), f"source canonical drift: {relative}")
         inputs[path.name] = value; records.append(artifact(repo, path))
@@ -122,7 +131,7 @@ def save(fig: Any, base: Path) -> list[Path]:
     return paths
 
 
-def render(root: Path, inputs: Mapping[str, Mapping]) -> list[Path]:
+def render(root: Path, inputs: Mapping[str, Mapping], *, paper_safe: bool = False) -> list[Path]:
     plt = configure(); root.mkdir(parents=True, exist_ok=True)
     endpoint_records = inputs["image_level_endpoint_values.json"]["payload"]["endpoint_records"]
     decisions = inputs["endpoint_decisions.json"]["payload"]["endpoints"]
@@ -175,29 +184,31 @@ def render(root: Path, inputs: Mapping[str, Mapping]) -> list[Path]:
     outputs += save(fig, root / "image_03_D1_D2_relation")
     plt.close(fig)
 
-    # Image 04: three independent metric panels; no invalid shared axis across unlike criteria.
-    p2 = decisions["P2"]
-    metrics = [
-        ("(a)", "Point estimate", p2["estimate"], 0.10, 0.07, True, (0, 0.11)),
-        ("(b)", "Adjusted lower bound", p2["adjusted_interval"]["lower"], 0.10, 0.0, True, (-0.005, 0.11)),
-        ("(c)", "BCa half-width", p2["ordinary_BCa_95"]["half_width"], 0.015, 0.02, False, (0, 0.022)),
-    ]
-    fig, axes = plt.subplots(1, 3, figsize=(7.16, 2.75), constrained_layout=True)
-    for axis, (label, title, observed, original, posthoc, higher, limits) in zip(axes, metrics):
-        if higher: axis.axvspan(posthoc, limits[1], color="#16a34a", alpha=0.08)
-        else: axis.axvspan(limits[0], posthoc, color="#16a34a", alpha=0.08)
-        axis.axvline(original, color="#ea580c", lw=1.7, ls="--", label="Original rule")
-        axis.axvline(posthoc, color="#16a34a", lw=1.7, ls=":", label="S5 rule")
-        axis.scatter([observed], [0.52], s=70, color="#1d4ed8", edgecolor="white", linewidth=0.8, zorder=5)
-        axis.set_xlim(*limits); axis.set_ylim(0, 1); axis.set_yticks([]); axis.grid(axis="x", color="#d1d5db", alpha=0.45, lw=0.6)
-        axis.set_title(f"{label} {title}", loc="left", weight="bold")
-        axis.text(0.04, 0.86, f"Observed {observed:.3f}", transform=axis.transAxes, weight="bold", color="#1d4ed8")
-        axis.text(0.04, 0.75, f"S5 gate {posthoc:.3f}  ·  original {original:.3f}", transform=axis.transAxes, fontsize=7.2, color="#4b5563")
-        axis.text(0.04, 0.16, "Original: FAIL", transform=axis.transAxes, color="#c2410c")
-        axis.text(0.96, 0.16, "S5: PASS", transform=axis.transAxes, color="#15803d", ha="right")
-        axis.set_xlabel("Metric value")
-    fig.suptitle("Post-hoc exploratory P2 decision · original rule not passed", fontsize=11.5, weight="bold")
-    outputs += save(fig, root / "image_04_P2_decision_panels")
+    if paper_safe:
+        intervention = inputs["intervention_controls_and_matching_diagnostics.json"]["payload"]
+        rows = intervention["aggregate_by_operator_block_budget"]; matching = intervention["matching_diagnostics"]
+        fig, axes = plt.subplots(1, 2, figsize=(7.16, 3.1), constrained_layout=True)
+        styles = {"image_channel_mean": ("#ff8c00", "-", "Primary operator"), "normalized_zero": ("#6366f1", "--", "Sensitivity operator")}
+        markers = {4: "o", 8: "s", 16: "^"}
+        for operator, (color, linestyle, label_text) in styles.items():
+            for budget in (4, 8, 16):
+                selected = sorted((row for row in rows if row["operator"] == operator and row["budget"] == budget), key=lambda row: row["block"])
+                axes[0].plot([row["block"] for row in selected], [row["mean_matched_control_corrected_logit_drop"] for row in selected], color=color, linestyle=linestyle, marker=markers[budget], ms=3.8, lw=1.5, label=f"{label_text}, k={budget}")
+        axes[0].axhline(0, color="#6b7280", lw=0.7); axes[0].grid(color="#d1d5db", alpha=0.45, lw=0.6); axes[0].set_xticks(range(12)); axes[0].set_xlabel("ViT block"); axes[0].set_ylabel("Matched-control corrected logit drop"); axes[0].set_title("(a) Occlusion response by block and budget", loc="left", weight="bold"); axes[0].legend(frameon=False, ncol=2, fontsize=6.4)
+        fractions = [matching["matched_image_fraction"], matching["matched_coordinate_fraction"], matching["matched_control_fraction"]]
+        labels = ["Images", "Coordinates", "Controls"]; bars = axes[1].barh(labels, fractions, color=["#1f77b4", "#15803d", "#7c3aed"], alpha=0.82)
+        axes[1].set_xlim(0.90, 1.005); axes[1].axvline(1, color="#6b7280", lw=0.7); axes[1].grid(axis="x", color="#d1d5db", alpha=0.45, lw=0.6); axes[1].set_xlabel("Matched fraction"); axes[1].set_title("(b) Matching coverage", loc="left", weight="bold")
+        counts = [f"{matching['P2_valid_matched_images']}/{matching['NNS_valid_images_denominator']}", f"{matching['matched_coordinates']}/{matching['possible_coordinates']}", f"{matching['matched_controls']}/{matching['possible_controls']}"]
+        for bar, fraction, count in zip(bars, fractions, counts): axes[1].text(fraction - 0.002, bar.get_y() + bar.get_height()/2, f"{fraction:.1%}  ({count})", ha="right", va="center", color="white", fontsize=7.2, weight="bold")
+        fig.suptitle("Post-hoc exploratory matched occlusion evidence", fontsize=11.5, weight="bold")
+        outputs += save(fig, root / "image_04_matched_occlusion_evidence")
+    else:
+        p2 = decisions["P2"]
+        metrics = [("(a)", "Point estimate", p2["estimate"], 0.10, 0.07, True, (0, 0.11)), ("(b)", "Adjusted lower bound", p2["adjusted_interval"]["lower"], 0.10, 0.0, True, (-0.005, 0.11)), ("(c)", "BCa half-width", p2["ordinary_BCa_95"]["half_width"], 0.015, 0.02, False, (0, 0.022))]
+        fig, axes = plt.subplots(1, 3, figsize=(7.16, 2.75), constrained_layout=True)
+        for axis, (label, title, observed, original, posthoc, higher, limits) in zip(axes, metrics):
+            axis.axvspan(posthoc if higher else limits[0], limits[1] if higher else posthoc, color="#16a34a", alpha=0.08); axis.axvline(original, color="#ea580c", lw=1.7, ls="--"); axis.axvline(posthoc, color="#16a34a", lw=1.7, ls=":"); axis.scatter([observed], [0.52], s=70, color="#1d4ed8", edgecolor="white", linewidth=0.8, zorder=5); axis.set_xlim(*limits); axis.set_ylim(0, 1); axis.set_yticks([]); axis.grid(axis="x", color="#d1d5db", alpha=0.45, lw=0.6); axis.set_title(f"{label} {title}", loc="left", weight="bold"); axis.text(0.04, 0.86, f"Observed {observed:.3f}", transform=axis.transAxes, weight="bold", color="#1d4ed8"); axis.text(0.04, 0.75, f"S5 gate {posthoc:.3f}  ·  original {original:.3f}", transform=axis.transAxes, fontsize=7.2, color="#4b5563"); axis.text(0.04, 0.16, "Original: FAIL", transform=axis.transAxes, color="#c2410c"); axis.text(0.96, 0.16, "S5: PASS", transform=axis.transAxes, color="#15803d", ha="right"); axis.set_xlabel("Metric value")
+        fig.suptitle("Post-hoc exploratory P2 decision · original rule not passed", fontsize=11.5, weight="bold"); outputs += save(fig, root / "image_04_P2_decision_panels")
     plt.close(fig)
     return outputs
 
