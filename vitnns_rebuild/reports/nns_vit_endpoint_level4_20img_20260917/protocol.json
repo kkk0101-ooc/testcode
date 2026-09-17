@@ -1,0 +1,194 @@
+{
+  "canonical_digest": "01314d80c87ffae26fdb098150aa05e3a520f3e896eaf0c40649039436e8bec7",
+  "fidelity": {
+    "directions": [
+      "insertion",
+      "deletion"
+    ],
+    "fractions": [
+      0.0,
+      0.05,
+      0.1,
+      0.15,
+      0.2,
+      0.25,
+      0.3,
+      0.35,
+      0.4,
+      0.45,
+      0.5,
+      0.55,
+      0.6,
+      0.65,
+      0.7,
+      0.75,
+      0.8,
+      0.85,
+      0.9,
+      0.95,
+      1.0
+    ],
+    "ranking": "descending signed RGB-summed cell mass",
+    "reference": "normalized_zero_rgb_0.5",
+    "scales": [
+      4,
+      16
+    ],
+    "score": "0.5*(normalized insertion AUC-normalized deletion AUC)"
+  },
+  "five_hundred_image_rerun_authorized": false,
+  "go_to_50_gate": {
+    "all_20_valid": true,
+    "endpoint_fine_median_fidelity_gt": 0.0,
+    "endpoint_flip_spearman_median_gte": 0.5,
+    "endpoint_identity_max_abs_lte": 1e-06,
+    "endpoint_minus_path_fine_median_gte": -0.05,
+    "endpoint_reference_pearson_median_gte": 0.5,
+    "endpoint_to_path_runtime_ratio_median_lte": 0.25
+  },
+  "gpu_execution": {
+    "CUBLAS_WORKSPACE_CONFIG": ":4096:8",
+    "dynamic_atomic_claims": true,
+    "gpu_snapshot": [
+      {
+        "compute_mode": "Default",
+        "memory_free_mib": 92833,
+        "memory_total_mib": 97871,
+        "name": "NVIDIA H20",
+        "physical_index": 0,
+        "utilization_percent": 0,
+        "uuid": "GPU-e2d90ae9-e456-0834-8346-342371ac9812"
+      },
+      {
+        "compute_mode": "Default",
+        "memory_free_mib": 97281,
+        "memory_total_mib": 97871,
+        "name": "NVIDIA H20",
+        "physical_index": 1,
+        "utilization_percent": 0,
+        "uuid": "GPU-b2fc1f9b-f00a-33d9-84cc-3c46d40f80b4"
+      },
+      {
+        "compute_mode": "Default",
+        "memory_free_mib": 97281,
+        "memory_total_mib": 97871,
+        "name": "NVIDIA H20",
+        "physical_index": 2,
+        "utilization_percent": 0,
+        "uuid": "GPU-27132e1c-b193-e721-1fb3-40bcd9aebff7"
+      },
+      {
+        "compute_mode": "Default",
+        "memory_free_mib": 97281,
+        "memory_total_mib": 97871,
+        "name": "NVIDIA H20",
+        "physical_index": 3,
+        "utilization_percent": 0,
+        "uuid": "GPU-a5e19afe-87c6-03b7-ed78-7c5cfd0cc927"
+      },
+      {
+        "compute_mode": "Default",
+        "memory_free_mib": 43401,
+        "memory_total_mib": 97871,
+        "name": "NVIDIA H20",
+        "physical_index": 4,
+        "utilization_percent": 0,
+        "uuid": "GPU-09a085f8-43c6-615f-1adf-c890ac748f85"
+      },
+      {
+        "compute_mode": "Default",
+        "memory_free_mib": 43707,
+        "memory_total_mib": 97871,
+        "name": "NVIDIA H20",
+        "physical_index": 5,
+        "utilization_percent": 0,
+        "uuid": "GPU-09822eb9-d001-2b43-c943-4ffe6181e33b"
+      },
+      {
+        "compute_mode": "Default",
+        "memory_free_mib": 43707,
+        "memory_total_mib": 97871,
+        "name": "NVIDIA H20",
+        "physical_index": 6,
+        "utilization_percent": 0,
+        "uuid": "GPU-9f968bef-f275-fc1d-af16-237470de19bb"
+      },
+      {
+        "compute_mode": "Default",
+        "memory_free_mib": 44187,
+        "memory_total_mib": 97871,
+        "name": "NVIDIA H20",
+        "physical_index": 7,
+        "utilization_percent": 0,
+        "uuid": "GPU-51d0d73a-2946-5082-fec5-9c62f0521a58"
+      }
+    ],
+    "physical_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "preexisting_compute_processes": [
+      {
+        "gpu_uuid": "GPU-e2d90ae9-e456-0834-8346-342371ac9812",
+        "pid": 3667009,
+        "used_memory_mib": 4442
+      },
+      {
+        "gpu_uuid": "GPU-09a085f8-43c6-615f-1adf-c890ac748f85",
+        "pid": 3257558,
+        "used_memory_mib": 396
+      },
+      {
+        "gpu_uuid": "GPU-09a085f8-43c6-615f-1adf-c890ac748f85",
+        "pid": 3261202,
+        "used_memory_mib": 53472
+      },
+      {
+        "gpu_uuid": "GPU-09822eb9-d001-2b43-c943-4ffe6181e33b",
+        "pid": 3261205,
+        "used_memory_mib": 53568
+      },
+      {
+        "gpu_uuid": "GPU-9f968bef-f275-fc1d-af16-237470de19bb",
+        "pid": 3261206,
+        "used_memory_mib": 53568
+      },
+      {
+        "gpu_uuid": "GPU-51d0d73a-2946-5082-fec5-9c62f0521a58",
+        "pid": 3261207,
+        "used_memory_mib": 53088
+      }
+    ],
+    "static_sharding": false,
+    "worker_count": 8
+  },
+  "image_count": 20,
+  "methods": [
+    "endpoint_gradient_times_input",
+    "path_integrated_ig",
+    "ordinary_gradient"
+  ],
+  "model_sha256": "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d",
+  "path_chunk": 4,
+  "path_schedule": [
+    256,
+    512,
+    1024
+  ],
+  "references": [
+    "normalized_zero_rgb_0.5",
+    "normalized_minus_one_rgb_0"
+  ],
+  "scope": "20-image post-hoc exploratory method-value pilot",
+  "script_sha256": "3a7436a3eb0e4997010641db42f0556863d59225926b4d75109c3359afd1b334",
+  "selection": "lowest SHA256(sample filename) among local ILSVRC2012 validation JPEGs",
+  "stability": "horizontal flip, inverse flip maps before comparison",
+  "status": "FROZEN_BEFORE_IMAGE_DECODE",
+  "target": "per-image clean predicted raw class logit, frozen for perturbations and flip"
+}

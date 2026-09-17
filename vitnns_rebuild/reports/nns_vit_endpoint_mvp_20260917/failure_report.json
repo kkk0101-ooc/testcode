@@ -1,0 +1,17 @@
+{
+  "status": "FAILED_NUMERICAL_SCHEDULE_INSUFFICIENT",
+  "stage": "LEVEL_3_SINGLE_IMAGE_PILOT",
+  "failed_target": "clean_predicted_class_raw_logit",
+  "attempted_path_ig_schedule": [16, 32, 64, 128],
+  "completed_before_failure": [
+    "patch_embedding",
+    "attention_branch",
+    "first_residual",
+    "mlp_branch",
+    "second_residual",
+    "classifier_endpoint"
+  ],
+  "scientific_interpretation": "None. The low-order path-integral schedule did not meet the existing completeness tolerance for the full classifier path.",
+  "recovery": "Use a fresh R1 root and start the full-model path integral at the project's established 512-point order.",
+  "r9_modified": false
+}
