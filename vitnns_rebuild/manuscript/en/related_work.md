@@ -1,0 +1,25 @@
+# 2. Related Work
+
+## 2.1 Neuron and feature visualization
+
+Internal visualization methods broadly serve two purposes. One group searches for inputs that maximize a unit, describing the stimuli preferred by a model. Another starts from an observed input and explains how it produces an internal response or output. Feature visualization, network dissection, deconvolutional views, and class activation maps characterize optimized inputs, semantic concepts, local responses, or class-discriminative regions. These methods provide useful internal objects, but tokens, channels, and feature maps at different layers do not necessarily share a common input coordinate system or an additive accounting rule.
+
+Dou et al. (2023) introduced the Neural Network Scanner (NNS), which constructs a learning image for a neuron in an FCN or CNN. Their method propagates input values together with their positions and combines neuron images to inspect convolution, pooling, and residual modules. We inherit the idea of associating an internal object with an input-space image, while using path integration relative to a reference to handle smooth nonlinearities, input-dependent attention, and class outputs in ViTs. The FCN/CNN experiments of the source paper are background rather than evidence for the present ViT study.
+
+## 2.2 Input attribution and internal-path attribution
+
+Integrated Gradients (IG) integrates gradients along a path from a reference to an observed input and satisfies axioms including sensitivity and implementation invariance. With sufficient numerical integration, the attributions sum to the output difference (Sundararajan et al., 2017). We use this form to construct a learning image for an internal response or class scalar. The reference, path, and completeness relation are therefore part of the method definition rather than display choices.
+
+Internal attribution asks how an output is formed through hidden units or paths. Neuron conductance extends the IG view to hidden units and measures the flow of attribution through a unit (Dhamdhere et al., 2018). Our complete-cut construction likewise uses a chain-rule decomposition of input-direction and downstream-target derivatives to organize one class-logit attribution over ViT heads, attention, MLP, and residual components. This connection places the mathematics within IG, conductance, and path attribution. The contribution studied here is the ViT structural mapping, complete-cut validation, and associated experiments, not path integration or the chain rule itself. A fuller technical comparison with path-attribution literature remains required before submission `[REFERENCE REQUIRED]`.
+
+## 2.3 ViT attention and class explanations
+
+ViTs encode relations between patch tokens through layers of multi-head attention (Dosovitskiy et al., 2021). Raw CLS attention can be arranged on the patch grid but contains no complete downstream class derivative. Attention rollout recursively combines layer attention with residual paths to estimate cumulative token flow (Abnar and Zuidema, 2020). Chefer et al. (2021) combine relevance with attention gradients and aggregate class-related evidence across a transformer graph. Grad-CAM weights feature channels with target gradients; it was introduced for convolutional networks and has subsequently been adapted to ViTs (Selvaraju et al., 2017).
+
+Visual-analytics studies investigate multi-head attention from another angle. Li et al. (2023) compare head importance, patch-neighborhood relations, and attention patterns across layers. Yeh et al. (2023) use joint query-key embeddings to provide a global attention view across inputs. These systems primarily expose attention structure and interaction patterns. Our central object is the input-coordinate contribution to a response. Raw attention, rollout, Grad-CAM, and full-model IG are consequently treated as distinct targets or computational paths, not interchangeable heatmaps.
+
+## 2.4 Evaluation of explanations
+
+Visual readability does not establish an explanation's relationship to the model response. Prior work evaluates explanations with deletion, insertion, faithfulness correlation, sensitivity, randomization, and complexity. Komorowski et al. (2023) jointly assess faithfulness, sensitivity, and complexity for ViT explanations in medical imaging, illustrating the need to specify both the explanation target and evaluation criterion. Our primary experiment uses paired insertion and deletion curves: regions are restored or replaced in attribution order, and the response of the same internal target is measured. A separate class-output experiment compares five explanation methods on a frozen 50-image cohort.
+
+Attribution can also change substantially under small input transformations. We treat spatial stability as a separate question. Failure of a stability gate does not erase a fidelity result for its original target, but it prevents that result from being generalized to geometric robustness. The subsequent multiscale aggregation analysis is reported only as a post-hoc exploratory interpretation.
