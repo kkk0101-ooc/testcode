@@ -1,0 +1,173 @@
+{
+  "attempts": [
+    {
+      "completeness_abs": {
+        "competitor": 0.005091244620066604,
+        "correct": 0.011319830508837114,
+        "low": 0.002471819191117941,
+        "margin": 0.006228585888774951
+      },
+      "completeness_tolerance": {
+        "competitor": 0.008346762428028868,
+        "correct": 0.00856663004837874,
+        "low": 0.002589810791953789,
+        "margin": 0.016813392476407608
+      },
+      "map_L1_relative_change": null,
+      "margin_identity_max_abs": 0.0,
+      "order": 2048
+    },
+    {
+      "completeness_abs": {
+        "competitor": 0.0015334124688877182,
+        "correct": 0.004874336722195949,
+        "low": 0.00022355125928053,
+        "margin": 0.0033409242533126715
+      },
+      "completeness_tolerance": {
+        "competitor": 0.008346762428028868,
+        "correct": 0.00856663004837874,
+        "low": 0.002589810791953789,
+        "margin": 0.016813392476407608
+      },
+      "map_L1_relative_change": [
+        0.0008293454778989103,
+        0.0004888613476019478,
+        0.00039275103715642127,
+        0.0010850487605929399
+      ],
+      "margin_identity_max_abs": 0.0,
+      "order": 4096
+    }
+  ],
+  "canonical_digest": "92331f0321915bb92c85b9756c529a697170c184280c122bd11b106e1e2f8281",
+  "checkpoint_sha256": "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d",
+  "float64_forward_max_abs": 2.810328787461458e-07,
+  "map_shape": [
+    4,
+    224,
+    224
+  ],
+  "official_ground_truth": {
+    "label": "German shepherd",
+    "model_class_index": 235,
+    "validation_image_number": 7922,
+    "wnid": "n02106662"
+  },
+  "orders": [
+    2048,
+    4096,
+    8192
+  ],
+  "path": "straight line from reference to input; complete native 12-block forward graph",
+  "raw_shape": [
+    4,
+    3,
+    224,
+    224
+  ],
+  "reference": "zero in normalized input; RGB gray 0.5",
+  "runtime": {
+    "CUDA_VISIBLE_DEVICES": "",
+    "device": "cpu",
+    "dtype": "float64",
+    "sys_executable": "/data01/home/yeziqi.831/nxtrec_wksp/testcode/.conda/envs/vitnns/bin/python3.10",
+    "threads": 4,
+    "torch_version": "2.2.2+cu121",
+    "wall_seconds": 3659.931068378035
+  },
+  "scope": "single-input classifier-output comparison; no population inference",
+  "selected_order": 4096,
+  "shared_display_scale_required": true,
+  "source_files": [
+    {
+      "bytes": 963,
+      "path": "reports/nns_vit_unified_paper_figures_r10_r1_20260917/terminal_receipt.json",
+      "sha256": "25f7ba3310b5e9ae91ed8d6e2b6278a8b91e7a5a46fff8a214cc3d9d09684bcc"
+    },
+    {
+      "bytes": 7952,
+      "path": "reports/nns_vit_unified_paper_figures_r10_r1_20260917/module_compute_receipt.json",
+      "sha256": "97fc09c14219700cd0a738a59edd132f88fee053eae0f5689aec86cb81649c0d"
+    },
+    {
+      "bytes": 6289,
+      "path": "reports/nns_vit_unified_paper_figures_r10_r1_20260917/source_arrays_manifest.json",
+      "sha256": "a973a75f74a607ccb8144f152fe8498eb70a083e5cb8d4ecb0f3c6bfe5d48235"
+    },
+    {
+      "bytes": 500000,
+      "path": "assets/imagenet/imagenet_2012_validation_synset_labels.txt",
+      "sha256": "313fc3f23c864dde9183c9a368809065765dd1b657a6904fded44e3e46d34604"
+    },
+    {
+      "bytes": 346329934,
+      "path": "assets/models/vit_base_patch16_224_weights.semantic_candidate.pth",
+      "sha256": "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d"
+    },
+    {
+      "bytes": 11482,
+      "path": "scripts/compute_r10_r2_classifier_comparison.py",
+      "sha256": "cb4b4e00c047cd3959a1d4117bdd5d92757adbccae6458dd775757dd9771ff1a"
+    },
+    {
+      "bytes": 15639,
+      "path": "src/vitnns/modeling.py",
+      "sha256": "3f3244cbd9e7e63ca7e74da1a19828be9a375ecfeb05472a541ae80c056327de"
+    },
+    {
+      "bytes": 2226,
+      "path": "docs/unified_paper_figures_r10_r2_design_20260917.md",
+      "sha256": "bf2cd0cb8accfb144d47d78f23794a63193a91e97229ddb1020fffc0e2b93671"
+    }
+  ],
+  "source_object_id": "ILSVRC2012_VAL_OFFICIAL:ILSVRC2012_val/ILSVRC2012_val_00007922.JPEG",
+  "status": "PASS_SINGLE_IMAGE_CLASSIFIER_COMPARISON",
+  "target_order": [
+    "correct",
+    "competitor",
+    "margin",
+    "low"
+  ],
+  "targets": [
+    {
+      "baseline_logit": -0.3840065239208965,
+      "class_id": 235,
+      "clean_logit": 8.082623524457844,
+      "delta": 8.466630048378741,
+      "id": "correct",
+      "label": "German shepherd",
+      "selection_rule": "official ground-truth class and clean argmax",
+      "wnid": "n02106662"
+    },
+    {
+      "baseline_logit": -0.6140566864861303,
+      "class_id": 174,
+      "clean_logit": 7.632705741542738,
+      "delta": 8.246762428028868,
+      "id": "competitor",
+      "label": "Norwegian elkhound",
+      "selection_rule": "highest clean logit after excluding correct class",
+      "wnid": "n02091467"
+    },
+    {
+      "baseline_logit": 0.2300501625652338,
+      "clean_logit": 0.4499177829151062,
+      "delta": 0.2198676203498735,
+      "id": "margin",
+      "negative_class_id": 174,
+      "positive_class_id": 235,
+      "selection_rule": "correct minus strongest competitor"
+    },
+    {
+      "baseline_logit": -0.4312236137313096,
+      "class_id": 171,
+      "clean_logit": -2.9210344056850985,
+      "delta": -2.489810791953789,
+      "id": "low",
+      "label": "Italian greyhound",
+      "selection_rule": "global argmin of 1000 clean logits",
+      "wnid": "n02091032"
+    }
+  ]
+}
