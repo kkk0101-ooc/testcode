@@ -1,0 +1,64 @@
+{
+  "canonical_digest": "8f942e4173ed3204e145ce8ef4663b4d00d93e8416ff5f09f5ea8b485897c080",
+  "document_type": "baseline_registry",
+  "families": [
+    {
+      "descriptive_sanity": [
+        "deterministic_random_ranking"
+      ],
+      "family": "H",
+      "mandatory": [
+        "output_norm",
+        "output_change_norm",
+        "gradient_norm",
+        "gradient_times_activation",
+        "mean_cls_attention",
+        "cls_attention_entropy",
+        "raw_cls_attention_mass"
+      ],
+      "scope": "head"
+    },
+    {
+      "descriptive_sanity": [
+        "deterministic_random_layer_ranking"
+      ],
+      "family": "B",
+      "mandatory": [
+        "output_norm",
+        "output_change_norm",
+        "gradient_norm",
+        "gradient_times_activation"
+      ],
+      "scope": "branch"
+    },
+    {
+      "descriptive_sanity": [
+        "deterministic_random_ranking"
+      ],
+      "family": "R",
+      "mandatory": [
+        "A_change_norm",
+        "V_change_norm",
+        "Q_activation_change_norm",
+        "K_activation_change_norm",
+        "V_activation_change_norm",
+        "Q_gradient_norm",
+        "K_gradient_norm",
+        "V_gradient_norm",
+        "mean_cls_attention",
+        "attention_entropy"
+      ],
+      "scope": "routing_value"
+    }
+  ],
+  "protocol_id": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+  "schema_version": 1,
+  "selection": {
+    "gain_formula": "complete_cut_cohort_statistic-max_mandatory_baseline_cohort_statistic",
+    "method": "maximum_cohort_statistic_across_entire_mandatory_set",
+    "per_image_oracle_allowed": false,
+    "random_control_is_mandatory": false,
+    "unit": "synchronized_image_bootstrap_replicate"
+  },
+  "stage_id": "P0-STATIC"
+}

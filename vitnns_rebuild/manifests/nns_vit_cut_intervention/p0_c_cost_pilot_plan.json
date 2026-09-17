@@ -1,0 +1,41 @@
+{
+  "allowed_inputs": [
+    "synthetic_fixtures",
+    "one_explicitly_registered_prior_access_image"
+  ],
+  "authorization_required": "P0_C_ENGINEERING_RESOURCE_PILOT_ONLY",
+  "canonical_digest": "c1fe3a9459b48570b7d0eb2f8381af20291cb2d7324afe68569d590e7b1a0f70",
+  "document_type": "p0_c_cost_pilot_plan",
+  "measurements": [
+    "complete_cut_attribution_one_image",
+    "144_head_reference_replacements",
+    "144_head_zeroing",
+    "432_routing_value_joint_replacements",
+    "288_query_key_replacements",
+    "24_attention_mlp_branch_replacements",
+    "mandatory_baseline_predictors"
+  ],
+  "owner_ceilings": {
+    "aggregate_h20_gpu_hours_max": 80.0,
+    "cpu_hours_max": 500.0,
+    "devices": 8,
+    "eight_gpu_wall_hours_max": 24.0,
+    "fleet_concurrent_reserved_gpu_gib_max": 256.0,
+    "peak_reserved_gpu_gib_per_process_max": 32.0,
+    "retained_storage_gib_max": 32.0,
+    "temporary_storage_gib_max": 64.0
+  },
+  "p1_or_production_authorized": false,
+  "projection": {
+    "exceedance_decision": "NO_GO_RESOURCE",
+    "formula": "P95_measured_cost*planned_calls*20_images*1.5",
+    "image_count": 20,
+    "measured_projection": null,
+    "safety_multiplier": 1.5,
+    "static_package_must_not_fabricate_projection": true
+  },
+  "protocol_id": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+  "schema_version": 1,
+  "stage_id": "P0-STATIC",
+  "status": "FROZEN_NOT_EXECUTED"
+}

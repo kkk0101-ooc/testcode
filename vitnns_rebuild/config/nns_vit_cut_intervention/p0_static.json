@@ -1,0 +1,76 @@
+{
+  "access_boundary": {
+    "allowed": [
+      "source_code_tests_config_schema_protocol_docs",
+      "git_history_refs_lfs_metadata",
+      "json_csv_field_path_hash_shape_dtype_count_provenance_metadata",
+      "published_model_checkpoint_preprocessing_metadata",
+      "sealed_completion_and_resource_telemetry",
+      "synthetic_fixtures"
+    ],
+    "forbidden": [
+      "jpeg_png_pixel_decode",
+      "npy_npz_tensor_map_activation_intervention_numeric_read",
+      "new_cohort_prediction_logit_attribution_effect_outcome_read",
+      "checkpoint_tensor_deserialization_or_model_load",
+      "forbidden_scientific_library_import",
+      "cuda_gpu_accelerator_probe",
+      "p0_c_or_p1_p2_p3_p4_execution",
+      "cohort_membership_y_star_or_source_object_selection",
+      "sealed_root_modification"
+    ],
+    "principle": "source-code access != empirical-outcome access"
+  },
+  "authorization": {
+    "completion_status": "PASS_STATIC",
+    "completion_token": "P0_STATIC_PASS_AUTHORIZES_P0_C_ENGINEERING_RESOURCE_PILOT_ONLY",
+    "gpu_production_authorized": false,
+    "independent_cohort_outcome_access_authorized": false,
+    "input": "P0_A_B_STATIC_PACKAGE_ONLY",
+    "next_authorization": "P0_C_ENGINEERING_RESOURCE_PILOT_ONLY",
+    "p0_terminal_pass": false,
+    "p1_cohort_seal_authorized": false
+  },
+  "canonical_digest": "e7acaef71c21486beb48357d86ed069e443a0b14b96e5db1ce4ac7de35b0124c",
+  "document_type": "p0_static_config",
+  "model": {
+    "blocks": 12,
+    "canonical_tensor_digest": "150234d8117a50057f62aa14a97f46bbf1da92b00b386c10c71cc7000c5d51dd",
+    "checkpoint_sha256": "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d",
+    "embed_dim": 768,
+    "heads_per_block": 12,
+    "input_shape": [
+      3,
+      224,
+      224
+    ],
+    "mlp_hidden_dim": 3072,
+    "model_loaded_in_static_stage": false,
+    "name": "vit_base_patch16_224.augreg2_in21k_ft_in1k",
+    "patch_size": [
+      16,
+      16
+    ],
+    "patch_tokens": 196,
+    "query_tokens": 197
+  },
+  "planning_authority": {
+    "ancestor_required": true,
+    "commit": "7f169c7ee8d4acf5a6274f93a8340310dd1a53de",
+    "document": "docs/NNS_ViT完整切面归因与匹配干预研究规划_20260917.md",
+    "sha256": "fa1fd7884c9fe64a6dd49450202a6135f66b1c999b3c5d2620df50b7881ca15c",
+    "working_tree_identity_required": true
+  },
+  "protocol_id": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+  "schema_version": 1,
+  "stage_id": "P0-STATIC",
+  "static_scope": {
+    "p0_a_math_contract": "FROZEN",
+    "p0_b_statistics_schema_access_contract": "FROZEN",
+    "p0_c": "NOT_EXECUTED",
+    "p1": "NOT_EXECUTED",
+    "p2": "NOT_EXECUTED",
+    "p3": "NOT_EXECUTED",
+    "p4": "NOT_EXECUTED"
+  }
+}

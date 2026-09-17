@@ -1,0 +1,1233 @@
+{
+  "$defs": {
+    "nns_vit_cut_intervention_startup_gate": {
+      "additionalProperties": false,
+      "properties": {
+        "authority_planning_sha256": {
+          "type": "string"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "canonical_digest": {
+          "type": "string"
+        },
+        "checked_at": {
+          "type": "string"
+        },
+        "document_type": {
+          "const": "nns_vit_cut_intervention_startup_gate",
+          "type": "string"
+        },
+        "evidence_root_absent_before_start": {
+          "type": "boolean"
+        },
+        "index_clean": {
+          "type": "boolean"
+        },
+        "lfs_pending_commit_count": {
+          "type": "integer"
+        },
+        "lfs_pending_push_count": {
+          "type": "integer"
+        },
+        "local_head": {
+          "type": "string"
+        },
+        "next_authorization": {
+          "type": "string"
+        },
+        "planning_authority_commit": {
+          "type": "string"
+        },
+        "planning_authority_is_ancestor": {
+          "type": "boolean"
+        },
+        "porcelain_v2": {
+          "type": "string"
+        },
+        "protocol_id": {
+          "const": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+          "type": "string"
+        },
+        "remote_branch": {
+          "type": "string"
+        },
+        "report_root_absent_before_start": {
+          "type": "boolean"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "stage_id": {
+          "const": "P0-STATIC",
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tracking_ref": {
+          "type": "string"
+        },
+        "untracked_paths_at_start": {
+          "maxItems": 0,
+          "type": "array"
+        },
+        "working_tree_planning_sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "authority_planning_sha256",
+        "branch",
+        "canonical_digest",
+        "checked_at",
+        "document_type",
+        "evidence_root_absent_before_start",
+        "index_clean",
+        "lfs_pending_commit_count",
+        "lfs_pending_push_count",
+        "local_head",
+        "next_authorization",
+        "planning_authority_commit",
+        "planning_authority_is_ancestor",
+        "porcelain_v2",
+        "protocol_id",
+        "remote_branch",
+        "report_root_absent_before_start",
+        "schema_version",
+        "stage_id",
+        "status",
+        "tracking_ref",
+        "untracked_paths_at_start",
+        "working_tree_planning_sha256"
+      ],
+      "type": "object"
+    },
+    "p0_static_access_audit": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_digest": {
+          "type": "string"
+        },
+        "document_type": {
+          "const": "p0_static_access_audit",
+          "type": "string"
+        },
+        "forbidden_import_ast_scan": {
+          "additionalProperties": false,
+          "properties": {
+            "files_scanned": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "forbidden_imports": {
+              "maxItems": 0,
+              "type": "array"
+            },
+            "status": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "files_scanned",
+            "forbidden_imports",
+            "status"
+          ],
+          "type": "object"
+        },
+        "principle": {
+          "type": "string"
+        },
+        "prohibited_operations": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "evidence": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "count",
+              "evidence",
+              "id"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "protocol_id": {
+          "const": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "stage_id": {
+          "const": "P0-STATIC",
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "violations": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "canonical_digest",
+        "document_type",
+        "forbidden_import_ast_scan",
+        "principle",
+        "prohibited_operations",
+        "protocol_id",
+        "schema_version",
+        "stage_id",
+        "status",
+        "violations"
+      ],
+      "type": "object"
+    },
+    "p0_static_completion": {
+      "additionalProperties": false,
+      "properties": {
+        "access_violations": {
+          "type": "integer"
+        },
+        "canonical_digest": {
+          "type": "string"
+        },
+        "completed_at": {
+          "type": "string"
+        },
+        "completion_token": {
+          "type": "string"
+        },
+        "contract_bundle_digest": {
+          "type": "string"
+        },
+        "document_type": {
+          "const": "p0_static_completion",
+          "type": "string"
+        },
+        "false_pass_rejected": {
+          "type": "integer"
+        },
+        "git": {
+          "additionalProperties": false,
+          "properties": {
+            "branch": {
+              "type": "string"
+            },
+            "publication_commit": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "branch",
+            "publication_commit"
+          ],
+          "type": "object"
+        },
+        "gpu_production_authorized": {
+          "type": "boolean"
+        },
+        "independent_cohort_outcome_access_authorized": {
+          "type": "boolean"
+        },
+        "next_authorization": {
+          "type": "string"
+        },
+        "p0_a_status": {
+          "type": "string"
+        },
+        "p0_b_status": {
+          "type": "string"
+        },
+        "p0_c_executed": {
+          "type": "boolean"
+        },
+        "p0_terminal_pass": {
+          "type": "boolean"
+        },
+        "p1_cohort_seal_authorized": {
+          "type": "boolean"
+        },
+        "p1_p4_executed": {
+          "type": "boolean"
+        },
+        "planning_authority_commit": {
+          "type": "string"
+        },
+        "planning_document_sha256": {
+          "type": "string"
+        },
+        "protocol_id": {
+          "const": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+          "type": "string"
+        },
+        "records": {
+          "additionalProperties": false,
+          "properties": {
+            "access_audit": {
+              "additionalProperties": false,
+              "properties": {
+                "bytes": {
+                  "type": "integer"
+                },
+                "canonical_content_digest": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "sha256": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "bytes",
+                "canonical_content_digest",
+                "path",
+                "sha256"
+              ],
+              "type": "object"
+            },
+            "contract_bundle": {
+              "additionalProperties": false,
+              "properties": {
+                "bytes": {
+                  "type": "integer"
+                },
+                "canonical_content_digest": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "sha256": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "bytes",
+                "canonical_content_digest",
+                "path",
+                "sha256"
+              ],
+              "type": "object"
+            },
+            "false_pass_audit": {
+              "additionalProperties": false,
+              "properties": {
+                "bytes": {
+                  "type": "integer"
+                },
+                "canonical_content_digest": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "sha256": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "bytes",
+                "canonical_content_digest",
+                "path",
+                "sha256"
+              ],
+              "type": "object"
+            },
+            "handoff": {
+              "additionalProperties": false,
+              "properties": {
+                "bytes": {
+                  "type": "integer"
+                },
+                "canonical_content_digest": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "sha256": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "bytes",
+                "canonical_content_digest",
+                "path",
+                "sha256"
+              ],
+              "type": "object"
+            },
+            "report": {
+              "additionalProperties": false,
+              "properties": {
+                "bytes": {
+                  "type": "integer"
+                },
+                "canonical_content_digest": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "sha256": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "bytes",
+                "canonical_content_digest",
+                "path",
+                "sha256"
+              ],
+              "type": "object"
+            },
+            "report_validation": {
+              "additionalProperties": false,
+              "properties": {
+                "bytes": {
+                  "type": "integer"
+                },
+                "canonical_content_digest": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "sha256": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "bytes",
+                "canonical_content_digest",
+                "path",
+                "sha256"
+              ],
+              "type": "object"
+            },
+            "source_binding": {
+              "additionalProperties": false,
+              "properties": {
+                "bytes": {
+                  "type": "integer"
+                },
+                "canonical_content_digest": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "sha256": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "bytes",
+                "canonical_content_digest",
+                "path",
+                "sha256"
+              ],
+              "type": "object"
+            },
+            "startup_gate": {
+              "additionalProperties": false,
+              "properties": {
+                "bytes": {
+                  "type": "integer"
+                },
+                "canonical_content_digest": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "sha256": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "bytes",
+                "canonical_content_digest",
+                "path",
+                "sha256"
+              ],
+              "type": "object"
+            },
+            "validation_report": {
+              "additionalProperties": false,
+              "properties": {
+                "bytes": {
+                  "type": "integer"
+                },
+                "canonical_content_digest": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "sha256": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "bytes",
+                "canonical_content_digest",
+                "path",
+                "sha256"
+              ],
+              "type": "object"
+            },
+            "whole_root_inventory": {
+              "additionalProperties": false,
+              "properties": {
+                "bytes": {
+                  "type": "integer"
+                },
+                "canonical_content_digest": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "sha256": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "bytes",
+                "canonical_content_digest",
+                "path",
+                "sha256"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "access_audit",
+            "contract_bundle",
+            "false_pass_audit",
+            "handoff",
+            "report",
+            "report_validation",
+            "source_binding",
+            "startup_gate",
+            "validation_report",
+            "whole_root_inventory"
+          ],
+          "type": "object"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "source_base_commit": {
+          "type": "string"
+        },
+        "stage_id": {
+          "const": "P0-STATIC",
+          "type": "string"
+        },
+        "started_at": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "terminal": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "access_violations",
+        "canonical_digest",
+        "completed_at",
+        "completion_token",
+        "contract_bundle_digest",
+        "document_type",
+        "false_pass_rejected",
+        "git",
+        "gpu_production_authorized",
+        "independent_cohort_outcome_access_authorized",
+        "next_authorization",
+        "p0_a_status",
+        "p0_b_status",
+        "p0_c_executed",
+        "p0_terminal_pass",
+        "p1_cohort_seal_authorized",
+        "p1_p4_executed",
+        "planning_authority_commit",
+        "planning_document_sha256",
+        "protocol_id",
+        "records",
+        "schema_version",
+        "source_base_commit",
+        "stage_id",
+        "started_at",
+        "status",
+        "terminal"
+      ],
+      "type": "object"
+    },
+    "p0_static_contract_bundle": {
+      "additionalProperties": false,
+      "properties": {
+        "bundle_digest": {
+          "type": "string"
+        },
+        "canonical_digest": {
+          "type": "string"
+        },
+        "document_type": {
+          "const": "p0_static_contract_bundle",
+          "type": "string"
+        },
+        "file_count": {
+          "type": "integer"
+        },
+        "files": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "bytes": {
+                "type": "integer"
+              },
+              "canonical_content_digest": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "bytes",
+              "canonical_content_digest",
+              "path",
+              "sha256"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "files_digest": {
+          "type": "string"
+        },
+        "protocol_id": {
+          "const": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "stage_id": {
+          "const": "P0-STATIC",
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "total_bytes": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "bundle_digest",
+        "canonical_digest",
+        "document_type",
+        "file_count",
+        "files",
+        "files_digest",
+        "protocol_id",
+        "schema_version",
+        "stage_id",
+        "status",
+        "total_bytes"
+      ],
+      "type": "object"
+    },
+    "p0_static_false_pass_audit": {
+      "additionalProperties": false,
+      "properties": {
+        "attack_count": {
+          "type": "integer"
+        },
+        "canonical_digest": {
+          "type": "string"
+        },
+        "checks": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "attack": {
+                "type": "string"
+              },
+              "expected_code": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "observed_code": {
+                "type": "string"
+              },
+              "result": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "attack",
+              "expected_code",
+              "id",
+              "observed_code",
+              "result"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "document_type": {
+          "const": "p0_static_false_pass_audit",
+          "type": "string"
+        },
+        "pass_possible_without_all_rejections": {
+          "type": "boolean"
+        },
+        "protocol_id": {
+          "const": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+          "type": "string"
+        },
+        "rejected_count": {
+          "type": "integer"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "stage_id": {
+          "const": "P0-STATIC",
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "attack_count",
+        "canonical_digest",
+        "checks",
+        "document_type",
+        "pass_possible_without_all_rejections",
+        "protocol_id",
+        "rejected_count",
+        "schema_version",
+        "stage_id",
+        "status"
+      ],
+      "type": "object"
+    },
+    "p0_static_pending_completion": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_digest": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "document_type": {
+          "const": "p0_static_pending_completion",
+          "type": "string"
+        },
+        "next_authorization": {
+          "type": "string"
+        },
+        "protocol_id": {
+          "const": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "source_base_commit": {
+          "type": "string"
+        },
+        "stage_id": {
+          "const": "P0-STATIC",
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "canonical_digest",
+        "created_at",
+        "document_type",
+        "next_authorization",
+        "protocol_id",
+        "schema_version",
+        "source_base_commit",
+        "stage_id",
+        "status"
+      ],
+      "type": "object"
+    },
+    "p0_static_pending_transition_receipt": {
+      "additionalProperties": false,
+      "properties": {
+        "atomic_transition": {
+          "type": "string"
+        },
+        "canonical_digest": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "document_type": {
+          "const": "p0_static_pending_transition_receipt",
+          "type": "string"
+        },
+        "next_authorization": {
+          "type": "string"
+        },
+        "pending_canonical_digest": {
+          "type": "string"
+        },
+        "protocol_id": {
+          "const": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "source_base_commit": {
+          "type": "string"
+        },
+        "stage_id": {
+          "const": "P0-STATIC",
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "terminal_path": {
+          "type": "string"
+        },
+        "transitioned_at": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "atomic_transition",
+        "canonical_digest",
+        "created_at",
+        "document_type",
+        "next_authorization",
+        "pending_canonical_digest",
+        "protocol_id",
+        "schema_version",
+        "source_base_commit",
+        "stage_id",
+        "status",
+        "terminal_path",
+        "transitioned_at"
+      ],
+      "type": "object"
+    },
+    "p0_static_source_binding": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_digest": {
+          "type": "string"
+        },
+        "document_type": {
+          "const": "p0_static_source_binding",
+          "type": "string"
+        },
+        "model": {
+          "additionalProperties": false,
+          "properties": {
+            "canonical_tensor_digest": {
+              "type": "string"
+            },
+            "checkpoint_deserialized": {
+              "type": "boolean"
+            },
+            "checkpoint_sha256": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "canonical_tensor_digest",
+            "checkpoint_deserialized",
+            "checkpoint_sha256",
+            "name"
+          ],
+          "type": "object"
+        },
+        "planning": {
+          "additionalProperties": false,
+          "properties": {
+            "ancestor_of_source_base": {
+              "type": "boolean"
+            },
+            "authority_commit": {
+              "type": "string"
+            },
+            "authority_sha256": {
+              "type": "string"
+            },
+            "working_tree_sha256": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "ancestor_of_source_base",
+            "authority_commit",
+            "authority_sha256",
+            "working_tree_sha256"
+          ],
+          "type": "object"
+        },
+        "protocol_id": {
+          "const": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "sources": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "bytes": {
+                "type": "integer"
+              },
+              "canonical_content_digest": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "bytes",
+              "canonical_content_digest",
+              "path",
+              "sha256"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "sources_digest": {
+          "type": "string"
+        },
+        "stage_id": {
+          "const": "P0-STATIC",
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "canonical_digest",
+        "document_type",
+        "model",
+        "planning",
+        "protocol_id",
+        "schema_version",
+        "sources",
+        "sources_digest",
+        "stage_id",
+        "status"
+      ],
+      "type": "object"
+    },
+    "p0_static_test_receipt": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_digest": {
+          "type": "string"
+        },
+        "command": {
+          "type": "string"
+        },
+        "document_type": {
+          "const": "p0_static_test_receipt",
+          "type": "string"
+        },
+        "failed": {
+          "type": "integer"
+        },
+        "passed": {
+          "type": "integer"
+        },
+        "protocol_id": {
+          "const": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "stage_id": {
+          "const": "P0-STATIC",
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "canonical_digest",
+        "command",
+        "document_type",
+        "failed",
+        "passed",
+        "protocol_id",
+        "schema_version",
+        "stage_id",
+        "status"
+      ],
+      "type": "object"
+    },
+    "p0_static_validation_report": {
+      "additionalProperties": false,
+      "properties": {
+        "access_violations": {
+          "type": "integer"
+        },
+        "canonical_digest": {
+          "type": "string"
+        },
+        "check_count": {
+          "type": "integer"
+        },
+        "checks": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "detail": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "detail",
+              "id",
+              "status"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "document_type": {
+          "const": "p0_static_validation_report",
+          "type": "string"
+        },
+        "failed_count": {
+          "type": "integer"
+        },
+        "false_pass_rejected": {
+          "type": "integer"
+        },
+        "generated_at": {
+          "type": "string"
+        },
+        "next_authorization": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "protocol_id": {
+          "const": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "scientific_results_computed": {
+          "type": "boolean"
+        },
+        "stage_id": {
+          "const": "P0-STATIC",
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "access_violations",
+        "canonical_digest",
+        "check_count",
+        "checks",
+        "document_type",
+        "failed_count",
+        "false_pass_rejected",
+        "generated_at",
+        "next_authorization",
+        "phase",
+        "protocol_id",
+        "schema_version",
+        "scientific_results_computed",
+        "stage_id",
+        "status"
+      ],
+      "type": "object"
+    },
+    "p0_static_whole_root_inventory": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_digest": {
+          "type": "string"
+        },
+        "document_type": {
+          "const": "p0_static_whole_root_inventory",
+          "type": "string"
+        },
+        "excluded_self_referential_lifecycle_files": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "file_count": {
+          "type": "integer"
+        },
+        "files": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "bytes": {
+                "type": "integer"
+              },
+              "canonical_content_digest": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "bytes",
+              "canonical_content_digest",
+              "path",
+              "sha256"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "files_digest": {
+          "type": "string"
+        },
+        "protocol_id": {
+          "const": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "stage_id": {
+          "const": "P0-STATIC",
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "total_bytes": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "canonical_digest",
+        "document_type",
+        "excluded_self_referential_lifecycle_files",
+        "file_count",
+        "files",
+        "files_digest",
+        "protocol_id",
+        "schema_version",
+        "scope",
+        "stage_id",
+        "status",
+        "total_bytes"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/nns_vit_cut_intervention_startup_gate"
+    },
+    {
+      "$ref": "#/$defs/p0_static_source_binding"
+    },
+    {
+      "$ref": "#/$defs/p0_static_access_audit"
+    },
+    {
+      "$ref": "#/$defs/p0_static_contract_bundle"
+    },
+    {
+      "$ref": "#/$defs/p0_static_false_pass_audit"
+    },
+    {
+      "$ref": "#/$defs/p0_static_validation_report"
+    },
+    {
+      "$ref": "#/$defs/p0_static_whole_root_inventory"
+    },
+    {
+      "$ref": "#/$defs/p0_static_pending_completion"
+    },
+    {
+      "$ref": "#/$defs/p0_static_pending_transition_receipt"
+    },
+    {
+      "$ref": "#/$defs/p0_static_test_receipt"
+    },
+    {
+      "$ref": "#/$defs/p0_static_completion"
+    }
+  ],
+  "title": "NNS-ViT P0 static evidence documents"
+}

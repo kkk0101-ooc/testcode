@@ -1,0 +1,2031 @@
+{
+  "$defs": {
+    "artifact_contract": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_digest": {
+          "type": "string"
+        },
+        "document_type": {
+          "const": "artifact_contract",
+          "type": "string"
+        },
+        "filesystem": {
+          "additionalProperties": false,
+          "properties": {
+            "regular_files_only": {
+              "type": "boolean"
+            },
+            "root_escape": {
+              "type": "string"
+            },
+            "symlink": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "regular_files_only",
+            "root_escape",
+            "symlink"
+          ],
+          "type": "object"
+        },
+        "future_long_table_fields": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "json": {
+          "additionalProperties": false,
+          "properties": {
+            "all_object_schemas_additional_properties_false": {
+              "type": "boolean"
+            },
+            "canonicalization": {
+              "type": "string"
+            },
+            "duplicate_keys": {
+              "type": "string"
+            },
+            "encoding": {
+              "type": "string"
+            },
+            "nan_infinity": {
+              "type": "string"
+            },
+            "unknown_fields": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "all_object_schemas_additional_properties_false",
+            "canonicalization",
+            "duplicate_keys",
+            "encoding",
+            "nan_infinity",
+            "unknown_fields"
+          ],
+          "type": "object"
+        },
+        "lifecycle": {
+          "additionalProperties": false,
+          "properties": {
+            "atomic_transition": {
+              "type": "string"
+            },
+            "phases": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "terminal_root_rewrite_allowed": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "atomic_transition",
+            "phases",
+            "terminal_root_rewrite_allowed"
+          ],
+          "type": "object"
+        },
+        "protocol_id": {
+          "const": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+          "type": "string"
+        },
+        "required_evidence": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "required_reports": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "stage_id": {
+          "const": "P0-STATIC",
+          "type": "string"
+        }
+      },
+      "required": [
+        "canonical_digest",
+        "document_type",
+        "filesystem",
+        "future_long_table_fields",
+        "json",
+        "lifecycle",
+        "protocol_id",
+        "required_evidence",
+        "required_reports",
+        "schema_version",
+        "stage_id"
+      ],
+      "type": "object"
+    },
+    "baseline_registry": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_digest": {
+          "type": "string"
+        },
+        "document_type": {
+          "const": "baseline_registry",
+          "type": "string"
+        },
+        "families": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "descriptive_sanity": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "family": {
+                "type": "string"
+              },
+              "mandatory": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "scope": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "descriptive_sanity",
+              "family",
+              "mandatory",
+              "scope"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "protocol_id": {
+          "const": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "selection": {
+          "additionalProperties": false,
+          "properties": {
+            "gain_formula": {
+              "type": "string"
+            },
+            "method": {
+              "type": "string"
+            },
+            "per_image_oracle_allowed": {
+              "type": "boolean"
+            },
+            "random_control_is_mandatory": {
+              "type": "boolean"
+            },
+            "unit": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "gain_formula",
+            "method",
+            "per_image_oracle_allowed",
+            "random_control_is_mandatory",
+            "unit"
+          ],
+          "type": "object"
+        },
+        "stage_id": {
+          "const": "P0-STATIC",
+          "type": "string"
+        }
+      },
+      "required": [
+        "canonical_digest",
+        "document_type",
+        "families",
+        "protocol_id",
+        "schema_version",
+        "selection",
+        "stage_id"
+      ],
+      "type": "object"
+    },
+    "cut_intervention_registry": {
+      "additionalProperties": false,
+      "properties": {
+        "attention_differential": {
+          "additionalProperties": false,
+          "properties": {
+            "attention_decomposition": {
+              "type": "string"
+            },
+            "bias_retained_in_forward_score": {
+              "type": "boolean"
+            },
+            "identity": {
+              "type": "string"
+            },
+            "input_independent_bias_contribution": {
+              "type": "number"
+            },
+            "mathematical_type": {
+              "type": "string"
+            },
+            "routing_decomposition": {
+              "type": "string"
+            },
+            "routing_value_complete_edge_cut": {
+              "type": "boolean"
+            },
+            "terms": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "attention_decomposition",
+            "bias_retained_in_forward_score",
+            "identity",
+            "input_independent_bias_contribution",
+            "mathematical_type",
+            "routing_decomposition",
+            "routing_value_complete_edge_cut",
+            "terms"
+          ],
+          "type": "object"
+        },
+        "attribution_scalars": {
+          "additionalProperties": false,
+          "properties": {
+            "absolute_mass": {
+              "type": "string"
+            },
+            "absolute_share": {
+              "type": "string"
+            },
+            "mass_predicts": {
+              "type": "string"
+            },
+            "signed": {
+              "type": "string"
+            },
+            "signed_predicts": {
+              "type": "string"
+            },
+            "zero_mass_code": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "absolute_mass",
+            "absolute_share",
+            "mass_predicts",
+            "signed",
+            "signed_predicts",
+            "zero_mass_code"
+          ],
+          "type": "object"
+        },
+        "canonical_digest": {
+          "type": "string"
+        },
+        "component_conductance": {
+          "additionalProperties": false,
+          "properties": {
+            "aggregation_dtype": {
+              "type": "string"
+            },
+            "component_coordinate_sets": {
+              "additionalProperties": false,
+              "properties": {
+                "branch": {
+                  "type": "string"
+                },
+                "head": {
+                  "type": "string"
+                },
+                "routing_value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "branch",
+                "head",
+                "routing_value"
+              ],
+              "type": "object"
+            },
+            "coordinate_reduction": {
+              "type": "string"
+            },
+            "formula": {
+              "type": "string"
+            },
+            "input_axes": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "native_map_retention": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "retained_map_level": {
+              "type": "string"
+            },
+            "vector_formula": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "aggregation_dtype",
+            "component_coordinate_sets",
+            "coordinate_reduction",
+            "formula",
+            "input_axes",
+            "native_map_retention",
+            "path",
+            "retained_map_level",
+            "vector_formula"
+          ],
+          "type": "object"
+        },
+        "document_type": {
+          "const": "cut_intervention_registry",
+          "type": "string"
+        },
+        "head_cut": {
+          "additionalProperties": false,
+          "properties": {
+            "cls_only_is_main": {
+              "type": "boolean"
+            },
+            "head_shape": {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "heads": {
+              "type": "integer"
+            },
+            "hook_position": {
+              "type": "string"
+            },
+            "identity_edge_registered_separately": {
+              "type": "boolean"
+            },
+            "main_intervention": {
+              "type": "string"
+            },
+            "matched_output_projection_columns": {
+              "type": "boolean"
+            },
+            "mathematical_type": {
+              "type": "string"
+            },
+            "query_token_outputs": {
+              "type": "integer"
+            },
+            "secondary_intervention": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "cls_only_is_main",
+            "head_shape",
+            "heads",
+            "hook_position",
+            "identity_edge_registered_separately",
+            "main_intervention",
+            "matched_output_projection_columns",
+            "mathematical_type",
+            "query_token_outputs",
+            "secondary_intervention"
+          ],
+          "type": "object"
+        },
+        "interventions": {
+          "additionalProperties": false,
+          "properties": {
+            "effect_formula": {
+              "type": "string"
+            },
+            "interaction_formula": {
+              "type": "string"
+            },
+            "joint": {
+              "type": "string"
+            },
+            "key": {
+              "type": "string"
+            },
+            "opposite_sign_rejected": {
+              "type": "boolean"
+            },
+            "query": {
+              "type": "string"
+            },
+            "routing": {
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "effect_formula",
+            "interaction_formula",
+            "joint",
+            "key",
+            "opposite_sign_rejected",
+            "query",
+            "routing",
+            "value"
+          ],
+          "type": "object"
+        },
+        "numerical_contracts": {
+          "additionalProperties": false,
+          "properties": {
+            "ALGEBRAIC_CUT_RECONSTRUCTION": {
+              "additionalProperties": false,
+              "properties": {
+                "closures": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "pixel_abs": {
+                  "type": "number"
+                },
+                "pixel_rel": {
+                  "type": "number"
+                },
+                "total_abs": {
+                  "type": "number"
+                },
+                "total_rel": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "closures",
+                "pixel_abs",
+                "pixel_rel",
+                "total_abs",
+                "total_rel"
+              ],
+              "type": "object"
+            },
+            "IG_COMPLETENESS_TO_TARGET_DELTA": {
+              "additionalProperties": false,
+              "properties": {
+                "abs": {
+                  "type": "number"
+                },
+                "rel": {
+                  "type": "number"
+                },
+                "small_target_code": {
+                  "type": "string"
+                },
+                "small_target_threshold": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "abs",
+                "rel",
+                "small_target_code",
+                "small_target_threshold"
+              ],
+              "type": "object"
+            },
+            "QUADRATURE_SUCCESSIVE_ORDER_CONVERGENCE": {
+              "additionalProperties": false,
+              "properties": {
+                "component_mass_rel": {
+                  "type": "number"
+                },
+                "component_signed_rel": {
+                  "type": "number"
+                },
+                "failure_at_max_order": {
+                  "type": "string"
+                },
+                "map_l1_rel": {
+                  "type": "number"
+                },
+                "small_component_abs": {
+                  "type": "number"
+                },
+                "small_component_threshold": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "component_mass_rel",
+                "component_signed_rel",
+                "failure_at_max_order",
+                "map_l1_rel",
+                "small_component_abs",
+                "small_component_threshold"
+              ],
+              "type": "object"
+            },
+            "low_order_algebraic_pass_implies_convergence": {
+              "type": "boolean"
+            },
+            "quadrature": {
+              "additionalProperties": false,
+              "properties": {
+                "rule": {
+                  "type": "string"
+                },
+                "schedule": {
+                  "items": {
+                    "type": "integer"
+                  },
+                  "type": "array"
+                },
+                "selected_order_rule": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "rule",
+                "schedule",
+                "selected_order_rule"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "ALGEBRAIC_CUT_RECONSTRUCTION",
+            "IG_COMPLETENESS_TO_TARGET_DELTA",
+            "QUADRATURE_SUCCESSIVE_ORDER_CONVERGENCE",
+            "low_order_algebraic_pass_implies_convergence",
+            "quadrature"
+          ],
+          "type": "object"
+        },
+        "protocol_id": {
+          "const": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+          "type": "string"
+        },
+        "residual_cuts": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "left_edge": {
+                "type": "string"
+              },
+              "left_variable": {
+                "type": "string"
+              },
+              "original_node_total_gradient_for_left": {
+                "type": "boolean"
+              },
+              "right_edge": {
+                "type": "string"
+              },
+              "right_variable": {
+                "type": "string"
+              },
+              "shared_output_adjoint": {
+                "type": "string"
+              },
+              "sum": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "left_edge",
+              "left_variable",
+              "original_node_total_gradient_for_left",
+              "right_edge",
+              "right_variable",
+              "shared_output_adjoint",
+              "sum"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "stage_id": {
+          "const": "P0-STATIC",
+          "type": "string"
+        }
+      },
+      "required": [
+        "attention_differential",
+        "attribution_scalars",
+        "canonical_digest",
+        "component_conductance",
+        "document_type",
+        "head_cut",
+        "interventions",
+        "numerical_contracts",
+        "protocol_id",
+        "residual_cuts",
+        "schema_version",
+        "stage_id"
+      ],
+      "type": "object"
+    },
+    "failure_registry": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_digest": {
+          "type": "string"
+        },
+        "document_type": {
+          "const": "failure_registry",
+          "type": "string"
+        },
+        "failure_rules": {
+          "additionalProperties": false,
+          "properties": {
+            "blocked_next_authorization": {
+              "type": "string"
+            },
+            "change_max_order_after_outcome": {
+              "type": "boolean"
+            },
+            "drop_difficult_component": {
+              "type": "boolean"
+            },
+            "replace_failed_image": {
+              "type": "boolean"
+            },
+            "retain_in_denominator": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "blocked_next_authorization",
+            "change_max_order_after_outcome",
+            "drop_difficult_component",
+            "replace_failed_image",
+            "retain_in_denominator"
+          ],
+          "type": "object"
+        },
+        "protocol_id": {
+          "const": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "stage_id": {
+          "const": "P0-STATIC",
+          "type": "string"
+        },
+        "typed_codes": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "class": {
+                "type": "string"
+              },
+              "code": {
+                "type": "string"
+              },
+              "meaning": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "class",
+              "code",
+              "meaning"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "canonical_digest",
+        "document_type",
+        "failure_rules",
+        "protocol_id",
+        "schema_version",
+        "stage_id",
+        "typed_codes"
+      ],
+      "type": "object"
+    },
+    "p0_c_cost_pilot_plan": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_inputs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "authorization_required": {
+          "type": "string"
+        },
+        "canonical_digest": {
+          "type": "string"
+        },
+        "document_type": {
+          "const": "p0_c_cost_pilot_plan",
+          "type": "string"
+        },
+        "measurements": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "owner_ceilings": {
+          "additionalProperties": false,
+          "properties": {
+            "aggregate_h20_gpu_hours_max": {
+              "type": "number"
+            },
+            "cpu_hours_max": {
+              "type": "number"
+            },
+            "devices": {
+              "type": "integer"
+            },
+            "eight_gpu_wall_hours_max": {
+              "type": "number"
+            },
+            "fleet_concurrent_reserved_gpu_gib_max": {
+              "type": "number"
+            },
+            "peak_reserved_gpu_gib_per_process_max": {
+              "type": "number"
+            },
+            "retained_storage_gib_max": {
+              "type": "number"
+            },
+            "temporary_storage_gib_max": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "aggregate_h20_gpu_hours_max",
+            "cpu_hours_max",
+            "devices",
+            "eight_gpu_wall_hours_max",
+            "fleet_concurrent_reserved_gpu_gib_max",
+            "peak_reserved_gpu_gib_per_process_max",
+            "retained_storage_gib_max",
+            "temporary_storage_gib_max"
+          ],
+          "type": "object"
+        },
+        "p1_or_production_authorized": {
+          "type": "boolean"
+        },
+        "projection": {
+          "additionalProperties": false,
+          "properties": {
+            "exceedance_decision": {
+              "type": "string"
+            },
+            "formula": {
+              "type": "string"
+            },
+            "image_count": {
+              "type": "integer"
+            },
+            "measured_projection": {
+              "type": "null"
+            },
+            "safety_multiplier": {
+              "type": "number"
+            },
+            "static_package_must_not_fabricate_projection": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "exceedance_decision",
+            "formula",
+            "image_count",
+            "measured_projection",
+            "safety_multiplier",
+            "static_package_must_not_fabricate_projection"
+          ],
+          "type": "object"
+        },
+        "protocol_id": {
+          "const": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "stage_id": {
+          "const": "P0-STATIC",
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "allowed_inputs",
+        "authorization_required",
+        "canonical_digest",
+        "document_type",
+        "measurements",
+        "owner_ceilings",
+        "p1_or_production_authorized",
+        "projection",
+        "protocol_id",
+        "schema_version",
+        "stage_id",
+        "status"
+      ],
+      "type": "object"
+    },
+    "p0_static_config": {
+      "additionalProperties": false,
+      "properties": {
+        "access_boundary": {
+          "additionalProperties": false,
+          "properties": {
+            "allowed": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "forbidden": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "principle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "allowed",
+            "forbidden",
+            "principle"
+          ],
+          "type": "object"
+        },
+        "authorization": {
+          "additionalProperties": false,
+          "properties": {
+            "completion_status": {
+              "type": "string"
+            },
+            "completion_token": {
+              "type": "string"
+            },
+            "gpu_production_authorized": {
+              "type": "boolean"
+            },
+            "independent_cohort_outcome_access_authorized": {
+              "type": "boolean"
+            },
+            "input": {
+              "type": "string"
+            },
+            "next_authorization": {
+              "type": "string"
+            },
+            "p0_terminal_pass": {
+              "type": "boolean"
+            },
+            "p1_cohort_seal_authorized": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "completion_status",
+            "completion_token",
+            "gpu_production_authorized",
+            "independent_cohort_outcome_access_authorized",
+            "input",
+            "next_authorization",
+            "p0_terminal_pass",
+            "p1_cohort_seal_authorized"
+          ],
+          "type": "object"
+        },
+        "canonical_digest": {
+          "type": "string"
+        },
+        "document_type": {
+          "const": "p0_static_config",
+          "type": "string"
+        },
+        "model": {
+          "additionalProperties": false,
+          "properties": {
+            "blocks": {
+              "type": "integer"
+            },
+            "canonical_tensor_digest": {
+              "type": "string"
+            },
+            "checkpoint_sha256": {
+              "type": "string"
+            },
+            "embed_dim": {
+              "type": "integer"
+            },
+            "heads_per_block": {
+              "type": "integer"
+            },
+            "input_shape": {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "mlp_hidden_dim": {
+              "type": "integer"
+            },
+            "model_loaded_in_static_stage": {
+              "type": "boolean"
+            },
+            "name": {
+              "type": "string"
+            },
+            "patch_size": {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "patch_tokens": {
+              "type": "integer"
+            },
+            "query_tokens": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "blocks",
+            "canonical_tensor_digest",
+            "checkpoint_sha256",
+            "embed_dim",
+            "heads_per_block",
+            "input_shape",
+            "mlp_hidden_dim",
+            "model_loaded_in_static_stage",
+            "name",
+            "patch_size",
+            "patch_tokens",
+            "query_tokens"
+          ],
+          "type": "object"
+        },
+        "planning_authority": {
+          "additionalProperties": false,
+          "properties": {
+            "ancestor_required": {
+              "type": "boolean"
+            },
+            "commit": {
+              "type": "string"
+            },
+            "document": {
+              "type": "string"
+            },
+            "sha256": {
+              "type": "string"
+            },
+            "working_tree_identity_required": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ancestor_required",
+            "commit",
+            "document",
+            "sha256",
+            "working_tree_identity_required"
+          ],
+          "type": "object"
+        },
+        "protocol_id": {
+          "const": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "stage_id": {
+          "const": "P0-STATIC",
+          "type": "string"
+        },
+        "static_scope": {
+          "additionalProperties": false,
+          "properties": {
+            "p0_a_math_contract": {
+              "type": "string"
+            },
+            "p0_b_statistics_schema_access_contract": {
+              "type": "string"
+            },
+            "p0_c": {
+              "type": "string"
+            },
+            "p1": {
+              "type": "string"
+            },
+            "p2": {
+              "type": "string"
+            },
+            "p3": {
+              "type": "string"
+            },
+            "p4": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "p0_a_math_contract",
+            "p0_b_statistics_schema_access_contract",
+            "p0_c",
+            "p1",
+            "p2",
+            "p3",
+            "p4"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "access_boundary",
+        "authorization",
+        "canonical_digest",
+        "document_type",
+        "model",
+        "planning_authority",
+        "protocol_id",
+        "schema_version",
+        "stage_id",
+        "static_scope"
+      ],
+      "type": "object"
+    },
+    "preprocessing_registry": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_digest": {
+          "type": "string"
+        },
+        "document_type": {
+          "const": "preprocessing_registry",
+          "type": "string"
+        },
+        "model_config_source": {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "type": "string"
+            },
+            "model_name": {
+              "type": "string"
+            },
+            "not_a_generic_vit_constant": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "kind",
+            "model_name",
+            "not_a_generic_vit_constant"
+          ],
+          "type": "object"
+        },
+        "normalization": {
+          "additionalProperties": false,
+          "properties": {
+            "formula": {
+              "type": "string"
+            },
+            "reference_id": {
+              "type": "string"
+            },
+            "same_reference_for_complete_cut_and_activation_replacement": {
+              "type": "boolean"
+            },
+            "x0_norm": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "x0_raw": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "x0_raw_equals_mean": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "formula",
+            "reference_id",
+            "same_reference_for_complete_cut_and_activation_replacement",
+            "x0_norm",
+            "x0_raw",
+            "x0_raw_equals_mean"
+          ],
+          "type": "object"
+        },
+        "protocol_id": {
+          "const": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "spec": {
+          "additionalProperties": false,
+          "properties": {
+            "antialias": {
+              "type": "boolean"
+            },
+            "center_crop": {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "channel_order": {
+              "type": "string"
+            },
+            "color_mode": {
+              "type": "string"
+            },
+            "interpolation": {
+              "type": "string"
+            },
+            "mean": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "raw_range": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "resize_shorter_side": {
+              "type": "integer"
+            },
+            "std": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "antialias",
+            "center_crop",
+            "channel_order",
+            "color_mode",
+            "interpolation",
+            "mean",
+            "raw_range",
+            "resize_shorter_side",
+            "std"
+          ],
+          "type": "object"
+        },
+        "stage_id": {
+          "const": "P0-STATIC",
+          "type": "string"
+        }
+      },
+      "required": [
+        "canonical_digest",
+        "document_type",
+        "model_config_source",
+        "normalization",
+        "protocol_id",
+        "schema_version",
+        "spec",
+        "stage_id"
+      ],
+      "type": "object"
+    },
+    "schema_registry": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_digest": {
+          "type": "string"
+        },
+        "closed_schema_required": {
+          "type": "boolean"
+        },
+        "document_type": {
+          "const": "schema_registry",
+          "type": "string"
+        },
+        "documents": {
+          "items": {
+            "oneOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "document_type": {
+                    "const": "p0_static_config",
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "schema_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "document_type",
+                  "path",
+                  "schema_id"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "document_type": {
+                    "const": "target_registry",
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "schema_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "document_type",
+                  "path",
+                  "schema_id"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "document_type": {
+                    "const": "preprocessing_registry",
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "schema_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "document_type",
+                  "path",
+                  "schema_id"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "document_type": {
+                    "const": "cut_intervention_registry",
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "schema_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "document_type",
+                  "path",
+                  "schema_id"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "document_type": {
+                    "const": "baseline_registry",
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "schema_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "document_type",
+                  "path",
+                  "schema_id"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "document_type": {
+                    "const": "statistical_analysis_plan",
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "schema_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "document_type",
+                  "path",
+                  "schema_id"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "document_type": {
+                    "const": "failure_registry",
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "schema_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "document_type",
+                  "path",
+                  "schema_id"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "document_type": {
+                    "const": "artifact_contract",
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "schema_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "document_type",
+                  "path",
+                  "schema_id"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "document_type": {
+                    "const": "p0_c_cost_pilot_plan",
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "schema_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "document_type",
+                  "path",
+                  "schema_id"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "document_type": {
+                    "const": "schema_registry",
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "schema_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "document_type",
+                  "path",
+                  "schema_id"
+                ],
+                "type": "object"
+              }
+            ]
+          },
+          "type": "array"
+        },
+        "open_payload_forbidden": {
+          "type": "boolean"
+        },
+        "protocol_id": {
+          "const": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+          "type": "string"
+        },
+        "schema_draft": {
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "schemas": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "scope": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "path",
+              "scope"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "stage_id": {
+          "const": "P0-STATIC",
+          "type": "string"
+        }
+      },
+      "required": [
+        "canonical_digest",
+        "closed_schema_required",
+        "document_type",
+        "documents",
+        "open_payload_forbidden",
+        "protocol_id",
+        "schema_draft",
+        "schema_version",
+        "schemas",
+        "stage_id"
+      ],
+      "type": "object"
+    },
+    "statistical_analysis_plan": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregate_decision": {
+          "additionalProperties": false,
+          "properties": {
+            "blocked_infrastructure_blocks_go": {
+              "type": "boolean"
+            },
+            "go_token": {
+              "type": "string"
+            },
+            "invalid_blocks_go": {
+              "type": "boolean"
+            },
+            "minimum_supported_families": {
+              "type": "integer"
+            },
+            "no_go_token": {
+              "type": "string"
+            },
+            "positive_baseline_gain_each_supported_family": {
+              "type": "boolean"
+            },
+            "requires_head_or_routing_value": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "blocked_infrastructure_blocks_go",
+            "go_token",
+            "invalid_blocks_go",
+            "minimum_supported_families",
+            "no_go_token",
+            "positive_baseline_gain_each_supported_family",
+            "requires_head_or_routing_value"
+          ],
+          "type": "object"
+        },
+        "aggregation": {
+          "additionalProperties": false,
+          "properties": {
+            "attention_branch": {
+              "type": "string"
+            },
+            "constant_vector": {
+              "type": "string"
+            },
+            "depth_groups": {
+              "additionalProperties": false,
+              "properties": {
+                "deep": {
+                  "items": {
+                    "type": "integer"
+                  },
+                  "type": "array"
+                },
+                "middle": {
+                  "items": {
+                    "type": "integer"
+                  },
+                  "type": "array"
+                },
+                "shallow": {
+                  "items": {
+                    "type": "integer"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "deep",
+                "middle",
+                "shallow"
+              ],
+              "type": "object"
+            },
+            "head": {
+              "type": "string"
+            },
+            "head_min_valid_blocks": {
+              "type": "integer"
+            },
+            "head_rows_are_independent_n": {
+              "type": "boolean"
+            },
+            "mlp_branch": {
+              "type": "string"
+            },
+            "routing_value": {
+              "type": "string"
+            },
+            "ties": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "attention_branch",
+            "constant_vector",
+            "depth_groups",
+            "head",
+            "head_min_valid_blocks",
+            "head_rows_are_independent_n",
+            "mlp_branch",
+            "routing_value",
+            "ties"
+          ],
+          "type": "object"
+        },
+        "canonical_digest": {
+          "type": "string"
+        },
+        "document_type": {
+          "const": "statistical_analysis_plan",
+          "type": "string"
+        },
+        "family_decision": {
+          "additionalProperties": false,
+          "properties": {
+            "allowed": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "branch_family_same_branch_all_five_tests": {
+              "type": "boolean"
+            },
+            "requires_practical_bootstrap_and_holm": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "allowed",
+            "branch_family_same_branch_all_five_tests",
+            "requires_practical_bootstrap_and_holm"
+          ],
+          "type": "object"
+        },
+        "hypotheses": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "alternative": {
+                "type": "string"
+              },
+              "branch": {
+                "type": "string"
+              },
+              "family": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "metric": {
+                "type": "string"
+              },
+              "multiplicity": {
+                "type": "string"
+              },
+              "null": {
+                "type": "string"
+              },
+              "tail": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "alternative",
+              "branch",
+              "family",
+              "id",
+              "metric",
+              "multiplicity",
+              "null",
+              "tail"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "independent_unit": {
+          "type": "string"
+        },
+        "inference": {
+          "additionalProperties": false,
+          "properties": {
+            "alpha": {
+              "type": "number"
+            },
+            "bootstrap_replicates": {
+              "type": "integer"
+            },
+            "bootstrap_unit": {
+              "type": "string"
+            },
+            "interval": {
+              "type": "string"
+            },
+            "multiplicity": {
+              "type": "string"
+            },
+            "namespace": {
+              "type": "string"
+            },
+            "rng": {
+              "type": "string"
+            },
+            "sign_flip": {
+              "type": "string"
+            },
+            "sign_flip_max_enumerations": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "alpha",
+            "bootstrap_replicates",
+            "bootstrap_unit",
+            "interval",
+            "multiplicity",
+            "namespace",
+            "rng",
+            "sign_flip",
+            "sign_flip_max_enumerations"
+          ],
+          "type": "object"
+        },
+        "protocol_id": {
+          "const": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "stage_id": {
+          "const": "P0-STATIC",
+          "type": "string"
+        },
+        "thresholds": {
+          "additionalProperties": false,
+          "properties": {
+            "baseline_gain_strictly_positive": {
+              "type": "boolean"
+            },
+            "bootstrap_lower_bound_strictly_positive": {
+              "type": "boolean"
+            },
+            "direction_agreement_min": {
+              "type": "number"
+            },
+            "holm_adjusted_p_strictly_less_than": {
+              "type": "number"
+            },
+            "replacement_zeroing_ranking_consistency_min": {
+              "type": "number"
+            },
+            "spearman_practical_min": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "baseline_gain_strictly_positive",
+            "bootstrap_lower_bound_strictly_positive",
+            "direction_agreement_min",
+            "holm_adjusted_p_strictly_less_than",
+            "replacement_zeroing_ranking_consistency_min",
+            "spearman_practical_min"
+          ],
+          "type": "object"
+        },
+        "validity": {
+          "additionalProperties": false,
+          "properties": {
+            "below_minimum": {
+              "type": "string"
+            },
+            "minimum_valid_images": {
+              "type": "integer"
+            },
+            "planned_images": {
+              "type": "integer"
+            },
+            "report_completion_rate_for_valid_range": {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "undefined_spearman_handling": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "below_minimum",
+            "minimum_valid_images",
+            "planned_images",
+            "report_completion_rate_for_valid_range",
+            "undefined_spearman_handling"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "aggregate_decision",
+        "aggregation",
+        "canonical_digest",
+        "document_type",
+        "family_decision",
+        "hypotheses",
+        "independent_unit",
+        "inference",
+        "protocol_id",
+        "schema_version",
+        "stage_id",
+        "thresholds",
+        "validity"
+      ],
+      "type": "object"
+    },
+    "target_registry": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_digest": {
+          "type": "string"
+        },
+        "document_type": {
+          "const": "target_registry",
+          "type": "string"
+        },
+        "historical_exclusion_sets": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "membership_forbidden_fields": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "metadata_only_selection": {
+          "additionalProperties": false,
+          "properties": {
+            "cohort_size": {
+              "type": "integer"
+            },
+            "delimiter": {
+              "type": "string"
+            },
+            "eligibility": {
+              "type": "string"
+            },
+            "executed_in_static_stage": {
+              "type": "boolean"
+            },
+            "hash": {
+              "type": "string"
+            },
+            "insufficient_code": {
+              "type": "string"
+            },
+            "runtime_replacement_allowed": {
+              "type": "boolean"
+            },
+            "steps": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "cohort_size",
+            "delimiter",
+            "eligibility",
+            "executed_in_static_stage",
+            "hash",
+            "insufficient_code",
+            "runtime_replacement_allowed",
+            "steps"
+          ],
+          "type": "object"
+        },
+        "primary_target": {
+          "additionalProperties": false,
+          "properties": {
+            "computed_in_static_stage": {
+              "type": "boolean"
+            },
+            "formula": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "output": {
+              "type": "string"
+            },
+            "shared_across_images": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "computed_in_static_stage",
+            "formula",
+            "id",
+            "output",
+            "shared_across_images"
+          ],
+          "type": "object"
+        },
+        "protocol_id": {
+          "const": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "secondary_target": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "pooled_with_primary": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "pooled_with_primary"
+          ],
+          "type": "object"
+        },
+        "stage_id": {
+          "const": "P0-STATIC",
+          "type": "string"
+        }
+      },
+      "required": [
+        "canonical_digest",
+        "document_type",
+        "historical_exclusion_sets",
+        "membership_forbidden_fields",
+        "metadata_only_selection",
+        "primary_target",
+        "protocol_id",
+        "schema_version",
+        "secondary_target",
+        "stage_id"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/p0_static_config"
+    },
+    {
+      "$ref": "#/$defs/target_registry"
+    },
+    {
+      "$ref": "#/$defs/preprocessing_registry"
+    },
+    {
+      "$ref": "#/$defs/cut_intervention_registry"
+    },
+    {
+      "$ref": "#/$defs/baseline_registry"
+    },
+    {
+      "$ref": "#/$defs/statistical_analysis_plan"
+    },
+    {
+      "$ref": "#/$defs/failure_registry"
+    },
+    {
+      "$ref": "#/$defs/artifact_contract"
+    },
+    {
+      "$ref": "#/$defs/p0_c_cost_pilot_plan"
+    },
+    {
+      "$ref": "#/$defs/schema_registry"
+    }
+  ],
+  "title": "NNS-ViT P0 static contract documents"
+}

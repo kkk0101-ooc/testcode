@@ -1,0 +1,140 @@
+{
+  "attention_differential": {
+    "attention_decomposition": "K_attention~=K_R+K_V",
+    "bias_retained_in_forward_score": true,
+    "identity": "dO=(dA)V+A(dV)",
+    "input_independent_bias_contribution": 0.0,
+    "mathematical_type": "differential_path_not_complete_edge_cut",
+    "routing_decomposition": "K_R~=K_Q+K_K+K_B",
+    "routing_value_complete_edge_cut": false,
+    "terms": [
+      "routing",
+      "value",
+      "query",
+      "key",
+      "bias"
+    ]
+  },
+  "attribution_scalars": {
+    "absolute_mass": "m_k=sum_i abs(K_{k,i})",
+    "absolute_share": "q_k=m_k/sum_{j in C}m_j",
+    "mass_predicts": "absolute_effect",
+    "signed": "a_k=sum_i K_{k,i}",
+    "signed_predicts": "signed_effect",
+    "zero_mass_code": "NA_ZERO_CUT_MASS"
+  },
+  "canonical_digest": "38666724b3c4cd7dc1be80f715d21227fa7d87ccbace608144b799c828ca5732",
+  "component_conductance": {
+    "aggregation_dtype": "float64",
+    "component_coordinate_sets": {
+      "branch": "all_token_x_channel",
+      "head": "all_token_x_head_dimension",
+      "routing_value": "all_query_x_key_or_value_coordinates_per_head"
+    },
+    "coordinate_reduction": "sum_all_component_coordinates",
+    "formula": "K^C_{k,i}=Delta_x_i integral_0^1 sum_{j in I_k} (dF(x_alpha)/dz_{k,j})(dz_{k,j}(x_alpha)/dx_i) d_alpha",
+    "input_axes": [
+      "channel",
+      "row",
+      "column"
+    ],
+    "native_map_retention": "p0_c_prior_access_image_and_four_presealed_audit_images_only",
+    "path": "x_alpha=x0+alpha*(x-x0)",
+    "retained_map_level": "signed_4x4_cell_map_for_every_primary_component",
+    "vector_formula": "K^C_{k,i}=Delta_x_i integral_0^1 <grad_{z_k}F(x_alpha), dz_k(x_alpha)/dx_i> d_alpha"
+  },
+  "document_type": "cut_intervention_registry",
+  "head_cut": {
+    "cls_only_is_main": false,
+    "head_shape": [
+      197,
+      64
+    ],
+    "heads": 12,
+    "hook_position": "post_attention_dropout_pre_head_concat_pre_output_projection",
+    "identity_edge_registered_separately": true,
+    "main_intervention": "all_token_reference_head_replacement",
+    "matched_output_projection_columns": true,
+    "mathematical_type": "computational_edge_cut",
+    "query_token_outputs": 197,
+    "secondary_intervention": "all_token_head_zeroing"
+  },
+  "interventions": {
+    "effect_formula": "e_k=F(x)-F(x;z_k<-z_k_ref)",
+    "interaction_formula": "I_RV=e_R+e_V-e_(R+V)",
+    "joint": "A(x0),V(x0)",
+    "key": "K(x0),Q(x),recompute_score_and_softmax",
+    "opposite_sign_rejected": true,
+    "query": "Q(x0),K(x),recompute_score_and_softmax",
+    "routing": "A(x0),V(x)",
+    "value": "A(x),V(x0)"
+  },
+  "numerical_contracts": {
+    "ALGEBRAIC_CUT_RECONSTRUCTION": {
+      "closures": [
+        "heads_to_attention",
+        "identity_plus_attention_to_first_residual",
+        "carry_plus_mlp_to_second_residual",
+        "value_plus_routing_to_attention",
+        "query_plus_key_plus_bias_to_routing"
+      ],
+      "pixel_abs": 2e-05,
+      "pixel_rel": 0.005,
+      "total_abs": 0.0002,
+      "total_rel": 0.01
+    },
+    "IG_COMPLETENESS_TO_TARGET_DELTA": {
+      "abs": 0.0001,
+      "rel": 0.005,
+      "small_target_code": "NA_SMALL_TARGET_DELTA",
+      "small_target_threshold": 1e-06
+    },
+    "QUADRATURE_SUCCESSIVE_ORDER_CONVERGENCE": {
+      "component_mass_rel": 0.005,
+      "component_signed_rel": 0.01,
+      "failure_at_max_order": "FAILED_QUADRATURE_CONVERGENCE",
+      "map_l1_rel": 0.005,
+      "small_component_abs": 1e-08,
+      "small_component_threshold": 1e-08
+    },
+    "low_order_algebraic_pass_implies_convergence": false,
+    "quadrature": {
+      "rule": "Gauss-Legendre",
+      "schedule": [
+        128,
+        256,
+        512,
+        1024,
+        2048,
+        4096,
+        8192
+      ],
+      "selected_order_rule": "first_order_where_total_ig_and_all_families_pass_all_three_contracts"
+    }
+  },
+  "protocol_id": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+  "residual_cuts": [
+    {
+      "id": "first_residual",
+      "left_edge": "identity",
+      "left_variable": "z_id=h",
+      "original_node_total_gradient_for_left": false,
+      "right_edge": "attention",
+      "right_variable": "z_attn=a(h)",
+      "shared_output_adjoint": "grad_{h_prime}F",
+      "sum": "h_prime=z_id+z_attn"
+    },
+    {
+      "id": "second_residual",
+      "left_edge": "carry",
+      "left_variable": "z_carry=h_prime",
+      "original_node_total_gradient_for_left": false,
+      "right_edge": "mlp",
+      "right_variable": "z_mlp=m(h_prime)",
+      "shared_output_adjoint": "grad_{h_next}F",
+      "sum": "h_next=z_carry+z_mlp"
+    }
+  ],
+  "schema_version": 1,
+  "stage_id": "P0-STATIC"
+}

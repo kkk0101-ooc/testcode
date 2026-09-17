@@ -1,0 +1,52 @@
+{
+  "canonical_digest": "e3705b48edbda26b19318da0451be57209d17da990f6b70dcb7dfab1fa297b61",
+  "document_type": "target_registry",
+  "historical_exclusion_sets": [
+    "Stage_C_D_E",
+    "F3_F3H_F3C",
+    "X1_X2_X2_MECH",
+    "Stage_Y",
+    "Stage_S",
+    "endpoint_Level_3_Level_4",
+    "manual_figures_galleries_threshold_debug"
+  ],
+  "membership_forbidden_fields": [
+    "correctness",
+    "prediction",
+    "logit",
+    "margin",
+    "confidence",
+    "attribution",
+    "intervention_effect"
+  ],
+  "metadata_only_selection": {
+    "cohort_size": 20,
+    "delimiter": "|",
+    "eligibility": "true_label_equals_y_star",
+    "executed_in_static_stage": false,
+    "hash": "SHA256",
+    "insufficient_code": "BLOCKED_INSUFFICIENT_DISJOINT_COHORT",
+    "runtime_replacement_allowed": false,
+    "steps": [
+      "construct_union_of_all_historical_source_object_exclusions",
+      "retain_classes_with_at_least_20_remaining_true_label_images",
+      "sort_classes_by_SHA256(protocol_id|class_id)_ascending_and_take_first",
+      "sort_class_images_by_SHA256(protocol_id|source_object_id)_ascending_and_take_first_20",
+      "save_candidate_exclusion_and_membership_digests"
+    ]
+  },
+  "primary_target": {
+    "computed_in_static_stage": false,
+    "formula": "F(x)=logit_{y*}(x)",
+    "id": "shared_true_class_raw_logit",
+    "output": "raw_logit",
+    "shared_across_images": true
+  },
+  "protocol_id": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+  "schema_version": 1,
+  "secondary_target": {
+    "id": "per_image_predicted_class",
+    "pooled_with_primary": false
+  },
+  "stage_id": "P0-STATIC"
+}

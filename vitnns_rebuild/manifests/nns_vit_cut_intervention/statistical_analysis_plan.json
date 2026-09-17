@@ -1,0 +1,268 @@
+{
+  "aggregate_decision": {
+    "blocked_infrastructure_blocks_go": true,
+    "go_token": "GO_CUT_INTERVENTION_EXPANSION",
+    "invalid_blocks_go": true,
+    "minimum_supported_families": 2,
+    "no_go_token": "NO_GO_CUT_INTERVENTION_EXPANSION",
+    "positive_baseline_gain_each_supported_family": true,
+    "requires_head_or_routing_value": true
+  },
+  "aggregation": {
+    "attention_branch": "one_spearman_per_image_across_12_blocks",
+    "constant_vector": "NA_CONSTANT_VECTOR",
+    "depth_groups": {
+      "deep": [
+        8,
+        9,
+        10,
+        11
+      ],
+      "middle": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "shallow": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "head": "spearman_within_each_12_head_block_then_median_across_valid_blocks",
+    "head_min_valid_blocks": 8,
+    "head_rows_are_independent_n": false,
+    "mlp_branch": "one_spearman_per_image_across_12_blocks",
+    "routing_value": "one_spearman_per_image_across_144_block_head_pairs",
+    "ties": "average_ranks"
+  },
+  "canonical_digest": "ab6a9cef770c5ef3c201e3c0124fb905414350b8766edccf76caddf430fd0bc2",
+  "document_type": "statistical_analysis_plan",
+  "family_decision": {
+    "allowed": [
+      "SUPPORTED_PREDICTIVE_RELATION",
+      "NOT_SUPPORTED",
+      "INVALID",
+      "BLOCKED_INFRASTRUCTURE"
+    ],
+    "branch_family_same_branch_all_five_tests": true,
+    "requires_practical_bootstrap_and_holm": true
+  },
+  "hypotheses": [
+    {
+      "alternative": "T>0",
+      "branch": "head",
+      "family": "H",
+      "id": "H1",
+      "metric": "absolute_spearman",
+      "multiplicity": "Holm_within_H",
+      "null": "T<=0",
+      "tail": "one_sided"
+    },
+    {
+      "alternative": "T>0",
+      "branch": "head",
+      "family": "H",
+      "id": "H2",
+      "metric": "signed_spearman",
+      "multiplicity": "Holm_within_H",
+      "null": "T<=0",
+      "tail": "one_sided"
+    },
+    {
+      "alternative": "T>0",
+      "branch": "head",
+      "family": "H",
+      "id": "H3",
+      "metric": "direction_agreement_minus_0.5",
+      "multiplicity": "Holm_within_H",
+      "null": "T<=0",
+      "tail": "one_sided"
+    },
+    {
+      "alternative": "T>0",
+      "branch": "head",
+      "family": "H",
+      "id": "H4",
+      "metric": "top_quartile_enrichment",
+      "multiplicity": "Holm_within_H",
+      "null": "T<=0",
+      "tail": "one_sided"
+    },
+    {
+      "alternative": "T>0",
+      "branch": "head",
+      "family": "H",
+      "id": "H5",
+      "metric": "baseline_gain",
+      "multiplicity": "Holm_within_H",
+      "null": "T<=0",
+      "tail": "one_sided"
+    },
+    {
+      "alternative": "T>0",
+      "branch": "attention",
+      "family": "B",
+      "id": "B1",
+      "metric": "absolute_spearman",
+      "multiplicity": "Holm_within_B1_B10",
+      "null": "T<=0",
+      "tail": "one_sided"
+    },
+    {
+      "alternative": "T>0",
+      "branch": "attention",
+      "family": "B",
+      "id": "B2",
+      "metric": "signed_spearman",
+      "multiplicity": "Holm_within_B1_B10",
+      "null": "T<=0",
+      "tail": "one_sided"
+    },
+    {
+      "alternative": "T>0",
+      "branch": "attention",
+      "family": "B",
+      "id": "B3",
+      "metric": "direction_agreement_minus_0.5",
+      "multiplicity": "Holm_within_B1_B10",
+      "null": "T<=0",
+      "tail": "one_sided"
+    },
+    {
+      "alternative": "T>0",
+      "branch": "attention",
+      "family": "B",
+      "id": "B4",
+      "metric": "top_quartile_enrichment",
+      "multiplicity": "Holm_within_B1_B10",
+      "null": "T<=0",
+      "tail": "one_sided"
+    },
+    {
+      "alternative": "T>0",
+      "branch": "attention",
+      "family": "B",
+      "id": "B5",
+      "metric": "baseline_gain",
+      "multiplicity": "Holm_within_B1_B10",
+      "null": "T<=0",
+      "tail": "one_sided"
+    },
+    {
+      "alternative": "T>0",
+      "branch": "mlp",
+      "family": "B",
+      "id": "B6",
+      "metric": "absolute_spearman",
+      "multiplicity": "Holm_within_B1_B10",
+      "null": "T<=0",
+      "tail": "one_sided"
+    },
+    {
+      "alternative": "T>0",
+      "branch": "mlp",
+      "family": "B",
+      "id": "B7",
+      "metric": "signed_spearman",
+      "multiplicity": "Holm_within_B1_B10",
+      "null": "T<=0",
+      "tail": "one_sided"
+    },
+    {
+      "alternative": "T>0",
+      "branch": "mlp",
+      "family": "B",
+      "id": "B8",
+      "metric": "direction_agreement_minus_0.5",
+      "multiplicity": "Holm_within_B1_B10",
+      "null": "T<=0",
+      "tail": "one_sided"
+    },
+    {
+      "alternative": "T>0",
+      "branch": "mlp",
+      "family": "B",
+      "id": "B9",
+      "metric": "top_quartile_enrichment",
+      "multiplicity": "Holm_within_B1_B10",
+      "null": "T<=0",
+      "tail": "one_sided"
+    },
+    {
+      "alternative": "T>0",
+      "branch": "mlp",
+      "family": "B",
+      "id": "B10",
+      "metric": "baseline_gain",
+      "multiplicity": "Holm_within_B1_B10",
+      "null": "T<=0",
+      "tail": "one_sided"
+    },
+    {
+      "alternative": "T>0",
+      "branch": "routing_value",
+      "family": "R",
+      "id": "R1",
+      "metric": "routing_value_agreement_minus_0.5",
+      "multiplicity": "Holm_within_R",
+      "null": "T<=0",
+      "tail": "one_sided"
+    },
+    {
+      "alternative": "T>0",
+      "branch": "routing_value",
+      "family": "R",
+      "id": "R2",
+      "metric": "continuous_association",
+      "multiplicity": "Holm_within_R",
+      "null": "T<=0",
+      "tail": "one_sided"
+    },
+    {
+      "alternative": "T>0",
+      "branch": "routing_value",
+      "family": "R",
+      "id": "R3",
+      "metric": "baseline_gain",
+      "multiplicity": "Holm_within_R",
+      "null": "T<=0",
+      "tail": "one_sided"
+    }
+  ],
+  "independent_unit": "image",
+  "inference": {
+    "alpha": 0.05,
+    "bootstrap_replicates": 20000,
+    "bootstrap_unit": "paired_image",
+    "interval": "linear_percentile_95",
+    "multiplicity": "Holm_separately_within_H_B_R",
+    "namespace": "NNS_VIT_CUT_INTERVENTION_V1|metric|cut_family",
+    "rng": "PCG64",
+    "sign_flip": "exact_image_level_enumeration",
+    "sign_flip_max_enumerations": 1048576
+  },
+  "protocol_id": "NNS_VIT_CUT_INTERVENTION_PREDICTION_V1",
+  "schema_version": 1,
+  "stage_id": "P0-STATIC",
+  "thresholds": {
+    "baseline_gain_strictly_positive": true,
+    "bootstrap_lower_bound_strictly_positive": true,
+    "direction_agreement_min": 0.6,
+    "holm_adjusted_p_strictly_less_than": 0.05,
+    "replacement_zeroing_ranking_consistency_min": 0.5,
+    "spearman_practical_min": 0.3
+  },
+  "validity": {
+    "below_minimum": "INVALID_INSUFFICIENT_VALID_IMAGES",
+    "minimum_valid_images": 18,
+    "planned_images": 20,
+    "report_completion_rate_for_valid_range": [
+      18,
+      20
+    ],
+    "undefined_spearman_handling": "typed_NA_retained_in_denominator_never_zero_imputed"
+  }
+}
