@@ -44,6 +44,9 @@ The [NNS-ViT Endpoint Scanner](docs/endpoint_nns_vit_scanner_20260918.md) uses
 the original-input rule `x * grad(s)` on the native ViT graph. It supports
 individual token/channel units, aggregate responses, heads, logits and margins,
 plus complete endpoint edge decompositions for heads, Q/K/V and residuals.
+The [mathematical analysis](docs/NNS_ViT_Endpoint_Scanner数学分析与方法对比_20260918.md)
+derives the method and compares it with the earlier path-integrated NNS-ViT
+and the original NNS-CNN equations.
 See the [nine example figures](docs/endpoint_nns_vit_scanner_figures_20260918.md)
 and `scripts/run_endpoint_vit_scan.py` for the reproducible CPU demonstration.
 This interface uses no reference or path integration.

@@ -2,6 +2,8 @@
 
 日期：2026-09-18。当前交付：`endpoint_nns_vit_scan_r3_20260918`，状态 `PASS_ENDPOINT_IMPLEMENTATION_DEMO`。
 
+完整公式推导及与此前 path-integrated NNS-ViT、原始 NNS-CNN 的逐项对照见 [数学分析与方法对比](NNS_ViT_Endpoint_Scanner数学分析与方法对比_20260918.md)。
+
 本实现将原始 NNS 的输入值初始化和终点传播原则适配到 ViT。所有目标使用同一个核心定义：
 
 $$
