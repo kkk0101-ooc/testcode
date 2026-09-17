@@ -39,3 +39,7 @@ Scope: Abstract, Introduction, contribution bullets, Results and Discussion, Lim
 ## Repeated phrase audit
 
 No reviewer-facing phrases such as “we emphasize,” “it should be noted,” “to avoid misunderstanding,” or “we do not claim” remain in the English manuscript. Residual uses of “does not,” “cannot,” and “not” predominantly encode target definitions, failed gates, or statistical non-equivalence and are retained where they change interpretation.
+
+## High-level narrative revision
+
+After comparison with the source NNS paper, the Abstract, Introduction, contribution list, and Conclusion were rewritten a second time. The earlier draft defined the study through one block/head intervention and foregrounded cohort sizes, confidence intervals, and patch-grid dimensions. The revised front matter defines the research through the full NNS-ViT scanning problem: a common input-space view of patch embedding, attention, MLP, residual paths, cross-layer allocation, and classifier outputs. Exact sample sizes, coordinates, intervals, and registered decisions now remain in Results and Experimental Setup. This revision removes evidence-boundary over-signaling from the paper-level narrative without changing any scientific result.

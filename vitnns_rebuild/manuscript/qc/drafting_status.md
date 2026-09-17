@@ -7,6 +7,8 @@
 - SHA-256 binding to all 35 frozen R10-R4 PNG/PDF/SVG figure assets.
 - Abstract, Introduction, Related Work, Methods, Experimental Setup, Results and Discussion, Limitations, and Conclusion.
 - Defensive-writing audit and automated structure/hash checks.
+- A second high-level narrative pass against the source NNS paper: Abstract, Introduction, contribution list, and Conclusion now frame the full ViT scanning problem rather than one local intervention result.
+- Standalone Chinese Markdown and searchable Chinese/English PDFs, each with all 35 frozen figures and language-matched captions.
 
 ## Deliberately open
 

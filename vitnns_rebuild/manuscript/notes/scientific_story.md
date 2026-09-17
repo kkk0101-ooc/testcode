@@ -2,11 +2,11 @@
 
 ## Central question
 
-How can a Vision Transformer internal response or class output be represented in the original image coordinates, and what can such a representation support beyond visual inspection?
+How can we scan the internal working process of a Vision Transformer in one input-space representation, from patch embedding and attention to residual branches and the final classifier?
 
 ## Story in one paragraph
 
-NNS introduced the learning-image idea for FCNs and CNNs: associate an internal unit with an image-shaped account of where its response came from. This study adapts that view to ViT computation, where patch tokens, input-dependent attention, residual branches, MLP branches, and the classifier create several distinct attribution targets. A path-integrated learning image maps a specified response change back to the input. Module-own-response maps show where an internal response comes from; a fixed-clean-attention Value-path functional isolates a prescribed internal attention target; complete-cut component maps distribute a class-logit attribution over heads and branches. The main 500-image intervention study finds that the input-space ranking for block 0, head 9 has higher fine-4x4-cell fidelity than a target-matched patch-token baseline with uniform within-patch allocation. That advantage is scale- and coordinate-dependent, disappears at native patch scale, and does not translate into superiority over every class-output explainer. Complete-cut accounting further shows that attention and MLP branch shares change differently with depth.
+NNS introduced the learning-image idea for FCNs and CNNs: associate an internal unit with an image-shaped account of where its response came from. NNS-ViT adapts that view to patch tokens, input-dependent attention, MLPs, residual streams, and classifier outputs. A path-integrated learning image places each specified response in the original input coordinates, while complete cuts combine component images into an account of a final class output. The paper follows this representation through the ViT forward chain, then evaluates it through input intervention, spatial scale and layer/head comparisons, independent explanation methods, and depth-wise branch allocation. The resulting story is about observing and analyzing how a ViT organizes input information, with the 500-image intervention as one central validation rather than the definition of the entire study.
 
 ## Main findings
 

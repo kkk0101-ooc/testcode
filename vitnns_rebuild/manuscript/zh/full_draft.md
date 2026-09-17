@@ -1,57 +1,67 @@
 # 通过学习图像理解视觉 Transformer 的内部响应与贡献分配
 
-视觉 Transformer（ViT）把图像表示为 patch token，并通过多头注意力、MLP 与残差流逐层变换这些表示。常规激活图描述内部响应的大小，却不直接说明指定响应相对参考输入的变化来自哪些输入位置。本文将 Neural Network Scanner 的 learning image 视角扩展到 ViT：通过输入路径积分，把内部标量或类别 logit 的变化分配回原始输入坐标；同时区分模块自身响应图、固定 clean attention 的条件 Value-path 归因和完整类别贡献的内部成分图。真实 ViT-B/16 计算从 patch embedding、block-0 attention 和第一次 residual 延伸至 block-0 MLP、第二次 residual、全部 12 个 blocks、final norm、CLS 与 classifier，并以 completeness 和逐像素 residual additivity 检查数值对应。
+## 摘要
 
-在冻结的 500 图像队列中，我们针对预定的 block 0/head 9 内部目标，以 4x4 输入单元进行配对 insertion/deletion 干预。NNS 相对同目标 patch-token 基线（patch 内均匀分配）的图像级忠实度差值在 500/500 张图像上为正，中位数为 2.3082，配对中位数 bootstrap 95% 置信区间为 [2.1111, 2.4452]。在原生 14x14 patch 评价下，中位差值降为 0，说明主效应依赖细粒度评价。独立的 50 图像类别输出比较中，NNS 低于 ViT Grad-CAM、高于 attention rollout；与完整模型 IG 和 raw CLS attention 的差异未达到注册检验的显著性。完整切分分析进一步显示，深层相对浅层的 attention 绝对贡献份额增加 0.1391，而 MLP 份额减少 0.2492。
+视觉 Transformer 以图像 patch 为基本输入单元，通过多头注意力、前馈网络和残差连接逐层形成视觉表征。然而，模型内部的 token、通道、注意力头和分支响应通常处在不同的表示空间中，难以用统一方式观察它们从输入图像中学到了什么，以及这些内部响应如何共同形成最终预测。本文提出 NNS-ViT，将 Neural Network Scanner 的 learning image 方法扩展到视觉 Transformer。对于给定图像，NNS-ViT 为指定的内部响应生成一张保持原始输入位置的学习图像，并允许将不同神经元、注意力头和网络分支的学习图像组合起来，从而在统一的图像坐标中观察 ViT 的工作过程。该方法无需改变模型结构或重新训练模型。
 
-Learning image 能在统一输入坐标下连接 ViT 内部响应、区域排序和成分分配。其经验表现随目标、空间尺度和内部路径而变化；广义空间稳定性门未通过，独立类别输出比较中的 Grad-CAM fidelity 更高。
+我们围绕 ViT 的完整计算链开展研究，从 patch embedding 开始，依次分析多头注意力、MLP、残差连接、跨层贡献分配以及最终分类输出。实验首先验证学习图像与真实模块响应之间的数值对应关系，并通过输入干预评价学习图像所给出的区域排序；随后比较不同空间尺度、不同层和注意力头上的解释结果，并与多种 ViT 解释方法进行对照；最后，将完整类别归因分解到内部注意力头和网络分支，以分析视觉信息在网络深度方向上的组织与变化。
 
-**关键词：** Vision Transformer；Neural Network Scanner；learning image；内部归因；积分梯度；忠实度；贡献分解
+实验结果表明，NNS-ViT 能够在输入空间中呈现 ViT 不同内部组件的响应来源，揭示原生 patch 表示中未直接展开的细粒度空间结构，并将这些结构与模型响应的变化联系起来。不同层、注意力头和分支形成了不同的学习图像，类别贡献在网络深度上也发生系统性的重新分配。同时，解释效果随目标、空间尺度和内部路径而变化，说明 ViT 的内部工作机制不能由单一 attention 图或单一层级概括。NNS-ViT 为观察、比较和评价视觉 Transformer 的内部计算提供了一种统一的输入空间视角。
 
-视觉 Transformer（ViT）将图像切分为 patch，将 patch 投影为 token，并通过多头自注意力和逐 token 的 MLP 反复更新 token 序列（Dosovitskiy et al., 2021）。这种结构为图像分类提供了强大的表征能力，也带来了多层次的内部观察对象：一个响应可以属于某个 token、channel、head、branch、residual stream 或最终类别输出。仅查看激活值或 attention 权重，往往难以回答另一个更直接的问题：指定内部响应相对参考输入的变化，分别来自原图的哪些位置？
+**关键词：** Vision Transformer；Neural Network Scanner；learning image；神经网络可视化；内部响应；贡献分解；可解释性
 
-神经元和特征可视化为理解深度网络提供了多种视角。Activation maximization 寻找能够激活单元的输入，saliency 与归因方法解释给定输入，attention 可视化则呈现 token 之间的路由结构。Dou et al. (2023) 提出的 Neural Network Scanner（NNS）为 FCN 和 CNN 中的神经元构造 learning image，把单元响应表示为保留输入位置的图像，并允许将多个神经元图组合起来查看模块。将这一视角用于 ViT 不能只把 token 网格放大到图像尺寸：attention 的权重依赖输入，residual 把旁路与分支相加，类别输出又经过多层 token mixing、final normalization 和 CLS classifier。
+## 1. 引言
 
-本文研究三个相互关联的问题。第一，如何为 ViT 内部响应和类别输出定义输入坐标下的 learning image，并让其数值和真实前向计算对应？第二，这些图给出的区域排序是否能通过输入干预进行评价？第三，完整类别归因能否按 head、attention、MLP 和 residual 成分记账，从而描述贡献随深度的分配？Figure 1 概括了从内部目标、learning image 到干预和结构分析的研究路径；Figure 2 展示一个真实 attention 通道响应及其输入位置正贡献；Figure 3 给出两种排序在共同空间单元上的干预比较。
+人工神经网络已经成为图像识别的重要工具，但模型如何从输入图像中形成内部表征和最终判断，仍然难以直接观察。可解释性研究通常从输入、内部单元或输出三个层次描述模型：输入归因指出哪些区域与预测相关，特征可视化呈现内部单元偏好的模式，attention 可视化展示信息在 token 之间的传递。不同方法产生的结果具有不同的坐标、目标和含义，因此很难把它们连成一条完整的模型工作过程。
 
-我们沿直线路径使用积分梯度构造 learning image，并明确区分三种对象。模块自身响应图解释 patch embedding、attention、MLP 或 residual 输出本身；固定 clean attention 的条件 Value-path 图解释一个预先指定的内部方向，同时切断 Q/K/softmax 随积分输入变化的路径；完整切分类别成分图保留最终类别导数，并把同一个 full-model IG 总图分配给内部成分。该区分使图像、目标和允许的结论保持一致。
+视觉 Transformer（ViT）进一步放大了这一问题。ViT 先把图像划分为 patch，再将 patch 编码为 token；每个 transformer block 使用多头注意力交换 token 信息，使用 MLP 变换通道表示，并通过两次 residual addition 保留和叠加信息。经过多层计算后，CLS token 被送入分类器形成类别输出（Dosovitskiy et al., 2021）。在这一过程中，输入图像、patch token、attention head、MLP branch、residual stream 和类别 logit 分属不同表示空间。普通 feature map 或 attention map 可以显示某一层的响应，却难以持续回答“这个响应从原图的哪里学来”以及“不同内部响应怎样组合成最终输出”。
 
-本文的主要实证来自一个冻结 ViT-B/16 和独立的 500 图像队列。在 block 0/head 9 的固定内部目标上，NNS 的 4x4-cell 区域排序相对同目标 patch-token 基线（patch 内均匀分配）在全部 500 张图像上取得正的忠实度差值，中位数为 2.3082。原生 patch 尺度的中位差值为 0，其他三个预定层头坐标的效应也明显较小。在独立的 50 图像类别解释器比较中，NNS 的 fidelity 低于 Grad-CAM、高于 rollout，与 full-model IG 和 raw CLS attention 的差异未明确检出。完整切分的 100 图分析则支持 attention 与 MLP 分支份额随深度以不同方向变化。
+Dou et al. (2023) 提出的 Neural Network Scanner（NNS）从神经元层级观察网络。其核心对象是 learning image：给定一个输入和网络单元，为该单元构造一张保持输入位置的图像，用来表示该单元从输入中学到的特征；多个单元的 learning image 可以进一步组合，以分析层和网络组件的工作过程。原方法在 FCN 和 CNN 上展示了这种统一可视化方式。ViT 的计算结构不同于 FCN 和 CNN：attention 权重随输入变化，多个 head 共同产生输出，MLP 和 residual 在每个 block 内交替作用，最终分类依赖全部 blocks 和 CLS token。因此，将 learning image 用于 ViT，需要重新定义内部观察对象，并保持 attention、branch 和 classifier 之间的计算关系。
 
-本文的贡献包括：
+本文提出 NNS-ViT，用统一的输入空间图像扫描视觉 Transformer。对于任意选定的内部标量响应，NNS-ViT 沿参考输入到观测输入的路径累计输入贡献，并把这些贡献放回原始位置。这样，patch embedding 中的一个通道、attention 输出中的一个方向、MLP 分支、residual 输出以及最终类别 logit 都可以对应一张 learning image。不同内部成分的图可以在满足完整切分的条件下组合，使同一类别输出能够按 attention head、MLP 和 residual 路径展开。Figure 1 展示 NNS-ViT 的整体扫描视角，Figure 2 展示真实内部响应与 learning image 的对应，Figures 15–27 进一步说明其初始化、组合和 ViT 算子计算。
 
-1. 为 ViT 内部标量和类别标量建立输入坐标 learning image，并给出 patch embedding、attention、MLP、两次 residual 与 classifier 路径的对应关系。
-2. 在真实冻结模型上验证 completeness 和 residual additivity，将模块展示从 patch embedding 延伸到完整 class logit，并比较正确类、最强竞争类、margin 与低分输出。
-3. 用 500 图细粒度干预评价指定内部目标的区域排序，并通过尺度、层头、预测分层和独立解释器比较界定经验范围。
-4. 以完整切分将类别归因组织为内部成分，报告可重构性和跨深度分支份额，同时保留稳定性失败、无效端点和事后探索结果。
+基于这一表示，我们研究 ViT 工作过程中的四类问题。第一，patch embedding、attention、MLP 和 residual 分别从输入图像的哪些位置形成响应，这些响应如何沿 block 继续组合并到达 classifier。第二，learning image 中的空间结构是否与真实模型响应相关，即按照图中的贡献排序改变输入时，目标响应是否随之变化。第三，不同 layer、head、spatial scale 和类别目标产生的学习图像有何差异，以及一张 attention map 能否代表完整的模型解释。第四，完整类别贡献如何分配给内部 head 和 branch，这种分配是否随网络深度改变。
 
-后文先回顾 NNS、输入归因和 ViT 解释研究，再定义方法与实验协议。结果部分从真实模块计算开始，随后报告干预、敏感性、方法比较、完整切分和深度分析，最后讨论适用范围与局限。
+实验在训练完成的 ViT-B/16 上展开。我们首先用解析示例和真实模型输出验证 learning image 的数值完整性、attention 路径以及 residual 加法关系，并把扫描过程从 patch embedding 延伸到最终类别输出。随后，通过大样本输入干预检验区域排序，结果显示 learning image 能揭示 patch 内部对特定响应有用的空间差异；这种作用取决于评价尺度和内部位置。跨层与全 head 图谱显示 ViT 内部形成多样的空间响应，而独立解释器比较表明不同解释方法各有适用范围。最后，完整切分把最终类别归因分配到 attention 与 MLP 等内部成分，显示这些分支的贡献份额随深度重新组织。
 
-## 2.1 神经元与特征可视化
+本文的主要贡献如下：
+
+1. 提出面向视觉 Transformer 的 NNS-ViT，在不改变模型结构和训练过程的条件下，为内部响应和类别输出生成保持输入位置的 learning image。
+2. 建立从 patch embedding、multi-head attention、MLP 和两次 residual addition 到最终 classifier 的统一扫描方法，使不同层、head、branch 和输出单元能够在同一输入坐标下观察和组合。
+3. 将 learning image 从视觉展示连接到可检验的模型行为，通过输入干预、空间尺度、层头变化和解释器比较评价其反映内部响应的能力。
+4. 将完整类别归因组织为可重构的内部成分图，并据此研究 attention 与 MLP 等计算分支在网络深度上的贡献分配。
+
+本文其余部分安排如下。第 2 节回顾神经元可视化、输入归因、ViT attention 分析和解释评价。第 3 节介绍 NNS-ViT 的 learning image、ViT 算子和完整切分方法。第 4 节说明模型、数据和评价协议。第 5 节展示 ViT 的扫描结果并分析空间结构、干预效果、解释器差异和深度贡献。第 6 节讨论研究局限，第 7 节总结全文并给出后续研究方向。
+
+## 2. 相关工作
+
+### 2.1 神经元与特征可视化
 
 神经网络内部可视化大致分为两类。第一类寻找能够最大化某个单元响应的输入，用于描述模型偏好的刺激；第二类从一个给定输入出发，解释该输入如何形成内部响应或输出。Feature visualization、network dissection、反卷积和类激活图分别从优化输入、语义概念、局部响应和类别判别区域刻画模型。它们提供了有用的观察对象，但不同层的 token、channel 或 feature map 通常不共享统一的输入坐标和守恒关系。
 
 Dou et al. (2023) 提出 Neural Network Scanner（NNS），为 FCN 和 CNN 中的神经元构造 learning image。该方法将输入值连同其位置传播到内部单元，并通过组合神经元图查看卷积、池化和 residual 模块。本文继承“一个内部对象对应一张输入空间图”的研究视角，但采用相对参考输入的路径积分来处理 ViT 中的平滑非线性、输入相关 attention 和类别输出。原工作在 FCN/CNN 上的实验结果不作为本文 ViT 结论的证据。
 
-## 2.2 输入归因与内部路径归因
+### 2.2 输入归因与内部路径归因
 
 Integrated Gradients（IG）沿参考输入到观测输入的路径积分梯度，并满足灵敏度和实现不变性等公理；在数值积分充分时，各输入维度归因之和逼近输出差值（Sundararajan et al., 2017）。本文使用 IG 形式构造内部响应或类别标量的 learning image，因此 reference、积分路径和 completeness 都属于方法定义，而不是显示参数。
 
 内部归因进一步追问一个输出通过哪些隐藏单元或路径形成。Neuron conductance 将 IG 的思想扩展到隐藏单元，度量归因经过单元的流量（Dhamdhere et al., 2018）。本文的完整切分同样使用输入方向导数与下游目标导数的链式分解，并把一个 class-logit 归因组织为 ViT 的 head、attention、MLP 和 residual 成分。该数学关系属于 IG/conductance/path-attribution 范畴；本文关注的是 ViT 结构映射、完整切分验证和相关实证，而不把路径积分或链式法则作为新发明。更完整的 path-attribution 技术对照仍需在投稿前补齐 `[REFERENCE REQUIRED]`。
 
-## 2.3 ViT attention 与类别解释
+### 2.3 ViT attention 与类别解释
 
 ViT 把 patch token 的关系编码在多层多头 attention 中（Dosovitskiy et al., 2021）。Raw CLS attention 可以直接排成 patch 网格，但它不包含完整下游类别导数。Attention rollout 将层间 attention 与 residual 路径递归相乘，用于估计 token 间的累计 attention flow（Abnar and Zuidema, 2020）。Chefer et al. (2021) 将 relevance 与 attention gradient 结合，在 transformer 图上聚合类别相关解释。Grad-CAM 则以目标梯度对特征通道加权，最初用于卷积网络，后续也被适配到 ViT（Selvaraju et al., 2017）。
 
 另一组研究从可视分析角度研究多头 attention。Li et al. (2023) 比较 head importance、patch 邻域关系和跨层 attention pattern；Yeh et al. (2023) 通过 query-key 联合嵌入提供跨输入的全局 attention 视图。这些方法主要呈现 attention 结构或交互模式。本文以输入坐标下的响应贡献为核心对象，并将 raw attention、rollout、Grad-CAM 和 full-model IG 作为不同目标或不同路径的对照，而不是把它们视为同一种热图。
 
-## 2.4 解释评价
+### 2.4 解释评价
 
 解释图的视觉可读性不能替代其与模型响应的关系。已有工作使用删除、插入、faithfulness correlation、sensitivity、randomization 和复杂度等指标评价解释。Komorowski et al. (2023) 在 ViT 医学影像任务中同时比较 faithfulness、sensitivity 和 complexity，说明解释器的评价需要明确目标与指标。本文的主实验采用配对 insertion/deletion 曲线：按解释图排序逐步恢复或替换输入区域，再比较同一内部目标的响应。独立类别输出实验则在固定 50 图队列上比较五类解释器。
 
 稳定性研究表明，输入的微小变化可能显著改变归因。本文把空间稳定性作为独立问题处理。稳定性门未通过时，细粒度 fidelity 的正结果仍按其原目标报告，但不被扩写为几何鲁棒性。随后进行的多尺度聚合仅提供事后探索性解释。
 
-## 3.1 问题定义与 learning image
+## 3. 方法
+
+### 3.1 问题定义与 learning image
 
 令 $x\in\mathbb{R}^{3\times224\times224}$ 为规范化后的图像，$x_0$ 为规范化空间中的全零参考，对应 RGB 灰色 0.5。给定模型中的标量目标 $s(x)$，本文把该目标相对参考的 learning image 定义为
 
@@ -68,7 +78,7 @@ $$
 
 原始 learning image 保留三个 RGB 通道和符号。二维图先对 RGB 通道做带符号求和；正部、负部、signed-log、P99 截断和颜色映射仅用于显示，不参与 completeness、residual additivity 或统计计算。Figures 15–17 说明输入坐标初始化和图像组合，Figure 2 给出真实 attention 响应的 learning image。
 
-## 3.2 ViT 前向结构
+### 3.2 ViT 前向结构
 
 冻结模型接收 $224\times224$ RGB 输入，以 $16\times16$ patch 形成 196 个图像 token，并加入 CLS 与位置编码。第 $b$ 个 transformer block 写为
 
@@ -91,9 +101,9 @@ $$
 
 B0 MLP 的维度为 $768\rightarrow3072\rightarrow768$，使用 GELU。分类器是作用于 final-normalized CLS 的 $\operatorname{Linear}(768,1000)$；它与 block 内 MLP 分支是不同模块。Figures 18 和 24–27 以解析例连接正常前向与 learning image，Figures 28–35 使用真实模型输出。
 
-## 3.3 三类目标
+### 3.3 三类目标
 
-### 3.3.1 模块自身响应
+#### 3.3.1 模块自身响应
 
 对 patch embedding、attention、MLP 或 residual 输出 $q(x)\in\mathbb{R}^{196\times768}$，固定通道 $c$ 的展示目标为
 
@@ -103,7 +113,7 @@ $$
 
 CLS 参与前向 attention，但不进入这一空间 token 求和。$L_{s_{q,c}}$ 回答该模块响应的变化来自哪些输入位置，不乘最终类别的下游导数。Figures 29–33 固定通道 0、255、511 和 767；通道由索引预先确定。
 
-### 3.3.2 固定 clean attention 的条件 Value-path 目标
+#### 3.3.2 固定 clean attention 的条件 Value-path 目标
 
 主干预实验针对 block $b$、head $h$ 的 CLS head-direction。由 clean forward 捕获 attention $A_{\mathrm{clean}}$，并令
 
@@ -118,7 +128,7 @@ $$
 
 $A_{\mathrm{clean}}$、$d$ 与 $u$ 在积分前冻结。该目标保留 Value 随输入变化的路径，切断 Q、K 和 softmax attention 沿积分路径的变化，因此称为 fixed-clean-attention conditional Value-path attribution。它不是完整 Q/K/V 归因，也不是完整类别解释。
 
-### 3.3.3 完整类别输出与完整切分成分
+#### 3.3.3 完整类别输出与完整切分成分
 
 完整类别 learning image 直接令 $s(x)=\ell_y(x)$，梯度经过全部 blocks、final norm、CLS 与 classifier。完整切分进一步在模型内部选取一组不重叠且覆盖计算的成分 $z_k$，用输入路径方向导数与下游类别导数形成成分图 $K_k$。同一 cut 内有
 
@@ -128,7 +138,7 @@ $$
 
 不同 cuts 是同一总归因的不同记账视图，不能跨 cut 再次相加。Figures 19–21 展示 head/branch 成分和重构；Figure 34 直接展示完整 class logit。
 
-## 3.4 Attention 与 residual 的数值对应
+### 3.4 Attention 与 residual 的数值对应
 
 完整 attention learning image 对输入的导数包含 Value 路径和 routing 路径：
 
@@ -147,7 +157,7 @@ $$
 
 加法在原始带符号 RGB 数组上检查，之后才执行显示变换。Figure 23 给出下游类别目标的解析例，Figures 31–33 给出真实 Block 0 的两次 residual。
 
-## 3.5 同目标 patch-token 基线
+### 3.5 同目标 patch-token 基线
 
 主实验的对照首次写作 target-matched patch-token baseline with uniform within-patch allocation。对第 $j$ 个图像 patch token，
 
@@ -164,7 +174,7 @@ $$
 
 NNS 与该基线共享模型、图像、内部目标、reference、干预 fractions 和 tie seeds。二者的坐标定义不同，且不假定逐 patch 总量相等。这个比较检验输入归因排序与 token 贡献的均匀空间展开在同一内部目标上的干预用途。它不同于 Stage S 中按 patch 数、位置和形状匹配的 matched occlusion control。
 
-## 3.6 干预与忠实度估计量
+### 3.6 干预与忠实度估计量
 
 对目标 $t$，令 $\Delta=t(x)-t(x_0)$、$\sigma=\operatorname{sign}(\Delta)$，归一化响应为
 
@@ -185,17 +195,19 @@ $$
 
 正值表示 NNS 排序在配对 insertion/deletion 定义下更高。统计单位是图像；repeat、curve point、cell 和方法都不增加样本量。
 
-## 3.7 显示规则
+### 3.7 显示规则
 
 正式数值来自原始数组。正贡献蓝图使用正部和逐面板 P99（全零时使用 max）缩放；signed 图使用对称色限或 signed-log。需要比较同一坐标下的 NNS 与基线时使用共同色限。逐面板缩放的图只能比较热点位置和空间组织，不能比较跨面板颜色强度。Figure 35 的四个 classifier 标量使用共同 max-absolute signed-log 色标。
 
-## 4.1 模型与预处理
+## 4. 实验设置
+
+### 4.1 模型与预处理
 
 主实验使用冻结的 `vit_base_patch16_224.augreg2_in21k_ft_in1k`。模型含 12 个 transformer blocks，每个 block 含 12 个 attention heads，embedding 宽度为 768；输入为 224x224 RGB，patch 大小为 16x16。Stage D 冻结的 state-dict SHA-256 为 `2e718037429f18ec77aa629471beb2e99993d7383375188bab777aba04d5e4d0`。R10 单图扩展另记录 checkpoint 文件 SHA-256 `489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d`。两者是不同绑定层级的摘要，不在正文中互换。
 
 规范预处理将 RGB 图像短边以 bicubic resize 到 248，随后 center crop 为 224x224，并用 mean 和 standard deviation 均为 $(0.5,0.5,0.5)$ 的变换规范化。Learning image 的 reference 是规范化后的全零张量，对应原 RGB 空间中的均匀灰色 0.5。模型在 evaluation 模式运行。
 
-## 4.2 数据队列与样本角色
+### 4.2 数据队列与样本角色
 
 Stage D 主队列包含 ImageNet-1k 验证集的 500 张图像。样本在 outcome access 之前通过冻结的元数据算法从 50,000 条候选中排序选取，并与早期 Stage C 样本按 sample ID、路径和图像摘要保持不重叠。全部 500 张图像进入确认性分母，不按预测正确性筛选。
 
@@ -203,45 +215,47 @@ C10 的 15 图 holdout 是较早的开发与门控队列，只作为历史结果
 
 Figures 28-35 使用冻结样本 `ILSVRC2012_val_00007922.JPEG`。该图的官方类别和模型 clean argmax 均为 class 235（German shepherd）。这一样本只用于计算对应和方法展示，不进入新的总体推断。
 
-## 4.3 数值积分与计算检查
+### 4.3 数值积分与计算检查
 
 Stage D 的 Value-path learning image 使用 float32 Gauss-Legendre quadrature，阶数按 $[512,1024,2048,4096,8192]$ 递增，并保留第一个满足 conservation 阈值的结果。每个图像的方法对共享 clean input、reference、target、空间投影、fractions 和 tie priorities。任何方向退化、target delta 退化、非有限值、形状错误或缺失 artifact 都按冻结类型记为 invalid，而不换样或填零。
 
 R10 的真实模块页使用 float64 CPU 计算。B0 MLP 与第二 residual 在 128 阶通过 convergence 和 completeness；完整 classifier 路径因非线性更强，递增到 4096 阶。所有 residual identity 都在未着色 RGB 数组上逐坐标验证。
 
-## 4.4 主干预协议
+### 4.4 主干预协议
 
 主目标固定为 block 0/head 9 的 fixed-clean-attention CLS head-direction Value path。NNS 与同目标 patch-token 基线都投影到 3,136 个 4x4 cells。Insertion 从灰色 reference 恢复单元，deletion 从 clean input 替换单元；每个方向包含 21 个 fractions 和 5 个共享 tie repeats。图内先对 repeats 求均值，再形成唯一的图像级 delta-fidelity。
 
 确认性汇总报告 positive count、mean、median、sample standard deviation 和 10,000 次图像级 paired-median percentile bootstrap 95% CI。冻结 PASS 规则要求全部 500 图有效、至少 400 个严格正差值、median 不低于 0.02 且 CI 下界大于 0。C10 与 Stage D 各自保留独立的决策状态。
 
-## 4.5 Secondary/descriptive sensitivity
+### 4.5 Secondary/descriptive sensitivity
 
 Stage E 在同一 500 图队列上比较 4x4-cell 与 native 14x14-patch 评价，并描述四个预定坐标 $(0,9)$、$(4,2)$、$(6,10)$ 和 $(11,2)$。预测分层按模型是否正确分类报告。Stage E 的结果不重选主坐标，也不改变 Stage D 决策。E2 的实际成本超出原预算后使用了明确、仅限该阶段的 owner waiver；E3 在 block 11/head 2 保留两个 IG conservation typed failures，因此 E4 的 package/workflow 通过而 scientific validity 为 `MIXED`。
 
-## 4.6 独立类别解释器比较
+### 4.6 独立类别解释器比较
 
 50 图比较中的 NNS 目标是所有 blocks 的 attention 固定在 clean 状态时的条件类别 logit。Value tensors、head concatenation、output projections、residual paths、MLPs、final norm 和 classifier 保持活动。四个冻结对照为 ViT Grad-CAM、full-model IG、attention rollout 和 raw CLS attention。前两者为类别相关方法；rollout 和 raw CLS attention 不使用类别目标。
 
 Primary contrast 是 NNS minus ViT Grad-CAM，使用未校正的注册检验。NNS minus full-model IG、rollout 和 raw CLS attention 构成 Holm 校正的 secondary family。每个 contrast 的统计单位均为图像，报告 mean、bootstrap 95% CI 和注册 p value。逐面板归一化 atlas 只用于空间形态观察。
 
-## 4.7 完整切分与深度分析
+### 4.7 完整切分与深度分析
 
 完整切分实现首先验证总 NNS 图与同合同 full-model IG 的 identity，再在 135 个 cuts、38,107 个 components 上验证逐 cut 重构。Stage Y 将完整类别贡献分别切分为第一处 residual 的 identity/attention 和第二处 residual 的 residual/MLP。对每个切分，分支绝对贡献份额以该切分两项 absolute mass 之和为分母；两处切分的份额不相加。
 
 深浅层对比和其他机制端点按冻结 family 使用 Holm 校正。六个 claim 分别输出 `SUPPORTED`、`NOT_SUPPORTED`、`INCONCLUSIVE` 或 `INVALID`，不合并为总体 PASS。
 
-## 4.8 稳定性与事后探索分析
+### 4.8 稳定性与事后探索分析
 
 Stage X 在 200 条预期 clean routes 上评价几何稳定性，其中 199 条有效；预定 broad-claim gate 未通过。随后 M2 在 CPU-only 条件下对既有 signed maps 进行 pixel、4x4-cell 与 native-patch 聚合、SSE 分解和跨尺度 association 分析，标记为 post-hoc exploratory。
 
 Stage S 同样作为 post-hoc exploratory 分析，报告目标区域对齐、matched occlusion、深度对齐差值和线性 probe gain。P2 的最终阈值在 outcome access 后确定；原始更严格规则未通过。该分析用于生成后续假设，不改变 Stage D、Stage X 或 Stage Y 的原决策。
 
-## 4.9 可复现性与证据绑定
+### 4.9 可复现性与证据绑定
 
 模型、图像、样本顺序、目标、数值积分、失败类型、统计 seeds 和输出摘要均记录在机器可读 manifest、receipt 与 inventory 中。R10-R4 图包含 35 张 PNG/PDF/SVG，terminal status 为 `PASS_PRESENTATION_RENDER`，且声明 `new_inference=false`。稿件中的数值从冻结 JSON/CSV 读取；PNG 仅用于排版和人工查看。
 
-## 5.1 Learning image 与真实 ViT 前向计算对应
+## 5. 结果与讨论
+
+### 5.1 Learning image 与真实 ViT 前向计算对应
 
 Figures 24-27 先用解析例把输入、patch projection、attention 和 residual 的正常前向值与 learning image 对齐。Attention 的完整输入导数同时包含 $A,dV$ 与 $(dA)V$；Figure 22 显示，固定 clean attention 后得到的条件 Value-path 图与完整路径图不同。Figure 23 则显示，对一个下游标量目标，residual 与 branch 的成分图在输入坐标逐点相加。
 
@@ -251,7 +265,7 @@ Figure 34 将目标延伸到 class 235 的完整 logit。Clean 与 reference log
 
 这些图建立的是计算对象与输入坐标的对应。Module-own-response 图回答内部响应来自哪里，class-logit 图回答最终标量变化来自哪里，margin 图则解释两个类别输出之差。Figures 28-35 使用一张冻结图像，因此它们验证方法和数值关系，而不估计通道语义或类别机制的总体分布。
 
-## 5.2 指定内部目标的细粒度干预结果
+### 5.2 指定内部目标的细粒度干预结果
 
 Stage D 在独立 500 图队列上评价 block 0/head 9 的固定 Value-path 目标。Figure 4 给出每张图像的配对 delta-fidelity，Figure 5 给出 insertion 和 deletion 轨迹。500/500 个差值严格为正，mean 为 2.6307，median 为 2.3082，sample SD 为 1.4807。10,000 次配对图像 bootstrap 得到 median 的 95% CI [2.1111, 2.4452]。该结果通过了预先冻结的 positive-count、effect-size 与 CI 门，Stage D 决策为 `GO_FIDELITY_SCOPE`。
 
@@ -259,7 +273,7 @@ Stage D 在独立 500 图队列上评价 block 0/head 9 的固定 Value-path 目
 
 较早的 C10 15 图队列给出了相同 fidelity component 的正向证据：15/15 个差值为正，中位数 1.7535，95% CI [1.3318, 3.3813]。C10 的复合判定仍为 `NO_GO_NOVELTY`，因为 translation 与 center-crop/resize spatial gates 失败；其 workflow 为 `BLOCKED`，Holm 状态为 `HOLM_BLOCKED_UNDERSPECIFIED`。Stage D 是独立的 fidelity-only 复制与外推，两个 cohort 没有池化。
 
-## 5.3 主效应依赖空间尺度和内部坐标
+### 5.3 主效应依赖空间尺度和内部坐标
 
 Figure 6 比较细粒度、原生 patch 和空间实现。将评价单位改为 14x14 原生 patch 后，500 张图像的 median delta-fidelity 为 0，400 个差值恰为 0，最大绝对差值仅 0.00138。细粒度主效应因此不是一个与评价尺度无关的整体优势；它主要出现在 patch 内的 4x4-cell 排序。
 
@@ -269,13 +283,13 @@ Figure 7 进一步比较四个预定层头坐标。$(0,9)$ 的 valid-only median
 
 Stage E 是 D10 之后的 secondary/descriptive analysis。E2 的非成本条件通过，但实际 cost status 为 `FAIL_COST`，由明确且仅限 E2 的 owner waiver 接受。E3 的两项 typed failure 被保留，最终 E4 package/workflow 通过而 scientific validity 为 `MIXED`。这些状态不改变有效端点的数值，但决定了分母和结论写法。
 
-## 5.4 全 head 图谱描述差异，不建立稳定分工
+### 5.4 全 head 图谱描述差异，不建立稳定分工
 
 Figures 8-9 从一个冻结的中位效应样本展示 144 个 head 及其跨深度空间形态。图谱显示不同 block/head 的热点位置、范围和符号结构不同。Figure 20 还固定 blocks 0、5、11 与 heads 0、5、11，在同一类别目标上展示成分图。
 
 这些图以查看前冻结的索引描述空间组织。跨 head 的显示平均不同于类别贡献的代数求和，因为各 head 可对应不同响应方向和独立缩放。在 Stage Y 联合检验中，effective-head-count 对比为 `INCONCLUSIVE`，allocation-ablation association 和 top-versus-bottom ablation 对比均未达到冻结门。当前证据显示 head 图谱具有差异，稳定语义分工仍未确定。
 
-## 5.5 独立类别解释器比较给出互补而非全面优势
+### 5.5 独立类别解释器比较给出互补而非全面优势
 
 Figures 10-11 比较固定 clean attention 的条件类别 NNS、ViT Grad-CAM、full-model IG、attention rollout 和 raw CLS attention。正式 50 图 primary contrast `NNS - Grad-CAM` 的 mean 为 -0.05585，95% CI [-0.07085, -0.04100]，注册的 unadjusted $p=9.9999\times10^{-6}$。NNS 在该 fidelity 指标上低于 Grad-CAM。
 
@@ -283,13 +297,13 @@ Secondary contrast `NNS - rollout` 的 mean 为 0.03943，95% CI [0.02009, 0.059
 
 方法比较也强调了目标差异。条件 NNS 固定每层 clean attention，但保留 Value、residual、MLP 和 classifier；full-model IG 允许 attention 随积分输入变化；rollout 与 raw CLS attention 不使用类别目标。Figure 10 的逐面板归一化只显示空间形状，方法高低由 Figure 11 的完整 50 图统计决定。
 
-## 5.6 完整切分把同一类别归因组织为内部成分
+### 5.6 完整切分把同一类别归因组织为内部成分
 
 Figure 21 展示一个完整 cut 的重构：residual 成分与 12 个 head 成分在着色前相加，恢复同一 total input IG。实现控制中，总 NNS 图与同合同 full-model IG 的逐元素最大误差为 0。135 个完整 cuts、38,107 个 components 通过验证，审计样本上的最大逐像素 cut 重构误差为 $1.5646\times10^{-6}$。
 
 总图与同合同 full-model IG 相同。完整切分增加的是内部成分索引：同一个类别 attribution 可以按 head、attention、MLP、residual 或其他冻结 cut 查看。每个 cut 都是总归因的一种替代分解，应分别解释。
 
-## 5.7 Attention 与 MLP 的贡献份额随深度向相反方向变化
+### 5.7 Attention 与 MLP 的贡献份额随深度向相反方向变化
 
 Figure 13 报告 100 张图像上两处 residual cut 的分支绝对贡献份额。第一处 residual 中，attention share 的 deep-minus-shallow estimate 为 0.1391，95% CI [0.1282, 0.1533]，Holm-adjusted $p=0.000140$。第二处 residual 中，MLP share 的对应 estimate 为 -0.2492，95% CI [-0.2572, -0.2349]，adjusted $p=0.000140$。
 
@@ -297,25 +311,27 @@ Figure 13 报告 100 张图像上两处 residual cut 的分支绝对贡献份额
 
 Stage Y 的其他结果限制了进一步推断。完整类别目标的 patch 内增益和空间支持深浅差异为 `NOT_SUPPORTED`；head organization 为 `INCONCLUSIVE`；patch mixing 与一组扰动端点因有效分母为 0 而 `INVALID`。因此，分支份额变化不能被解释为 Stage D fidelity 优势的已证实原因，也不能扩写成统一的浅层到深层语义规律。
 
-## 5.8 广义稳定性未通过，多尺度只提供探索性线索
+### 5.8 广义稳定性未通过，多尺度只提供探索性线索
 
 Stage X 的 200 条预期 clean routes 中有 199 条有效，但只有 115 个稳定性 cells 中的 50 个通过，且相对 Grad-CAM 的 stability noninferiority 未通过。Broad-claim development 因而保持 `NO_GO`。这项负结果说明，固定设置下的 fidelity 不能自动推广为输入变换下的稳定解释。
 
 Figure 12 汇总后续 post-hoc exploratory 分析。在冻结共同域内，NNS signed Spearman 从 pixel 的 0.1137 上升到 4x4-cell 的 0.2177 和 native-patch 的 0.3378。局部单元内部残差占 SSE 的 0.9255 和 0.9974，与细粒度区域内部重新分配的解释相符。该分析的机制分支为 `MIXED_OR_INCONCLUSIVE`：粗粒度聚合提高 association，却同时隐藏了主干预实验关注的 patch 内差异。
 
-## 5.9 事后深度扩展区分对齐、遮挡和可解码性
+### 5.9 事后深度扩展区分对齐、遮挡和可解码性
 
 Figure 14 汇总 Stage S 的四个 post-hoc exploratory endpoints。NNS 高贡献区域相对位置对照的目标对齐差值 P1 为 0.06260，ordinary BCa 95% CI [0.05739, 0.06789]，235/240 有效。Matched occlusion 差值 P2 为 0.07494，95% CI [0.05708, 0.09273]，224/240 有效。深层减浅层的对齐差值 D1 为 0.03631，95% CI [0.03162, 0.04097]；线性 probe gain 的 D2 为 0.04615，95% CI [0.04409, 0.04824]。
 
 在 233 张共同有效图像上，D1 与 D2 的 Pearson correlation 仅为 0.00161，same-sign fraction 为 0.6180。总体平均都随深度增加，但逐图变化几乎不线性相关，因此对齐增强和可解码性增强是不同现象。P2 的最终 0.07 阈值在 outcome access 后确定，原始规则未通过；本节只生成后续假设，不提供确认性机制结论。
 
-## 5.10 综合讨论
+### 5.10 综合讨论
 
 本研究把 learning image 从一种内部可视化对象转化为三类可核对的问题。第一，输入坐标下的图能否重构目标变化以及 residual 相加；第二，图的区域排序能否预测对同一目标的输入干预；第三，完整类别归因如何在内部 cut 上分配。方法展示、Stage D 和 Stage X/Y 分别回答这三个层次。
 
 最清晰的正结果位于固定内部目标和细粒度干预：NNS 输入归因排序优于同目标 token 空间基线的均匀展开。原生 patch 尺度差异消失，其他坐标效应缩小，说明 patch 内空间信息和目标选择共同决定了这一结果。独立 class-output comparison 又显示 NNS 并非所有解释器中的第一名。因而，更合适的定位是一个用于观察指定内部响应和分解类别贡献的补充工具。
 
 完整切分把“图看起来不同”推进到成分记账：同一 total attribution 能够被 head 与 branch 重构，分支份额也可以跨深度比较。当前唯一获得 Stage Y 支持的机制主张是 attention 与 MLP 份额的深度变化；其他未支持、未决或无效端点给出了清楚的研究边界。
+
+## 6. 局限
 
 第一，主干预结论具有明确的目标范围。Stage D 解释冻结 ViT-B/16 的 block 0/head 9 fixed-clean-attention Value-path，并在 4x4-cell endpoint 上比较同目标 patch-token 基线。它不是完整类别解释、物体定位指标或人类视觉合理性检验。Native-patch 和其他层头结果显示，该效应不能推广为 ViT 全网络的均匀属性。
 
@@ -331,8 +347,12 @@ Figure 14 汇总 Stage S 的四个 post-hoc exploratory endpoints。NNS 高贡�
 
 最后，当前实验集中在一个冻结 ViT-B/16 和 ImageNet-1k 验证图像上。不同模型规模、训练目标、patch 大小、reference、数据域和视觉任务是否保持相同结论，需要独立研究。
 
-本文把 NNS 的 learning image 视角扩展到 Vision Transformer，在原始输入坐标下描述指定内部响应和类别输出的变化。方法区分模块自身响应、固定 clean attention 的条件 Value-path 与完整类别贡献切分，并将真实计算从 patch embedding、attention 和第一次 residual 延伸到 MLP、第二次 residual、全部 blocks、final norm、CLS 与 classifier。Completeness 和两处 residual 的逐像素加法检查验证了这些图与目标计算的数值对应。
+## 7. 结论与未来工作
 
-在预定 block 0/head 9 与 4x4-cell 干预下，NNS 相对同目标 patch-token 基线（patch 内均匀分配）的忠实度差值在 500/500 张图像上为正，中位数为 2.3082。该差异在原生 patch 尺度上降为 0，并在其他三个层头坐标显著缩小。独立类别解释器比较中，NNS 低于 Grad-CAM、高于 rollout，与 full-model IG 和 raw CLS attention 的差异未明确检出。完整切分则支持 attention 和 MLP 绝对贡献份额随深度以相反方向变化。
+本文提出 NNS-ViT，通过 learning image 观察视觉 Transformer 的内部工作过程。给定训练完成的 ViT 和一幅输入图像，该方法无需修改网络结构，即可把指定内部响应或类别输出表示为一张保持原始输入位置的图像。不同 token、channel、attention head 和网络分支的 learning image 可以在统一坐标下展示和组合，使模型内部原本分散在不同表示空间中的计算过程变得可比较。
 
-这些结果把 learning image 定位为连接输入位置、内部响应、干预评价和成分记账的工具。当前证据支持特定目标与尺度下的细粒度用途，并给出可重构的 ViT 内部贡献视图；空间稳定性、跨目标推广和普遍解释器优势仍需独立验证。
+我们从 patch embedding 开始扫描 ViT，依次研究 attention、MLP、两次 residual addition、跨层贡献以及最终 classifier。真实模型计算表明，learning image 能够对应模块自身响应，并通过完整性和 residual 加法关系进行数值核对。不同通道、head、layer 和类别输出形成不同的空间贡献结构；正确类别、竞争类别和类别间 margin 也对应不同的 learning image。这些结果展示了 ViT 如何从同一输入中组织不同内部响应，并将它们逐步组合成最终输出。
+
+我们进一步从多个角度评价 learning image 的解释能力。输入干预表明，细粒度输入贡献能够提供原生 patch-token 表示未直接展开的空间排序信息；尺度和层头分析说明这种信息随观察对象和评价尺度变化。与其他 ViT 解释方法的比较显示，NNS-ViT 提供的是互补的内部响应视角。完整切分则把最终类别归因分配到 attention head、MLP 和 residual 等内部成分，在保持总归因可重构的同时，揭示不同计算分支随网络深度发生的贡献重组。
+
+NNS-ViT 为视觉 Transformer 建立了一条从输入位置到内部响应、再到最终类别输出的可视化路径。它既可以用于观察单个组件学到了什么，也可以组合多个组件来分析模型如何工作，并通过干预和成分重构检验这些观察。未来工作将把该方法扩展到更多 Vision Transformer 架构、训练目标和视觉任务，研究跨样本稳定的 head 与通道组织，改进输入变化下的空间稳定性，并探索 learning image 在模型诊断、结构比较和模型优化中的应用。

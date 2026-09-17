@@ -1,20 +1,22 @@
 # 1. 引言
 
-视觉 Transformer（ViT）将图像切分为 patch，将 patch 投影为 token，并通过多头自注意力和逐 token 的 MLP 反复更新 token 序列（Dosovitskiy et al., 2021）。这种结构为图像分类提供了强大的表征能力，也带来了多层次的内部观察对象：一个响应可以属于某个 token、channel、head、branch、residual stream 或最终类别输出。仅查看激活值或 attention 权重，往往难以回答另一个更直接的问题：指定内部响应相对参考输入的变化，分别来自原图的哪些位置？
+人工神经网络已经成为图像识别的重要工具，但模型如何从输入图像中形成内部表征和最终判断，仍然难以直接观察。可解释性研究通常从输入、内部单元或输出三个层次描述模型：输入归因指出哪些区域与预测相关，特征可视化呈现内部单元偏好的模式，attention 可视化展示信息在 token 之间的传递。不同方法产生的结果具有不同的坐标、目标和含义，因此很难把它们连成一条完整的模型工作过程。
 
-神经元和特征可视化为理解深度网络提供了多种视角。Activation maximization 寻找能够激活单元的输入，saliency 与归因方法解释给定输入，attention 可视化则呈现 token 之间的路由结构。Dou et al. (2023) 提出的 Neural Network Scanner（NNS）为 FCN 和 CNN 中的神经元构造 learning image，把单元响应表示为保留输入位置的图像，并允许将多个神经元图组合起来查看模块。将这一视角用于 ViT 不能只把 token 网格放大到图像尺寸：attention 的权重依赖输入，residual 把旁路与分支相加，类别输出又经过多层 token mixing、final normalization 和 CLS classifier。
+视觉 Transformer（ViT）进一步放大了这一问题。ViT 先把图像划分为 patch，再将 patch 编码为 token；每个 transformer block 使用多头注意力交换 token 信息，使用 MLP 变换通道表示，并通过两次 residual addition 保留和叠加信息。经过多层计算后，CLS token 被送入分类器形成类别输出（Dosovitskiy et al., 2021）。在这一过程中，输入图像、patch token、attention head、MLP branch、residual stream 和类别 logit 分属不同表示空间。普通 feature map 或 attention map 可以显示某一层的响应，却难以持续回答“这个响应从原图的哪里学来”以及“不同内部响应怎样组合成最终输出”。
 
-本文研究三个相互关联的问题。第一，如何为 ViT 内部响应和类别输出定义输入坐标下的 learning image，并让其数值和真实前向计算对应？第二，这些图给出的区域排序是否能通过输入干预进行评价？第三，完整类别归因能否按 head、attention、MLP 和 residual 成分记账，从而描述贡献随深度的分配？Figure 1 概括了从内部目标、learning image 到干预和结构分析的研究路径；Figure 2 展示一个真实 attention 通道响应及其输入位置正贡献；Figure 3 给出两种排序在共同空间单元上的干预比较。
+Dou et al. (2023) 提出的 Neural Network Scanner（NNS）从神经元层级观察网络。其核心对象是 learning image：给定一个输入和网络单元，为该单元构造一张保持输入位置的图像，用来表示该单元从输入中学到的特征；多个单元的 learning image 可以进一步组合，以分析层和网络组件的工作过程。原方法在 FCN 和 CNN 上展示了这种统一可视化方式。ViT 的计算结构不同于 FCN 和 CNN：attention 权重随输入变化，多个 head 共同产生输出，MLP 和 residual 在每个 block 内交替作用，最终分类依赖全部 blocks 和 CLS token。因此，将 learning image 用于 ViT，需要重新定义内部观察对象，并保持 attention、branch 和 classifier 之间的计算关系。
 
-我们沿直线路径使用积分梯度构造 learning image，并明确区分三种对象。模块自身响应图解释 patch embedding、attention、MLP 或 residual 输出本身；固定 clean attention 的条件 Value-path 图解释一个预先指定的内部方向，同时切断 Q/K/softmax 随积分输入变化的路径；完整切分类别成分图保留最终类别导数，并把同一个 full-model IG 总图分配给内部成分。该区分使图像、目标和允许的结论保持一致。
+本文提出 NNS-ViT，用统一的输入空间图像扫描视觉 Transformer。对于任意选定的内部标量响应，NNS-ViT 沿参考输入到观测输入的路径累计输入贡献，并把这些贡献放回原始位置。这样，patch embedding 中的一个通道、attention 输出中的一个方向、MLP 分支、residual 输出以及最终类别 logit 都可以对应一张 learning image。不同内部成分的图可以在满足完整切分的条件下组合，使同一类别输出能够按 attention head、MLP 和 residual 路径展开。Figure 1 展示 NNS-ViT 的整体扫描视角，Figure 2 展示真实内部响应与 learning image 的对应，Figures 15–27 进一步说明其初始化、组合和 ViT 算子计算。
 
-本文的主要实证来自一个冻结 ViT-B/16 和独立的 500 图像队列。在 block 0/head 9 的固定内部目标上，NNS 的 4x4-cell 区域排序相对同目标 patch-token 基线（patch 内均匀分配）在全部 500 张图像上取得正的忠实度差值，中位数为 2.3082。原生 patch 尺度的中位差值为 0，其他三个预定层头坐标的效应也明显较小。在独立的 50 图像类别解释器比较中，NNS 的 fidelity 低于 Grad-CAM、高于 rollout，与 full-model IG 和 raw CLS attention 的差异未明确检出。完整切分的 100 图分析则支持 attention 与 MLP 分支份额随深度以不同方向变化。
+基于这一表示，我们研究 ViT 工作过程中的四类问题。第一，patch embedding、attention、MLP 和 residual 分别从输入图像的哪些位置形成响应，这些响应如何沿 block 继续组合并到达 classifier。第二，learning image 中的空间结构是否与真实模型响应相关，即按照图中的贡献排序改变输入时，目标响应是否随之变化。第三，不同 layer、head、spatial scale 和类别目标产生的学习图像有何差异，以及一张 attention map 能否代表完整的模型解释。第四，完整类别贡献如何分配给内部 head 和 branch，这种分配是否随网络深度改变。
 
-本文的贡献包括：
+实验在训练完成的 ViT-B/16 上展开。我们首先用解析示例和真实模型输出验证 learning image 的数值完整性、attention 路径以及 residual 加法关系，并把扫描过程从 patch embedding 延伸到最终类别输出。随后，通过大样本输入干预检验区域排序，结果显示 learning image 能揭示 patch 内部对特定响应有用的空间差异；这种作用取决于评价尺度和内部位置。跨层与全 head 图谱显示 ViT 内部形成多样的空间响应，而独立解释器比较表明不同解释方法各有适用范围。最后，完整切分把最终类别归因分配到 attention 与 MLP 等内部成分，显示这些分支的贡献份额随深度重新组织。
 
-1. 为 ViT 内部标量和类别标量建立输入坐标 learning image，并给出 patch embedding、attention、MLP、两次 residual 与 classifier 路径的对应关系。
-2. 在真实冻结模型上验证 completeness 和 residual additivity，将模块展示从 patch embedding 延伸到完整 class logit，并比较正确类、最强竞争类、margin 与低分输出。
-3. 用 500 图细粒度干预评价指定内部目标的区域排序，并通过尺度、层头、预测分层和独立解释器比较界定经验范围。
-4. 以完整切分将类别归因组织为内部成分，报告可重构性和跨深度分支份额，同时保留稳定性失败、无效端点和事后探索结果。
+本文的主要贡献如下：
 
-后文先回顾 NNS、输入归因和 ViT 解释研究，再定义方法与实验协议。结果部分从真实模块计算开始，随后报告干预、敏感性、方法比较、完整切分和深度分析，最后讨论适用范围与局限。
+1. 提出面向视觉 Transformer 的 NNS-ViT，在不改变模型结构和训练过程的条件下，为内部响应和类别输出生成保持输入位置的 learning image。
+2. 建立从 patch embedding、multi-head attention、MLP 和两次 residual addition 到最终 classifier 的统一扫描方法，使不同层、head、branch 和输出单元能够在同一输入坐标下观察和组合。
+3. 将 learning image 从视觉展示连接到可检验的模型行为，通过输入干预、空间尺度、层头变化和解释器比较评价其反映内部响应的能力。
+4. 将完整类别归因组织为可重构的内部成分图，并据此研究 attention 与 MLP 等计算分支在网络深度上的贡献分配。
+
+本文其余部分安排如下。第 2 节回顾神经元可视化、输入归因、ViT attention 分析和解释评价。第 3 节介绍 NNS-ViT 的 learning image、ViT 算子和完整切分方法。第 4 节说明模型、数据和评价协议。第 5 节展示 ViT 的扫描结果并分析空间结构、干预效果、解释器差异和深度贡献。第 6 节讨论研究局限，第 7 节总结全文并给出后续研究方向。

@@ -17,7 +17,7 @@ Affiliations: [AFFILIATION REQUIRED]
 
 ## Central claim
 
-A learning image expresses a specified ViT response or class output as signed contributions in input coordinates, placing module-level observation, intervention-based evaluation, and internal component accounting in one framework. In the frozen 500-image study of block 0/head 9, the input-attribution ranking has higher fidelity at the 4x4-cell scale than a target-matched patch-token baseline with uniform within-patch allocation. The result depends on the evaluation scale and internal coordinate and does not imply superiority over all class-output explainers.
+NNS-ViT constructs input-aligned learning images for internal Vision Transformer responses and places tokens, channels, attention heads, MLPs, residual branches, and class outputs in one coordinate system for observation and composition. The paper follows the complete ViT computation to show how internal responses arise from an image, then uses input intervention, explainer comparison, and complete cuts to study their explanatory use and organization across depth.
 
 ## Figure groups
 

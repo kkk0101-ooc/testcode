@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Assemble bilingual Markdown reading copies from authoritative section files."""
 
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,16 +21,16 @@ TITLES = {
 }
 
 
+def demote_headings(text: str) -> str:
+    """Keep one document title by moving section headings down one level."""
+    return re.sub(r"^(#{1,5})(?=\s)", r"\1#", text, flags=re.MULTILINE)
+
+
 def assemble(language: str) -> None:
     chunks = [TITLES[language]]
     for name in SECTIONS:
         text = (ROOT / language / name).read_text(encoding="utf-8").strip()
-        lines = text.splitlines()
-        if lines and lines[0].startswith("# "):
-            lines = lines[1:]
-            while lines and not lines[0].strip():
-                lines.pop(0)
-        chunks.append("\n".join(lines))
+        chunks.append(demote_headings(text))
     output = "\n\n".join(chunks).rstrip() + "\n"
     (ROOT / language / "full_draft.md").write_text(output, encoding="utf-8")
 

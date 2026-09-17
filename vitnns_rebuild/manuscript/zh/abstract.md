@@ -1,9 +1,9 @@
 # 摘要
 
-视觉 Transformer（ViT）把图像表示为 patch token，并通过多头注意力、MLP 与残差流逐层变换这些表示。常规激活图描述内部响应的大小，却不直接说明指定响应相对参考输入的变化来自哪些输入位置。本文将 Neural Network Scanner 的 learning image 视角扩展到 ViT：通过输入路径积分，把内部标量或类别 logit 的变化分配回原始输入坐标；同时区分模块自身响应图、固定 clean attention 的条件 Value-path 归因和完整类别贡献的内部成分图。真实 ViT-B/16 计算从 patch embedding、block-0 attention 和第一次 residual 延伸至 block-0 MLP、第二次 residual、全部 12 个 blocks、final norm、CLS 与 classifier，并以 completeness 和逐像素 residual additivity 检查数值对应。
+视觉 Transformer 以图像 patch 为基本输入单元，通过多头注意力、前馈网络和残差连接逐层形成视觉表征。然而，模型内部的 token、通道、注意力头和分支响应通常处在不同的表示空间中，难以用统一方式观察它们从输入图像中学到了什么，以及这些内部响应如何共同形成最终预测。本文提出 NNS-ViT，将 Neural Network Scanner 的 learning image 方法扩展到视觉 Transformer。对于给定图像，NNS-ViT 为指定的内部响应生成一张保持原始输入位置的学习图像，并允许将不同神经元、注意力头和网络分支的学习图像组合起来，从而在统一的图像坐标中观察 ViT 的工作过程。该方法无需改变模型结构或重新训练模型。
 
-在冻结的 500 图像队列中，我们针对预定的 block 0/head 9 内部目标，以 4x4 输入单元进行配对 insertion/deletion 干预。NNS 相对同目标 patch-token 基线（patch 内均匀分配）的图像级忠实度差值在 500/500 张图像上为正，中位数为 2.3082，配对中位数 bootstrap 95% 置信区间为 [2.1111, 2.4452]。在原生 14x14 patch 评价下，中位差值降为 0，说明主效应依赖细粒度评价。独立的 50 图像类别输出比较中，NNS 低于 ViT Grad-CAM、高于 attention rollout；与完整模型 IG 和 raw CLS attention 的差异未达到注册检验的显著性。完整切分分析进一步显示，深层相对浅层的 attention 绝对贡献份额增加 0.1391，而 MLP 份额减少 0.2492。
+我们围绕 ViT 的完整计算链开展研究，从 patch embedding 开始，依次分析多头注意力、MLP、残差连接、跨层贡献分配以及最终分类输出。实验首先验证学习图像与真实模块响应之间的数值对应关系，并通过输入干预评价学习图像所给出的区域排序；随后比较不同空间尺度、不同层和注意力头上的解释结果，并与多种 ViT 解释方法进行对照；最后，将完整类别归因分解到内部注意力头和网络分支，以分析视觉信息在网络深度方向上的组织与变化。
 
-Learning image 能在统一输入坐标下连接 ViT 内部响应、区域排序和成分分配。其经验表现随目标、空间尺度和内部路径而变化；广义空间稳定性门未通过，独立类别输出比较中的 Grad-CAM fidelity 更高。
+实验结果表明，NNS-ViT 能够在输入空间中呈现 ViT 不同内部组件的响应来源，揭示原生 patch 表示中未直接展开的细粒度空间结构，并将这些结构与模型响应的变化联系起来。不同层、注意力头和分支形成了不同的学习图像，类别贡献在网络深度上也发生系统性的重新分配。同时，解释效果随目标、空间尺度和内部路径而变化，说明 ViT 的内部工作机制不能由单一 attention 图或单一层级概括。NNS-ViT 为观察、比较和评价视觉 Transformer 的内部计算提供了一种统一的输入空间视角。
 
-**关键词：** Vision Transformer；Neural Network Scanner；learning image；内部归因；积分梯度；忠实度；贡献分解
+**关键词：** Vision Transformer；Neural Network Scanner；learning image；神经网络可视化；内部响应；贡献分解；可解释性
