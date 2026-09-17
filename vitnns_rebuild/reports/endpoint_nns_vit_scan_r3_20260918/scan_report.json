@@ -1,0 +1,1794 @@
+{
+  "baseline_forward_count": 0,
+  "blocks": [
+    0,
+    5,
+    11
+  ],
+  "canonical_digest": "912c8d4dbe4f5d15c80826e36965a2a54a1a6c4c28819f3df58d1805f00bd1f9",
+  "checks": {
+    "b0_residual1_closure_max_abs": 2.0816681711721685e-16,
+    "b0_residual2_closure_max_abs": 4.996003610813204e-16,
+    "b0_terminal_cut_identity_max_abs": 0.0,
+    "b0_terminal_heads_with_bypass_closure_max_abs": 2.0816681711721685e-16,
+    "b0_terminal_qkv_with_bypass_closure_max_abs": 2.0816681711721685e-16,
+    "b0_terminal_residual1_closure_max_abs": 2.0816681711721685e-16,
+    "b0_terminal_residual2_closure_max_abs": 1.5265566588595902e-16,
+    "b0_terminal_routing_value_with_bypass_closure_max_abs": 2.0816681711721685e-16,
+    "b11_residual1_closure_max_abs": 3.4638958368304884e-14,
+    "b11_residual2_closure_max_abs": 7.061018436615996e-14,
+    "b11_terminal_cut_identity_max_abs": 0.0,
+    "b11_terminal_heads_with_bypass_closure_max_abs": 4.388850394221322e-16,
+    "b11_terminal_qkv_with_bypass_closure_max_abs": 2.526292705844896e-16,
+    "b11_terminal_residual1_closure_max_abs": 2.0946785972419946e-16,
+    "b11_terminal_residual2_closure_max_abs": 4.440892098500626e-16,
+    "b11_terminal_routing_value_with_bypass_closure_max_abs": 2.526292705844896e-16,
+    "b5_residual1_closure_max_abs": 4.3576253716537394e-15,
+    "b5_residual2_closure_max_abs": 5.88418203051333e-15,
+    "b5_terminal_cut_identity_max_abs": 0.0,
+    "b5_terminal_heads_with_bypass_closure_max_abs": 2.5847379792054426e-16,
+    "b5_terminal_qkv_with_bypass_closure_max_abs": 1.942890293094024e-16,
+    "b5_terminal_residual1_closure_max_abs": 1.93421667571414e-16,
+    "b5_terminal_residual2_closure_max_abs": 3.5388358909926865e-16,
+    "b5_terminal_routing_value_with_bypass_closure_max_abs": 1.942890293094024e-16,
+    "head_component_identity_max_abs": 0.0,
+    "independent_class_endpoint_max_abs": 0.0,
+    "native_logits_max_abs": 0.0,
+    "qkv_closure_max_abs": 5.929230630780102e-21
+  },
+  "code": [
+    {
+      "path": "scripts/run_endpoint_vit_scan.py",
+      "sha256": "3990315a204294a9618f023c335fff9139a6004249a234c816a2bfef9e1082c1"
+    },
+    {
+      "path": "src/vitnns/endpoint_vit.py",
+      "sha256": "eb619cdec871e0f5e7e47ff5e5be747a3adee4c6ea77e6d3cd4d3a0b2049eab6"
+    },
+    {
+      "path": "src/vitnns/endpoint_nns.py",
+      "sha256": "b885ba69c671b6ef2b75bbea6c6eb05d162677f1bc4a39c81a5dfd41a6ff4df8"
+    },
+    {
+      "path": "src/vitnns/modeling.py",
+      "sha256": "3f3244cbd9e7e63ca7e74da1a19828be9a375ecfeb05472a541ae80c056327de"
+    }
+  ],
+  "decomposition_forward_count": 3,
+  "decompositions": {
+    "0": {
+      "closure_max_abs": {
+        "heads_with_bypass": 2.0816681711721685e-16,
+        "qkv_with_bypass": 2.0816681711721685e-16,
+        "residual1": 2.0816681711721685e-16,
+        "residual2": 1.5265566588595902e-16,
+        "routing_value_with_bypass": 2.0816681711721685e-16
+      },
+      "closure_relative_l2": {
+        "heads_with_bypass": 8.926773121759164e-16,
+        "qkv_with_bypass": 8.765950995946811e-16,
+        "residual1": 8.718623018832852e-16,
+        "residual2": 9.055626298618517e-16,
+        "routing_value_with_bypass": 8.746882294300731e-16
+      },
+      "components": {
+        "attention": {
+          "absolute_endpoint_mass": 38.57117895323675,
+          "array_key": "cut_b0__attention",
+          "component_id": "attention",
+          "signed_endpoint_contribution": 0.7697057180713005,
+          "target_id": "class_logit"
+        },
+        "carry": {
+          "absolute_endpoint_mass": 87.37197626789664,
+          "array_key": "cut_b0__carry",
+          "component_id": "carry",
+          "signed_endpoint_contribution": 1.1658678221585306,
+          "target_id": "class_logit"
+        },
+        "head_0": {
+          "absolute_endpoint_mass": 1.9374368805624633,
+          "array_key": "cut_b0__head_0",
+          "component_id": "head_0",
+          "signed_endpoint_contribution": 0.3264046039474238,
+          "target_id": "class_logit"
+        },
+        "head_1": {
+          "absolute_endpoint_mass": 7.328250357029759,
+          "array_key": "cut_b0__head_1",
+          "component_id": "head_1",
+          "signed_endpoint_contribution": 0.06736389217564319,
+          "target_id": "class_logit"
+        },
+        "head_10": {
+          "absolute_endpoint_mass": 2.005353438035644,
+          "array_key": "cut_b0__head_10",
+          "component_id": "head_10",
+          "signed_endpoint_contribution": 0.04617428394811218,
+          "target_id": "class_logit"
+        },
+        "head_11": {
+          "absolute_endpoint_mass": 3.7014054315556884,
+          "array_key": "cut_b0__head_11",
+          "component_id": "head_11",
+          "signed_endpoint_contribution": -0.00340992650051904,
+          "target_id": "class_logit"
+        },
+        "head_2": {
+          "absolute_endpoint_mass": 3.9197565460286947,
+          "array_key": "cut_b0__head_2",
+          "component_id": "head_2",
+          "signed_endpoint_contribution": -0.0319312744513965,
+          "target_id": "class_logit"
+        },
+        "head_3": {
+          "absolute_endpoint_mass": 5.143291839213185,
+          "array_key": "cut_b0__head_3",
+          "component_id": "head_3",
+          "signed_endpoint_contribution": 0.02774975256050242,
+          "target_id": "class_logit"
+        },
+        "head_4": {
+          "absolute_endpoint_mass": 1.1369602908500982,
+          "array_key": "cut_b0__head_4",
+          "component_id": "head_4",
+          "signed_endpoint_contribution": -0.014536071407977599,
+          "target_id": "class_logit"
+        },
+        "head_5": {
+          "absolute_endpoint_mass": 1.4268870414030626,
+          "array_key": "cut_b0__head_5",
+          "component_id": "head_5",
+          "signed_endpoint_contribution": -0.028214817468625877,
+          "target_id": "class_logit"
+        },
+        "head_6": {
+          "absolute_endpoint_mass": 17.865790606653597,
+          "array_key": "cut_b0__head_6",
+          "component_id": "head_6",
+          "signed_endpoint_contribution": 0.2440983468212336,
+          "target_id": "class_logit"
+        },
+        "head_7": {
+          "absolute_endpoint_mass": 2.064578817575047,
+          "array_key": "cut_b0__head_7",
+          "component_id": "head_7",
+          "signed_endpoint_contribution": 0.08933400166439816,
+          "target_id": "class_logit"
+        },
+        "head_8": {
+          "absolute_endpoint_mass": 7.7433764581603555,
+          "array_key": "cut_b0__head_8",
+          "component_id": "head_8",
+          "signed_endpoint_contribution": -0.017096366536533722,
+          "target_id": "class_logit"
+        },
+        "head_9": {
+          "absolute_endpoint_mass": 14.556582472349575,
+          "array_key": "cut_b0__head_9",
+          "component_id": "head_9",
+          "signed_endpoint_contribution": 0.06376929331903988,
+          "target_id": "class_logit"
+        },
+        "identity": {
+          "absolute_endpoint_mass": 236.0857477039824,
+          "array_key": "cut_b0__identity",
+          "component_id": "identity",
+          "signed_endpoint_contribution": 0.6517566463014395,
+          "target_id": "class_logit"
+        },
+        "key": {
+          "absolute_endpoint_mass": 4.181357722125403,
+          "array_key": "cut_b0__key",
+          "component_id": "key",
+          "signed_endpoint_contribution": 0.008170345911300031,
+          "target_id": "class_logit"
+        },
+        "mlp": {
+          "absolute_endpoint_mass": 193.01212911165135,
+          "array_key": "cut_b0__mlp",
+          "component_id": "mlp",
+          "signed_endpoint_contribution": 0.2555945422142085,
+          "target_id": "class_logit"
+        },
+        "query": {
+          "absolute_endpoint_mass": 9.25219157649926,
+          "array_key": "cut_b0__query",
+          "component_id": "query",
+          "signed_endpoint_contribution": 0.6090986064930151,
+          "target_id": "class_logit"
+        },
+        "routing": {
+          "absolute_endpoint_mass": 11.567527441465316,
+          "array_key": "cut_b0__routing",
+          "component_id": "routing",
+          "signed_endpoint_contribution": 0.6172689524043151,
+          "target_id": "class_logit"
+        },
+        "value": {
+          "absolute_endpoint_mass": 34.474317785761684,
+          "array_key": "cut_b0__value",
+          "component_id": "value",
+          "signed_endpoint_contribution": 0.15243676566698552,
+          "target_id": "class_logit"
+        }
+      },
+      "cuts": {
+        "heads_with_bypass": [
+          "identity",
+          "head_0",
+          "head_1",
+          "head_2",
+          "head_3",
+          "head_4",
+          "head_5",
+          "head_6",
+          "head_7",
+          "head_8",
+          "head_9",
+          "head_10",
+          "head_11"
+        ],
+        "qkv_with_bypass": [
+          "identity",
+          "query",
+          "key",
+          "value"
+        ],
+        "residual1": [
+          "identity",
+          "attention"
+        ],
+        "residual2": [
+          "carry",
+          "mlp"
+        ],
+        "routing_value_with_bypass": [
+          "identity",
+          "routing",
+          "value"
+        ]
+      },
+      "target": {
+        "channel": 0,
+        "class_id": 235,
+        "head": null,
+        "kind": "logit",
+        "location": "output",
+        "module": "",
+        "name": "class_logit",
+        "other_class_id": null,
+        "token": 0
+      },
+      "value": 8.082623617531002
+    },
+    "11": {
+      "closure_max_abs": {
+        "heads_with_bypass": 4.388850394221322e-16,
+        "qkv_with_bypass": 2.526292705844896e-16,
+        "residual1": 2.0946785972419946e-16,
+        "residual2": 4.440892098500626e-16,
+        "routing_value_with_bypass": 2.526292705844896e-16
+      },
+      "closure_relative_l2": {
+        "heads_with_bypass": 2.5631618777582652e-15,
+        "qkv_with_bypass": 2.4490865169689266e-15,
+        "residual1": 2.298063434597027e-15,
+        "residual2": 3.1374553464610362e-15,
+        "routing_value_with_bypass": 2.450081723184913e-15
+      },
+      "components": {
+        "attention": {
+          "absolute_endpoint_mass": 135.43709897419365,
+          "array_key": "cut_b11__attention",
+          "component_id": "attention",
+          "signed_endpoint_contribution": 0.4688291605229218,
+          "target_id": "class_logit"
+        },
+        "carry": {
+          "absolute_endpoint_mass": 215.81383225130767,
+          "array_key": "cut_b11__carry",
+          "component_id": "carry",
+          "signed_endpoint_contribution": 3.0284185582224636,
+          "target_id": "class_logit"
+        },
+        "head_0": {
+          "absolute_endpoint_mass": 7.259461989930421,
+          "array_key": "cut_b11__head_0",
+          "component_id": "head_0",
+          "signed_endpoint_contribution": 0.12829870062646637,
+          "target_id": "class_logit"
+        },
+        "head_1": {
+          "absolute_endpoint_mass": 6.655768774239116,
+          "array_key": "cut_b11__head_1",
+          "component_id": "head_1",
+          "signed_endpoint_contribution": 0.0012318093029180296,
+          "target_id": "class_logit"
+        },
+        "head_10": {
+          "absolute_endpoint_mass": 2.9881625605478943,
+          "array_key": "cut_b11__head_10",
+          "component_id": "head_10",
+          "signed_endpoint_contribution": 0.060904090510083254,
+          "target_id": "class_logit"
+        },
+        "head_11": {
+          "absolute_endpoint_mass": 12.123322069085532,
+          "array_key": "cut_b11__head_11",
+          "component_id": "head_11",
+          "signed_endpoint_contribution": -0.01780490137299824,
+          "target_id": "class_logit"
+        },
+        "head_2": {
+          "absolute_endpoint_mass": 20.238612102029787,
+          "array_key": "cut_b11__head_2",
+          "component_id": "head_2",
+          "signed_endpoint_contribution": 0.14926754496961042,
+          "target_id": "class_logit"
+        },
+        "head_3": {
+          "absolute_endpoint_mass": 50.810538211437134,
+          "array_key": "cut_b11__head_3",
+          "component_id": "head_3",
+          "signed_endpoint_contribution": 0.003940676799978109,
+          "target_id": "class_logit"
+        },
+        "head_4": {
+          "absolute_endpoint_mass": 4.71012020774776,
+          "array_key": "cut_b11__head_4",
+          "component_id": "head_4",
+          "signed_endpoint_contribution": 0.046989038526455994,
+          "target_id": "class_logit"
+        },
+        "head_5": {
+          "absolute_endpoint_mass": 52.21595045280268,
+          "array_key": "cut_b11__head_5",
+          "component_id": "head_5",
+          "signed_endpoint_contribution": 0.14565012396161642,
+          "target_id": "class_logit"
+        },
+        "head_6": {
+          "absolute_endpoint_mass": 3.491068916632513,
+          "array_key": "cut_b11__head_6",
+          "component_id": "head_6",
+          "signed_endpoint_contribution": 0.03756028274008146,
+          "target_id": "class_logit"
+        },
+        "head_7": {
+          "absolute_endpoint_mass": 21.065473003991748,
+          "array_key": "cut_b11__head_7",
+          "component_id": "head_7",
+          "signed_endpoint_contribution": -0.049759734288993863,
+          "target_id": "class_logit"
+        },
+        "head_8": {
+          "absolute_endpoint_mass": 20.47472978998165,
+          "array_key": "cut_b11__head_8",
+          "component_id": "head_8",
+          "signed_endpoint_contribution": 0.07316748232042578,
+          "target_id": "class_logit"
+        },
+        "head_9": {
+          "absolute_endpoint_mass": 26.537632555694408,
+          "array_key": "cut_b11__head_9",
+          "component_id": "head_9",
+          "signed_endpoint_contribution": -0.11061595357272098,
+          "target_id": "class_logit"
+        },
+        "identity": {
+          "absolute_endpoint_mass": 125.8761299648438,
+          "array_key": "cut_b11__identity",
+          "component_id": "identity",
+          "signed_endpoint_contribution": 0.9526332038498148,
+          "target_id": "class_logit"
+        },
+        "key": {
+          "absolute_endpoint_mass": 55.674167489085576,
+          "array_key": "cut_b11__key",
+          "component_id": "key",
+          "signed_endpoint_contribution": 0.28274907496541124,
+          "target_id": "class_logit"
+        },
+        "mlp": {
+          "absolute_endpoint_mass": 113.09723881477788,
+          "array_key": "cut_b11__mlp",
+          "component_id": "mlp",
+          "signed_endpoint_contribution": -1.6069561938497223,
+          "target_id": "class_logit"
+        },
+        "query": {
+          "absolute_endpoint_mass": 68.22953643245714,
+          "array_key": "cut_b11__query",
+          "component_id": "query",
+          "signed_endpoint_contribution": -0.43600011951364537,
+          "target_id": "class_logit"
+        },
+        "routing": {
+          "absolute_endpoint_mass": 94.83514944598694,
+          "array_key": "cut_b11__routing",
+          "component_id": "routing",
+          "signed_endpoint_contribution": -0.15325104454823407,
+          "target_id": "class_logit"
+        },
+        "value": {
+          "absolute_endpoint_mass": 81.51561877370389,
+          "array_key": "cut_b11__value",
+          "component_id": "value",
+          "signed_endpoint_contribution": 0.6220802050711582,
+          "target_id": "class_logit"
+        }
+      },
+      "cuts": {
+        "heads_with_bypass": [
+          "identity",
+          "head_0",
+          "head_1",
+          "head_2",
+          "head_3",
+          "head_4",
+          "head_5",
+          "head_6",
+          "head_7",
+          "head_8",
+          "head_9",
+          "head_10",
+          "head_11"
+        ],
+        "qkv_with_bypass": [
+          "identity",
+          "query",
+          "key",
+          "value"
+        ],
+        "residual1": [
+          "identity",
+          "attention"
+        ],
+        "residual2": [
+          "carry",
+          "mlp"
+        ],
+        "routing_value_with_bypass": [
+          "identity",
+          "routing",
+          "value"
+        ]
+      },
+      "target": {
+        "channel": 0,
+        "class_id": 235,
+        "head": null,
+        "kind": "logit",
+        "location": "output",
+        "module": "",
+        "name": "class_logit",
+        "other_class_id": null,
+        "token": 0
+      },
+      "value": 8.082623617531002
+    },
+    "5": {
+      "closure_max_abs": {
+        "heads_with_bypass": 2.5847379792054426e-16,
+        "qkv_with_bypass": 1.942890293094024e-16,
+        "residual1": 1.93421667571414e-16,
+        "residual2": 3.5388358909926865e-16,
+        "routing_value_with_bypass": 1.942890293094024e-16
+      },
+      "closure_relative_l2": {
+        "heads_with_bypass": 2.2362073930505478e-15,
+        "qkv_with_bypass": 2.2134915134293386e-15,
+        "residual1": 2.0878636733367875e-15,
+        "residual2": 2.3718650048423916e-15,
+        "routing_value_with_bypass": 2.2123373572941563e-15
+      },
+      "components": {
+        "attention": {
+          "absolute_endpoint_mass": 113.00569572433113,
+          "array_key": "cut_b5__attention",
+          "component_id": "attention",
+          "signed_endpoint_contribution": 0.49675363762547575,
+          "target_id": "class_logit"
+        },
+        "carry": {
+          "absolute_endpoint_mass": 213.12813728802917,
+          "array_key": "cut_b5__carry",
+          "component_id": "carry",
+          "signed_endpoint_contribution": 0.8566915370437272,
+          "target_id": "class_logit"
+        },
+        "head_0": {
+          "absolute_endpoint_mass": 27.60807005820134,
+          "array_key": "cut_b5__head_0",
+          "component_id": "head_0",
+          "signed_endpoint_contribution": -0.12095941055553726,
+          "target_id": "class_logit"
+        },
+        "head_1": {
+          "absolute_endpoint_mass": 38.8469976873693,
+          "array_key": "cut_b5__head_1",
+          "component_id": "head_1",
+          "signed_endpoint_contribution": 0.0662285900312164,
+          "target_id": "class_logit"
+        },
+        "head_10": {
+          "absolute_endpoint_mass": 21.942624828508727,
+          "array_key": "cut_b5__head_10",
+          "component_id": "head_10",
+          "signed_endpoint_contribution": 0.0688798671692103,
+          "target_id": "class_logit"
+        },
+        "head_11": {
+          "absolute_endpoint_mass": 35.730365017010755,
+          "array_key": "cut_b5__head_11",
+          "component_id": "head_11",
+          "signed_endpoint_contribution": 0.09314253283494624,
+          "target_id": "class_logit"
+        },
+        "head_2": {
+          "absolute_endpoint_mass": 24.59331680170266,
+          "array_key": "cut_b5__head_2",
+          "component_id": "head_2",
+          "signed_endpoint_contribution": 0.009777921736670546,
+          "target_id": "class_logit"
+        },
+        "head_3": {
+          "absolute_endpoint_mass": 24.778902799729213,
+          "array_key": "cut_b5__head_3",
+          "component_id": "head_3",
+          "signed_endpoint_contribution": 0.06920931375556069,
+          "target_id": "class_logit"
+        },
+        "head_4": {
+          "absolute_endpoint_mass": 18.10688033980602,
+          "array_key": "cut_b5__head_4",
+          "component_id": "head_4",
+          "signed_endpoint_contribution": 0.02179175919289563,
+          "target_id": "class_logit"
+        },
+        "head_5": {
+          "absolute_endpoint_mass": 17.267273770621337,
+          "array_key": "cut_b5__head_5",
+          "component_id": "head_5",
+          "signed_endpoint_contribution": -0.0036850731328027277,
+          "target_id": "class_logit"
+        },
+        "head_6": {
+          "absolute_endpoint_mass": 48.2113840800542,
+          "array_key": "cut_b5__head_6",
+          "component_id": "head_6",
+          "signed_endpoint_contribution": 0.29115219229863826,
+          "target_id": "class_logit"
+        },
+        "head_7": {
+          "absolute_endpoint_mass": 21.523592417049308,
+          "array_key": "cut_b5__head_7",
+          "component_id": "head_7",
+          "signed_endpoint_contribution": -0.02400089856964199,
+          "target_id": "class_logit"
+        },
+        "head_8": {
+          "absolute_endpoint_mass": 24.288533537610846,
+          "array_key": "cut_b5__head_8",
+          "component_id": "head_8",
+          "signed_endpoint_contribution": -0.06256806686221997,
+          "target_id": "class_logit"
+        },
+        "head_9": {
+          "absolute_endpoint_mass": 27.840653589411513,
+          "array_key": "cut_b5__head_9",
+          "component_id": "head_9",
+          "signed_endpoint_contribution": 0.08778490972653988,
+          "target_id": "class_logit"
+        },
+        "identity": {
+          "absolute_endpoint_mass": 200.5237077675443,
+          "array_key": "cut_b5__identity",
+          "component_id": "identity",
+          "signed_endpoint_contribution": 0.924708726747262,
+          "target_id": "class_logit"
+        },
+        "key": {
+          "absolute_endpoint_mass": 41.87502907751498,
+          "array_key": "cut_b5__key",
+          "component_id": "key",
+          "signed_endpoint_contribution": 0.11396129429694074,
+          "target_id": "class_logit"
+        },
+        "mlp": {
+          "absolute_endpoint_mass": 102.25870724550887,
+          "array_key": "cut_b5__mlp",
+          "component_id": "mlp",
+          "signed_endpoint_contribution": 0.5647708273290117,
+          "target_id": "class_logit"
+        },
+        "query": {
+          "absolute_endpoint_mass": 39.81104786955737,
+          "array_key": "cut_b5__query",
+          "component_id": "query",
+          "signed_endpoint_contribution": 0.20188683372676425,
+          "target_id": "class_logit"
+        },
+        "routing": {
+          "absolute_endpoint_mass": 58.3500507979686,
+          "array_key": "cut_b5__routing",
+          "component_id": "routing",
+          "signed_endpoint_contribution": 0.3158481280237047,
+          "target_id": "class_logit"
+        },
+        "value": {
+          "absolute_endpoint_mass": 93.94173238273137,
+          "array_key": "cut_b5__value",
+          "component_id": "value",
+          "signed_endpoint_contribution": 0.18090550960177174,
+          "target_id": "class_logit"
+        }
+      },
+      "cuts": {
+        "heads_with_bypass": [
+          "identity",
+          "head_0",
+          "head_1",
+          "head_2",
+          "head_3",
+          "head_4",
+          "head_5",
+          "head_6",
+          "head_7",
+          "head_8",
+          "head_9",
+          "head_10",
+          "head_11"
+        ],
+        "qkv_with_bypass": [
+          "identity",
+          "query",
+          "key",
+          "value"
+        ],
+        "residual1": [
+          "identity",
+          "attention"
+        ],
+        "residual2": [
+          "carry",
+          "mlp"
+        ],
+        "routing_value_with_bypass": [
+          "identity",
+          "routing",
+          "value"
+        ]
+      },
+      "target": {
+        "channel": 0,
+        "class_id": 235,
+        "head": null,
+        "kind": "logit",
+        "location": "output",
+        "module": "",
+        "name": "class_logit",
+        "other_class_id": null,
+        "token": 0
+      },
+      "value": 8.082623617531002
+    }
+  },
+  "display": {
+    "map_transform": "sign(a)*log1p(9*abs(a)/max_abs)/log(10)",
+    "rgb_reduction": "signed sum for display only",
+    "smoothing": false,
+    "token_values": "same channel over patch tokens; head target is CLS, whose token is excluded from the spatial grid"
+  },
+  "figures": [
+    {
+      "display_limits": {
+        "b0_attention": {
+          "map_abs_max": 0.7346876875634509,
+          "token_abs_max": 1.0525645938073285
+        },
+        "b0_input": {
+          "map_abs_max": 0.02708255033940077,
+          "token_abs_max": 0.3587174674932719
+        },
+        "b0_mlp": {
+          "map_abs_max": 0.3183519390133958,
+          "token_abs_max": 1.7117226453369097
+        },
+        "b0_mlp_fc1": {
+          "map_abs_max": 1.1595979854430523,
+          "token_abs_max": 5.2540127054677
+        },
+        "b0_mlp_gelu": {
+          "map_abs_max": 0.10273688815591156,
+          "token_abs_max": 0.118483656454532
+        },
+        "b0_residual1": {
+          "map_abs_max": 0.7255832841565215,
+          "token_abs_max": 1.1402795085784416
+        },
+        "b0_residual2": {
+          "map_abs_max": 0.40723134514312587,
+          "token_abs_max": 0.8912493106604868
+        },
+        "patch_embedding": {
+          "map_abs_max": 0.02708255033940077,
+          "token_abs_max": 0.2868967092101336
+        }
+      },
+      "path": "figures/01_block_00.png",
+      "targets": [
+        "patch_embedding",
+        "b0_input",
+        "b0_attention",
+        "b0_residual1",
+        "b0_mlp_fc1",
+        "b0_mlp_gelu",
+        "b0_mlp",
+        "b0_residual2"
+      ]
+    },
+    {
+      "display_limits": {
+        "b5_attention": {
+          "map_abs_max": 1.8520110684193147,
+          "token_abs_max": 0.405122316382824
+        },
+        "b5_input": {
+          "map_abs_max": 1.7717590637817957,
+          "token_abs_max": 0.8165196021953256
+        },
+        "b5_mlp": {
+          "map_abs_max": 0.9372790682742145,
+          "token_abs_max": 0.36832108201894354
+        },
+        "b5_mlp_fc1": {
+          "map_abs_max": 5.794624968735258,
+          "token_abs_max": 3.6378175882481183
+        },
+        "b5_mlp_gelu": {
+          "map_abs_max": 3.7967743162941843,
+          "token_abs_max": 0.4534273184316088
+        },
+        "b5_residual1": {
+          "map_abs_max": 2.5168893954839135,
+          "token_abs_max": 1.0280710568125455
+        },
+        "b5_residual2": {
+          "map_abs_max": 2.5850780754933775,
+          "token_abs_max": 1.1465202536920536
+        }
+      },
+      "path": "figures/02_block_05.png",
+      "targets": [
+        "b5_input",
+        "b5_attention",
+        "b5_residual1",
+        "b5_mlp_fc1",
+        "b5_mlp_gelu",
+        "b5_mlp",
+        "b5_residual2"
+      ]
+    },
+    {
+      "display_limits": {
+        "b11_attention": {
+          "map_abs_max": 15.579757529416057,
+          "token_abs_max": 0.9312527232156292
+        },
+        "b11_input": {
+          "map_abs_max": 8.14485096450594,
+          "token_abs_max": 4.062385062296093
+        },
+        "b11_mlp": {
+          "map_abs_max": 7.551642019232997,
+          "token_abs_max": 1.5404282401538287
+        },
+        "b11_mlp_fc1": {
+          "map_abs_max": 13.651066774572936,
+          "token_abs_max": 4.435779743497003
+        },
+        "b11_mlp_gelu": {
+          "map_abs_max": 0.2054886607156322,
+          "token_abs_max": 0.16617898249300514
+        },
+        "b11_residual1": {
+          "map_abs_max": 16.14177669052802,
+          "token_abs_max": 4.164699446165396
+        },
+        "b11_residual2": {
+          "map_abs_max": 23.693418709761104,
+          "token_abs_max": 5.340681459288583
+        }
+      },
+      "path": "figures/03_block_11.png",
+      "targets": [
+        "b11_input",
+        "b11_attention",
+        "b11_residual1",
+        "b11_mlp_fc1",
+        "b11_mlp_gelu",
+        "b11_mlp",
+        "b11_residual2"
+      ]
+    },
+    {
+      "display_limits": {
+        "b0_head0": {
+          "map_abs_max": 5.350946150040268e-06,
+          "token_abs_max": 0.10407385036340876
+        },
+        "b0_head1": {
+          "map_abs_max": 0.0019839275823060804,
+          "token_abs_max": 0.6662702706844744
+        },
+        "b0_head10": {
+          "map_abs_max": 0.0004362316785692617,
+          "token_abs_max": 0.03299800520144428
+        },
+        "b0_head11": {
+          "map_abs_max": 0.0002919846958429321,
+          "token_abs_max": 0.4501179644244373
+        },
+        "b0_head2": {
+          "map_abs_max": 0.0010852462150883501,
+          "token_abs_max": 0.11245871463239263
+        },
+        "b0_head3": {
+          "map_abs_max": 0.0010800380795972398,
+          "token_abs_max": 0.016291616780991214
+        },
+        "b0_head4": {
+          "map_abs_max": 0.002787941558773284,
+          "token_abs_max": 0.22758739797602034
+        },
+        "b0_head5": {
+          "map_abs_max": 0.00046231285349834425,
+          "token_abs_max": 0.10975303033108709
+        },
+        "b0_head6": {
+          "map_abs_max": 0.0008415515917055572,
+          "token_abs_max": 1.2225254192854649
+        },
+        "b0_head7": {
+          "map_abs_max": 0.000624559795969014,
+          "token_abs_max": 0.04756904523663303
+        },
+        "b0_head8": {
+          "map_abs_max": 0.0007384548192303582,
+          "token_abs_max": 1.0678056274460215
+        },
+        "b0_head9": {
+          "map_abs_max": 0.0018049285723920725,
+          "token_abs_max": 0.4977267829525229
+        }
+      },
+      "path": "figures/04_head_atlas.png",
+      "targets": [
+        "b0_head0",
+        "b0_head1",
+        "b0_head2",
+        "b0_head3",
+        "b0_head4",
+        "b0_head5",
+        "b0_head6",
+        "b0_head7",
+        "b0_head8",
+        "b0_head9",
+        "b0_head10",
+        "b0_head11"
+      ]
+    },
+    {
+      "display_limits": {
+        "map_abs_max": 0.09246165378281951
+      },
+      "path": "figures/05_classifier.png",
+      "targets": [
+        "class_logit"
+      ]
+    },
+    {
+      "display_limits": {
+        "b0_unit_t1_c0": {
+          "map_abs_max": 0.04243864152287323,
+          "token_abs_max": 0.8912493106604868
+        },
+        "b11_unit_t1_c0": {
+          "map_abs_max": 0.23538758700895818,
+          "token_abs_max": 5.340681459288583
+        },
+        "b5_unit_t1_c0": {
+          "map_abs_max": 0.10838928430917374,
+          "token_abs_max": 1.1465202536920536
+        }
+      },
+      "path": "figures/06_single_units.png",
+      "targets": [
+        "b0_unit_t1_c0",
+        "b5_unit_t1_c0",
+        "b11_unit_t1_c0"
+      ]
+    },
+    {
+      "display_limits": {
+        "attention": 0.020516286298823037,
+        "carry": 0.016490131599906827,
+        "full": 0.09246165378281951,
+        "head_0": 0.0015133866145045655,
+        "head_1": 0.00978401072263617,
+        "head_10": 0.001777784219478378,
+        "head_11": 0.0010310865897686981,
+        "head_2": 0.0035047011611080833,
+        "head_3": 0.0005169244335953869,
+        "head_4": 0.0012611462132903286,
+        "head_5": 0.001611862980326792,
+        "head_6": 0.014744345139152128,
+        "head_7": 0.0014719336197825759,
+        "head_8": 0.009969144468260652,
+        "head_9": 0.013602897684965042,
+        "identity": 0.10004975298911495,
+        "key": 0.0023478417246605016,
+        "mlp": 0.09838434165656916,
+        "query": 0.0028677865843909707,
+        "routing": 0.004447028475792117,
+        "value": 0.018388863937299934
+      },
+      "path": "figures/07_block_00_edge_decomposition.png",
+      "targets": [
+        "class_logit"
+      ]
+    },
+    {
+      "display_limits": {
+        "attention": 0.1037671088664434,
+        "carry": 0.07678799079734791,
+        "full": 0.09246165378281951,
+        "head_0": 0.020143837136939135,
+        "head_1": 0.016478229931589143,
+        "head_10": 0.013607044029783529,
+        "head_11": 0.08491076739861865,
+        "head_2": 0.014857459258011673,
+        "head_3": 0.014993540039946913,
+        "head_4": 0.012327544933750042,
+        "head_5": 0.013092972284335053,
+        "head_6": 0.01855804801863798,
+        "head_7": 0.016303610928284522,
+        "head_8": 0.015404117090180393,
+        "head_9": 0.008765398701915804,
+        "identity": 0.12535181472680154,
+        "key": 0.03136613539720478,
+        "mlp": 0.05797403690199425,
+        "query": 0.05024059241227037,
+        "routing": 0.046381703414485886,
+        "value": 0.1226415658815088
+      },
+      "path": "figures/08_block_05_edge_decomposition.png",
+      "targets": [
+        "class_logit"
+      ]
+    },
+    {
+      "display_limits": {
+        "attention": 0.06679841142231671,
+        "carry": 0.12835410235874933,
+        "full": 0.09246165378281951,
+        "head_0": 0.010598426394668223,
+        "head_1": 0.01189420803050856,
+        "head_10": 0.004101757513978153,
+        "head_11": 0.017320498960245262,
+        "head_2": 0.025717167093107722,
+        "head_3": 0.02579421290551302,
+        "head_4": 0.005667929402721922,
+        "head_5": 0.05322985524161214,
+        "head_6": 0.004547084885868385,
+        "head_7": 0.009256252099488903,
+        "head_8": 0.03265507649134857,
+        "head_9": 0.013925502876714554,
+        "identity": 0.06209911643680487,
+        "key": 0.05198756831887925,
+        "mlp": 0.0728021241025957,
+        "query": 0.041518524802479945,
+        "routing": 0.05504505440959942,
+        "value": 0.05306672707590798
+      },
+      "path": "figures/09_block_11_edge_decomposition.png",
+      "targets": [
+        "class_logit"
+      ]
+    }
+  ],
+  "formula": "L_s[i] = x[i] * d s(x) / d x[i]",
+  "git_head_at_execution": "7061ff05365d412f98d8bcdd2c9db964ace1c3e2",
+  "git_status_at_execution": [
+    "?? vitnns_rebuild/config/nns_vit_cut_intervention/p0_c.json",
+    "?? vitnns_rebuild/manifests/nns_vit_cut_intervention/p0_c_operation_registry.json",
+    "?? vitnns_rebuild/scripts/run_endpoint_vit_scan.py",
+    "?? vitnns_rebuild/scripts/validate_endpoint_vit_scan.py",
+    "?? vitnns_rebuild/scripts/validate_nns_vit_cut_intervention_p0_c.py",
+    "?? vitnns_rebuild/src/vitnns/endpoint_vit.py",
+    "?? vitnns_rebuild/src/vitnns/nns_vit_cut_intervention_p0_c.py",
+    "?? vitnns_rebuild/src/vitnns/nns_vit_cut_intervention_p0_c_worker.py",
+    "?? vitnns_rebuild/tests/test_endpoint_vit.py",
+    "?? vitnns_rebuild/tests/test_nns_vit_cut_intervention_p0_c.py"
+  ],
+  "head_block": 0,
+  "input_coordinates": "normalized model input; seeds are the input values themselves",
+  "integration_steps": 0,
+  "local_affine_intercept_meaning": "s(x) - sum_i L_s[i]; local Taylor intercept, not a complete bias decomposition",
+  "method": "Endpoint NNS-ViT (Gradient x Input)",
+  "model": {
+    "canonical_tensor_digest": "150234d8117a50057f62aa14a97f46bbf1da92b00b386c10c71cc7000c5d51dd",
+    "path": "/data01/home/yeziqi.831/nxtrec_wksp/testcode/vitnns_rebuild/assets/models/vit_base_patch16_224_weights.semantic_candidate.pth",
+    "sha256": "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d"
+  },
+  "model_constants": "held fixed in forward and Jacobian; no spatial constant allocation",
+  "preprocessing": {
+    "antialias": true,
+    "center_crop": [
+      224,
+      224
+    ],
+    "color_mode": "RGB",
+    "crop_mode": "center",
+    "crop_pct": 0.9,
+    "input_size": [
+      3,
+      224,
+      224
+    ],
+    "interpolation": "bicubic",
+    "mean": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "resize_shorter_side": 248,
+    "std": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "runtime": {
+    "CUDA_VISIBLE_DEVICES": "",
+    "device": "cpu",
+    "dtype": "float64",
+    "scan_seconds": 4.321321758907288,
+    "sys_executable": "/data01/home/yeziqi.831/nxtrec_wksp/testcode/.conda/envs/vitnns/bin/python3.10",
+    "threads": 4,
+    "torch_version": "2.2.2+cu121",
+    "total_seconds": 28.362919531064108
+  },
+  "scan_forward_count": 1,
+  "scope": "one-image original-input internal scanner demonstration",
+  "source": {
+    "path": "/data01/home/yeziqi.831/nxtrec_wksp/testcode/vitnns_rebuild/reports/nns_vit_unified_paper_figures_r9_20260917/source_arrays/original_rgb.npy",
+    "sha256": "25f9343d5042a801080fbea7a637464f47cfbada9553a3073606bc78182b2f60"
+  },
+  "status": "PASS_ENDPOINT_IMPLEMENTATION_DEMO",
+  "targets": {
+    "b0_attention": {
+      "absolute_mass": 609.1571740115384,
+      "attribution_sum": -70.86380251159248,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0.drop_path1",
+        "name": "b0_attention",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": -63.00337825931463,
+      "nonzero_count": 150528,
+      "value": -133.8671807709071
+    },
+    "b0_head0": {
+      "absolute_mass": 0.010503674532755806,
+      "attribution_sum": -0.0010743515042561664,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "name": "b0_head0",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": 0.05485149315120426,
+      "nonzero_count": 150528,
+      "value": 0.05377714164694809
+    },
+    "b0_head1": {
+      "absolute_mass": 2.515926262874331,
+      "attribution_sum": 0.006190875887708256,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "name": "b0_head1",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": -0.011154702791181286,
+      "nonzero_count": 150528,
+      "value": -0.004963826903473031
+    },
+    "b0_head10": {
+      "absolute_mass": 0.8776800218746312,
+      "attribution_sum": 0.00512371098566094,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": 10,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "name": "b0_head10",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": -0.006257082033032961,
+      "nonzero_count": 150528,
+      "value": -0.001133371047372021
+    },
+    "b0_head11": {
+      "absolute_mass": 0.9443896596119283,
+      "attribution_sum": -0.1916129974279934,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": 11,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "name": "b0_head11",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": -0.154074235737,
+      "nonzero_count": 150528,
+      "value": -0.3456872331649934
+    },
+    "b0_head2": {
+      "absolute_mass": 2.3066438370258604,
+      "attribution_sum": -0.04158348946059358,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "name": "b0_head2",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": -0.005200403849794366,
+      "nonzero_count": 150528,
+      "value": -0.046783893310387945
+    },
+    "b0_head3": {
+      "absolute_mass": 1.5502644368420455,
+      "attribution_sum": 0.02455219962707706,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "name": "b0_head3",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": 0.009433669554773857,
+      "nonzero_count": 150528,
+      "value": 0.03398586918185092
+    },
+    "b0_head4": {
+      "absolute_mass": 2.077790960226387,
+      "attribution_sum": 0.20378751084875282,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "name": "b0_head4",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": 0.0004423362999335101,
+      "nonzero_count": 150528,
+      "value": 0.20422984714868633
+    },
+    "b0_head5": {
+      "absolute_mass": 0.9666480103800836,
+      "attribution_sum": 0.005937017032528748,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "name": "b0_head5",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": 0.013095152271281203,
+      "nonzero_count": 150528,
+      "value": 0.01903216930380995
+    },
+    "b0_head6": {
+      "absolute_mass": 1.738760117227893,
+      "attribution_sum": -0.07474986557289842,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": 6,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "name": "b0_head6",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": 0.003923959570861585,
+      "nonzero_count": 150528,
+      "value": -0.07082590600203684
+    },
+    "b0_head7": {
+      "absolute_mass": 0.6461020241871858,
+      "attribution_sum": -0.005754836526623591,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": 7,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "name": "b0_head7",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": 0.0034593830407008345,
+      "nonzero_count": 150528,
+      "value": -0.0022954534859227567
+    },
+    "b0_head8": {
+      "absolute_mass": 1.507132873457569,
+      "attribution_sum": -0.008987087995898566,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": 8,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "name": "b0_head8",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": -0.003839544441901212,
+      "nonzero_count": 150528,
+      "value": -0.012826632437799778
+    },
+    "b0_head9": {
+      "absolute_mass": 1.502764060399052,
+      "attribution_sum": 0.001844189807312109,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": 9,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "name": "b0_head9",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": 0.016761533444533617,
+      "nonzero_count": 150528,
+      "value": 0.018605723251845726
+    },
+    "b0_input": {
+      "absolute_mass": 195.26104182002408,
+      "attribution_sum": 0.38048082096926217,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "patch_channel_sum",
+        "location": "input",
+        "module": "blocks.0.norm1",
+        "name": "b0_input",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": 12.19560231635114,
+      "nonzero_count": 150528,
+      "value": 12.576083137320403
+    },
+    "b0_mlp": {
+      "absolute_mass": 503.1694903378313,
+      "attribution_sum": 53.344798044737715,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0.drop_path2",
+        "name": "b0_mlp",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": 135.47093666424854,
+      "nonzero_count": 150528,
+      "value": 188.81573470898624
+    },
+    "b0_mlp_fc1": {
+      "absolute_mass": 2448.016237665098,
+      "attribution_sum": -63.08018746844006,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0.mlp.fc1",
+        "name": "b0_mlp_fc1",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": -562.9416280805681,
+      "nonzero_count": 150528,
+      "value": -626.0218155490081
+    },
+    "b0_mlp_gelu": {
+      "absolute_mass": 66.89072484497486,
+      "attribution_sum": 0.3478009675542987,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0.mlp.act",
+        "name": "b0_mlp_gelu",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": -2.291546244231154,
+      "nonzero_count": 150528,
+      "value": -1.9437452766768553
+    },
+    "b0_residual1": {
+      "absolute_mass": 645.8113036785816,
+      "attribution_sum": -70.48332169062323,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "patch_channel_sum",
+        "location": "input",
+        "module": "blocks.0.norm2",
+        "name": "b0_residual1",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": -50.80777594296349,
+      "nonzero_count": 150528,
+      "value": -121.29109763358672
+    },
+    "b0_residual2": {
+      "absolute_mass": 664.7472176802048,
+      "attribution_sum": -17.138523645885503,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0",
+        "name": "b0_residual2",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": 84.66316072128504,
+      "nonzero_count": 150528,
+      "value": 67.52463707539954
+    },
+    "b0_unit_t1_c0": {
+      "absolute_mass": 2.865449263297849,
+      "attribution_sum": -0.3076908391721782,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "name": "b0_unit_t1_c0",
+        "other_class_id": null,
+        "token": 1
+      },
+      "local_affine_intercept": 0.7311129254112452,
+      "nonzero_count": 150528,
+      "value": 0.4234220862390669
+    },
+    "b11_attention": {
+      "absolute_mass": 13896.2320145454,
+      "attribution_sum": 0.04190100586282597,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11.drop_path1",
+        "name": "b11_attention",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": 57.064371180342725,
+      "nonzero_count": 150528,
+      "value": 57.10627218620555
+    },
+    "b11_input": {
+      "absolute_mass": 20761.493917482316,
+      "attribution_sum": 121.63296835356175,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "patch_channel_sum",
+        "location": "input",
+        "module": "blocks.11.norm1",
+        "name": "b11_input",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": 229.62952650105336,
+      "nonzero_count": 150528,
+      "value": 351.2624948546151
+    },
+    "b11_mlp": {
+      "absolute_mass": 13978.557972814922,
+      "attribution_sum": 55.074695462680765,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11.drop_path2",
+        "name": "b11_mlp",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": 88.3474574126056,
+      "nonzero_count": 150528,
+      "value": 143.42215287528637
+    },
+    "b11_mlp_fc1": {
+      "absolute_mass": 23173.733474055025,
+      "attribution_sum": -93.76108225134556,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11.mlp.fc1",
+        "name": "b11_mlp_fc1",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": -513.4980648826994,
+      "nonzero_count": 150528,
+      "value": -607.259147134045
+    },
+    "b11_mlp_gelu": {
+      "absolute_mass": 337.6884162195742,
+      "attribution_sum": 1.0645361232218478,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11.mlp.act",
+        "name": "b11_mlp_gelu",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": -2.9043924063833773,
+      "nonzero_count": 150528,
+      "value": -1.8398562831615297
+    },
+    "b11_residual1": {
+      "absolute_mass": 28978.3670648969,
+      "attribution_sum": 121.67486935942487,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "patch_channel_sum",
+        "location": "input",
+        "module": "blocks.11.norm2",
+        "name": "b11_residual1",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": 286.69389768139587,
+      "nonzero_count": 150528,
+      "value": 408.3687670408207
+    },
+    "b11_residual2": {
+      "absolute_mass": 27127.814261380965,
+      "attribution_sum": 176.74956482210604,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11",
+        "name": "b11_residual2",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": 375.04135509400106,
+      "nonzero_count": 150528,
+      "value": 551.7909199161071
+    },
+    "b11_unit_t1_c0": {
+      "absolute_mass": 287.3715613426052,
+      "attribution_sum": 1.7991067828585035,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "name": "b11_unit_t1_c0",
+        "other_class_id": null,
+        "token": 1
+      },
+      "local_affine_intercept": -0.6842857161885889,
+      "nonzero_count": 150528,
+      "value": 1.1148210666699145
+    },
+    "b5_attention": {
+      "absolute_mass": 3461.649104870053,
+      "attribution_sum": -23.082347304951696,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5.drop_path1",
+        "name": "b5_attention",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": 35.42383532767782,
+      "nonzero_count": 150528,
+      "value": 12.341488022726129
+    },
+    "b5_input": {
+      "absolute_mass": 3121.2474299687983,
+      "attribution_sum": 3.77296465111818,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "patch_channel_sum",
+        "location": "input",
+        "module": "blocks.5.norm1",
+        "name": "b5_input",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": -30.025224760372197,
+      "nonzero_count": 150528,
+      "value": -26.252260109254017
+    },
+    "b5_mlp": {
+      "absolute_mass": 2409.9718357380852,
+      "attribution_sum": -6.665668522996895,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5.drop_path2",
+        "name": "b5_mlp",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": -1.4612443262705748,
+      "nonzero_count": 150528,
+      "value": -8.12691284926747
+    },
+    "b5_mlp_fc1": {
+      "absolute_mass": 8275.9023808257,
+      "attribution_sum": -11.072981678579605,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5.mlp.fc1",
+        "name": "b5_mlp_fc1",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": -400.7591608509272,
+      "nonzero_count": 150528,
+      "value": -411.83214252950677
+    },
+    "b5_mlp_gelu": {
+      "absolute_mass": 995.1426747831742,
+      "attribution_sum": -3.1589968953549166,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5.mlp.act",
+        "name": "b5_mlp_gelu",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": -3.987838778590561,
+      "nonzero_count": 150528,
+      "value": -7.1468356739454775
+    },
+    "b5_residual1": {
+      "absolute_mass": 3746.1057617978863,
+      "attribution_sum": -19.309382653833538,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "patch_channel_sum",
+        "location": "input",
+        "module": "blocks.5.norm2",
+        "name": "b5_residual1",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": 5.398610567305653,
+      "nonzero_count": 150528,
+      "value": -13.910772086527885
+    },
+    "b5_residual2": {
+      "absolute_mass": 4170.407722929169,
+      "attribution_sum": -25.975051176830444,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5",
+        "name": "b5_residual2",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": 3.9373662410350896,
+      "nonzero_count": 150528,
+      "value": -22.037684935795355
+    },
+    "b5_unit_t1_c0": {
+      "absolute_mass": 56.95570088202874,
+      "attribution_sum": -0.06716566426357179,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "name": "b5_unit_t1_c0",
+        "other_class_id": null,
+        "token": 1
+      },
+      "local_affine_intercept": -0.4392311768588563,
+      "nonzero_count": 150528,
+      "value": -0.5063968411224281
+    },
+    "class_logit": {
+      "absolute_mass": 218.1713357787096,
+      "attribution_sum": 1.4214623643727389,
+      "definition": {
+        "channel": 0,
+        "class_id": 235,
+        "head": null,
+        "kind": "logit",
+        "location": "output",
+        "module": "",
+        "name": "class_logit",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": 6.661161253158263,
+      "nonzero_count": 150528,
+      "value": 8.082623617531002
+    },
+    "class_margin": {
+      "absolute_mass": 396.01848338641895,
+      "attribution_sum": 0.30895212989496823,
+      "definition": {
+        "channel": 0,
+        "class_id": 235,
+        "head": null,
+        "kind": "margin",
+        "location": "output",
+        "module": "",
+        "name": "class_margin",
+        "other_class_id": 174,
+        "token": 0
+      },
+      "local_affine_intercept": 0.1409660271261748,
+      "nonzero_count": 150528,
+      "value": 0.449918157021143
+    },
+    "final_cls": {
+      "absolute_mass": 152.48458724716286,
+      "attribution_sum": 1.161678382673921,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "norm",
+        "name": "final_cls",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": 0.8546727956328819,
+      "nonzero_count": 150528,
+      "value": 2.016351178306803
+    },
+    "patch_embedding": {
+      "absolute_mass": 195.26104182002408,
+      "attribution_sum": 0.38048082096926217,
+      "definition": {
+        "channel": 0,
+        "class_id": null,
+        "head": null,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "patch_embed",
+        "name": "patch_embedding",
+        "other_class_id": null,
+        "token": 0
+      },
+      "local_affine_intercept": 12.06926207244396,
+      "nonzero_count": 150528,
+      "value": 12.449742893413223
+    }
+  },
+  "validation_forward_count": 2
+}

@@ -38,6 +38,16 @@ used at the input endpoint and attributes one pre-projection scalar of
 `O = A @ V` back to the canonical model input with Integrated Gradients.  It
 does not claim to be full Q/K/V attribution or a class-logit explanation.
 
+## NNS-ViT Endpoint Scanner
+
+The [NNS-ViT Endpoint Scanner](docs/endpoint_nns_vit_scanner_20260918.md) uses
+the original-input rule `x * grad(s)` on the native ViT graph. It supports
+individual token/channel units, aggregate responses, heads, logits and margins,
+plus complete endpoint edge decompositions for heads, Q/K/V and residuals.
+See the [nine example figures](docs/endpoint_nns_vit_scanner_figures_20260918.md)
+and `scripts/run_endpoint_vit_scan.py` for the reproducible CPU demonstration.
+This interface uses no reference or path integration.
+
 ## Environment
 
 ```bash
