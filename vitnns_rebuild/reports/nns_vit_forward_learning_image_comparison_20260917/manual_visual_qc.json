@@ -1,0 +1,31 @@
+{
+  "status": "PASS",
+  "review_mode": "direct_visual_review",
+  "records": [
+    {
+      "key": "01_overview",
+      "status": "PASS",
+      "png_sha256": "3eb2720df8df4772225c1ee97106881a46dc596c821d6e22edd45e2ad78cd063",
+      "notes": "Directly reviewed both aligned rows, common input, value-to-image dashed connectors and skip connections on both rows."
+    },
+    {
+      "key": "02_patch_embedding",
+      "status": "PASS",
+      "png_sha256": "a017cf2813128b39720ec1eee72c73dadeb4c8c28323e8ce7a4e439ea1f8095f",
+      "notes": "Directly reviewed every input scalar and its seed image, shared embedding weights, token scalars and full input-coordinate learning images."
+    },
+    {
+      "key": "03_attention",
+      "status": "PASS",
+      "png_sha256": "a82c8171c15a53b14bb6805c9e812202f5986ce02be8988a49d7d45d24f5eb11",
+      "notes": "Directly reviewed normal attention A above and explicit path coefficient C below; two input and two output maps align to their corresponding scalar nodes."
+    },
+    {
+      "key": "04_residual",
+      "status": "PASS",
+      "png_sha256": "a4122c088be638fddaf5f5120961642ecf45ad5de7da5928c8fd7c4db2584c80",
+      "notes": "Directly reviewed identical paired operands on both rows; normal h+o and elementwise learning-image sums agree with the preceding attention diagram."
+    }
+  ],
+  "canonical_digest": "844329c2ec7f97d96967ef212d693d6545b90931a24731b92e60224b2c48cab2"
+}
