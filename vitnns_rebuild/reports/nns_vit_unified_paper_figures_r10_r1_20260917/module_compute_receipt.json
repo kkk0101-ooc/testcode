@@ -1,0 +1,298 @@
+{
+  "architecture": {
+    "b0_mlp": [
+      768,
+      3072,
+      768
+    ],
+    "blocks": 12,
+    "classifier": [
+      768,
+      1000
+    ],
+    "embedding_width": 768,
+    "global_pool": "token",
+    "mlp_activation": "GELU",
+    "num_prefix_tokens": 1,
+    "patch_tokens": 196
+  },
+  "block": 0,
+  "canonical_digest": "4e80be6449917564cbaba8c0b8343c71c3d55836844d8885a55549207c6978eb",
+  "channels": [
+    0,
+    255,
+    511,
+    767
+  ],
+  "checkpoint_sha256": "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d",
+  "classifier_attempts": [
+    {
+      "completeness_abs": 0.1413178232636607,
+      "map_L1_relative_change": null,
+      "order": 64
+    },
+    {
+      "completeness_abs": 1.1944409877469822,
+      "map_L1_relative_change": 0.11793816745264861,
+      "order": 128
+    },
+    {
+      "completeness_abs": 0.007692655085513422,
+      "map_L1_relative_change": 0.06598968502533338,
+      "order": 256
+    },
+    {
+      "completeness_abs": 0.06519305432581923,
+      "map_L1_relative_change": 0.018400225958733,
+      "order": 512
+    },
+    {
+      "completeness_abs": 0.0118774147989118,
+      "map_L1_relative_change": 0.008706693496278875,
+      "order": 1024
+    },
+    {
+      "completeness_abs": 0.011319830508837114,
+      "map_L1_relative_change": 0.003265873290137669,
+      "order": 2048
+    },
+    {
+      "completeness_abs": 0.004874336722195949,
+      "map_L1_relative_change": 0.0008293454778989103,
+      "order": 4096
+    }
+  ],
+  "classifier_raw_shape": [
+    3,
+    224,
+    224
+  ],
+  "classifier_target": {
+    "baseline_logit": -0.3840065239208965,
+    "class_id": 235,
+    "clean_logit": 8.082623524457844,
+    "delta": 8.466630048378741,
+    "selection_rule": "clean argmax already fixed by predecessor source record"
+  },
+  "classifier_target_definition": "full model class-235 logit from final-normalized CLS through Linear(768,1000)",
+  "float32_float64_forward_max_abs": {
+    "block_output": 4.178099017870807e-06,
+    "classifier_input": 6.845402130473133e-06,
+    "final_norm": 9.736388108727567e-05,
+    "logits": 2.924957139049944e-06,
+    "mlp_branch": 4.197621428891907e-06
+  },
+  "full_model_logit_abs_error": 0.0,
+  "module_attempts": [
+    {
+      "completeness_abs": [
+        [
+          0.0,
+          3.552713678800501e-15,
+          4.884981308350689e-15,
+          2.3092638912203256e-14
+        ],
+        [
+          3.439026841078885e-12,
+          3.602451670303708e-12,
+          1.3464784842653899e-11,
+          1.4779288903810084e-12
+        ],
+        [
+          3.432809592140984e-12,
+          3.5988989566249074e-12,
+          1.3468337556332699e-11,
+          1.3642420526593924e-12
+        ]
+      ],
+      "map_L1_relative_change": null,
+      "order": 64,
+      "second_residual_additivity_max_abs": 3.3306690738754696e-16
+    },
+    {
+      "completeness_abs": [
+        [
+          4.547473508864641e-13,
+          3.552713678800501e-14,
+          2.4424906541753444e-14,
+          1.900701818158268e-13
+        ],
+        [
+          4.547473508864641e-13,
+          1.1368683772161603e-13,
+          2.1316282072803006e-13,
+          3.524291969370097e-12
+        ],
+        [
+          5.684341886080802e-14,
+          1.6342482922482304e-13,
+          1.8829382497642655e-13,
+          3.637978807091713e-12
+        ]
+      ],
+      "map_L1_relative_change": [
+        [
+          2.762146631054072e-15,
+          1.3850363332486312e-15,
+          7.006152686411981e-16,
+          2.1102056752449626e-15
+        ],
+        [
+          2.157092779989719e-14,
+          1.4228367025122194e-14,
+          1.5034895682367443e-14,
+          5.982847038393134e-15
+        ],
+        [
+          1.9564563765269246e-14,
+          1.4067948114164566e-14,
+          1.5444043069152367e-14,
+          6.537183351939699e-15
+        ]
+      ],
+      "order": 128,
+      "second_residual_additivity_max_abs": 3.3306690738754696e-16
+    }
+  ],
+  "module_baseline_values": [
+    [
+      -18.22094443835914,
+      0.9085639798604122,
+      -6.548870289265359,
+      2.0004474711275955
+    ],
+    [
+      91.72778217712138,
+      -43.97620551564533,
+      22.779489469052287,
+      -232.45680573713187
+    ],
+    [
+      73.50683773876223,
+      -43.067641535784915,
+      16.230619179786927,
+      -230.45635826600432
+    ]
+  ],
+  "module_clean_values": [
+    [
+      -121.29110142524473,
+      10.556235199441549,
+      -10.135918904244459,
+      -7.722135947540748
+    ],
+    [
+      188.81573665711232,
+      -83.33488054114818,
+      48.598957626398956,
+      368.7752108135865
+    ],
+    [
+      67.52463523186756,
+      -72.77864534170662,
+      38.463038722154494,
+      361.0530748660458
+    ]
+  ],
+  "module_raw_shape": [
+    3,
+    4,
+    3,
+    224,
+    224
+  ],
+  "module_target_definition": "sum of one fixed channel over 196 patch-token outputs",
+  "module_target_deltas": [
+    [
+      -103.07015698688559,
+      9.647671219581136,
+      -3.5870486149791,
+      -9.722583418668343
+    ],
+    [
+      97.08795447999094,
+      -39.35867502550285,
+      25.81946815734667,
+      601.2320165507184
+    ],
+    [
+      -5.982202506894666,
+      -29.711003805921706,
+      22.232419542367566,
+      591.5094331320502
+    ]
+  ],
+  "module_targets": [
+    "first_residual",
+    "mlp_branch",
+    "block_output"
+  ],
+  "path": "straight line from reference to input; complete native forward graph",
+  "r9_first_residual_map_max_abs": 0.0,
+  "reference": "zero in normalized input; RGB gray 0.5",
+  "runtime": {
+    "CUDA_VISIBLE_DEVICES": "",
+    "device": "cpu",
+    "dtype": "float64",
+    "sys_executable": "/data01/home/yeziqi.831/nxtrec_wksp/testcode/.conda/envs/vitnns/bin/python3.10",
+    "threads": 4,
+    "torch_version": "2.2.2+cu121",
+    "wall_seconds": 1565.875040346058
+  },
+  "scope": "single-input method illustration; no new cohort or population inference",
+  "second_residual_additivity_max_abs": 3.3306690738754696e-16,
+  "selected_orders": {
+    "classifier": 4096,
+    "module": 128
+  },
+  "selection": "first_frozen_Y2_cohort_sample",
+  "source_files": [
+    {
+      "bytes": 758,
+      "path": "reports/nns_vit_unified_paper_figures_r9_20260917/terminal_receipt.json",
+      "sha256": "319c69ec6aa080fadf82b658e4825aa2952d4bb4fa99a28c7fcad4954ab46683"
+    },
+    {
+      "bytes": 99452,
+      "path": "reports/nns_vit_unified_paper_figures_r9_20260917/render_manifest.json",
+      "sha256": "3f4162d9f7bfbb6082aeb17d15c7e7004184d849588413cbb635750f962dc5cd"
+    },
+    {
+      "bytes": 2087,
+      "path": "reports/nns_vit_unified_paper_figures_r9_20260917/source_arrays_manifest.json",
+      "sha256": "d89db49873f3c6745737cb65b9d907a28c927c0999dd45c5d566fa26c523b8d7"
+    },
+    {
+      "bytes": 5863,
+      "path": "reports/nns_vit_unified_paper_figures_r9_20260917/module_compute_receipt.json",
+      "sha256": "91ebdca36a3d27232a9e4fc69afae251a5fef8e6b11620da8131c24e022435d8"
+    },
+    {
+      "bytes": 346329934,
+      "path": "assets/models/vit_base_patch16_224_weights.semantic_candidate.pth",
+      "sha256": "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d"
+    },
+    {
+      "bytes": 17687,
+      "path": "scripts/compute_r10_vit_extension_learning_images.py",
+      "sha256": "40f57e7b06b540a6d710431839737f929ae71ab4437e063dfd968664654942a3"
+    },
+    {
+      "bytes": 15639,
+      "path": "src/vitnns/modeling.py",
+      "sha256": "3f3244cbd9e7e63ca7e74da1a19828be9a375ecfeb05472a541ae80c056327de"
+    },
+    {
+      "bytes": 35208,
+      "path": "src/vitnns/stage_x_nns_v2.py",
+      "sha256": "0fc3f0fa1665da19d1e184933853dc589d0a2d9b56b4d4e1d17c264612c210c8"
+    },
+    {
+      "bytes": 3441,
+      "path": "docs/unified_paper_figures_r10_design_20260917.md",
+      "sha256": "54c36acd9ae07e725b0b49bb8b12af72b9c227932afb0df008fb5d7cabc1ef23"
+    }
+  ],
+  "source_object_id": "ILSVRC2012_VAL_OFFICIAL:ILSVRC2012_val/ILSVRC2012_val_00007922.JPEG",
+  "status": "PASS_SINGLE_IMAGE_VIT_EXTENSION_MAPS"
+}

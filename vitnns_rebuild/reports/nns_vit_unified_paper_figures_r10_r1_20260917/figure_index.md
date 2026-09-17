@@ -1,0 +1,42 @@
+# R10 完整论文图集：Figure 1–34
+
+[画廊](gallery.html) · [图表索引](figure_index.md) · [论文大纲](../../docs/论文大纲_NNS_ViT_R10_20260917.md)
+
+R9 Figure 1–31 逐字节继承；Figure 32–34 补齐 B0 MLP、第二 residual 与完整 classifier logit。全部 34 张均提供 PNG/PDF/SVG。
+
+| 图号 | 内容 | PNG | PDF | SVG |
+|---:|---|---|---|---|
+| 1 | Scanning a Vision Transformer with NNS | [PNG](figures_png/figure_01_study_overview.png) | [PDF](figures_pdf/figure_01_study_overview.pdf) | [SVG](figures_svg/figure_01_study_overview.svg) |
+| 2 | A learning image keeps the input origins of an internal response | [PNG](figures_png/figure_02_value_path_construction.png) | [PDF](figures_pdf/figure_02_value_path_construction.pdf) | [SVG](figures_svg/figure_02_value_path_construction.svg) |
+| 3 | Evaluate the ranking at a shared spatial scale | [PNG](figures_png/figure_03_evaluation_protocol.png) | [PDF](figures_pdf/figure_03_evaluation_protocol.pdf) | [SVG](figures_svg/figure_03_evaluation_protocol.svg) |
+| 4 | Primary effect distribution | [PNG](figures_png/figure_04_primary_effect_distribution.png) | [PDF](figures_pdf/figure_04_primary_effect_distribution.pdf) | [SVG](figures_svg/figure_04_primary_effect_distribution.svg) |
+| 5 | Fidelity trajectories | [PNG](figures_png/figure_05_fidelity_curves.png) | [PDF](figures_pdf/figure_05_fidelity_curves.pdf) | [SVG](figures_svg/figure_05_fidelity_curves.svg) |
+| 6 | Scale and operator sensitivity | [PNG](figures_png/figure_06_scale_and_operator_sensitivity.png) | [PDF](figures_pdf/figure_06_scale_and_operator_sensitivity.pdf) | [SVG](figures_svg/figure_06_scale_and_operator_sensitivity.svg) |
+| 7 | Layer/head and prediction strata | [PNG](figures_png/figure_07_layer_head_and_prediction_strata.png) | [PDF](figures_pdf/figure_07_layer_head_and_prediction_strata.pdf) | [SVG](figures_svg/figure_07_layer_head_and_prediction_strata.svg) |
+| 8 | A median-effect image viewed through all 144 heads | [PNG](figures_png/figure_08_frozen_case_atlas.png) | [PDF](figures_pdf/figure_08_frozen_case_atlas.pdf) | [SVG](figures_svg/figure_08_frozen_case_atlas.svg) |
+| 9 | Spatial support across transformer depth | [PNG](figures_png/figure_09_head_depth_progression.png) | [PDF](figures_pdf/figure_09_head_depth_progression.pdf) | [SVG](figures_svg/figure_09_head_depth_progression.svg) |
+| 10 | Different explanations of the same images | [PNG](figures_png/figure_10_method_comparison_atlas.png) | [PDF](figures_pdf/figure_10_method_comparison_atlas.pdf) | [SVG](figures_svg/figure_10_method_comparison_atlas.svg) |
+| 11 | Method comparison statistics | [PNG](figures_png/figure_11_method_comparison_statistics.png) | [PDF](figures_pdf/figure_11_method_comparison_statistics.pdf) | [SVG](figures_svg/figure_11_method_comparison_statistics.svg) |
+| 12 | Post-hoc exploratory multiscale mechanism | [PNG](figures_png/figure_12_x_multiscale_mechanism.png) | [PDF](figures_pdf/figure_12_x_multiscale_mechanism.pdf) | [SVG](figures_svg/figure_12_x_multiscale_mechanism.svg) |
+| 13 | Branch allocation across ViT blocks | [PNG](figures_png/figure_13_y_branch_allocation.png) | [PDF](figures_pdf/figure_13_y_branch_allocation.pdf) | [SVG](figures_svg/figure_13_y_branch_allocation.svg) |
+| 14 | Post-hoc exploratory depth extension | [PNG](figures_png/figure_14_s_depth_extension.png) | [PDF](figures_pdf/figure_14_s_depth_extension.pdf) | [SVG](figures_svg/figure_14_s_depth_extension.svg) |
+| 15 | One internal component, one input-space image | [PNG](figures_png/figure_15_learning_image_correspondence.png) | [PDF](figures_pdf/figure_15_learning_image_correspondence.pdf) | [SVG](figures_svg/figure_15_learning_image_correspondence.svg) |
+| 16 | Keep each input value at its own location | [PNG](figures_png/figure_16_learning_image_initialization.png) | [PDF](figures_pdf/figure_16_learning_image_initialization.pdf) | [SVG](figures_svg/figure_16_learning_image_initialization.svg) |
+| 17 | Build and combine learning images | [PNG](figures_png/figure_17_learning_image_generation.png) | [PDF](figures_pdf/figure_17_learning_image_generation.pdf) | [SVG](figures_svg/figure_17_learning_image_generation.svg) |
+| 18 | From patch projection to transformer components | [PNG](figures_png/figure_18_learning_image_vit_operators.png) | [PDF](figures_pdf/figure_18_learning_image_vit_operators.pdf) | [SVG](figures_svg/figure_18_learning_image_vit_operators.svg) |
+| 19 | Class-component learning images and token responses | [PNG](figures_png/figure_19_positive_learning_images_reading_view.png) | [PDF](figures_pdf/figure_19_positive_learning_images_reading_view.pdf) | [SVG](figures_svg/figure_19_positive_learning_images_reading_view.svg) |
+| 20 | Different heads, the same image and class target | [PNG](figures_png/figure_20_learning_images_across_heads.png) | [PDF](figures_pdf/figure_20_learning_images_across_heads.pdf) | [SVG](figures_svg/figure_20_learning_images_across_heads.svg) |
+| 21 | Components reconstruct the same input attribution | [PNG](figures_png/figure_21_learning_image_component_sum.png) | [PDF](figures_pdf/figure_21_learning_image_component_sum.pdf) | [SVG](figures_svg/figure_21_learning_image_component_sum.svg) |
+| 22 | Attention: Value and routing derivatives | [PNG](figures_png/figure_22_attention_routes_worked_example.png) | [PDF](figures_pdf/figure_22_attention_routes_worked_example.pdf) | [SVG](figures_svg/figure_22_attention_routes_worked_example.svg) |
+| 23 | Residual: contributions to a downstream target | [PNG](figures_png/figure_23_residual_routes_worked_example.png) | [PDF](figures_pdf/figure_23_residual_routes_worked_example.pdf) | [SVG](figures_svg/figure_23_residual_routes_worked_example.svg) |
+| 24 | Normal forward and learning images: step-by-step overview | [PNG](figures_png/figure_24_forward_learning_overview.png) | [PDF](figures_pdf/figure_24_forward_learning_overview.pdf) | [SVG](figures_svg/figure_24_forward_learning_overview.svg) |
+| 25 | Patch embedding: matching values and learning images | [PNG](figures_png/figure_25_forward_learning_patch_embedding.png) | [PDF](figures_pdf/figure_25_forward_learning_patch_embedding.pdf) | [SVG](figures_svg/figure_25_forward_learning_patch_embedding.svg) |
+| 26 | Attention: matching values and learning images | [PNG](figures_png/figure_26_forward_learning_attention.png) | [PDF](figures_pdf/figure_26_forward_learning_attention.pdf) | [SVG](figures_svg/figure_26_forward_learning_attention.svg) |
+| 27 | Residual: matching values and learning images | [PNG](figures_png/figure_27_forward_learning_residual.png) | [PDF](figures_pdf/figure_27_forward_learning_residual.pdf) | [SVG](figures_svg/figure_27_forward_learning_residual.svg) |
+| 28 | Real learning images through three ViT modules | [PNG](figures_png/figure_28_real_module_learning_image_progression.png) | [PDF](figures_pdf/figure_28_real_module_learning_image_progression.pdf) | [SVG](figures_svg/figure_28_real_module_learning_image_progression.svg) |
+| 29 | Patch embedding: real channel learning images | [PNG](figures_png/figure_29_real_patch_embedding_learning_images.png) | [PDF](figures_pdf/figure_29_real_patch_embedding_learning_images.pdf) | [SVG](figures_svg/figure_29_real_patch_embedding_learning_images.svg) |
+| 30 | Attention: real channel learning images | [PNG](figures_png/figure_30_real_attention_learning_images.png) | [PDF](figures_pdf/figure_30_real_attention_learning_images.pdf) | [SVG](figures_svg/figure_30_real_attention_learning_images.svg) |
+| 31 | Residual: real channel learning images | [PNG](figures_png/figure_31_real_residual_learning_images.png) | [PDF](figures_pdf/figure_31_real_residual_learning_images.pdf) | [SVG](figures_svg/figure_31_real_residual_learning_images.svg) |
+| 32 | B0 MLP branch: real channel learning images | [PNG](figures_png/figure_32_real_b0_mlp_learning_images.png) | [PDF](figures_pdf/figure_32_real_b0_mlp_learning_images.pdf) | [SVG](figures_svg/figure_32_real_b0_mlp_learning_images.svg) |
+| 33 | B0 block output: real channel learning images | [PNG](figures_png/figure_33_real_b0_block_output_learning_images.png) | [PDF](figures_pdf/figure_33_real_b0_block_output_learning_images.pdf) | [SVG](figures_svg/figure_33_real_b0_block_output_learning_images.svg) |
+| 34 | From the image to the predicted class logit | [PNG](figures_png/figure_34_real_classifier_logit_learning_image.png) | [PDF](figures_pdf/figure_34_real_classifier_logit_learning_image.pdf) | [SVG](figures_svg/figure_34_real_classifier_logit_learning_image.svg) |
