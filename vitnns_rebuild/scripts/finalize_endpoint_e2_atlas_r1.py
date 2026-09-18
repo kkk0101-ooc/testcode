@@ -19,10 +19,10 @@ from PIL import Image, ImageDraw
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 REPO = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = REPO / "reports/nns_vit_endpoint_e2_atlas_r1_20260918"
-ROOT = REPO / "reports/nns_vit_endpoint_e2_atlas_r3_20260918"
+ROOT = REPO / "reports/nns_vit_endpoint_e2_atlas_r4_20260918"
 CACHE = REPO / "assets/data/nns_vit_endpoint_e2_evaluation_20260918"
 AMENDMENT = REPO / "config/nns_vit_endpoint/endpoint_e2_atlas_execution_amendment_r1.json"
-RECOVERY = REPO / "config/nns_vit_endpoint/endpoint_e2_atlas_handoff_recovery_r3.json"
+RECOVERY = REPO / "config/nns_vit_endpoint/endpoint_e2_atlas_handoff_recovery_r4.json"
 sys.path.insert(0, str(REPO / "src"))
 from vitnns.endpoint_e2_atlas import (  # noqa: E402
     PASS_STATUS, digest, display_rgb_signed_sum, file_sha256, linear_percentile, write_json_new,
@@ -190,10 +190,11 @@ def main() -> int:
             source_files.append({"path": relative, "bytes": path.stat().st_size, "sha256": file_sha256(path)})
     source_binding = {
         "formal_source_root": SOURCE_ROOT.relative_to(REPO).as_posix(),
-        "preliminary_finalization_status": "R1_INVALID_TRANSIENT_SQLITE_FILES_R2_INVALID_PRODUCER_BLOB_HASH_PRESERVED_NOT_AUTHORITY",
+        "preliminary_finalization_status": "R1_R2_R3_INVALID_HANDOFFS_PRESERVED_NOT_AUTHORITY",
         "preliminary_terminals": [
             "reports/nns_vit_endpoint_e2_atlas_r1_20260918/terminal_receipt.json",
             "reports/nns_vit_endpoint_e2_atlas_r2_20260918/terminal_receipt.json"
+            ,"reports/nns_vit_endpoint_e2_atlas_r3_20260918/terminal_receipt.json"
         ],
         "canceled_replay_root": "single_replay",
         "formal_source_files": source_files, "formal_source_files_digest": digest(source_files),
@@ -210,9 +211,11 @@ def main() -> int:
         "config/nns_vit_endpoint/endpoint_e2_atlas_execution_amendment_r1.json",
         "config/nns_vit_endpoint/endpoint_e2_atlas_handoff_recovery_r2.json",
         "config/nns_vit_endpoint/endpoint_e2_atlas_handoff_recovery_r3.json",
+        "config/nns_vit_endpoint/endpoint_e2_atlas_handoff_recovery_r4.json",
         "docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE2执行修订R1_20260918.md",
         "docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE2封存恢复R2_20260918.md",
         "docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE2封存恢复R3_20260918.md",
+        "docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE2封存恢复R4_20260918.md",
         "scripts/finalize_endpoint_e2_atlas_r1.py", "scripts/validate_endpoint_e2_atlas.py",
     ]
     report = {

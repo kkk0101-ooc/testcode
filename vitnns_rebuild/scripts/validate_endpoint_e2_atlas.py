@@ -18,7 +18,7 @@ import numpy as np
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 REPO = Path(__file__).resolve().parents[1]
-ROOT = REPO / "reports/nns_vit_endpoint_e2_atlas_r3_20260918"
+ROOT = REPO / "reports/nns_vit_endpoint_e2_atlas_r4_20260918"
 EP0 = REPO / "manifests/nns_vit_endpoint/ep0_r1_20260918"
 SPEC_PATH = REPO / "config/nns_vit_endpoint/endpoint_e2_atlas_run_spec.json"
 sys.path.insert(0, str(REPO / "src"))
@@ -71,7 +71,7 @@ def validate(root: Path) -> dict:
     manifest = load(root / "artifact_manifest.json")
     source_binding = load(root / "formal_source_binding.json")
     require(source_binding == report["formal_source_binding"], "SOURCE_BINDING_REPORT")
-    require(source_binding["preliminary_finalization_status"] == "R1_INVALID_TRANSIENT_SQLITE_FILES_R2_INVALID_PRODUCER_BLOB_HASH_PRESERVED_NOT_AUTHORITY", "PRELIMINARY_INVALID_STATUS")
+    require(source_binding["preliminary_finalization_status"] == "R1_R2_R3_INVALID_HANDOFFS_PRESERVED_NOT_AUTHORITY", "PRELIMINARY_INVALID_STATUS")
     require(source_binding["formal_source_files_digest"] == digest(source_binding["formal_source_files"]), "SOURCE_FILES_DIGEST")
     source_root = (REPO / source_binding["formal_source_root"]).resolve()
     require(source_root.is_relative_to(REPO) and source_root.is_dir(), "SOURCE_ROOT")
@@ -96,6 +96,7 @@ def validate(root: Path) -> dict:
     require([row["code"] for row in recovery["failed_handoffs"]] == [
         "MANIFEST_CONTAINED_TRANSIENT_SQLITE_WAL_SHM",
         "IMPLEMENTATION_BINDING_USED_CURRENT_FILE_HASH_FOR_PRODUCER_COMMIT",
+        "VALIDATOR_REFERENCED_OBSOLETE_TOTAL_WALL_FIELD",
     ], "RECOVERY_HISTORY")
     require(terminal["amendment_commit"] == report["amendment_commit"], "AMENDMENT_COMMIT")
     require(terminal["validation_digest"] == digest(report), "VALIDATION_DIGEST")
@@ -209,7 +210,7 @@ def validate(root: Path) -> dict:
         require(row["selection_orders"] == list(range(8)) and row["display_only_not_statistics"] and not row["smoothing"] and not row["clipping"], "GALLERY_SCOPE")
         require(path.is_file() and path.stat().st_size == row["bytes"] and file_sha256(path) == row["sha256"], "GALLERY_HASH")
     require(report["formal_workers"] == 4, "WORKERS")
-    require(report["gpu_hours_upper_observed"] <= 64 and report["total_wall_seconds"] <= 72 * 3600, "TIME_CAP")
+    require(report["gpu_hours_upper_observed"] <= 64 and report["formal_wall_seconds"] <= 72 * 3600, "TIME_CAP")
     require(report["peak_reserved_gpu_bytes_max"] <= 24 * 1024 ** 3 and report["peak_cpu_rss_bytes_max"] <= 32 * 1024 ** 3, "MEMORY_CAP")
     require(report["retained_bytes_before_report"] <= 128 * 1024 ** 3 and report["raw_retained_bytes"] > 0, "STORAGE_CAP")
     require(all(value > 0 and math.isfinite(value) for value in report["latency_seconds"].values()), "LATENCY")
