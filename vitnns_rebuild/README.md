@@ -67,6 +67,11 @@ validation, SQLite fenced task queue, 44 CPU regressions, and single-/four-GPU
 parity on deterministic synthetic inputs. EP1 is PASS; no production image
 outcome was accessed, and EP2 still requires a separate explicit request.
 
+The [EP2 calibration report](docs/NNS_ViT_Endpoint_Scanner_EP2校准结果_20260918.md)
+records complete 64-image, two-model calibration. DeiT-S selected M=512, but
+ViT-B failed the frozen 61/64 gate at the largest allowed M; the immutable
+stage result is `EP2_NUMERICAL_CALIBRATION_FAILED`, with no EP3 authorization.
+
 ## Environment
 
 ```bash
