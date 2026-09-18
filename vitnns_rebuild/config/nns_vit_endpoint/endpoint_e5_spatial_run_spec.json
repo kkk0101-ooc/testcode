@@ -1,0 +1,88 @@
+{
+  "authorization_token": "ENDPOINT_E5_EXPLICIT_USER_REQUEST_20260918",
+  "cohort": {
+    "count": 400,
+    "models_share_rows": true,
+    "replacement_allowed": false,
+    "source": "ENDPOINT-E2_authoritative_materialization",
+    "split": "evaluation"
+  },
+  "failure": {
+    "missing_duplicate_nonfinite_source_drift_protocol_or_cap": "FAIL_CLOSED_PRESERVE_ROOT",
+    "next_on_valid_execution": "ENDPOINT_E6_REQUIRES_EXPLICIT_USER_REQUEST",
+    "resource_cap": "PAUSED_RESOURCE_CAP"
+  },
+  "method_scope": {
+    "bootstrap_allowed": false,
+    "c4b_per_image_inputs_allowed": true,
+    "descriptive_aggregate_allowed": true,
+    "endpoint_e6_allowed": false,
+    "final_claim_decision_allowed": false,
+    "holm_allowed": false,
+    "input_fidelity_or_stability_allowed": false,
+    "path_ig_allowed": false
+  },
+  "models": ["vit_b16", "deit_s16"],
+  "outputs": {
+    "formal_root": "reports/nns_vit_endpoint_e5_spatial_r1_20260918",
+    "raw_maps": "first16_evaluation_orders_per_model_npz",
+    "source_materialization": "reports/nns_vit_endpoint_e2_atlas_r1_20260918/materialization_receipt.json"
+  },
+  "predecessors": {
+    "cohort_registry_sha256": "4d1e88d946c11af3fce9ca05c139007dc0991768ea224e2067ca33b337a7e0f2",
+    "endpoint_e4_r3_terminal_sha256": "74a5aa017ae0e69c7f6d9c27a730fde5df58b25eb5be2f4847fb907880a0cec0",
+    "endpoint_e4_r3_validation_sha256": "161d39ccb7583de87df18f5e95da3d3f5fbd5aaf5d8f91f4a4b2245097628f84",
+    "intervention_registry_sha256": "6b5db043ed24c0a14d002de9248ff27dc2fd1d306ab6a63ade7d89b8e36db918",
+    "materialization_receipt_sha256": "675c41257615618b17604c9469578d54442886f21e616d719cebe4e56ca5e0d2",
+    "model_registry_sha256": "523b973c0f6f5df502af22f2c587ba10d6975c413776a1ef76beaaa5972e68fe",
+    "statistical_analysis_plan_sha256": "576cd178e205e63483ea0812d9872cc0182429929a797fac11f50932b5129a5e",
+    "target_registry_sha256": "c2f8a5075d1bae28ae122ad9190731a675cc21774f3eb0f5b6a37c9019c2b626",
+    "unified_plan_sha256": "99bda911a0844c05a97771ed2a99d5dfd233279f89179649810c88d4dc02e6f9"
+  },
+  "runtime": {
+    "CUBLAS_WORKSPACE_CONFIG": ":4096:8",
+    "autocast": false,
+    "claim_lease_seconds": 180,
+    "combined_e4_e5_gpu_hours_cap": 136,
+    "combined_e4_e5_incremental_retained_gib_cap": 56,
+    "combined_e4_e5_wall_hours_cap": 132,
+    "cpu_rss_cap_gib": 32,
+    "deterministic_algorithms": true,
+    "dynamic_global_queue": true,
+    "gpu_memory_cap_gib": 24,
+    "gpu_type": "NVIDIA H20",
+    "heartbeat_seconds": 30,
+    "max_attempts": 2,
+    "max_gpus": 8,
+    "max_utilization_percent": 10,
+    "min_free_mib": 32768,
+    "min_gpus": 1,
+    "minimum_free_disk_gib": 50,
+    "production_dtype": "float32",
+    "static_modulo_sharding": false,
+    "task_timeout_seconds": 1800,
+    "tf32": false
+  },
+  "schema_version": 1,
+  "spatial_intervention": {
+    "actual_area_fractions": [0.0, 0.0625, 0.125, 0.25],
+    "block": 5,
+    "budget_counts": [0, 1, 2, 4],
+    "candidate_regions": "4x4_nonoverlapping_56x56_row_major_full_224_crop",
+    "effect_based_region_selection_allowed": false,
+    "full_forward_effect": "descriptive_only_clean_logit_minus_region_replaced_input_logit",
+    "heads_by_model": {"deit_s16": [0, 3, 5], "vit_b16": [0, 6, 11]},
+    "isolated_effect": "clean_logit_minus_selected_head_replacement_logit_other_heads_and_identity_clean",
+    "mandatory_baselines": ["total_gxi", "raw_gradient", "regional_taylor", "random_regions"],
+    "primary_ranker": "component_map_RGB_coordinate_absolute_mass",
+    "primary_score": "mean_three_heads_trapezoid_absolute_isolated_effect_over_actual_area_div_0.25",
+    "random_aggregation": "mean_signed_effect_curve_over_20_permutations_within_head_then_absolute_auc_then_mean_three_heads",
+    "random_repeats": 20,
+    "random_seed_namespace": "NNS_VIT_ENDPOINT_E5_RANDOM_REGIONS_V1",
+    "ranking_tie_break": "descending_score_then_ascending_row_major_candidate_index",
+    "references": ["normalized_zero", "blur_rgb"],
+    "regional_taylor": "abs_dot_clean_head_cotangent_clean_minus_single_region_head_activation"
+  },
+  "stage": "ENDPOINT-E5",
+  "target": {"class_source": "frozen_EP0_class_id", "kind": "ground_truth_logit"}
+}
