@@ -46,8 +46,11 @@ def startup():
     validation=subprocess.run([str(PYTHON),"scripts/validate_endpoint_ep1.py"],cwd=REPO,env=dict(os.environ,CUDA_VISIBLE_DEVICES=""),text=True,capture_output=True)
     if validation.returncode:raise RuntimeError("EP1_VALIDATION_FAILED:"+validation.stderr)
     status=git("status","--porcelain","--untracked-files=all");changed=[]
+    repo_prefix=REPO.relative_to(REPO.parent).as_posix()+"/"
     for line in status.splitlines():
-        path=line[3:].split(" -> ")[-1];changed.append(path)
+        path=line[3:].split(" -> ")[-1]
+        if path.startswith(repo_prefix):path=path[len(repo_prefix):]
+        changed.append(path)
     if set(changed)-ALLOWED_UNTRACKED:raise RuntimeError("UNEXPLAINED_WORKTREE:"+str(sorted(set(changed)-ALLOWED_UNTRACKED)))
     for relative in SOURCE_FILES:
         if subprocess.run(["git","cat-file","-e",f"{head}:vitnns_rebuild/{relative}"],cwd=REPO).returncode:raise RuntimeError("SOURCE_NOT_COMMITTED:"+relative)
