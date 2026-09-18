@@ -10,7 +10,7 @@
 ENDPOINT_PRIMARY_TRACK_AUTHORIZED_BY_AMENDMENT
 ENDPOINT-E0_SCOPE_AMENDMENT_PASS
 ENDPOINT-E1_CONTRACTS_SATISFIED_BY_EP1_REBIND
-ENDPOINT-E2_NOT_STARTED_REQUIRES_EXPLICIT_USER_REQUEST
+ENDPOINT-E2_PASS_REGISTERED_ATLAS_AND_RESOURCES
 
 PATH_DEPENDENT_TRACK_BLOCKED
 EP2_R1_PATH_NUMERICAL_CALIBRATION_FAILED_IMMUTABLE
@@ -22,11 +22,11 @@ NEW_EVALUATION_ACCESS_COUNT=0_AFTER_AMENDMENT
 当前可以请求的唯一下一阶段是：
 
 ```text
-ENDPOINT_E2_ATLAS_REQUIRES_EXPLICIT_USER_REQUEST
+ENDPOINT_E3_REQUIRES_EXPLICIT_USER_REQUEST
 ```
 
-这表示 Endpoint 主轨可以继续申请，不表示 ENDPOINT-E2 已经自动授权。原规划中的
-EP3 仍未授权。Path IG 恢复也未授权。
+ENDPOINT-E2 已按用户明确授权完成并由 R4 handoff 独立验证通过；这不自动授权
+ENDPOINT-E3。原规划中的 EP3 仍未授权，Path IG 恢复也未授权。
 
 ## 2. 论文定位与核心主张
 
@@ -163,8 +163,8 @@ EP2-R1 使用 64 张 calibration 图、两模型、ground-truth 与 frozen top-1
 ```text
 ENDPOINT-E0  范围修订与协议冻结                    PASS
 ENDPOINT-E1  数学、算子、闭合与工程合同            PASS，继承 EP1
-ENDPOINT-E2  注册目标 atlas 与规模/资源审计         NEXT，待明确授权
-ENDPOINT-E3  正式 cohort 全 block 结构闭合          待授权
+ENDPOINT-E2  注册目标 atlas 与规模/资源审计         PASS
+ENDPOINT-E3  正式 cohort 全 block 结构闭合          NEXT，待明确授权
 ENDPOINT-E4  局部合同与有限 activation replacement 待授权
 ENDPOINT-E5  空间定向干预与 mandatory baselines     待授权
 ENDPOINT-E6  统计分析与论文 release                 待前序完成
@@ -228,6 +228,21 @@ Path 轨失败只阻塞：
 - 只允许作 `C2_REGISTERED_SCAN_COMPLETION_AND_RESOURCES` 判定。
 
 通过出口：`ENDPOINT_E2_PASS_NEXT_ENDPOINT_E3_REQUIRES_EXPLICIT_REQUEST`。
+
+#### ENDPOINT-E2 完成记录
+
+正式 4 卡动态队列已完成 400 张 evaluation 图像 × 两模型共 800/800 tasks；
+ViT-B/16 与 DeiT-S/16 分别完整覆盖 457/385 个 target，共 336,800 个有限结果。
+保留 800 份双 class raw signed RGB maps、前 16 evaluation ID × 两模型的 32 份
+full raw atlas，以及固定 first-8 gallery。formal wall time 为 1,752.71 秒，按四卡
+上界计 1.9475 GPU-hours，retained bytes 约 9.29 GB，均低于冻结 cap。
+
+用户在 formal 800/800 完成后取消了冗余的全量单卡重放；部分 replay 保留并明确
+排除在 E2 PASS 和科学证据之外。R1–R3 handoff 的 manifest/provenance 失败均保留为
+非权威证据；权威 R4 terminal 位于
+`reports/nns_vit_endpoint_e2_atlas_r4_20260918/terminal_receipt.json`，状态为上述通过
+出口。E2 没有运行 Path IG、fidelity、stability 或 intervention，也没有作 utility
+结论。
 
 ### ENDPOINT-E3：正式结构闭合
 
@@ -328,7 +343,7 @@ INVALID → INCONCLUSIVE → SUPPORTED → NOT_SUPPORTED
 
 | 研究问题 | 证据 | 当前状态 |
 |---|---|---|
-| RQ1：能否忠实、可审计地扫描内部目标？ | 注册覆盖与 atlas/资源 | ENDPOINT-E2 待执行 |
+| RQ1：能否忠实、可审计地扫描内部目标？ | 注册覆盖与 atlas/资源 | ENDPOINT-E2 PASS |
 | RQ2：结构分解能否闭合？ | 全 block edge-cut closure | EP1 工程通过；正式验证待 ENDPOINT-E3 |
 | RQ3：成分能否预测匹配干预？ | 局部合同 + finite activation replacement | 待 ENDPOINT-E4 |
 | RQ4：空间图是否有额外价值？ | 同预算空间干预及 mandatory baselines | 待 ENDPOINT-E5 |
@@ -344,8 +359,8 @@ INVALID → INCONCLUSIVE → SUPPORTED → NOT_SUPPORTED
 
 ## 10. 下一步怎么执行
 
-当前不要执行原 EP3，也不要恢复 Path IG。若用户明确要求“执行 ENDPOINT-E2”，
-则按第 6 节的 ENDPOINT-E2 合同执行，完成后停下并等待下一次授权。
+当前不要执行原 EP3，也不要恢复 Path IG。ENDPOINT-E2 已完成；只有用户另行明确
+要求“执行 ENDPOINT-E3”时，才可按第 6 节的 ENDPOINT-E3 合同执行。
 
 若用户未来要求恢复 Path 轨，必须先创建新的 `P-IG3` 前瞻性 amendment；不得
 复用本 Endpoint 主轨授权。
@@ -359,6 +374,9 @@ INVALID → INCONCLUSIVE → SUPPORTED → NOT_SUPPORTED
 - [EP1 实现与回归](NNS_ViT_Endpoint_Scanner_EP1实现与回归_20260918.md)；
 - [EP2-R1 校准结果](NNS_ViT_Endpoint_Scanner_EP2校准结果_20260918.md)；
 - [Endpoint/Path 轨道拆分修订](NNS_ViT_Endpoint_Scanner主轨拆分修订_20260918.md)；
+- [ENDPOINT-E2 执行合同](NNS_ViT_Endpoint_Scanner_ENDPOINTE2执行合同_20260918.md)；
+- [ENDPOINT-E2 取消全量单卡重放修订](NNS_ViT_Endpoint_Scanner_ENDPOINTE2执行修订R1_20260918.md)；
+- [ENDPOINT-E2 权威结果](NNS_ViT_Endpoint_Scanner_ENDPOINTE2结果_20260918.md)；
 - [方法数学分析](NNS_ViT_Endpoint_Scanner数学分析与方法对比_20260918.md)；
 - [实现与使用说明](endpoint_nns_vit_scanner_20260918.md)。
 

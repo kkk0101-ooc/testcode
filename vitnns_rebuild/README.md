@@ -45,7 +45,9 @@ as the single current entry point. It contains the method definition, current
 state, Endpoint/Path split, completed evidence, future stage contracts, resource
 rules and claim boundaries. Earlier EP0/EP1/EP2 documents remain immutable
 evidence and are indexed from that page. The next requestable stage is the
-Endpoint-only atlas stage `ENDPOINT-E2`; it has not started.
+Endpoint-only atlas stage `ENDPOINT-E2` has passed its registered scan and
+resource audit. The next requestable stage is `ENDPOINT-E3`; it still requires
+an explicit user request.
 
 ## Environment
 
