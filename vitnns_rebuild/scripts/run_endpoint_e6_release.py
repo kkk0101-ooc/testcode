@@ -29,12 +29,14 @@ SPEC_PATH = Path("config/nns_vit_endpoint/endpoint_e6_release_run_spec.json")
 SOURCE_CODE = [
     "config/nns_vit_endpoint/endpoint_e6_release_run_spec.json",
     "docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6执行合同_20260918.md",
+    "docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6恢复R2_20260918.md",
     "src/vitnns/endpoint_e6_release.py",
     "scripts/run_endpoint_e6_release.py",
     "scripts/validate_endpoint_e6_release.py",
     "tests/test_endpoint_e6_release.py",
 ]
 REFERENCE_PATHS = {
+    "endpoint_e6_r1_failure_sha256": "reports/nns_vit_endpoint_e6_release_r1_20260918/failure_receipt.json",
     "cohort_registry_sha256": "manifests/nns_vit_endpoint/ep0_r1_20260918/cohort_registry.json",
     "statistical_analysis_plan_sha256": "manifests/nns_vit_endpoint/ep0_r1_20260918/statistical_analysis_plan.json",
     "endpoint_e4_r2_artifact_manifest_sha256": "reports/nns_vit_endpoint_e4_intervention_r2_20260918/artifact_manifest.json",
@@ -108,7 +110,7 @@ def write_text_new(path: Path, value: str) -> None:
 
 
 def validate_spec(spec: dict[str, Any]) -> None:
-    if spec["authorization_token"] != "ENDPOINT_E6_EXPLICIT_USER_REQUEST_20260918" or spec["stage"] != "ENDPOINT-E6":
+    if spec["authorization_token"] != "ENDPOINT_E6_R2_RECOVERY_AFTER_IMPLEMENTATION_FAILURE_20260918" or spec["stage"] != "ENDPOINT-E6":
         raise ValueError("E6_AUTHORIZATION")
     expected_execution = {"cpu_only": True, "cuda_visible_devices": "", "torch_timm_pil_import_allowed": False,
         "image_decode_allowed": False, "model_load_allowed": False, "new_empirical_compute_allowed": False,
@@ -252,7 +254,7 @@ def infer(plan: dict[str, Any], family_values: dict[str, list[float]], c4b_colum
     for family in plan["families"]:
         family_id=family["family_id"]
         columns = {family_id: family_values[family_id]} if family["claim"]=="C4a" else c4b_columns[family_id]
-        valid_sets={len(value) for value in columns.values()}; exact=len(selected)==400
+        valid_sets={len(value) for value in columns.values()}; exact=valid_sets=={400}
         if len(valid_sets)!=1: raise ValueError("PAIRED_COMMON_SET")
         bootstrap=bootstrap_median_ci(columns,namespace="NNS_VIT_ENDPOINT_EP0_R1_20260918",family_id=family_id)
         tests=[]

@@ -15,15 +15,16 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 
 REPO=Path(__file__).resolve().parents[1]
-ROOT=REPO/"reports/nns_vit_endpoint_e6_release_r1_20260918"
+ROOT=REPO/"reports/nns_vit_endpoint_e6_release_r2_20260918"
 SPEC_PATH=REPO/"config/nns_vit_endpoint/endpoint_e6_release_run_spec.json"
 E4_R3=REPO/"reports/nns_vit_endpoint_e4_intervention_r3_20260918"
 E4_R2=REPO/"reports/nns_vit_endpoint_e4_intervention_r2_20260918"
 E5=REPO/"reports/nns_vit_endpoint_e5_spatial_r1_20260918"
 PASS="ENDPOINT_E6_PASS_STATISTICS_AND_PAPER_RELEASE_COMPLETE"
 NEXT="NONE_ENDPOINT_PRIMARY_TRACK_COMPLETE"
-SOURCE_CODE=["config/nns_vit_endpoint/endpoint_e6_release_run_spec.json","docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6执行合同_20260918.md","src/vitnns/endpoint_e6_release.py","scripts/run_endpoint_e6_release.py","scripts/validate_endpoint_e6_release.py","tests/test_endpoint_e6_release.py"]
+SOURCE_CODE=["config/nns_vit_endpoint/endpoint_e6_release_run_spec.json","docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6执行合同_20260918.md","docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6恢复R2_20260918.md","src/vitnns/endpoint_e6_release.py","scripts/run_endpoint_e6_release.py","scripts/validate_endpoint_e6_release.py","tests/test_endpoint_e6_release.py"]
 REFERENCE_PATHS={
+ "endpoint_e6_r1_failure_sha256":"reports/nns_vit_endpoint_e6_release_r1_20260918/failure_receipt.json",
  "cohort_registry_sha256":"manifests/nns_vit_endpoint/ep0_r1_20260918/cohort_registry.json","statistical_analysis_plan_sha256":"manifests/nns_vit_endpoint/ep0_r1_20260918/statistical_analysis_plan.json",
  "endpoint_e4_r2_artifact_manifest_sha256":"reports/nns_vit_endpoint_e4_intervention_r2_20260918/artifact_manifest.json","endpoint_e4_r3_artifact_manifest_sha256":"reports/nns_vit_endpoint_e4_intervention_r3_20260918/artifact_manifest.json",
  "endpoint_e4_r3_combined_index_sha256":"reports/nns_vit_endpoint_e4_intervention_r3_20260918/combined_result_index.json","endpoint_e4_r3_terminal_sha256":"reports/nns_vit_endpoint_e4_intervention_r3_20260918/terminal_receipt.json",
@@ -163,6 +164,7 @@ def recompute_inference(rows:list[dict],plan:dict) -> tuple[list[dict],list[dict
 def validate(root:Path) -> dict[str,Any]:
     require(os.environ.get("CUDA_VISIBLE_DEVICES")=="" and not set(sys.modules).intersection({"torch","timm","PIL"}),"CPU_ONLY");root=root.resolve();spec=load(SPEC_PATH);report=load(root/"validation_report.json");terminal=load(root/"terminal_receipt.json");manifest=load(root/"artifact_manifest.json")
     require(report["status"]==terminal["status"]==PASS and report["stage"]==terminal["stage"]=="ENDPOINT-E6" and report["next_authorization"]==terminal["next_authorization"]==NEXT,"TERMINAL_STATUS");require(terminal["validation_digest"]==digest(report) and terminal["manifest_digest"]==manifest["canonical_digest"]==digest(manifest["files"]),"TERMINAL_DIGEST");require(not (root/"terminal_receipt.pending.json").exists() and not (root/"failure_receipt.json").exists(),"ATOMIC_TERMINAL")
+    r1=load(REPO/REFERENCE_PATHS["endpoint_e6_r1_failure_sha256"]);require(r1=={"error":"name 'selected' is not defined","error_type":"NameError","next_authorization":"NONE","stage":"ENDPOINT-E6","status":"ENDPOINT_E6_FAIL_CLOSED"},"R1_FAILURE_PRESERVATION")
     paths=[r["path"] for r in manifest["files"]];require(len(paths)==len(set(paths)),"MANIFEST_DUPLICATE")
     for row in manifest["files"]:path=root/row["path"];require(path.is_file() and path.stat().st_size==row["bytes"] and sha(path)==row["sha256"],"MANIFEST_FILE:"+row["path"])
     producer=terminal["producer_commit"];require(subprocess.run(["git","merge-base","--is-ancestor",producer,"HEAD"],cwd=REPO).returncode==0,"PRODUCER_ANCESTRY")
