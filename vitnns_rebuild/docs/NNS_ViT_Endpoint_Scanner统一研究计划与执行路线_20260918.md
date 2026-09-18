@@ -16,6 +16,9 @@ ENDPOINT-E4_FAIL_LOCAL_DIRECTION_CONTRACT
 ENDPOINT-E4-R2_FAIL_ANALYTIC_JVP_CONTRACT
 ENDPOINT-E4-R3_PASS_EXECUTION_CONDITION_SCALED_JVP_AND_FINITE_REPLACEMENT
 ENDPOINT-E5_PASS_SPATIAL_INTERVENTION_COMPLETE_NO_CLAIM_DECISION
+ENDPOINT-E6-R1_FAIL_IMPLEMENTATION_PRE_INFERENCE
+ENDPOINT-E6-R2_NONAUTHORITATIVE_RELEASE_FORMAT_FAILURE
+ENDPOINT-E6-R3_PASS_STATISTICS_AND_PAPER_RELEASE_COMPLETE
 
 PATH_DEPENDENT_TRACK_BLOCKED
 EP2_R1_PATH_NUMERICAL_CALIBRATION_FAILED_IMMUTABLE
@@ -24,10 +27,10 @@ ORIGINAL_EP3_NOT_AUTHORIZED
 FORMAL_EVALUATION_COHORT_BOUND=400_SHARED_IDS
 ```
 
-当前可以请求的唯一下一阶段是：
+Endpoint 主轨当前终态是：
 
 ```text
-ENDPOINT_E6_REQUIRES_EXPLICIT_USER_REQUEST
+NONE_ENDPOINT_PRIMARY_TRACK_COMPLETE
 ```
 
 ENDPOINT-E2 已由 R4 handoff 独立验证通过；ENDPOINT-E3 已按用户明确授权完成并由
@@ -36,8 +39,8 @@ R2 handoff 独立验证通过。ENDPOINT-E4 已按用户明确授权执行，但
 解析 JVP 合同处 fail closed，队列为 799 completed、1 failed。已发布的失败任务诊断
 把差异定位为强消除下使用 $|a_k|$ 缩放误差界不合适；R3 已按前瞻性条件尺度合同
 完成并由独立验证器通过。ENDPOINT-E5 已按用户明确授权完成 800/800 个正式任务，并
-由独立验证器逐项复算通过。原规划中的 EP3 与 Path IG 恢复仍未授权；ENDPOINT-E6
-现在是唯一可请求的下一阶段。
+由独立验证器逐项复算通过。ENDPOINT-E6 已经由 R3 完成；原 EP3 与 Path IG 恢复仍未
+授权，Endpoint 主轨没有后续授权。
 
 ## 2. 论文定位与核心主张
 
@@ -180,7 +183,7 @@ ENDPOINT-E4  局部合同与有限 activation replacement FAIL，局部合同未
 ENDPOINT-E4-R2  解析 JVP correctness + 全量有限 replacement  FAIL，1 个任务未通过
 ENDPOINT-E4-R3  条件尺度 JVP 门 + 严格重绑定/缺口重算          PASS
 ENDPOINT-E5  空间定向干预与 mandatory baselines     PASS，未作 claim decision
-ENDPOINT-E6  统计分析与论文 release                 待明确授权
+ENDPOINT-E6  统计分析与论文 release                 R3 PASS；C4a/C4b 均 NOT_SUPPORTED
 ```
 
 ### 5.2 Path IG 轨
@@ -389,6 +392,23 @@ INVALID → INCONCLUSIVE → SUPPORTED → NOT_SUPPORTED
 
 论文最终分别报告 Identity、Correctness、Utility；负结果、失败样本和数值边界不删。
 
+#### ENDPOINT-E6 完成记录
+
+E6-R1 在正式推断前因控制面 `NameError` fail closed；R2 完成统计但论文 Markdown
+段落格式未通过完成审计。两个根均保留。R3 从 E4/E5 原始逐任务 JSON 完整重算，
+形成 1,600 个 image-model-reference 行、16 个 family、28 个全局 Holm tests 和每
+family 10,000 次 paired bootstrap。独立 CPU-only validator 再次从源记录重算全部
+统计并通过。
+
+12 个 C4a family 中 11 个 `SUPPORTED`；ViT-B normalized-zero routing/value 中位
+Spearman 为 `0.099565`，仅比冻结阈值 `0.10` 低 `0.000435`，且方向为正、Holm 显著。
+论文据此判定 **RQ3 整体支持、存在一个注册边界例外**；冻结的 12/12 omnibus C4a
+字段仍为 `NOT_SUPPORTED`，不作结果后改阈值。
+4 个 C4b family 均未同时优于四个 mandatory baselines，因此联合 C4b 为
+`NOT_SUPPORTED`。没有 `INVALID` 或 `INCONCLUSIVE` family。权威 terminal 位于
+`reports/nns_vit_endpoint_e6_release_r3_20260918/terminal_receipt.json`，下一授权为
+`NONE_ENDPOINT_PRIMARY_TRACK_COMPLETE`。
+
 ## 7. 全程禁止项
 
 - 覆盖、修改或把 EP2-R1 解释成 PASS；
@@ -421,8 +441,8 @@ INVALID → INCONCLUSIVE → SUPPORTED → NOT_SUPPORTED
 |---|---|---|
 | RQ1：能否忠实、可审计地扫描内部目标？ | 注册覆盖与 atlas/资源 | ENDPOINT-E2 PASS |
 | RQ2：结构分解能否闭合？ | 全 block edge-cut closure | ENDPOINT-E3 PASS，correctness only |
-| RQ3：成分能否预测匹配干预？ | 局部合同 + finite activation replacement | ENDPOINT-E4 R3 执行与完整数据 PASS；最终 C4a decision 留待 E6 |
-| RQ4：空间图是否有额外价值？ | 同预算空间干预及 mandatory baselines | ENDPOINT-E5 执行与完整数据 PASS；最终 C4b decision 留待 E6 |
+| RQ3：成分能否预测匹配干预？ | 局部合同 + finite activation replacement | 整体支持：11/12 family 通过；一个 0.099565 的注册边界例外；严格 omnibus C4a `NOT_SUPPORTED` |
+| RQ4：空间图是否有额外价值？ | 同预算空间干预及 mandatory baselines | 0/4 family 同时通过四基线；注册联合 C4b `NOT_SUPPORTED` |
 | Path IG 是否是稳定主对照？ | EP2-R1 数值校准 | ViT-B 未通过，Path 轨 blocked |
 
 建议论文贡献写法：
@@ -436,8 +456,8 @@ INVALID → INCONCLUSIVE → SUPPORTED → NOT_SUPPORTED
 ## 10. 下一步怎么执行
 
 当前不要执行原 EP3，也不要恢复 Path IG。ENDPOINT-E4 R1 与恢复 R2 均保持不可变 FAIL；
-E4-R3 与 ENDPOINT-E5 已完成并 PASS。当前唯一可请求的下一阶段是 ENDPOINT-E6，但仍须
-用户单独明确授权，不得由本次 E5 授权自动启动。
+E4-R3、ENDPOINT-E5 与 ENDPOINT-E6-R3 已完成。Endpoint 主轨完成，下一授权为
+`NONE_ENDPOINT_PRIMARY_TRACK_COMPLETE`。
 
 若用户未来要求恢复 Path 轨，必须先创建新的 `P-IG3` 前瞻性 amendment；不得
 复用本 Endpoint 主轨授权。
@@ -468,6 +488,11 @@ E4-R3 与 ENDPOINT-E5 已完成并 PASS。当前唯一可请求的下一阶段�
 - [ENDPOINT-E5 封存验证器修订 R1](NNS_ViT_Endpoint_Scanner_ENDPOINTE5封存验证器修订R1_20260918.md)；
 - [ENDPOINT-E5 结果](NNS_ViT_Endpoint_Scanner_ENDPOINTE5结果_20260918.md)；
 - [ENDPOINT-E5 完成审计](NNS_ViT_Endpoint_Scanner_ENDPOINTE5完成审计_20260918.md)；
+- [ENDPOINT-E6 执行合同](NNS_ViT_Endpoint_Scanner_ENDPOINTE6执行合同_20260918.md)；
+- [ENDPOINT-E6 R2 恢复](NNS_ViT_Endpoint_Scanner_ENDPOINTE6恢复R2_20260918.md)；
+- [ENDPOINT-E6 R3 恢复](NNS_ViT_Endpoint_Scanner_ENDPOINTE6恢复R3_20260918.md)；
+- [ENDPOINT-E6 权威结果](NNS_ViT_Endpoint_Scanner_ENDPOINTE6结果_20260918.md)；
+- [ENDPOINT-E6 完成审计](NNS_ViT_Endpoint_Scanner_ENDPOINTE6完成审计_20260918.md)；
 - [方法数学分析](NNS_ViT_Endpoint_Scanner数学分析与方法对比_20260918.md)；
 - [实现与使用说明](endpoint_nns_vit_scanner_20260918.md)。
 

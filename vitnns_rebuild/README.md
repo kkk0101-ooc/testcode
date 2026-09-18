@@ -55,11 +55,15 @@ root and analytic JVP correctness gate, but one ViT-B task failed twice; its
 799 partial results are also excluded. R3 reran all 32 local tasks under a
 condition-scaled analytic JVP gate and strictly revalidated the other 768 tasks;
 the 800-task union passed. The explicitly authorized `ENDPOINT-E5` then completed
-800/800 spatial-intervention tasks with all mandatory baselines; its execution and
-data contract passed without running the deferred C4b inference. E6 is now the only
-next requestable stage and remains unauthorized. See the
-[E5 result](docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE5结果_20260918.md) and
-[completion audit](docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE5完成审计_20260918.md).
+800/800 spatial-intervention tasks with all mandatory baselines. `ENDPOINT-E6-R3`
+then completed the frozen image-level inference and paper release: RQ3 was
+supported overall in 11/12 C4a families, with one registered boundary exception
+at 0.099565 versus the 0.10 threshold; the strict all-12 omnibus remained not
+supported. None of the
+four C4b families passed all four mandatory baselines, so joint C4b was also not
+supported. The Endpoint primary track is complete. See the
+[E6 result](docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6结果_20260918.md) and
+[completion audit](docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6完成审计_20260918.md).
 
 ## Environment
 
