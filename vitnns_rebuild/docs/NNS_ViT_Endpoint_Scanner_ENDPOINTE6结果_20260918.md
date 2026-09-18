@@ -90,3 +90,5 @@ component map 在该空间干预任务中带来联合信息增益”的 C4b 主�
   `manuscript/zh/endpoint_scanner_results_release_r3.md`：同步双语论文结果；
 - `manuscript/notes/endpoint_scanner_e6_evidence_matrix_r3.md`：claim-to-evidence 映射；
 - `manuscript/qc/endpoint_scanner_e6_defensive_writing_audit_r3.md`：防御性写作审计。
+- `reports/nns_vit_endpoint_unified_paper_figures_r2_20260918/`：28 张 Endpoint 论文图、
+  84 个 PNG/PDF/SVG 导出、双语 caption、逐图分析与封存回执。

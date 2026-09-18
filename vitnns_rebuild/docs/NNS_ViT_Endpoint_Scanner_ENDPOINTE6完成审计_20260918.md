@@ -37,6 +37,7 @@
 | 独立复算 | validator 不复用生产统计函数，重算逐图值、bootstrap、sign、Holm、决策并 PASS | PASS |
 | 原子封存 | 无 pending/failure；terminal、validation、manifest digest 一致 | PASS |
 | 主轨终止 | terminal `next_authorization=NONE_ENDPOINT_PRIMARY_TRACK_COMPLETE` | PASS |
+| 完整论文图包 | 权威 R2 图包 28 张、84 个三格式导出，覆盖方法、RQ1–RQ4、结论与边界 | PASS |
 
 ## 3. 恢复链审计
 

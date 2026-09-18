@@ -493,6 +493,9 @@ E4-R3、ENDPOINT-E5 与 ENDPOINT-E6-R3 已完成。Endpoint 主轨完成，下�
 - [ENDPOINT-E6 R3 恢复](NNS_ViT_Endpoint_Scanner_ENDPOINTE6恢复R3_20260918.md)；
 - [ENDPOINT-E6 权威结果](NNS_ViT_Endpoint_Scanner_ENDPOINTE6结果_20260918.md)；
 - [ENDPOINT-E6 完成审计](NNS_ViT_Endpoint_Scanner_ENDPOINTE6完成审计_20260918.md)；
+- [ENDPOINT 统一论文图包结果](NNS_ViT_Endpoint_Scanner统一论文图包结果_20260918.md)；
+- [ENDPOINT 统一论文图包完成审计](NNS_ViT_Endpoint_Scanner统一论文图包完成审计_20260918.md)；
+- [ENDPOINT 统一论文图包 R2 恢复](NNS_ViT_Endpoint_Scanner统一论文图包恢复R2_20260918.md)；
 - [方法数学分析](NNS_ViT_Endpoint_Scanner数学分析与方法对比_20260918.md)；
 - [实现与使用说明](endpoint_nns_vit_scanner_20260918.md)。
 

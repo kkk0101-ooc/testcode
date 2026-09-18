@@ -64,6 +64,9 @@ four C4b families passed all four mandatory baselines, so joint C4b was also not
 supported. The Endpoint primary track is complete. See the
 [E6 result](docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6结果_20260918.md) and
 [completion audit](docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6完成审计_20260918.md).
+The sealed Endpoint paper figure package contains 28 figures and 84 PNG/PDF/SVG
+exports; see the [package report](docs/NNS_ViT_Endpoint_Scanner统一论文图包结果_20260918.md)
+and [gallery](reports/nns_vit_endpoint_unified_paper_figures_r2_20260918/gallery.html).
 
 ## Environment
 
