@@ -54,7 +54,12 @@ scientific interpretation. The explicitly authorized R2 recovery used a fresh
 root and analytic JVP correctness gate, but one ViT-B task failed twice; its
 799 partial results are also excluded. R3 reran all 32 local tasks under a
 condition-scaled analytic JVP gate and strictly revalidated the other 768 tasks;
-the 800-task union passed. E5 is now the next stage but remains unauthorized.
+the 800-task union passed. The explicitly authorized `ENDPOINT-E5` then completed
+800/800 spatial-intervention tasks with all mandatory baselines; its execution and
+data contract passed without running the deferred C4b inference. E6 is now the only
+next requestable stage and remains unauthorized. See the
+[E5 result](docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE5结果_20260918.md) and
+[completion audit](docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE5完成审计_20260918.md).
 
 ## Environment
 
