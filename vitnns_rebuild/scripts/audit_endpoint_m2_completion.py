@@ -7,6 +7,7 @@ import ast
 from collections import defaultdict
 import csv
 import gzip
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -26,6 +27,13 @@ def main():
     require(spec['blocks']==list(BLOCKS) and spec['models']==list(HEADS),'CONFIG_SCOPE')
     require(spec['methods']==list(METHODS) and spec['references']==list(REFERENCES),'CONFIG_METHODS')
     require(spec['statistics']['holm_test_count']==672 and spec['statistics']['bootstrap']==10000,'CONFIG_STATS')
+    require(spec['heads']=={m:list(range(h)) for m,h in HEADS.items()},'CONFIG_HEADS')
+    require(spec['random']['repeats']==20 and spec['random']['namespace']=='ENDPOINT_M2_20260919','CONFIG_RANDOM')
+    require(spec['blur']==dict(kernel=31,sigma=10,coordinates='raw_RGB_before_normalization'),'CONFIG_BLUR')
+    for geometry,n in GRIDS.items():
+        require(spec['geometries'][geometry]==dict(grid=n,region_pixels=224//n,counts=list(COUNTS[geometry])),'CONFIG_GEOMETRY')
+    require(spec['outcomes']==dict(primary='absolute_full_input_region_replacement_effect',
+        secondary='absolute_isolated_head_region_replacement_effect'),'CONFIG_OUTCOMES')
     tasks=load(ROOT/'task_manifest.json')['tasks']
     source=load(REPO/'reports/nns_vit_endpoint_m1_r1_20260918/task_manifest.json')['tasks']
     original={r['task_id']:r['payload'] for r in source}
@@ -55,6 +63,19 @@ def main():
                     expected=summary[key];observed=sum(values)
                     require(abs(expected-observed)<=1e-4+1e-4*max(abs(expected),abs(observed)),'E3_REGION_SUMS')
                 require(sum(s['attention'])<=1.00001,'ATTENTION_MASS')
+        for curve in r['curves']:
+            geometry=curve['geometry'];n=GRIDS[geometry];h=curve['head'];ref=curve['reference'];method=curve['method']
+            if method=='random':
+                key=f"{p['sample_id']}|{p['model_id']}|{p['block']}|{h}|{ref}"
+                seed=int.from_bytes(hashlib.sha256(f"ENDPOINT_M2_20260919|{key}|{geometry}|{curve['repeat']}".encode()).digest()[:8],'big')
+                order=np.random.Generator(np.random.PCG64(seed)).permutation(n*n).tolist()
+                require(seed==curve['seed'],'INDEPENDENT_SEED')
+            else:
+                if method=='center':scores=[-((k//n-(n-1)/2)**2+(k%n-(n-1)/2)**2) for k in range(n*n)]
+                else:scores=score_index[(geometry,ref,h)][method]
+                order=sorted(range(n*n),key=lambda k:(-scores[k],k))
+            for point in curve['points']:
+                require(point['selected']==sorted(order[:point['count']]),'INDEPENDENT_RANK_SELECTION')
         expected={(g,ref,h) for g in GRIDS for ref in REFERENCES for h in range(HEADS[p['model_id']])}
         observed={(c['geometry'],c['reference'],c['head']) for c in r['checks'] if c['kind']=='suffix_native'}
         require(expected==observed,'CONTROL_EXACT_IDENTITIES')
