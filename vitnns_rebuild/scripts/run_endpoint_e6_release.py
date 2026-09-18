@@ -141,7 +141,7 @@ def verify_source_hashes(spec: dict[str, Any], audit: list[dict[str, Any]]) -> N
 def git_state() -> dict[str, Any]:
     head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True).strip()
     upstream = subprocess.check_output(["git", "rev-parse", "@{upstream}"], cwd=REPO, text=True).strip()
-    branch = subprocess.check_output(["git", "branch", "--show-current"], cwd=REPO, text=True).strip()
+    branch = subprocess.check_output(["git", "symbolic-ref", "--short", "HEAD"], cwd=REPO, text=True).strip()
     remote_line = subprocess.check_output(["git", "ls-remote", "origin", f"refs/heads/{branch}"], cwd=REPO, text=True).strip()
     remote = remote_line.split()[0] if remote_line else None
     if not head == upstream == remote: raise ValueError("PUBLISHED_HEAD_GATE")
