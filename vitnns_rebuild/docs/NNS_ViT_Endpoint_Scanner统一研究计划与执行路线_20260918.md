@@ -12,6 +12,7 @@ ENDPOINT-E0_SCOPE_AMENDMENT_PASS
 ENDPOINT-E1_CONTRACTS_SATISFIED_BY_EP1_REBIND
 ENDPOINT-E2_PASS_REGISTERED_ATLAS_AND_RESOURCES
 ENDPOINT-E3_PASS_CORRECTNESS_ONLY
+ENDPOINT-E4_FAIL_LOCAL_DIRECTION_CONTRACT
 
 PATH_DEPENDENT_TRACK_BLOCKED
 EP2_R1_PATH_NUMERICAL_CALIBRATION_FAILED_IMMUTABLE
@@ -23,12 +24,13 @@ FORMAL_EVALUATION_COHORT_BOUND=400_SHARED_IDS
 当前可以请求的唯一下一阶段是：
 
 ```text
-ENDPOINT_E4_REQUIRES_EXPLICIT_USER_REQUEST
+NO_NEXT_STAGE_AUTHORIZATION
+PROSPECTIVE_E4_RECOVERY_AMENDMENT_REQUIRED
 ```
 
 ENDPOINT-E2 已由 R4 handoff 独立验证通过；ENDPOINT-E3 已按用户明确授权完成并由
-R2 handoff 独立验证通过。这不自动授权 ENDPOINT-E4。原规划中的 EP3 仍未授权，
-Path IG 恢复也未授权。
+R2 handoff 独立验证通过。ENDPOINT-E4 已按用户明确授权执行，但冻结的局部 finite-eta
+合同未通过，阶段 fail closed。原规划中的 EP3、Path IG 恢复和 ENDPOINT-E5 均未授权。
 
 ## 2. 论文定位与核心主张
 
@@ -167,8 +169,8 @@ ENDPOINT-E0  范围修订与协议冻结                    PASS
 ENDPOINT-E1  数学、算子、闭合与工程合同            PASS，继承 EP1
 ENDPOINT-E2  注册目标 atlas 与规模/资源审计         PASS
 ENDPOINT-E3  正式 cohort 全 block 结构闭合          PASS
-ENDPOINT-E4  局部合同与有限 activation replacement NEXT，待明确授权
-ENDPOINT-E5  空间定向干预与 mandatory baselines     待授权
+ENDPOINT-E4  局部合同与有限 activation replacement FAIL，局部合同未通过
+ENDPOINT-E5  空间定向干预与 mandatory baselines     未授权，受 E4 阻塞
 ENDPOINT-E6  统计分析与论文 release                 待前序完成
 ```
 
@@ -298,6 +300,18 @@ $$
 
 若 $p_k^{\mathrm{ref}}$ 优于 $a_k$，如实报告。这不否定 Endpoint 数学身份。
 
+#### ENDPOINT-E4 完成记录
+
+R1 在发布后的正式根上启动 800 个 image-model task。前 16 个 DeiT-S evaluation
+任务均在两次 attempt 中触发 `LOCAL_DIRECTION_CONTRACT_FAILED`，随后停止队列；状态为
+16 failed、73 completed、8 claimed、703 pending。独立诊断确认解析 JVP 与 $a_k$ 在
+float64 下约 $10^{-15}$ 一致，但固定四个 $\eta$ 的有限扰动曲线仍有成分超过冻结
+$10^{-4}+0.01|a_k|$ 门，因此不是可由单纯提高精度修复的实现误差。
+
+权威状态为 `ENDPOINT_E4_FAIL_LOCAL_DIRECTION_CONTRACT`。73 个部分 finite-replacement
+结果不作科学解释，不运行 bootstrap、Holm 或 C4a claim decision。E3 correctness 不受
+影响；E5 未启动，任何 E4 恢复都须另写前瞻性 amendment 并使用新根。
+
 ### ENDPOINT-E5：空间定向干预
 
 目标：检验完整输入分辨 component map 是否比普通标量或简单图提供额外信息。
@@ -358,8 +372,8 @@ INVALID → INCONCLUSIVE → SUPPORTED → NOT_SUPPORTED
 |---|---|---|
 | RQ1：能否忠实、可审计地扫描内部目标？ | 注册覆盖与 atlas/资源 | ENDPOINT-E2 PASS |
 | RQ2：结构分解能否闭合？ | 全 block edge-cut closure | ENDPOINT-E3 PASS，correctness only |
-| RQ3：成分能否预测匹配干预？ | 局部合同 + finite activation replacement | 待 ENDPOINT-E4 |
-| RQ4：空间图是否有额外价值？ | 同预算空间干预及 mandatory baselines | 待 ENDPOINT-E5 |
+| RQ3：成分能否预测匹配干预？ | 局部合同 + finite activation replacement | ENDPOINT-E4 局部门 FAIL；utility 未判定 |
+| RQ4：空间图是否有额外价值？ | 同预算空间干预及 mandatory baselines | ENDPOINT-E5 未授权且受阻 |
 | Path IG 是否是稳定主对照？ | EP2-R1 数值校准 | ViT-B 未通过，Path 轨 blocked |
 
 建议论文贡献写法：
@@ -372,8 +386,9 @@ INVALID → INCONCLUSIVE → SUPPORTED → NOT_SUPPORTED
 
 ## 10. 下一步怎么执行
 
-当前不要执行原 EP3，也不要恢复 Path IG。ENDPOINT-E3 已完成；只有用户另行明确
-要求“执行 ENDPOINT-E4”时，才可按第 6 节的 ENDPOINT-E4 合同执行。
+当前不要执行原 EP3，也不要恢复 Path IG。ENDPOINT-E4 已按明确授权执行并在冻结的
+局部 finite-eta 合同处失败；不得启动 ENDPOINT-E5。若要恢复 E4，须先创建前瞻性
+amendment，冻结新的数值验收方案并使用新结果根。
 
 若用户未来要求恢复 Path 轨，必须先创建新的 `P-IG3` 前瞻性 amendment；不得
 复用本 Endpoint 主轨授权。
@@ -393,6 +408,8 @@ INVALID → INCONCLUSIVE → SUPPORTED → NOT_SUPPORTED
 - [ENDPOINT-E3 执行合同](NNS_ViT_Endpoint_Scanner_ENDPOINTE3执行合同_20260918.md)；
 - [ENDPOINT-E3 R2 封存恢复](NNS_ViT_Endpoint_Scanner_ENDPOINTE3封存恢复R2_20260918.md)；
 - [ENDPOINT-E3 权威结果](NNS_ViT_Endpoint_Scanner_ENDPOINTE3结果_20260918.md)；
+- [ENDPOINT-E4 执行合同](NNS_ViT_Endpoint_Scanner_ENDPOINTE4执行合同_20260918.md)；
+- [ENDPOINT-E4 权威结果](NNS_ViT_Endpoint_Scanner_ENDPOINTE4结果_20260918.md)；
 - [方法数学分析](NNS_ViT_Endpoint_Scanner数学分析与方法对比_20260918.md)；
 - [实现与使用说明](endpoint_nns_vit_scanner_20260918.md)。
 
