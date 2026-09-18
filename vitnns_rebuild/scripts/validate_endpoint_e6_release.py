@@ -24,7 +24,7 @@ PASS="ENDPOINT_E6_R3_PASS_STATISTICS_AND_PAPER_RELEASE_COMPLETE"
 NEXT="NONE_ENDPOINT_PRIMARY_TRACK_COMPLETE"
 SOURCE_CODE=["config/nns_vit_endpoint/endpoint_e6_release_run_spec.json","docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6执行合同_20260918.md","docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6恢复R2_20260918.md","docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6封存验证器修订R1_20260918.md","docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6恢复R3_20260918.md","src/vitnns/endpoint_e6_release.py","scripts/run_endpoint_e6_release.py","scripts/validate_endpoint_e6_release.py","tests/test_endpoint_e6_release.py"]
 VALIDATOR_PATH="scripts/validate_endpoint_e6_release.py"
-VALIDATOR_AMENDMENT="docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6恢复R3_20260918.md"
+VALIDATOR_AMENDMENT="docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6R3封存验证器修订R1_20260918.md"
 REFERENCE_PATHS={
  "endpoint_e6_r1_failure_sha256":"reports/nns_vit_endpoint_e6_release_r1_20260918/failure_receipt.json",
  "endpoint_e6_r2_terminal_sha256":"reports/nns_vit_endpoint_e6_release_r2_20260918/terminal_receipt.json","endpoint_e6_r2_manifest_sha256":"reports/nns_vit_endpoint_e6_release_r2_20260918/artifact_manifest.json",
@@ -187,7 +187,12 @@ def validate(root:Path) -> dict[str,Any]:
     audit=load(root/"source_read_audit.json");require(audit["cpu_only"] and audit["cuda_visible_devices"]=="" and audit["forbidden_imports_loaded"]==[] and audit["image_files_read"]==audit["model_files_read"]==0 and audit["read_count"]==len(audit["reads"]),"READ_AUDIT")
     combined=load(E4_R3/"combined_result_index.json");expected_reads={SPEC_PATH.relative_to(REPO).as_posix(),*REFERENCE_PATHS.values(),*{row["source_result_path"] for row in combined["records"]},*{f"reports/nns_vit_endpoint_e5_spatial_r1_20260918/formal_results/attempts/{model}__{order:03d}/attempt-01.json" for model in ("vit_b16","deit_s16") for order in range(400)}}
     require({r["path"] for r in audit["reads"]}==expected_reads and len(audit["reads"])==len(expected_reads),"READ_WHITELIST")
-    for row in audit["reads"]:path=REPO/row["path"];require(path.is_file() and path.stat().st_size==row["bytes"] and sha(path)==row["sha256"],"READ_HASH:"+row["path"])
+    for row in audit["reads"]:
+        if row["path"]==REFERENCE_PATHS["unified_plan_sha256"]:
+            data=subprocess.check_output(["git","show",f"{producer}:vitnns_rebuild/{row['path']}"],cwd=REPO)
+            require(len(data)==row["bytes"] and hashlib.sha256(data).hexdigest()==row["sha256"],"READ_HASH:"+row["path"])
+        else:
+            path=REPO/row["path"];require(path.is_file() and path.stat().st_size==row["bytes"] and sha(path)==row["sha256"],"READ_HASH:"+row["path"])
     e4,e5=load_sources();rows=image_rows(e4,e5);per=load(root/"per_image_statistics.json");require(per["row_count"]==1600 and per["rows_digest"]==digest(rows) and per["rows"]==rows,"PER_IMAGE_RECOMPUTE");plan=load(REPO/spec["inputs"]["statistical_plan"]);families,tests,holm=recompute_inference(rows,plan);decision=load(root/"family_decisions.json");require(decision["family_count"]==16 and decision["families"]==families,"FAMILY_RECOMPUTE");require(load(root/"holm_report.json")["tests"]==holm and load(root/"sign_test_report.json")["test_count"]==28 and load(root/"bootstrap_report.json")["family_count"]==16,"INFERENCE_REPORTS")
     aggregate={claim:("INVALID" if any(r["status"]=="INVALID" for r in families if r["claim"]==claim) else "INCONCLUSIVE" if any(r["status"]=="INCONCLUSIVE" for r in families if r["claim"]==claim) else "SUPPORTED" if all(r["status"]=="SUPPORTED" for r in families if r["claim"]==claim) else "NOT_SUPPORTED") for claim in ("C4a","C4b")};require(decision["aggregate_claims"]==report["aggregate_claims"]==aggregate and terminal["C4a"]==aggregate["C4a"] and terminal["C4b"]==aggregate["C4b"],"AGGREGATE_DECISION")
     require(report["evaluation_images"]==terminal["evaluation_image_count"]==400 and report["family_count"]==terminal["family_count"]==16 and report["test_count"]==terminal["test_count"]==report["holm_family_count"]==28 and report["gpu_hours"]==0 and not report["new_empirical_compute"] and report["image_decode_count"]==report["model_load_count"]==0,"REPORT_COUNTS")
