@@ -71,6 +71,9 @@ The [EP2 calibration report](docs/NNS_ViT_Endpoint_Scanner_EP2校准结果_20260
 records complete 64-image, two-model calibration. DeiT-S selected M=512, but
 ViT-B failed the frozen 61/64 gate at the largest allowed M; the immutable
 stage result is `EP2_NUMERICAL_CALIBRATION_FAILED`, with no EP3 authorization.
+The subsequent [Endpoint/Path track-split amendment](docs/NNS_ViT_Endpoint_Scanner主轨拆分修订_20260918.md)
+keeps that failure immutable, blocks Path-dependent comparisons, and makes the
+Endpoint-only atlas stage the next separately authorized step.
 
 ## Environment
 
