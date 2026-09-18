@@ -50,9 +50,10 @@ has also passed formal all-block structural closure for the two frozen models
 and 400-image evaluation cohort; this is a correctness result, not a utility
 result. `ENDPOINT-E4` R1 failed its frozen local finite-direction contract
 before complete utility coverage. Partial R1 outputs remain excluded from
-scientific interpretation. The explicitly authorized R2 recovery has frozen
-an analytic JVP correctness gate and a fresh full finite-replacement run; E5
-remains unauthorized pending the R2 terminal.
+scientific interpretation. The explicitly authorized R2 recovery used a fresh
+root and analytic JVP correctness gate, but one ViT-B task failed twice; its
+799 partial results are also excluded. E5 remains unauthorized, and any further
+E4 recovery requires another prospective amendment and new root.
 
 ## Environment
 

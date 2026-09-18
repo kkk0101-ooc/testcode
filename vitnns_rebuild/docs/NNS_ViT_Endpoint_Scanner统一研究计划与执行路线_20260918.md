@@ -13,7 +13,7 @@ ENDPOINT-E1_CONTRACTS_SATISFIED_BY_EP1_REBIND
 ENDPOINT-E2_PASS_REGISTERED_ATLAS_AND_RESOURCES
 ENDPOINT-E3_PASS_CORRECTNESS_ONLY
 ENDPOINT-E4_FAIL_LOCAL_DIRECTION_CONTRACT
-ENDPOINT-E4-R2_RECOVERY_AUTHORIZED_AND_CONTRACT_FROZEN
+ENDPOINT-E4-R2_FAIL_ANALYTIC_JVP_CONTRACT
 
 PATH_DEPENDENT_TRACK_BLOCKED
 EP2_R1_PATH_NUMERICAL_CALIBRATION_FAILED_IMMUTABLE
@@ -25,15 +25,15 @@ FORMAL_EVALUATION_COHORT_BOUND=400_SHARED_IDS
 当前可以请求的唯一下一阶段是：
 
 ```text
-ENDPOINT_E4_R2_EXECUTION_AUTHORIZED
-ENDPOINT_E5_NOT_AUTHORIZED_PENDING_E4_R2_TERMINAL
+NO_NEXT_STAGE_AUTHORIZATION
+PROSPECTIVE_E4_RECOVERY_AMENDMENT_REQUIRED
 ```
 
 ENDPOINT-E2 已由 R4 handoff 独立验证通过；ENDPOINT-E3 已按用户明确授权完成并由
 R2 handoff 独立验证通过。ENDPOINT-E4 已按用户明确授权执行，但冻结的局部 finite-eta
-合同未通过，阶段 fail closed。R1 FAIL 保持不可变；用户随后明确授权 E4 恢复，R2
-前瞻性合同已经在读取新 outcome 前冻结并绑定全新结果根。原规划中的 EP3、Path IG
-恢复和 ENDPOINT-E5 均未授权。
+合同未通过，阶段 fail closed。R1 FAIL 保持不可变；用户随后明确授权的 R2 恢复也在
+解析 JVP 合同处 fail closed，队列为 799 completed、1 failed。原规划中的 EP3、Path
+IG 恢复和 ENDPOINT-E5 均未授权。
 
 ## 2. 论文定位与核心主张
 
@@ -173,7 +173,7 @@ ENDPOINT-E1  数学、算子、闭合与工程合同            PASS，继承 EP
 ENDPOINT-E2  注册目标 atlas 与规模/资源审计         PASS
 ENDPOINT-E3  正式 cohort 全 block 结构闭合          PASS
 ENDPOINT-E4  局部合同与有限 activation replacement FAIL，局部合同未通过
-ENDPOINT-E4-R2  解析 JVP correctness + 全量有限 replacement  已授权、合同已冻结
+ENDPOINT-E4-R2  解析 JVP correctness + 全量有限 replacement  FAIL，1 个任务未通过
 ENDPOINT-E5  空间定向干预与 mandatory baselines     未授权，受 E4 阻塞
 ENDPOINT-E6  统计分析与论文 release                 待前序完成
 ```
@@ -316,12 +316,13 @@ $10^{-4}+0.01|a_k|$ 门，因此不是可由单纯提高精度修复的实现误
 结果不作科学解释，不运行 bootstrap、Holm 或 C4a claim decision。E3 correctness 不受
 影响；E5 未启动，任何 E4 恢复都须另写前瞻性 amendment 并使用新根。
 
-用户现已明确要求 E4 恢复。R2 前瞻性 amendment 使用解析 JVP identity 作为
+用户已明确要求 E4 恢复。R2 前瞻性 amendment 使用解析 JVP identity 作为
 correctness 门，并从零重算原冻结的有限 activation replacement；R1 FAIL 和 73 个部分
-结果保持不可变且不继承。R2 合同见
+结果保持不可变且未继承。R2 合同见
 `NNS_ViT_Endpoint_Scanner_ENDPOINTE4恢复R2_20260918.md`，新根为
-`reports/nns_vit_endpoint_e4_intervention_r2_20260918`。在 R2 terminal 产生前，
-ENDPOINT-E5 继续未授权。
+`reports/nns_vit_endpoint_e4_intervention_r2_20260918`。R2 最终 799/800 completed；
+`vit_b16__009` 两次均未通过解析 JVP 门，因此 R2 也保持 FAIL，799 个部分结果全部
+排除科学解释。后续恢复必须使用新的前瞻性 amendment 和新根；ENDPOINT-E5 继续未授权。
 
 ### ENDPOINT-E5：空间定向干预
 
@@ -397,10 +398,9 @@ INVALID → INCONCLUSIVE → SUPPORTED → NOT_SUPPORTED
 
 ## 10. 下一步怎么执行
 
-当前不要执行原 EP3，也不要恢复 Path IG。ENDPOINT-E4 R1 已按明确授权执行并在冻结的
-局部 finite-eta 合同处失败；不得启动 ENDPOINT-E5。用户已明确授权 E4 恢复，R2
-前瞻性 amendment、新解析 JVP 数值验收方案和新结果根均已在读取新 outcome 前冻结。
-当前唯一授权动作是执行并独立验证 E4 R2。
+当前不要执行原 EP3，也不要恢复 Path IG。ENDPOINT-E4 R1 与恢复 R2 均已 fail closed；
+不得启动 ENDPOINT-E5。若继续恢复 E4，必须先诊断 R2 唯一失败任务，再创建新的前瞻性
+amendment、冻结数值验收方案并使用新结果根。
 
 若用户未来要求恢复 Path 轨，必须先创建新的 `P-IG3` 前瞻性 amendment；不得
 复用本 Endpoint 主轨授权。
@@ -423,6 +423,7 @@ INVALID → INCONCLUSIVE → SUPPORTED → NOT_SUPPORTED
 - [ENDPOINT-E4 执行合同](NNS_ViT_Endpoint_Scanner_ENDPOINTE4执行合同_20260918.md)；
 - [ENDPOINT-E4 权威结果](NNS_ViT_Endpoint_Scanner_ENDPOINTE4结果_20260918.md)；
 - [ENDPOINT-E4 恢复 R2](NNS_ViT_Endpoint_Scanner_ENDPOINTE4恢复R2_20260918.md)；
+- [ENDPOINT-E4 恢复 R2 结果](NNS_ViT_Endpoint_Scanner_ENDPOINTE4恢复R2结果_20260918.md)；
 - [方法数学分析](NNS_ViT_Endpoint_Scanner数学分析与方法对比_20260918.md)；
 - [实现与使用说明](endpoint_nns_vit_scanner_20260918.md)。
 
