@@ -18,8 +18,9 @@ PLAN = json.loads((REPO / "manifests/nns_vit_endpoint/ep0_r1_20260918/statistica
 
 
 def test_contract_counts_scope_and_authorization_are_exact():
-    assert SPEC["authorization_token"] == "ENDPOINT_E6_R2_RECOVERY_AFTER_IMPLEMENTATION_FAILURE_20260918"
-    assert SPEC["outputs"]["formal_root"] == "reports/nns_vit_endpoint_e6_release_r2_20260918"
+    assert SPEC["authorization_token"] == "ENDPOINT_E6_R3_RECOVERY_AFTER_RELEASE_FORMAT_FAILURE_20260918"
+    assert SPEC["stage"] == "ENDPOINT-E6-R3-RECOVERY"
+    assert SPEC["outputs"]["formal_root"] == "reports/nns_vit_endpoint_e6_release_r3_20260918"
     assert SPEC["predecessors"]["endpoint_e6_r1_failure_sha256"] == "be15f9995ba7832a4aabcc1aed025f97be28d76558af28ba300fde4349f789fa"
     assert SPEC["execution"] == {
         "cpu_only": True, "cuda_visible_devices": "", "torch_timm_pil_import_allowed": False,

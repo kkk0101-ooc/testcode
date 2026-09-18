@@ -1,0 +1,18 @@
+# Endpoint Scanner E6 results release\n\n## Identity, correctness, and utility\n\nFor a fixed scalar target at the input endpoint, the base Endpoint map is $x \odot \nabla_x s(x)$, the same numerical object as Gradient × Input. The registered implementation scanned 400 shared evaluation images for each of ViT-B/16 and DeiT-S/16. Structural cuts passed 76,800 closure checks and 28,800 omission/duplication controls; the maximum relative L2 error was 1.41446e-5. Under the E4-R3 condition-scaled contract, 6,144 analytic JVP checks passed.\n\nThe confirmatory finite-intervention decisions are **C4a NOT_SUPPORTED** and **C4b NOT_SUPPORTED**. C4a measures image-level associations between component absolute mass and finite activation-replacement magnitude. C4b measures the image-level spatial-score gain over each mandatory baseline. The table reports all 16 registered families and all 28 globally Holm-adjusted tests.\n\n| Family | Estimate(s) | 95% CI(s) | Holm p(s) | Decision |
+|---|---:|---:|---:|---|
+| C4a.vit_b16.normalized_zero.heads | 0.2909 | [0.2813, 0.2982] | 2.169e-119 | SUPPORTED |
+| C4a.vit_b16.normalized_zero.routing_value | 0.0996 | [0.0748, 0.1226] | 3.004e-14 | NOT_SUPPORTED |
+| C4a.vit_b16.normalized_zero.residual_branches | 0.1774 | [0.1548, 0.1952] | 2.555e-46 | SUPPORTED |
+| C4b.vit_b16.normalized_zero.head_regions | -0.0009, -0.0000, -0.0234, 0.0011 | [-0.0017, -0.0002], [-0.0007, 0.0004], [-0.0257, -0.0217], [0.0001, 0.0019] | 0.05986, 1, 1.12e-106, 0.1493 | NOT_SUPPORTED |
+| C4a.vit_b16.blur_rgb.heads | 0.3063 | [0.2957, 0.3181] | 2.169e-119 | SUPPORTED |
+| C4a.vit_b16.blur_rgb.routing_value | 0.1565 | [0.1322, 0.1774] | 9.96e-29 | SUPPORTED |
+| C4a.vit_b16.blur_rgb.residual_branches | 0.2091 | [0.1817, 0.2374] | 1.456e-41 | SUPPORTED |
+| C4b.vit_b16.blur_rgb.head_regions | -0.0010, -0.0007, -0.0237, 0.0042 | [-0.0018, -0.0003], [-0.0021, 0.0000], [-0.0272, -0.0216], [0.0030, 0.0055] | 0.1493, 0.3533, 4.092e-71, 2.95e-09 | NOT_SUPPORTED |
+| C4a.deit_s16.normalized_zero.heads | 0.1910 | [0.1769, 0.2052] | 1.88e-76 | SUPPORTED |
+| C4a.deit_s16.normalized_zero.routing_value | 0.1065 | [0.0817, 0.1291] | 2.106e-10 | SUPPORTED |
+| C4a.deit_s16.normalized_zero.residual_branches | 0.1352 | [0.1148, 0.1643] | 4.353e-19 | SUPPORTED |
+| C4b.deit_s16.normalized_zero.head_regions | -0.0018, -0.0006, -0.0299, 0.0107 | [-0.0034, 0.0000], [-0.0022, 0.0009], [-0.0338, -0.0261], [0.0079, 0.0139] | 0.2958, 1, 4.583e-56, 7.373e-18 | NOT_SUPPORTED |
+| C4a.deit_s16.blur_rgb.heads | 0.1817 | [0.1688, 0.1951] | 3.824e-72 | SUPPORTED |
+| C4a.deit_s16.blur_rgb.routing_value | 0.1600 | [0.1278, 0.1822] | 9.901e-31 | SUPPORTED |
+| C4a.deit_s16.blur_rgb.residual_branches | 0.2287 | [0.2035, 0.2504] | 3.699e-54 | SUPPORTED |
+| C4b.deit_s16.blur_rgb.head_regions | 0.0002, -0.0002, -0.0356, 0.0085 | [-0.0005, 0.0009], [-0.0011, 0.0004], [-0.0390, -0.0308], [0.0064, 0.0106] | 1, 1, 1.88e-76, 9.991e-22 | NOT_SUPPORTED |\n\n## Interpretation boundary\n\nThe utility conclusions above follow the registered two-model, two-reference evaluation. Endpoint base attribution is not a new formula distinct from Gradient × Input. Structural closure and local JVP agreement establish correctness; finite replacement and spatial intervention determine utility. Path IG calibration failed for ViT-B/16 under the frozen candidate range, so the release contains no cross-model Endpoint–Path claim.\n

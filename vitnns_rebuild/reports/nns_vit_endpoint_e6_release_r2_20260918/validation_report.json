@@ -1,0 +1,73 @@
+{
+  "aggregate_claims": {
+    "C4a": "NOT_SUPPORTED",
+    "C4b": "NOT_SUPPORTED"
+  },
+  "bootstrap_replicates_per_family": 10000,
+  "cpu_only": true,
+  "evaluation_images": 400,
+  "family_count": 16,
+  "family_status_counts": {
+    "INCONCLUSIVE": 0,
+    "INVALID": 0,
+    "NOT_SUPPORTED": 5,
+    "SUPPORTED": 11
+  },
+  "figure_files": [
+    "figure_c4a_forest.svg",
+    "figure_c4b_forest.svg"
+  ],
+  "gpu_hours": 0,
+  "holm_family_count": 28,
+  "identity_correctness_utility": {
+    "Correctness": {
+      "closure": {
+        "maximum_relative_l2": 1.4144569831842091e-05,
+        "negative_controls": 28800,
+        "positive_checks": 76800,
+        "source": "ENDPOINT-E3-R2"
+      },
+      "local_jvp": {
+        "checks": 6144,
+        "maximum_absolute_error": 2.648076753197781e-05,
+        "maximum_error_over_absolute_dot_mass": 6.948755071487438e-06,
+        "source": "ENDPOINT-E4-R3"
+      },
+      "status": "SUPPORTED"
+    },
+    "Identity": {
+      "source": "EP1-R11",
+      "statement": "For the same scalar target at the input endpoint, the base Endpoint map is Gradient multiplied by Input.",
+      "status": "ESTABLISHED_IMPLEMENTATION_IDENTITY"
+    },
+    "Path_IG": {
+      "statement": "No cross-model Endpoint-Path fidelity, stability, or cost-quality conclusion is released.",
+      "status": "EP2_R1_PATH_NUMERICAL_CALIBRATION_FAILED_IMMUTABLE"
+    },
+    "Utility": {
+      "C4a": "NOT_SUPPORTED",
+      "C4b": "NOT_SUPPORTED",
+      "source": "ENDPOINT-E6 frozen inference"
+    }
+  },
+  "image_decode_count": 0,
+  "image_model_tasks_per_source": 800,
+  "model_load_count": 0,
+  "new_empirical_compute": false,
+  "next_authorization": "NONE_ENDPOINT_PRIMARY_TRACK_COMPLETE",
+  "paper_release_files": [
+    "manuscript/en/endpoint_scanner_results_release.md",
+    "manuscript/zh/endpoint_scanner_results_release.md",
+    "manuscript/notes/endpoint_scanner_e6_evidence_matrix.md",
+    "manuscript/qc/endpoint_scanner_e6_defensive_writing_audit.md"
+  ],
+  "path_track_status": "EP2_R1_PATH_NUMERICAL_CALIBRATION_FAILED_IMMUTABLE",
+  "peak_cpu_rss_bytes": 978161664,
+  "per_image_reference_rows": 1600,
+  "producer_commit": "49a89eef47b3ce363a32ad413d5ce7bdd2e2e829",
+  "source_read_count": 1623,
+  "stage": "ENDPOINT-E6",
+  "status": "ENDPOINT_E6_PASS_STATISTICS_AND_PAPER_RELEASE_COMPLETE",
+  "test_count": 28,
+  "wall_seconds": 21.95611396804452
+}

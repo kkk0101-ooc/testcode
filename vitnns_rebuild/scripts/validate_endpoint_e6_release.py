@@ -15,18 +15,23 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 
 REPO=Path(__file__).resolve().parents[1]
-ROOT=REPO/"reports/nns_vit_endpoint_e6_release_r2_20260918"
+ROOT=REPO/"reports/nns_vit_endpoint_e6_release_r3_20260918"
 SPEC_PATH=REPO/"config/nns_vit_endpoint/endpoint_e6_release_run_spec.json"
 E4_R3=REPO/"reports/nns_vit_endpoint_e4_intervention_r3_20260918"
 E4_R2=REPO/"reports/nns_vit_endpoint_e4_intervention_r2_20260918"
 E5=REPO/"reports/nns_vit_endpoint_e5_spatial_r1_20260918"
-PASS="ENDPOINT_E6_PASS_STATISTICS_AND_PAPER_RELEASE_COMPLETE"
+PASS="ENDPOINT_E6_R3_PASS_STATISTICS_AND_PAPER_RELEASE_COMPLETE"
 NEXT="NONE_ENDPOINT_PRIMARY_TRACK_COMPLETE"
-SOURCE_CODE=["config/nns_vit_endpoint/endpoint_e6_release_run_spec.json","docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6执行合同_20260918.md","docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6恢复R2_20260918.md","src/vitnns/endpoint_e6_release.py","scripts/run_endpoint_e6_release.py","scripts/validate_endpoint_e6_release.py","tests/test_endpoint_e6_release.py"]
+SOURCE_CODE=["config/nns_vit_endpoint/endpoint_e6_release_run_spec.json","docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6执行合同_20260918.md","docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6恢复R2_20260918.md","docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6封存验证器修订R1_20260918.md","docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6恢复R3_20260918.md","src/vitnns/endpoint_e6_release.py","scripts/run_endpoint_e6_release.py","scripts/validate_endpoint_e6_release.py","tests/test_endpoint_e6_release.py"]
 VALIDATOR_PATH="scripts/validate_endpoint_e6_release.py"
-VALIDATOR_AMENDMENT="docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6封存验证器修订R1_20260918.md"
+VALIDATOR_AMENDMENT="docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6恢复R3_20260918.md"
 REFERENCE_PATHS={
  "endpoint_e6_r1_failure_sha256":"reports/nns_vit_endpoint_e6_release_r1_20260918/failure_receipt.json",
+ "endpoint_e6_r2_terminal_sha256":"reports/nns_vit_endpoint_e6_release_r2_20260918/terminal_receipt.json","endpoint_e6_r2_manifest_sha256":"reports/nns_vit_endpoint_e6_release_r2_20260918/artifact_manifest.json",
+ "endpoint_e6_r2_validation_sha256":"reports/nns_vit_endpoint_e6_release_r2_20260918/validation_report.json","endpoint_e6_r2_reproduction_sha256":"reports/nns_vit_endpoint_e6_release_r2_20260918/reproduction_manifest.json",
+ "endpoint_e6_r2_family_decisions_sha256":"reports/nns_vit_endpoint_e6_release_r2_20260918/family_decisions.json","endpoint_e6_r2_paper_en_sha256":"manuscript/en/endpoint_scanner_results_release.md",
+ "endpoint_e6_r2_paper_zh_sha256":"manuscript/zh/endpoint_scanner_results_release.md","endpoint_e6_r2_evidence_matrix_sha256":"manuscript/notes/endpoint_scanner_e6_evidence_matrix.md",
+ "endpoint_e6_r2_writing_audit_sha256":"manuscript/qc/endpoint_scanner_e6_defensive_writing_audit.md",
  "cohort_registry_sha256":"manifests/nns_vit_endpoint/ep0_r1_20260918/cohort_registry.json","statistical_analysis_plan_sha256":"manifests/nns_vit_endpoint/ep0_r1_20260918/statistical_analysis_plan.json",
  "endpoint_e4_r2_artifact_manifest_sha256":"reports/nns_vit_endpoint_e4_intervention_r2_20260918/artifact_manifest.json","endpoint_e4_r3_artifact_manifest_sha256":"reports/nns_vit_endpoint_e4_intervention_r3_20260918/artifact_manifest.json",
  "endpoint_e4_r3_combined_index_sha256":"reports/nns_vit_endpoint_e4_intervention_r3_20260918/combined_result_index.json","endpoint_e4_r3_terminal_sha256":"reports/nns_vit_endpoint_e4_intervention_r3_20260918/terminal_receipt.json",
@@ -165,7 +170,7 @@ def recompute_inference(rows:list[dict],plan:dict) -> tuple[list[dict],list[dict
 
 def validate(root:Path) -> dict[str,Any]:
     require(os.environ.get("CUDA_VISIBLE_DEVICES")=="" and not set(sys.modules).intersection({"torch","timm","PIL"}),"CPU_ONLY");root=root.resolve();spec=load(SPEC_PATH);report=load(root/"validation_report.json");terminal=load(root/"terminal_receipt.json");manifest=load(root/"artifact_manifest.json")
-    require(report["status"]==terminal["status"]==PASS and report["stage"]==terminal["stage"]=="ENDPOINT-E6" and report["next_authorization"]==terminal["next_authorization"]==NEXT,"TERMINAL_STATUS");require(terminal["validation_digest"]==digest(report) and terminal["manifest_digest"]==manifest["canonical_digest"]==digest(manifest["files"]),"TERMINAL_DIGEST");require(not (root/"terminal_receipt.pending.json").exists() and not (root/"failure_receipt.json").exists(),"ATOMIC_TERMINAL")
+    require(report["status"]==terminal["status"]==PASS and report["stage"]==terminal["stage"]=="ENDPOINT-E6-R3-RECOVERY" and report["next_authorization"]==terminal["next_authorization"]==NEXT,"TERMINAL_STATUS");require(terminal["validation_digest"]==digest(report) and terminal["manifest_digest"]==manifest["canonical_digest"]==digest(manifest["files"]),"TERMINAL_DIGEST");require(not (root/"terminal_receipt.pending.json").exists() and not (root/"failure_receipt.json").exists(),"ATOMIC_TERMINAL")
     r1=load(REPO/REFERENCE_PATHS["endpoint_e6_r1_failure_sha256"]);require(r1=={"error":"name 'selected' is not defined","error_type":"NameError","next_authorization":"NONE","stage":"ENDPOINT-E6","status":"ENDPOINT_E6_FAIL_CLOSED"},"R1_FAILURE_PRESERVATION")
     paths=[r["path"] for r in manifest["files"]];require(len(paths)==len(set(paths)),"MANIFEST_DUPLICATE")
     for row in manifest["files"]:path=root/row["path"];require(path.is_file() and path.stat().st_size==row["bytes"] and sha(path)==row["sha256"],"MANIFEST_FILE:"+row["path"])
@@ -187,7 +192,8 @@ def validate(root:Path) -> dict[str,Any]:
     aggregate={claim:("INVALID" if any(r["status"]=="INVALID" for r in families if r["claim"]==claim) else "INCONCLUSIVE" if any(r["status"]=="INCONCLUSIVE" for r in families if r["claim"]==claim) else "SUPPORTED" if all(r["status"]=="SUPPORTED" for r in families if r["claim"]==claim) else "NOT_SUPPORTED") for claim in ("C4a","C4b")};require(decision["aggregate_claims"]==report["aggregate_claims"]==aggregate and terminal["C4a"]==aggregate["C4a"] and terminal["C4b"]==aggregate["C4b"],"AGGREGATE_DECISION")
     require(report["evaluation_images"]==terminal["evaluation_image_count"]==400 and report["family_count"]==terminal["family_count"]==16 and report["test_count"]==terminal["test_count"]==report["holm_family_count"]==28 and report["gpu_hours"]==0 and not report["new_empirical_compute"] and report["image_decode_count"]==report["model_load_count"]==0,"REPORT_COUNTS")
     for row in reproduction["paper_release_files"]:path=REPO/row["path"];require(path.is_file() and path.stat().st_size==row["bytes"] and sha(path)==row["sha256"],"PAPER_FILE")
-    en=(REPO/spec["outputs"]["paper_release_en"]).read_text();zh=(REPO/spec["outputs"]["paper_release_zh"]).read_text();require(f"C4a **{aggregate['C4a']}**" in en and f"C4b **{aggregate['C4b']}**" in en and f"C4a {aggregate['C4a']}" in zh and f"C4b {aggregate['C4b']}" in zh,"BILINGUAL_DECISIONS");require(en.count("| C4")==zh.count("| C4")==16,"BILINGUAL_FAMILY_TABLE")
+    en=(REPO/spec["outputs"]["paper_release_en"]).read_text();zh=(REPO/spec["outputs"]["paper_release_zh"]).read_text();require(f"**C4a {aggregate['C4a']}**" in en and f"**C4b {aggregate['C4b']}**" in en and f"**C4a {aggregate['C4a']}**" in zh and f"**C4b {aggregate['C4b']}**" in zh,"BILINGUAL_DECISIONS");require(en.count("| C4")==zh.count("| C4")==16,"BILINGUAL_FAMILY_TABLE")
+    require("\\n" not in en and "\\n" not in zh and en.count("\n\n")>=4 and zh.count("\n\n")>=4,"BILINGUAL_MARKDOWN_FORMAT")
     for row in reproduction["figures"]:path=root/row["path"];text=path.read_text();require(path.suffix==".svg" and path.stat().st_size==row["bytes"] and sha(path)==row["sha256"] and text.count("<circle")== (12 if "c4a" in path.name else 16),"FIGURE")
     require(report["path_track_status"]=="EP2_R1_PATH_NUMERICAL_CALIBRATION_FAILED_IMMUTABLE" and load(root/"claim_decisions.json")["Path_IG"]["status"]==report["path_track_status"],"PATH_BOUNDARY")
     return {"status":PASS,"families":16,"tests":28,"C4a":aggregate["C4a"],"C4b":aggregate["C4b"],"per_image_rows":1600,"next_authorization":NEXT}

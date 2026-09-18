@@ -30,6 +30,8 @@ SOURCE_CODE = [
     "config/nns_vit_endpoint/endpoint_e6_release_run_spec.json",
     "docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6执行合同_20260918.md",
     "docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6恢复R2_20260918.md",
+    "docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6封存验证器修订R1_20260918.md",
+    "docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6恢复R3_20260918.md",
     "src/vitnns/endpoint_e6_release.py",
     "scripts/run_endpoint_e6_release.py",
     "scripts/validate_endpoint_e6_release.py",
@@ -37,6 +39,15 @@ SOURCE_CODE = [
 ]
 REFERENCE_PATHS = {
     "endpoint_e6_r1_failure_sha256": "reports/nns_vit_endpoint_e6_release_r1_20260918/failure_receipt.json",
+    "endpoint_e6_r2_terminal_sha256": "reports/nns_vit_endpoint_e6_release_r2_20260918/terminal_receipt.json",
+    "endpoint_e6_r2_manifest_sha256": "reports/nns_vit_endpoint_e6_release_r2_20260918/artifact_manifest.json",
+    "endpoint_e6_r2_validation_sha256": "reports/nns_vit_endpoint_e6_release_r2_20260918/validation_report.json",
+    "endpoint_e6_r2_reproduction_sha256": "reports/nns_vit_endpoint_e6_release_r2_20260918/reproduction_manifest.json",
+    "endpoint_e6_r2_family_decisions_sha256": "reports/nns_vit_endpoint_e6_release_r2_20260918/family_decisions.json",
+    "endpoint_e6_r2_paper_en_sha256": "manuscript/en/endpoint_scanner_results_release.md",
+    "endpoint_e6_r2_paper_zh_sha256": "manuscript/zh/endpoint_scanner_results_release.md",
+    "endpoint_e6_r2_evidence_matrix_sha256": "manuscript/notes/endpoint_scanner_e6_evidence_matrix.md",
+    "endpoint_e6_r2_writing_audit_sha256": "manuscript/qc/endpoint_scanner_e6_defensive_writing_audit.md",
     "cohort_registry_sha256": "manifests/nns_vit_endpoint/ep0_r1_20260918/cohort_registry.json",
     "statistical_analysis_plan_sha256": "manifests/nns_vit_endpoint/ep0_r1_20260918/statistical_analysis_plan.json",
     "endpoint_e4_r2_artifact_manifest_sha256": "reports/nns_vit_endpoint_e4_intervention_r2_20260918/artifact_manifest.json",
@@ -61,7 +72,7 @@ REFERENCE_PATHS = {
 }
 E4_R3 = Path("reports/nns_vit_endpoint_e4_intervention_r3_20260918")
 E5 = Path("reports/nns_vit_endpoint_e5_spatial_r1_20260918")
-PASS = "ENDPOINT_E6_PASS_STATISTICS_AND_PAPER_RELEASE_COMPLETE"
+PASS = "ENDPOINT_E6_R3_PASS_STATISTICS_AND_PAPER_RELEASE_COMPLETE"
 NEXT = "NONE_ENDPOINT_PRIMARY_TRACK_COMPLETE"
 ALLOWED_STATUS = {"INVALID", "INCONCLUSIVE", "SUPPORTED", "NOT_SUPPORTED"}
 
@@ -110,7 +121,7 @@ def write_text_new(path: Path, value: str) -> None:
 
 
 def validate_spec(spec: dict[str, Any]) -> None:
-    if spec["authorization_token"] != "ENDPOINT_E6_R2_RECOVERY_AFTER_IMPLEMENTATION_FAILURE_20260918" or spec["stage"] != "ENDPOINT-E6":
+    if spec["authorization_token"] != "ENDPOINT_E6_R3_RECOVERY_AFTER_RELEASE_FORMAT_FAILURE_20260918" or spec["stage"] != "ENDPOINT-E6-R3-RECOVERY":
         raise ValueError("E6_AUTHORIZATION")
     expected_execution = {"cpu_only": True, "cuda_visible_devices": "", "torch_timm_pil_import_allowed": False,
         "image_decode_allowed": False, "model_load_allowed": False, "new_empirical_compute_allowed": False,
@@ -332,6 +343,8 @@ def main() -> int:
         figure_records=render_figures(root,families);table_en,table_zh=markdown_tables(families)
         en=rf"""# Endpoint Scanner E6 results release\n\n## Identity, correctness, and utility\n\nFor a fixed scalar target at the input endpoint, the base Endpoint map is $x \odot \nabla_x s(x)$, the same numerical object as Gradient × Input. The registered implementation scanned 400 shared evaluation images for each of ViT-B/16 and DeiT-S/16. Structural cuts passed 76,800 closure checks and 28,800 omission/duplication controls; the maximum relative L2 error was 1.41446e-5. Under the E4-R3 condition-scaled contract, 6,144 analytic JVP checks passed.\n\nThe confirmatory finite-intervention decisions are **C4a {aggregate['C4a']}** and **C4b {aggregate['C4b']}**. C4a measures image-level associations between component absolute mass and finite activation-replacement magnitude. C4b measures the image-level spatial-score gain over each mandatory baseline. The table reports all 16 registered families and all 28 globally Holm-adjusted tests.\n\n{table_en}\n\n## Interpretation boundary\n\nThe utility conclusions above follow the registered two-model, two-reference evaluation. Endpoint base attribution is not a new formula distinct from Gradient × Input. Structural closure and local JVP agreement establish correctness; finite replacement and spatial intervention determine utility. Path IG calibration failed for ViT-B/16 under the frozen candidate range, so the release contains no cross-model Endpoint–Path claim.\n"""
         zh=rf"""# Endpoint Scanner E6 结果发布\n\n## Identity、Correctness 与 Utility\n\n对同一输入端标量目标，基础 Endpoint 图为 $x \odot \nabla_x s(x)$，数值上就是 Gradient × Input。注册实现对 ViT-B/16 和 DeiT-S/16 各自扫描同一组 400 张 evaluation 图。结构切面通过 76,800 项闭合检查和 28,800 项遗漏/重复负例，最大 relative L2 为 1.41446e-5；E4-R3 条件尺度合同下的 6,144 项解析 JVP 检查全部通过。\n\n确认性有限干预判定为：**C4a {aggregate['C4a']}**、**C4b {aggregate['C4b']}**。C4a 检验成分 absolute mass 与有限 activation-replacement 幅度的图像级关联；C4b 检验 Endpoint 空间排序相对每个 mandatory baseline 的图像级增量。下表完整报告 16 个注册 family 和统一 Holm 校正的 28 个检验。\n\n{table_zh}\n\n## 解释边界\n\n上述效用结论限定在注册的双模型、双 reference 评价中。基础 Endpoint 归因不是不同于 Gradient × Input 的新公式。结构闭合和局部 JVP 支持 correctness；有限 replacement 和空间干预决定 utility。Path IG 在 ViT-B/16 上未通过冻结候选范围的数值校准，因此本文不发布跨模型 Endpoint–Path 结论。\n"""
+        en=en.replace(r"\n\n", "\n\n").removesuffix(r"\n").replace(r"\\odot", r"\odot").replace(r"\\nabla", r"\nabla") + "\n"
+        zh=zh.replace(r"\n\n", "\n\n").removesuffix(r"\n").replace(r"\\odot", r"\odot").replace(r"\\nabla", r"\nabla") + "\n"
         write_text_new(REPO/spec["outputs"]["paper_release_en"],en);write_text_new(REPO/spec["outputs"]["paper_release_zh"],zh)
         evidence="# Endpoint Scanner E6 claim-evidence matrix\n\n| Claim | Evidence | Decision | Boundary |\n|---|---|---|---|\n"+"\n".join([
           "| Base Endpoint identity | EP1-R11 implementation/regression | ESTABLISHED_IMPLEMENTATION_IDENTITY | Same scalar target and normalized input coordinates |",
@@ -341,16 +354,18 @@ def main() -> int:
           f"| C4b spatial information gain | E6 4 families and 16 mandatory-baseline Holm tests | {aggregate['C4b']} | All four baselines in every family required |",
           "| Endpoint-Path comparison | EP2-R1 | NOT RELEASED | ViT-B/16 calibration failed under the frozen candidate range |",
         ])+"\n"
+        evidence=evidence.replace("\\n", "\n")
         write_text_new(REPO/spec["outputs"]["evidence_matrix"],evidence)
         defensive="""# Endpoint Scanner E6 defensive-writing audit\n\n| Location | Original | Type | Severity | Necessary caveat? | Why it feels defensive | Likely reviewer reaction | Recommended action | Rewrite |\n|---|---|---|---|---|---|---|---|---|\n| E6 interpretation boundary | Endpoint base attribution is not a new formula distinct from Gradient × Input. | D14 | Minor | Yes | It could read as novelty prebuttal if repeated. | Clear once; distracting if repeated. | Preserve once as the identity result. | The base Endpoint map equals Gradient × Input for the same scalar target. |\n| E6 Path boundary | Path IG calibration failed for ViT-B/16 under the frozen candidate range, so the release contains no cross-model Endpoint–Path claim. | CLEAN | None | Yes | It states the direct failed gate and consequence. | The scope follows the registered evidence. | Preserve once. | No change. |\n\n### Paper-level defensive-writing score\n\n2/10. The release leads with measured results and keeps one concise boundary per claim.\n\n### Highest-priority removals\n\n- Do not repeat the Gradient × Input novelty boundary outside Identity and the interpretation boundary.\n- Do not excuse any NOT_SUPPORTED family or infer causes without a registered diagnostic.\n- Do not convert E3/E4 correctness into utility language.\n\n### Necessary caveats to preserve\n\n- Endpoint base attribution is Gradient × Input for the same target.\n- E3 closure and E4-R3 JVP are correctness evidence.\n- Path IG cross-model claims remain blocked by the immutable EP2-R1 calibration failure.\n\n### Repeated phrase audit\n\nThe release uses no reviewer-facing prebuttal phrase and states each material boundary at most twice across the result and interpretation paragraphs.\n"""
+        defensive=defensive.replace("\\n", "\n")
         write_text_new(REPO/spec["outputs"]["defensive_writing_audit"],defensive)
         read_unique={row["path"]:row for row in audit};write_new(root/"source_read_audit.json",{"stage":"ENDPOINT-E6","cpu_only":True,"cuda_visible_devices":os.environ.get("CUDA_VISIBLE_DEVICES"),"forbidden_imports_loaded":sorted(set(sys.modules).intersection({"torch","timm","PIL"})),"image_files_read":0,"model_files_read":0,"read_count":len(read_unique),"reads":sorted(read_unique.values(),key=lambda row:row["path"])})
         release_files=[spec["outputs"][key] for key in ("paper_release_en","paper_release_zh","evidence_matrix","defensive_writing_audit")];write_new(root/"reproduction_manifest.json",{"command":"CUDA_VISIBLE_DEVICES='' .conda/envs/vitnns/bin/python scripts/run_endpoint_e6_release.py","producer_commit":state["head"],"source_code":[{"path":p,"sha256":file_sha256(REPO/p)} for p in SOURCE_CODE],"inputs":[{"path":p,"sha256":spec["predecessors"][k]} for k,p in REFERENCE_PATHS.items()],"paper_release_files":[{"path":p,"bytes":(REPO/p).stat().st_size,"sha256":file_sha256(REPO/p)} for p in release_files],"figures":figure_records})
-        elapsed=time.monotonic()-started;report={"status":PASS,"stage":"ENDPOINT-E6","producer_commit":state["head"],"cpu_only":True,"gpu_hours":0,"new_empirical_compute":False,"image_decode_count":0,"model_load_count":0,"evaluation_images":400,"image_model_tasks_per_source":800,"per_image_reference_rows":1600,"family_count":16,"test_count":28,"holm_family_count":28,"bootstrap_replicates_per_family":10000,"family_status_counts":{s:sum(r["status"]==s for r in families) for s in sorted(ALLOWED_STATUS)},"aggregate_claims":aggregate,"identity_correctness_utility":identity_correctness,"source_read_count":len(read_unique),"wall_seconds":elapsed,"peak_cpu_rss_bytes":resource.getrusage(resource.RUSAGE_SELF).ru_maxrss*1024,"paper_release_files":release_files,"figure_files":[r["path"] for r in figure_records],"path_track_status":"EP2_R1_PATH_NUMERICAL_CALIBRATION_FAILED_IMMUTABLE","next_authorization":NEXT}
+        elapsed=time.monotonic()-started;report={"status":PASS,"stage":"ENDPOINT-E6-R3-RECOVERY","producer_commit":state["head"],"cpu_only":True,"gpu_hours":0,"new_empirical_compute":False,"image_decode_count":0,"model_load_count":0,"evaluation_images":400,"image_model_tasks_per_source":800,"per_image_reference_rows":1600,"family_count":16,"test_count":28,"holm_family_count":28,"bootstrap_replicates_per_family":10000,"family_status_counts":{s:sum(r["status"]==s for r in families) for s in sorted(ALLOWED_STATUS)},"aggregate_claims":aggregate,"identity_correctness_utility":identity_correctness,"source_read_count":len(read_unique),"wall_seconds":elapsed,"peak_cpu_rss_bytes":resource.getrusage(resource.RUSAGE_SELF).ru_maxrss*1024,"paper_release_files":release_files,"figure_files":[r["path"] for r in figure_records],"path_track_status":"EP2_R1_PATH_NUMERICAL_CALIBRATION_FAILED_IMMUTABLE","next_authorization":NEXT}
         write_new(root/"validation_report.json",report)
         files=[{"path":p.relative_to(root).as_posix(),"bytes":p.stat().st_size,"sha256":file_sha256(p)} for p in sorted(root.rglob("*")) if p.is_file() and p.name not in {"artifact_manifest.json","terminal_receipt.json"}]
         manifest={"files":files,"canonical_digest":digest(files)};write_new(root/"artifact_manifest.json",manifest)
-        terminal={"status":PASS,"stage":"ENDPOINT-E6","producer_commit":state["head"],"evaluation_image_count":400,"family_count":16,"test_count":28,"C4a":aggregate["C4a"],"C4b":aggregate["C4b"],"validation_digest":digest(report),"manifest_digest":manifest["canonical_digest"],"next_authorization":NEXT}
+        terminal={"status":PASS,"stage":"ENDPOINT-E6-R3-RECOVERY","producer_commit":state["head"],"evaluation_image_count":400,"family_count":16,"test_count":28,"C4a":aggregate["C4a"],"C4b":aggregate["C4b"],"validation_digest":digest(report),"manifest_digest":manifest["canonical_digest"],"next_authorization":NEXT}
         write_new(root/"terminal_receipt.pending.json",terminal);os.replace(root/"terminal_receipt.pending.json",root/"terminal_receipt.json");print(json.dumps(terminal,sort_keys=True));return 0
     except Exception as error:
         failure={"status":"ENDPOINT_E6_FAIL_CLOSED","stage":"ENDPOINT-E6","error_type":type(error).__name__,"error":str(error),"next_authorization":"NONE"}
