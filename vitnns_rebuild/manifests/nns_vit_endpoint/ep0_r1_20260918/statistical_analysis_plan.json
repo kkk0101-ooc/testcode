@@ -1,0 +1,567 @@
+{
+  "NA": {
+    "constant_vector": "NA_CONSTANT_VECTOR",
+    "min_components": 8,
+    "missing_due_cap": "PAUSED_RESOURCE_CAP and INCONCLUSIVE, not a favorable partial-cohort claim",
+    "near_zero_mass": 1e-12,
+    "nonfinite_metric": "NA only if mathematical undefined reason registered",
+    "nonfinite_raw": "INVALID_NUMERIC for affected required family",
+    "paired_set": "intersection across all mandatory methods and both required inputs for family, no method-specific advantage",
+    "rank_ties": "average rank, exact numeric equal",
+    "required_raw_coverage": "all400 attempted; invalid/missing paths prevent support except registered NA",
+    "zero_mass": "retained; undefined metric NA, never impute0"
+  },
+  "aggregate_claims": {
+    "C1": "EP1 proof/regression, not inferred from utility",
+    "C2": "registered target completion and resource measurements; no universal speed claim",
+    "C3": "descriptive tradeoff, no superiority/noninferiority confirmatory claim",
+    "C4a": "all12 required association families supported for two-model two-reference association statement",
+    "C4b": "all4 spatial families and all16 baseline tests supported for joint spatial gain statement"
+  },
+  "bootstrap": {
+    "algorithm": "resample image indices with replacement; paired methods/references/model clusters preserved; medians; NumPy1.26.4 PCG64",
+    "ci_type": "percentile two-sided, precision interval not familywise CI",
+    "holm_controls_tests_not_CIs": true,
+    "level": 0.95,
+    "quantile": "linear",
+    "replicates": 10000,
+    "seed": "SHA256(namespace|bootstrap|family_id) first8 bytes big endian"
+  },
+  "decision_order": [
+    "INVALID if cohort/hook/protocol/numeric violation",
+    "INCONCLUSIVE if exact coverage incomplete, Nvalid<360, nnonzero<300, metric missing, CI width above family max",
+    "SUPPORTED if median>=delta, positive direction, all relevant Holm p<=.05; C4b all4 mandatory differences pass",
+    "NOT_SUPPORTED if valid sufficient precise data but support criteria fail"
+  ],
+  "families": [
+    {
+      "ci_width_max": 0.3,
+      "claim": "C4a",
+      "component_family": "heads",
+      "delta_min": 0.1,
+      "family_id": "C4a.vit_b16.normalized_zero.heads",
+      "model": "vit_b16",
+      "n_valid_min": 360,
+      "replacement": "normalized_zero",
+      "statistic": "median over images of within-image Spearman(m_k,abs(e_k))",
+      "tests": [
+        "C4a.vit_b16.normalized_zero.heads"
+      ]
+    },
+    {
+      "ci_width_max": 0.3,
+      "claim": "C4a",
+      "component_family": "routing_value",
+      "delta_min": 0.1,
+      "family_id": "C4a.vit_b16.normalized_zero.routing_value",
+      "model": "vit_b16",
+      "n_valid_min": 360,
+      "replacement": "normalized_zero",
+      "statistic": "median over images of within-image Spearman(m_k,abs(e_k))",
+      "tests": [
+        "C4a.vit_b16.normalized_zero.routing_value"
+      ]
+    },
+    {
+      "ci_width_max": 0.3,
+      "claim": "C4a",
+      "component_family": "residual_branches",
+      "delta_min": 0.1,
+      "family_id": "C4a.vit_b16.normalized_zero.residual_branches",
+      "model": "vit_b16",
+      "n_valid_min": 360,
+      "replacement": "normalized_zero",
+      "statistic": "median over images of within-image Spearman(m_k,abs(e_k))",
+      "tests": [
+        "C4a.vit_b16.normalized_zero.residual_branches"
+      ]
+    },
+    {
+      "ci_width_max": 0.5,
+      "claim": "C4b",
+      "component_family": "block5_heads_0_mid_last",
+      "delta_min": 0.05,
+      "family_id": "C4b.vit_b16.normalized_zero.head_regions",
+      "model": "vit_b16",
+      "n_valid_min": 360,
+      "replacement": "normalized_zero",
+      "statistic": "per-image mean across3 heads of trapezoidal abs effect AUC over q=0,1/16,2/16,4/16 divided by0.25; median paired difference",
+      "tests": [
+        "C4b.vit_b16.normalized_zero.head_regions.vs_total_gxi",
+        "C4b.vit_b16.normalized_zero.head_regions.vs_raw_gradient",
+        "C4b.vit_b16.normalized_zero.head_regions.vs_regional_taylor",
+        "C4b.vit_b16.normalized_zero.head_regions.vs_random_regions"
+      ],
+      "units": "raw logit"
+    },
+    {
+      "ci_width_max": 0.3,
+      "claim": "C4a",
+      "component_family": "heads",
+      "delta_min": 0.1,
+      "family_id": "C4a.vit_b16.blur_rgb.heads",
+      "model": "vit_b16",
+      "n_valid_min": 360,
+      "replacement": "blur_rgb",
+      "statistic": "median over images of within-image Spearman(m_k,abs(e_k))",
+      "tests": [
+        "C4a.vit_b16.blur_rgb.heads"
+      ]
+    },
+    {
+      "ci_width_max": 0.3,
+      "claim": "C4a",
+      "component_family": "routing_value",
+      "delta_min": 0.1,
+      "family_id": "C4a.vit_b16.blur_rgb.routing_value",
+      "model": "vit_b16",
+      "n_valid_min": 360,
+      "replacement": "blur_rgb",
+      "statistic": "median over images of within-image Spearman(m_k,abs(e_k))",
+      "tests": [
+        "C4a.vit_b16.blur_rgb.routing_value"
+      ]
+    },
+    {
+      "ci_width_max": 0.3,
+      "claim": "C4a",
+      "component_family": "residual_branches",
+      "delta_min": 0.1,
+      "family_id": "C4a.vit_b16.blur_rgb.residual_branches",
+      "model": "vit_b16",
+      "n_valid_min": 360,
+      "replacement": "blur_rgb",
+      "statistic": "median over images of within-image Spearman(m_k,abs(e_k))",
+      "tests": [
+        "C4a.vit_b16.blur_rgb.residual_branches"
+      ]
+    },
+    {
+      "ci_width_max": 0.5,
+      "claim": "C4b",
+      "component_family": "block5_heads_0_mid_last",
+      "delta_min": 0.05,
+      "family_id": "C4b.vit_b16.blur_rgb.head_regions",
+      "model": "vit_b16",
+      "n_valid_min": 360,
+      "replacement": "blur_rgb",
+      "statistic": "per-image mean across3 heads of trapezoidal abs effect AUC over q=0,1/16,2/16,4/16 divided by0.25; median paired difference",
+      "tests": [
+        "C4b.vit_b16.blur_rgb.head_regions.vs_total_gxi",
+        "C4b.vit_b16.blur_rgb.head_regions.vs_raw_gradient",
+        "C4b.vit_b16.blur_rgb.head_regions.vs_regional_taylor",
+        "C4b.vit_b16.blur_rgb.head_regions.vs_random_regions"
+      ],
+      "units": "raw logit"
+    },
+    {
+      "ci_width_max": 0.3,
+      "claim": "C4a",
+      "component_family": "heads",
+      "delta_min": 0.1,
+      "family_id": "C4a.deit_s16.normalized_zero.heads",
+      "model": "deit_s16",
+      "n_valid_min": 360,
+      "replacement": "normalized_zero",
+      "statistic": "median over images of within-image Spearman(m_k,abs(e_k))",
+      "tests": [
+        "C4a.deit_s16.normalized_zero.heads"
+      ]
+    },
+    {
+      "ci_width_max": 0.3,
+      "claim": "C4a",
+      "component_family": "routing_value",
+      "delta_min": 0.1,
+      "family_id": "C4a.deit_s16.normalized_zero.routing_value",
+      "model": "deit_s16",
+      "n_valid_min": 360,
+      "replacement": "normalized_zero",
+      "statistic": "median over images of within-image Spearman(m_k,abs(e_k))",
+      "tests": [
+        "C4a.deit_s16.normalized_zero.routing_value"
+      ]
+    },
+    {
+      "ci_width_max": 0.3,
+      "claim": "C4a",
+      "component_family": "residual_branches",
+      "delta_min": 0.1,
+      "family_id": "C4a.deit_s16.normalized_zero.residual_branches",
+      "model": "deit_s16",
+      "n_valid_min": 360,
+      "replacement": "normalized_zero",
+      "statistic": "median over images of within-image Spearman(m_k,abs(e_k))",
+      "tests": [
+        "C4a.deit_s16.normalized_zero.residual_branches"
+      ]
+    },
+    {
+      "ci_width_max": 0.5,
+      "claim": "C4b",
+      "component_family": "block5_heads_0_mid_last",
+      "delta_min": 0.05,
+      "family_id": "C4b.deit_s16.normalized_zero.head_regions",
+      "model": "deit_s16",
+      "n_valid_min": 360,
+      "replacement": "normalized_zero",
+      "statistic": "per-image mean across3 heads of trapezoidal abs effect AUC over q=0,1/16,2/16,4/16 divided by0.25; median paired difference",
+      "tests": [
+        "C4b.deit_s16.normalized_zero.head_regions.vs_total_gxi",
+        "C4b.deit_s16.normalized_zero.head_regions.vs_raw_gradient",
+        "C4b.deit_s16.normalized_zero.head_regions.vs_regional_taylor",
+        "C4b.deit_s16.normalized_zero.head_regions.vs_random_regions"
+      ],
+      "units": "raw logit"
+    },
+    {
+      "ci_width_max": 0.3,
+      "claim": "C4a",
+      "component_family": "heads",
+      "delta_min": 0.1,
+      "family_id": "C4a.deit_s16.blur_rgb.heads",
+      "model": "deit_s16",
+      "n_valid_min": 360,
+      "replacement": "blur_rgb",
+      "statistic": "median over images of within-image Spearman(m_k,abs(e_k))",
+      "tests": [
+        "C4a.deit_s16.blur_rgb.heads"
+      ]
+    },
+    {
+      "ci_width_max": 0.3,
+      "claim": "C4a",
+      "component_family": "routing_value",
+      "delta_min": 0.1,
+      "family_id": "C4a.deit_s16.blur_rgb.routing_value",
+      "model": "deit_s16",
+      "n_valid_min": 360,
+      "replacement": "blur_rgb",
+      "statistic": "median over images of within-image Spearman(m_k,abs(e_k))",
+      "tests": [
+        "C4a.deit_s16.blur_rgb.routing_value"
+      ]
+    },
+    {
+      "ci_width_max": 0.3,
+      "claim": "C4a",
+      "component_family": "residual_branches",
+      "delta_min": 0.1,
+      "family_id": "C4a.deit_s16.blur_rgb.residual_branches",
+      "model": "deit_s16",
+      "n_valid_min": 360,
+      "replacement": "blur_rgb",
+      "statistic": "median over images of within-image Spearman(m_k,abs(e_k))",
+      "tests": [
+        "C4a.deit_s16.blur_rgb.residual_branches"
+      ]
+    },
+    {
+      "ci_width_max": 0.5,
+      "claim": "C4b",
+      "component_family": "block5_heads_0_mid_last",
+      "delta_min": 0.05,
+      "family_id": "C4b.deit_s16.blur_rgb.head_regions",
+      "model": "deit_s16",
+      "n_valid_min": 360,
+      "replacement": "blur_rgb",
+      "statistic": "per-image mean across3 heads of trapezoidal abs effect AUC over q=0,1/16,2/16,4/16 divided by0.25; median paired difference",
+      "tests": [
+        "C4b.deit_s16.blur_rgb.head_regions.vs_total_gxi",
+        "C4b.deit_s16.blur_rgb.head_regions.vs_raw_gradient",
+        "C4b.deit_s16.blur_rgb.head_regions.vs_regional_taylor",
+        "C4b.deit_s16.blur_rgb.head_regions.vs_random_regions"
+      ],
+      "units": "raw logit"
+    }
+  ],
+  "fixed_n": 400,
+  "holm": {
+    "algorithm": "sort(p,test_id); adj_i=max(previous,min(1,(28-i)*p_i)), i zero-based",
+    "alpha": 0.05,
+    "scope": "all28 test IDs across both models/replacements and C4a/C4b",
+    "test_ids": [
+      "C4a.deit_s16.blur_rgb.heads",
+      "C4a.deit_s16.blur_rgb.residual_branches",
+      "C4a.deit_s16.blur_rgb.routing_value",
+      "C4a.deit_s16.normalized_zero.heads",
+      "C4a.deit_s16.normalized_zero.residual_branches",
+      "C4a.deit_s16.normalized_zero.routing_value",
+      "C4a.vit_b16.blur_rgb.heads",
+      "C4a.vit_b16.blur_rgb.residual_branches",
+      "C4a.vit_b16.blur_rgb.routing_value",
+      "C4a.vit_b16.normalized_zero.heads",
+      "C4a.vit_b16.normalized_zero.residual_branches",
+      "C4a.vit_b16.normalized_zero.routing_value",
+      "C4b.deit_s16.blur_rgb.head_regions.vs_random_regions",
+      "C4b.deit_s16.blur_rgb.head_regions.vs_raw_gradient",
+      "C4b.deit_s16.blur_rgb.head_regions.vs_regional_taylor",
+      "C4b.deit_s16.blur_rgb.head_regions.vs_total_gxi",
+      "C4b.deit_s16.normalized_zero.head_regions.vs_random_regions",
+      "C4b.deit_s16.normalized_zero.head_regions.vs_raw_gradient",
+      "C4b.deit_s16.normalized_zero.head_regions.vs_regional_taylor",
+      "C4b.deit_s16.normalized_zero.head_regions.vs_total_gxi",
+      "C4b.vit_b16.blur_rgb.head_regions.vs_random_regions",
+      "C4b.vit_b16.blur_rgb.head_regions.vs_raw_gradient",
+      "C4b.vit_b16.blur_rgb.head_regions.vs_regional_taylor",
+      "C4b.vit_b16.blur_rgb.head_regions.vs_total_gxi",
+      "C4b.vit_b16.normalized_zero.head_regions.vs_random_regions",
+      "C4b.vit_b16.normalized_zero.head_regions.vs_raw_gradient",
+      "C4b.vit_b16.normalized_zero.head_regions.vs_regional_taylor",
+      "C4b.vit_b16.normalized_zero.head_regions.vs_total_gxi"
+    ]
+  },
+  "primary_predictor": "m_k for C4a; E-derived candidate-region ranking for C4b",
+  "sample_size_rationale": {
+    "binary_sign_worst_case_95_halfwidth": 0.049,
+    "description": "approx 0.049 sign-proportion halfwidth; correlation/logit precision decided by frozen CI-width gates, not assumed",
+    "design": "fixed precision, no power simulation or claimed power",
+    "independent_units": "one image in each of400 distinct true classes, shared across2 models",
+    "no_optional_stopping": true,
+    "no_replacement_or_expansion_after_outcomes": true
+  },
+  "secondary_not_in_holm": [
+    "clean_top1",
+    "signed association",
+    "zeroing",
+    "Q/K separate finite effects",
+    "joint routing/value interaction",
+    "flip/noise",
+    "internal unit fidelity",
+    "GradCAM/rollout descriptive comparisons"
+  ],
+  "sign_test": {
+    "assumption": "independent selected images; null equal positive/negative sign probability conditional on nonzero, not exchangeable heads",
+    "min_nonzero_n": 300,
+    "near_zero_difference": 1e-12,
+    "p_formula": "min(1,2*sum(comb(n,j) for j=0..min(n_positive,n_negative))/2**n)",
+    "zero_rule": "abs(value-null)<=1e-12 contributes tie, excluded from binomial count but retained in N/CI"
+  },
+  "signed_secondary": "a_k vs e_k and p_ref vs e_k; descriptive only, sign agreement excludes abs(effect)<=1e-6",
+  "tests": [
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.vit_b16.normalized_zero.heads",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.vit_b16.normalized_zero.routing_value",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.vit_b16.normalized_zero.residual_branches",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.vit_b16.normalized_zero.head_regions.vs_total_gxi",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.vit_b16.normalized_zero.head_regions.vs_raw_gradient",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.vit_b16.normalized_zero.head_regions.vs_regional_taylor",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.vit_b16.normalized_zero.head_regions.vs_random_regions",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.vit_b16.blur_rgb.heads",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.vit_b16.blur_rgb.routing_value",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.vit_b16.blur_rgb.residual_branches",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.vit_b16.blur_rgb.head_regions.vs_total_gxi",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.vit_b16.blur_rgb.head_regions.vs_raw_gradient",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.vit_b16.blur_rgb.head_regions.vs_regional_taylor",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.vit_b16.blur_rgb.head_regions.vs_random_regions",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.deit_s16.normalized_zero.heads",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.deit_s16.normalized_zero.routing_value",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.deit_s16.normalized_zero.residual_branches",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.deit_s16.normalized_zero.head_regions.vs_total_gxi",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.deit_s16.normalized_zero.head_regions.vs_raw_gradient",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.deit_s16.normalized_zero.head_regions.vs_regional_taylor",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.deit_s16.normalized_zero.head_regions.vs_random_regions",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.deit_s16.blur_rgb.heads",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.deit_s16.blur_rgb.routing_value",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.deit_s16.blur_rgb.residual_branches",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.deit_s16.blur_rgb.head_regions.vs_total_gxi",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.deit_s16.blur_rgb.head_regions.vs_raw_gradient",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.deit_s16.blur_rgb.head_regions.vs_regional_taylor",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.deit_s16.blur_rgb.head_regions.vs_random_regions",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    }
+  ]
+}

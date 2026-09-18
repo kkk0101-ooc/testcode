@@ -1,0 +1,109 @@
+{
+  "cross_model_scope": "two registered standard blocks; no all-ViT claim",
+  "ep0_checkpoint_deserialized": false,
+  "models": [
+    {
+      "backend": "timm0.9.16 standard Block/Attention unfused eval",
+      "calibration_n": 64,
+      "checkpoint": {
+        "bytes": 346329934,
+        "mode": "checkpoint_stream_hash_only_no_deserialization",
+        "path": "assets/models/vit_base_patch16_224_weights.semantic_candidate.pth",
+        "sha256": "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d"
+      },
+      "constant_seed": "none; parameters including CLS position and biases fixed",
+      "depth": 12,
+      "discovery_n": 64,
+      "embedding_dim": 768,
+      "evaluation_n": 400,
+      "extra_input_dependent_bias": false,
+      "head_dim": 64,
+      "heads": 12,
+      "load_contract": "EP1 only after new authorization; strict keys and architecture, float32 weights; double on CPU fixtures",
+      "model_id": "vit_b16",
+      "patch_size": 16,
+      "patch_tokens": 196,
+      "prefix_tokens": 1,
+      "preprocessing": {
+        "crop": [
+          224,
+          224
+        ],
+        "decode": "Pillow 10.2.0 RGB, explicit no EXIF transpose",
+        "input_shape": [
+          1,
+          3,
+          224,
+          224
+        ],
+        "mean": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "resize": "torchvision 0.17.2 Resize(248,bicubic,antialias=True), shorter side; center crop224",
+        "std": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "unit_rgb_scale": 255
+      },
+      "role": "primary",
+      "tensor_digest": "EP1 recomputes after authorized deserialization; file SHA256 is EP0 byte identity",
+      "timm_name": "vit_base_patch16_224.augreg2_in21k_ft_in1k"
+    },
+    {
+      "backend": "timm0.9.16 standard Block/Attention unfused eval",
+      "calibration_n": 64,
+      "checkpoint": {
+        "bytes": 88251143,
+        "mode": "checkpoint_stream_hash_only_no_deserialization",
+        "path": "assets/models/stage_x_x2/deit_small_patch16_224.fb_in1k.pth",
+        "sha256": "cd65a15597004d0ce19d7a9daef969903972db5b398e3a5febcd3c4df1d8f59f"
+      },
+      "constant_seed": "none; parameters including CLS position and biases fixed",
+      "depth": 12,
+      "discovery_n": 64,
+      "embedding_dim": 384,
+      "evaluation_n": 400,
+      "extra_input_dependent_bias": false,
+      "head_dim": 64,
+      "heads": 6,
+      "load_contract": "EP1 only after new authorization; strict keys and architecture, float32 weights; double on CPU fixtures",
+      "model_id": "deit_s16",
+      "patch_size": 16,
+      "patch_tokens": 196,
+      "prefix_tokens": 1,
+      "preprocessing": {
+        "crop": [
+          224,
+          224
+        ],
+        "decode": "Pillow 10.2.0 RGB, explicit no EXIF transpose",
+        "input_shape": [
+          1,
+          3,
+          224,
+          224
+        ],
+        "mean": [
+          0.485,
+          0.456,
+          0.406
+        ],
+        "resize": "torchvision 0.17.2 Resize(248,bicubic,antialias=True), shorter side; center crop224",
+        "std": [
+          0.229,
+          0.224,
+          0.225
+        ],
+        "unit_rgb_scale": 255
+      },
+      "role": "secondary_replication",
+      "tensor_digest": "EP1 recomputes after authorized deserialization; file SHA256 is EP0 byte identity",
+      "timm_name": "deit_small_patch16_224.fb_in1k"
+    }
+  ],
+  "non_registered_architectures": "not supported by this protocol"
+}

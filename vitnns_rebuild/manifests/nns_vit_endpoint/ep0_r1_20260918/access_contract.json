@@ -1,0 +1,50 @@
+{
+  "allowed_current": [
+    "metadata JSON/CSV/text",
+    "source code without importing torch/timm",
+    "public literature/API text",
+    "checkpoint byte streaming for SHA256 only",
+    "archive stat only",
+    "filename listing without opening image payloads",
+    "EP0 protocol validation and git publication"
+  ],
+  "authorization_text": "执行EP0",
+  "authorized_stage": "EP0_ONLY",
+  "branch": "stage-d-d3-pass",
+  "ep0_pass_next_step": "EP1_IMPLEMENTATION_AND_REGRESSION_REQUIRES_USER_AUTHORIZATION",
+  "forbidden_current": [
+    "JPEG/PNG image or mask payloads",
+    "archive member payload read",
+    "model deserialization/forward/backward",
+    "Torch/timm/PIL imports",
+    "CUDA initialization or GPU jobs",
+    "formal prediction/logit/attribution/intervention outcomes",
+    "EP1 execution",
+    "new power simulation"
+  ],
+  "future_permissions": [
+    {
+      "eligible": "synthetic fixtures and first8 discovery IDs; checkpoint loading",
+      "evaluation_access": false,
+      "requires": "new explicit EP1 user authorization and published EP0 PASS",
+      "stage": "EP1"
+    },
+    {
+      "eligible": "64 calibration IDs and model hashes",
+      "evaluation_access": false,
+      "requires": "new EP2 authorization and EP1 PASS",
+      "stage": "EP2"
+    },
+    {
+      "eligible": "400 sealed evaluation IDs and zero/blur reference transforms only",
+      "evaluation_access": true,
+      "requires": "per-stage explicit authorization, published prior PASS, code/data binding and archive/image SHA before decode",
+      "stage": "EP3-EP5"
+    }
+  ],
+  "parent_commit": "a0386ee9a1aea8f78fd8dfc39d8725d7639c8a63",
+  "prior_plan": "docs/NNS_ViT_Endpoint_Scanner论文思路与规划与步骤_20260918.md",
+  "production_authorized": false,
+  "source_access_caveat": "metadata may contain historical hashes/status but no new formal outcomes used",
+  "unrelated_untracked_cut_intervention_files": "not authority, not read for protocol, not modified"
+}

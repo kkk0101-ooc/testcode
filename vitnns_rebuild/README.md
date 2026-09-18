@@ -56,6 +56,11 @@ defines the experimental sequence, image-level statistics and dynamic multi-GPU
 execution requirements. The [mathematical comparison gallery](reports/nns_vit_endpoint_math_comparison_r1_20260918/gallery.html)
 contains nine analytic figures comparing Endpoint, the earlier Path IG and NNS-CNN.
 
+The [EP0 frozen protocol](docs/NNS_ViT_Endpoint_Scanner_EP0协议冻结_20260918.md)
+registers two models, disjoint 64/64/400 image cohorts, 16 statistical families,
+28 tests, explicit reconstruction targets and dynamic multi-GPU resource caps.
+EP0 is metadata-only; EP1 and production experiments require separate authorization.
+
 ## Environment
 
 ```bash

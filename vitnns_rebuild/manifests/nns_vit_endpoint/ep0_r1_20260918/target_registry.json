@@ -1,0 +1,7690 @@
+{
+  "backend_contract": "explicit unfused; no attention/projection dropout, stochastic depth, checkpointing; unsupported extra branches fail",
+  "cut_blocks": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+  ],
+  "cut_scopes": {
+    "A_F": "attention input-edge component using fixed downstream cotangent for F",
+    "L_F": "complete input endpoint of F only if all input paths pass registered add"
+  },
+  "cut_target": "ground_truth_logit",
+  "cuts": [
+    {
+      "bypass": false,
+      "components": "head_0..H-1",
+      "cut_id": "heads_branch",
+      "reconstruction": "A_F"
+    },
+    {
+      "bypass": true,
+      "components": "identity + head_0..H-1",
+      "cut_id": "heads_total",
+      "reconstruction": "L_F"
+    },
+    {
+      "bypass": false,
+      "components": "Q+K+V",
+      "cut_id": "qkv_branch",
+      "reconstruction": "A_F"
+    },
+    {
+      "bypass": false,
+      "components": "routing+V",
+      "cut_id": "routing_value_branch",
+      "reconstruction": "A_F"
+    },
+    {
+      "bypass": true,
+      "components": "identity+Q+K+V",
+      "cut_id": "qkv_total",
+      "reconstruction": "L_F"
+    },
+    {
+      "bypass": true,
+      "components": "identity+routing+V",
+      "cut_id": "routing_value_total",
+      "reconstruction": "L_F"
+    },
+    {
+      "bypass": true,
+      "components": "identity+attention",
+      "cut_id": "residual1",
+      "reconstruction": "L_F"
+    },
+    {
+      "bypass": true,
+      "components": "carry+MLP",
+      "cut_id": "residual2",
+      "reconstruction": "L_F"
+    }
+  ],
+  "delta_extension": "(x-x0)*grad, secondary and separately named",
+  "energy": "0.5*sum over patch tokens of same post-block channel squared; CLS excluded",
+  "head_direction": "fixed within-head channel0, not learned per sample",
+  "hook_edges": [
+    "QKV projection output split before attention reshape",
+    "row-wise softmax output",
+    "AV output before concat",
+    "attn.proj input",
+    "attn.proj output",
+    "drop_path1 output",
+    "norm1 input identity edge copy",
+    "norm2 input first add output and carry edge copy",
+    "drop_path2 output",
+    "block output second add"
+  ],
+  "input_coordinates": "normalized RGB [c,h,w]",
+  "main_formula": "E(s,x)=x*grad_x(s)",
+  "margin": "NOT_PLANNED",
+  "mass": {
+    "absolute": "fsum(abs(E[c,h,w])) before RGB sum or pooling",
+    "absolute_cell": "sum over pixels and channels of abs(E), then rank",
+    "absolute_pixel": "sum_c abs(E)",
+    "display_only": true,
+    "signed": "fsum(E[c,h,w])",
+    "signed_pixel": "sum_c E"
+  },
+  "path_identity": "IG on same scalar target; full Jacobian at each alpha",
+  "primary_class": "ground_truth raw logit; all correctness retained",
+  "reference_parameter_in_canonical_endpoint": false,
+  "secondary_class": "clean top1, lowest class-index argmax tie, frozen across conditions",
+  "target_count_by_model": {
+    "deit_s16": 385,
+    "vit_b16": 457
+  },
+  "targets_by_model": {
+    "deit_s16": [
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t0.c96",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t0.c383",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t1.c96",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t1.c383",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t98.c96",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t98.c383",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t196.c96",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t196.c383",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.patch_channel_sum.c96",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.patch_channel_energy.c96",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.patch_channel_sum.c383",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.patch_channel_energy.c383",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "target_id": "b0.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "target_id": "b0.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "target_id": "b0.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "target_id": "b0.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "target_id": "b0.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "target_id": "b0.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t0.c96",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t0.c383",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t1.c96",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t1.c383",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t98.c96",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t98.c383",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t196.c96",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t196.c383",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.patch_channel_sum.c96",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.patch_channel_energy.c96",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.patch_channel_sum.c383",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.patch_channel_energy.c383",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.1.attn.proj",
+        "target_id": "b1.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.1.attn.proj",
+        "target_id": "b1.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.1.attn.proj",
+        "target_id": "b1.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.1.attn.proj",
+        "target_id": "b1.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.1.attn.proj",
+        "target_id": "b1.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.1.attn.proj",
+        "target_id": "b1.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t0.c96",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t0.c383",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t1.c96",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t1.c383",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t98.c96",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t98.c383",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t196.c96",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t196.c383",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.patch_channel_sum.c96",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.patch_channel_energy.c96",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.patch_channel_sum.c383",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.patch_channel_energy.c383",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.2.attn.proj",
+        "target_id": "b2.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.2.attn.proj",
+        "target_id": "b2.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.2.attn.proj",
+        "target_id": "b2.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.2.attn.proj",
+        "target_id": "b2.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.2.attn.proj",
+        "target_id": "b2.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.2.attn.proj",
+        "target_id": "b2.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t0.c96",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t0.c383",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t1.c96",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t1.c383",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t98.c96",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t98.c383",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t196.c96",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t196.c383",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.patch_channel_sum.c96",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.patch_channel_energy.c96",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.patch_channel_sum.c383",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.patch_channel_energy.c383",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.3.attn.proj",
+        "target_id": "b3.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.3.attn.proj",
+        "target_id": "b3.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.3.attn.proj",
+        "target_id": "b3.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.3.attn.proj",
+        "target_id": "b3.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.3.attn.proj",
+        "target_id": "b3.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.3.attn.proj",
+        "target_id": "b3.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t0.c96",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t0.c383",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t1.c96",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t1.c383",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t98.c96",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t98.c383",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t196.c96",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t196.c383",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.patch_channel_sum.c96",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.patch_channel_energy.c96",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.patch_channel_sum.c383",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.patch_channel_energy.c383",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.4.attn.proj",
+        "target_id": "b4.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.4.attn.proj",
+        "target_id": "b4.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.4.attn.proj",
+        "target_id": "b4.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.4.attn.proj",
+        "target_id": "b4.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.4.attn.proj",
+        "target_id": "b4.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.4.attn.proj",
+        "target_id": "b4.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t0.c96",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t0.c383",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t1.c96",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t1.c383",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t98.c96",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t98.c383",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t196.c96",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t196.c383",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.patch_channel_sum.c96",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.patch_channel_energy.c96",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.patch_channel_sum.c383",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.patch_channel_energy.c383",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.5.attn.proj",
+        "target_id": "b5.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.5.attn.proj",
+        "target_id": "b5.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.5.attn.proj",
+        "target_id": "b5.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.5.attn.proj",
+        "target_id": "b5.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.5.attn.proj",
+        "target_id": "b5.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.5.attn.proj",
+        "target_id": "b5.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t0.c96",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t0.c383",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t1.c96",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t1.c383",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t98.c96",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t98.c383",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t196.c96",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t196.c383",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.patch_channel_sum.c96",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.patch_channel_energy.c96",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.patch_channel_sum.c383",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.patch_channel_energy.c383",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.6.attn.proj",
+        "target_id": "b6.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.6.attn.proj",
+        "target_id": "b6.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.6.attn.proj",
+        "target_id": "b6.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.6.attn.proj",
+        "target_id": "b6.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.6.attn.proj",
+        "target_id": "b6.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.6.attn.proj",
+        "target_id": "b6.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t0.c96",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t0.c383",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t1.c96",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t1.c383",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t98.c96",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t98.c383",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t196.c96",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t196.c383",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.patch_channel_sum.c96",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.patch_channel_energy.c96",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.patch_channel_sum.c383",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.patch_channel_energy.c383",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.7.attn.proj",
+        "target_id": "b7.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.7.attn.proj",
+        "target_id": "b7.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.7.attn.proj",
+        "target_id": "b7.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.7.attn.proj",
+        "target_id": "b7.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.7.attn.proj",
+        "target_id": "b7.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.7.attn.proj",
+        "target_id": "b7.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t0.c96",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t0.c383",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t1.c96",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t1.c383",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t98.c96",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t98.c383",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t196.c96",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t196.c383",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.patch_channel_sum.c96",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.patch_channel_energy.c96",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.patch_channel_sum.c383",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.patch_channel_energy.c383",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.8.attn.proj",
+        "target_id": "b8.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.8.attn.proj",
+        "target_id": "b8.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.8.attn.proj",
+        "target_id": "b8.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.8.attn.proj",
+        "target_id": "b8.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.8.attn.proj",
+        "target_id": "b8.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.8.attn.proj",
+        "target_id": "b8.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t0.c96",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t0.c383",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t1.c96",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t1.c383",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t98.c96",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t98.c383",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t196.c96",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t196.c383",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.patch_channel_sum.c96",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.patch_channel_energy.c96",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.patch_channel_sum.c383",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.patch_channel_energy.c383",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.9.attn.proj",
+        "target_id": "b9.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.9.attn.proj",
+        "target_id": "b9.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.9.attn.proj",
+        "target_id": "b9.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.9.attn.proj",
+        "target_id": "b9.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.9.attn.proj",
+        "target_id": "b9.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.9.attn.proj",
+        "target_id": "b9.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t0.c96",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t0.c383",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t1.c96",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t1.c383",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t98.c96",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t98.c383",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t196.c96",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t196.c383",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.patch_channel_sum.c96",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.patch_channel_energy.c96",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.patch_channel_sum.c383",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.patch_channel_energy.c383",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.10.attn.proj",
+        "target_id": "b10.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.10.attn.proj",
+        "target_id": "b10.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.10.attn.proj",
+        "target_id": "b10.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.10.attn.proj",
+        "target_id": "b10.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.10.attn.proj",
+        "target_id": "b10.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.10.attn.proj",
+        "target_id": "b10.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t0.c96",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t0.c383",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t1.c96",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t1.c383",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t98.c96",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t98.c383",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t196.c96",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t196.c383",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.patch_channel_sum.c96",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.patch_channel_energy.c96",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.patch_channel_sum.c383",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.patch_channel_energy.c383",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.11.attn.proj",
+        "target_id": "b11.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.11.attn.proj",
+        "target_id": "b11.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.11.attn.proj",
+        "target_id": "b11.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.11.attn.proj",
+        "target_id": "b11.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.11.attn.proj",
+        "target_id": "b11.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.11.attn.proj",
+        "target_id": "b11.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0.norm1",
+        "target_id": "b0.norm1.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0.attn.proj",
+        "target_id": "b0.attn.proj.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0.norm2",
+        "target_id": "b0.norm2.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0.mlp.fc1",
+        "target_id": "b0.mlp.fc1.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0.mlp.act",
+        "target_id": "b0.mlp.act.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0.mlp.fc2",
+        "target_id": "b0.mlp.fc2.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5.norm1",
+        "target_id": "b5.norm1.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5.attn.proj",
+        "target_id": "b5.attn.proj.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5.norm2",
+        "target_id": "b5.norm2.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5.mlp.fc1",
+        "target_id": "b5.mlp.fc1.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5.mlp.act",
+        "target_id": "b5.mlp.act.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5.mlp.fc2",
+        "target_id": "b5.mlp.fc2.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11.norm1",
+        "target_id": "b11.norm1.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11.attn.proj",
+        "target_id": "b11.attn.proj.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11.norm2",
+        "target_id": "b11.norm2.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11.mlp.fc1",
+        "target_id": "b11.mlp.fc1.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11.mlp.act",
+        "target_id": "b11.mlp.act.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11.mlp.fc2",
+        "target_id": "b11.mlp.fc2.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "patch_embed",
+        "target_id": "patch.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 96,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "patch_embed",
+        "target_id": "patch.sum.c96",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "patch_embed",
+        "target_id": "patch.sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 383,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "patch_embed",
+        "target_id": "patch.sum.c383",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "norm",
+        "target_id": "final.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": -1,
+        "head": -1,
+        "kind": "ground_truth_logit",
+        "location": "output",
+        "module": "",
+        "target_id": "class.gt",
+        "token": -1
+      },
+      {
+        "channel": -1,
+        "head": -1,
+        "kind": "frozen_clean_top1_logit",
+        "location": "output",
+        "module": "",
+        "target_id": "class.clean_top1",
+        "token": -1
+      }
+    ],
+    "vit_b16": [
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t0.c384",
+        "token": 0
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t0.c767",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t1.c384",
+        "token": 1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t1.c767",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t98.c384",
+        "token": 98
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t98.c767",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t196.c384",
+        "token": 196
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.t196.c767",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.patch_channel_sum.c384",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.patch_channel_energy.c384",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.patch_channel_sum.c767",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.0",
+        "target_id": "b0.patch_channel_energy.c767",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "target_id": "b0.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "target_id": "b0.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "target_id": "b0.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "target_id": "b0.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "target_id": "b0.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "target_id": "b0.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 6,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "target_id": "b0.head6.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 7,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "target_id": "b0.head7.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 8,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "target_id": "b0.head8.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 9,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "target_id": "b0.head9.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 10,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "target_id": "b0.head10.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 11,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.0.attn.proj",
+        "target_id": "b0.head11.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t0.c384",
+        "token": 0
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t0.c767",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t1.c384",
+        "token": 1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t1.c767",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t98.c384",
+        "token": 98
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t98.c767",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t196.c384",
+        "token": 196
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.t196.c767",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.patch_channel_sum.c384",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.patch_channel_energy.c384",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.patch_channel_sum.c767",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.1",
+        "target_id": "b1.patch_channel_energy.c767",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.1.attn.proj",
+        "target_id": "b1.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.1.attn.proj",
+        "target_id": "b1.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.1.attn.proj",
+        "target_id": "b1.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.1.attn.proj",
+        "target_id": "b1.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.1.attn.proj",
+        "target_id": "b1.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.1.attn.proj",
+        "target_id": "b1.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 6,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.1.attn.proj",
+        "target_id": "b1.head6.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 7,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.1.attn.proj",
+        "target_id": "b1.head7.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 8,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.1.attn.proj",
+        "target_id": "b1.head8.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 9,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.1.attn.proj",
+        "target_id": "b1.head9.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 10,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.1.attn.proj",
+        "target_id": "b1.head10.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 11,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.1.attn.proj",
+        "target_id": "b1.head11.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t0.c384",
+        "token": 0
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t0.c767",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t1.c384",
+        "token": 1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t1.c767",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t98.c384",
+        "token": 98
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t98.c767",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t196.c384",
+        "token": 196
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.t196.c767",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.patch_channel_sum.c384",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.patch_channel_energy.c384",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.patch_channel_sum.c767",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.2",
+        "target_id": "b2.patch_channel_energy.c767",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.2.attn.proj",
+        "target_id": "b2.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.2.attn.proj",
+        "target_id": "b2.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.2.attn.proj",
+        "target_id": "b2.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.2.attn.proj",
+        "target_id": "b2.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.2.attn.proj",
+        "target_id": "b2.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.2.attn.proj",
+        "target_id": "b2.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 6,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.2.attn.proj",
+        "target_id": "b2.head6.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 7,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.2.attn.proj",
+        "target_id": "b2.head7.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 8,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.2.attn.proj",
+        "target_id": "b2.head8.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 9,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.2.attn.proj",
+        "target_id": "b2.head9.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 10,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.2.attn.proj",
+        "target_id": "b2.head10.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 11,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.2.attn.proj",
+        "target_id": "b2.head11.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t0.c384",
+        "token": 0
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t0.c767",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t1.c384",
+        "token": 1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t1.c767",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t98.c384",
+        "token": 98
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t98.c767",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t196.c384",
+        "token": 196
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.t196.c767",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.patch_channel_sum.c384",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.patch_channel_energy.c384",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.patch_channel_sum.c767",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.3",
+        "target_id": "b3.patch_channel_energy.c767",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.3.attn.proj",
+        "target_id": "b3.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.3.attn.proj",
+        "target_id": "b3.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.3.attn.proj",
+        "target_id": "b3.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.3.attn.proj",
+        "target_id": "b3.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.3.attn.proj",
+        "target_id": "b3.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.3.attn.proj",
+        "target_id": "b3.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 6,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.3.attn.proj",
+        "target_id": "b3.head6.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 7,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.3.attn.proj",
+        "target_id": "b3.head7.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 8,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.3.attn.proj",
+        "target_id": "b3.head8.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 9,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.3.attn.proj",
+        "target_id": "b3.head9.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 10,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.3.attn.proj",
+        "target_id": "b3.head10.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 11,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.3.attn.proj",
+        "target_id": "b3.head11.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t0.c384",
+        "token": 0
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t0.c767",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t1.c384",
+        "token": 1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t1.c767",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t98.c384",
+        "token": 98
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t98.c767",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t196.c384",
+        "token": 196
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.t196.c767",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.patch_channel_sum.c384",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.patch_channel_energy.c384",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.patch_channel_sum.c767",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.4",
+        "target_id": "b4.patch_channel_energy.c767",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.4.attn.proj",
+        "target_id": "b4.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.4.attn.proj",
+        "target_id": "b4.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.4.attn.proj",
+        "target_id": "b4.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.4.attn.proj",
+        "target_id": "b4.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.4.attn.proj",
+        "target_id": "b4.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.4.attn.proj",
+        "target_id": "b4.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 6,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.4.attn.proj",
+        "target_id": "b4.head6.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 7,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.4.attn.proj",
+        "target_id": "b4.head7.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 8,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.4.attn.proj",
+        "target_id": "b4.head8.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 9,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.4.attn.proj",
+        "target_id": "b4.head9.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 10,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.4.attn.proj",
+        "target_id": "b4.head10.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 11,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.4.attn.proj",
+        "target_id": "b4.head11.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t0.c384",
+        "token": 0
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t0.c767",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t1.c384",
+        "token": 1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t1.c767",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t98.c384",
+        "token": 98
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t98.c767",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t196.c384",
+        "token": 196
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.t196.c767",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.patch_channel_sum.c384",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.patch_channel_energy.c384",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.patch_channel_sum.c767",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.5",
+        "target_id": "b5.patch_channel_energy.c767",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.5.attn.proj",
+        "target_id": "b5.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.5.attn.proj",
+        "target_id": "b5.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.5.attn.proj",
+        "target_id": "b5.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.5.attn.proj",
+        "target_id": "b5.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.5.attn.proj",
+        "target_id": "b5.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.5.attn.proj",
+        "target_id": "b5.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 6,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.5.attn.proj",
+        "target_id": "b5.head6.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 7,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.5.attn.proj",
+        "target_id": "b5.head7.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 8,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.5.attn.proj",
+        "target_id": "b5.head8.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 9,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.5.attn.proj",
+        "target_id": "b5.head9.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 10,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.5.attn.proj",
+        "target_id": "b5.head10.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 11,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.5.attn.proj",
+        "target_id": "b5.head11.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t0.c384",
+        "token": 0
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t0.c767",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t1.c384",
+        "token": 1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t1.c767",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t98.c384",
+        "token": 98
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t98.c767",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t196.c384",
+        "token": 196
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.t196.c767",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.patch_channel_sum.c384",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.patch_channel_energy.c384",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.patch_channel_sum.c767",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.6",
+        "target_id": "b6.patch_channel_energy.c767",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.6.attn.proj",
+        "target_id": "b6.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.6.attn.proj",
+        "target_id": "b6.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.6.attn.proj",
+        "target_id": "b6.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.6.attn.proj",
+        "target_id": "b6.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.6.attn.proj",
+        "target_id": "b6.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.6.attn.proj",
+        "target_id": "b6.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 6,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.6.attn.proj",
+        "target_id": "b6.head6.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 7,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.6.attn.proj",
+        "target_id": "b6.head7.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 8,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.6.attn.proj",
+        "target_id": "b6.head8.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 9,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.6.attn.proj",
+        "target_id": "b6.head9.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 10,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.6.attn.proj",
+        "target_id": "b6.head10.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 11,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.6.attn.proj",
+        "target_id": "b6.head11.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t0.c384",
+        "token": 0
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t0.c767",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t1.c384",
+        "token": 1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t1.c767",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t98.c384",
+        "token": 98
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t98.c767",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t196.c384",
+        "token": 196
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.t196.c767",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.patch_channel_sum.c384",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.patch_channel_energy.c384",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.patch_channel_sum.c767",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.7",
+        "target_id": "b7.patch_channel_energy.c767",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.7.attn.proj",
+        "target_id": "b7.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.7.attn.proj",
+        "target_id": "b7.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.7.attn.proj",
+        "target_id": "b7.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.7.attn.proj",
+        "target_id": "b7.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.7.attn.proj",
+        "target_id": "b7.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.7.attn.proj",
+        "target_id": "b7.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 6,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.7.attn.proj",
+        "target_id": "b7.head6.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 7,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.7.attn.proj",
+        "target_id": "b7.head7.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 8,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.7.attn.proj",
+        "target_id": "b7.head8.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 9,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.7.attn.proj",
+        "target_id": "b7.head9.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 10,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.7.attn.proj",
+        "target_id": "b7.head10.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 11,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.7.attn.proj",
+        "target_id": "b7.head11.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t0.c384",
+        "token": 0
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t0.c767",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t1.c384",
+        "token": 1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t1.c767",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t98.c384",
+        "token": 98
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t98.c767",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t196.c384",
+        "token": 196
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.t196.c767",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.patch_channel_sum.c384",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.patch_channel_energy.c384",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.patch_channel_sum.c767",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.8",
+        "target_id": "b8.patch_channel_energy.c767",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.8.attn.proj",
+        "target_id": "b8.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.8.attn.proj",
+        "target_id": "b8.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.8.attn.proj",
+        "target_id": "b8.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.8.attn.proj",
+        "target_id": "b8.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.8.attn.proj",
+        "target_id": "b8.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.8.attn.proj",
+        "target_id": "b8.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 6,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.8.attn.proj",
+        "target_id": "b8.head6.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 7,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.8.attn.proj",
+        "target_id": "b8.head7.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 8,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.8.attn.proj",
+        "target_id": "b8.head8.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 9,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.8.attn.proj",
+        "target_id": "b8.head9.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 10,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.8.attn.proj",
+        "target_id": "b8.head10.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 11,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.8.attn.proj",
+        "target_id": "b8.head11.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t0.c384",
+        "token": 0
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t0.c767",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t1.c384",
+        "token": 1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t1.c767",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t98.c384",
+        "token": 98
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t98.c767",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t196.c384",
+        "token": 196
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.t196.c767",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.patch_channel_sum.c384",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.patch_channel_energy.c384",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.patch_channel_sum.c767",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.9",
+        "target_id": "b9.patch_channel_energy.c767",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.9.attn.proj",
+        "target_id": "b9.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.9.attn.proj",
+        "target_id": "b9.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.9.attn.proj",
+        "target_id": "b9.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.9.attn.proj",
+        "target_id": "b9.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.9.attn.proj",
+        "target_id": "b9.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.9.attn.proj",
+        "target_id": "b9.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 6,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.9.attn.proj",
+        "target_id": "b9.head6.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 7,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.9.attn.proj",
+        "target_id": "b9.head7.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 8,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.9.attn.proj",
+        "target_id": "b9.head8.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 9,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.9.attn.proj",
+        "target_id": "b9.head9.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 10,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.9.attn.proj",
+        "target_id": "b9.head10.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 11,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.9.attn.proj",
+        "target_id": "b9.head11.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t0.c384",
+        "token": 0
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t0.c767",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t1.c384",
+        "token": 1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t1.c767",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t98.c384",
+        "token": 98
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t98.c767",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t196.c384",
+        "token": 196
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.t196.c767",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.patch_channel_sum.c384",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.patch_channel_energy.c384",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.patch_channel_sum.c767",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.10",
+        "target_id": "b10.patch_channel_energy.c767",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.10.attn.proj",
+        "target_id": "b10.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.10.attn.proj",
+        "target_id": "b10.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.10.attn.proj",
+        "target_id": "b10.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.10.attn.proj",
+        "target_id": "b10.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.10.attn.proj",
+        "target_id": "b10.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.10.attn.proj",
+        "target_id": "b10.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 6,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.10.attn.proj",
+        "target_id": "b10.head6.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 7,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.10.attn.proj",
+        "target_id": "b10.head7.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 8,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.10.attn.proj",
+        "target_id": "b10.head8.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 9,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.10.attn.proj",
+        "target_id": "b10.head9.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 10,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.10.attn.proj",
+        "target_id": "b10.head10.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 11,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.10.attn.proj",
+        "target_id": "b10.head11.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t0.c0",
+        "token": 0
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t0.c192",
+        "token": 0
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t0.c384",
+        "token": 0
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t0.c767",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t1.c0",
+        "token": 1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t1.c192",
+        "token": 1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t1.c384",
+        "token": 1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t1.c767",
+        "token": 1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t98.c0",
+        "token": 98
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t98.c192",
+        "token": 98
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t98.c384",
+        "token": 98
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t98.c767",
+        "token": 98
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t196.c0",
+        "token": 196
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t196.c192",
+        "token": 196
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t196.c384",
+        "token": 196
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.t196.c767",
+        "token": 196
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.patch_channel_sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.patch_channel_energy.c0",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.patch_channel_sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.patch_channel_energy.c192",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.patch_channel_sum.c384",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.patch_channel_energy.c384",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.patch_channel_sum.c767",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_energy",
+        "location": "output",
+        "module": "blocks.11",
+        "target_id": "b11.patch_channel_energy.c767",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": 0,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.11.attn.proj",
+        "target_id": "b11.head0.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 1,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.11.attn.proj",
+        "target_id": "b11.head1.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 2,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.11.attn.proj",
+        "target_id": "b11.head2.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 3,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.11.attn.proj",
+        "target_id": "b11.head3.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 4,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.11.attn.proj",
+        "target_id": "b11.head4.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 5,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.11.attn.proj",
+        "target_id": "b11.head5.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 6,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.11.attn.proj",
+        "target_id": "b11.head6.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 7,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.11.attn.proj",
+        "target_id": "b11.head7.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 8,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.11.attn.proj",
+        "target_id": "b11.head8.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 9,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.11.attn.proj",
+        "target_id": "b11.head9.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 10,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.11.attn.proj",
+        "target_id": "b11.head10.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": 11,
+        "kind": "head_channel",
+        "location": "input",
+        "module": "blocks.11.attn.proj",
+        "target_id": "b11.head11.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0.norm1",
+        "target_id": "b0.norm1.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0.attn.proj",
+        "target_id": "b0.attn.proj.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0.norm2",
+        "target_id": "b0.norm2.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0.mlp.fc1",
+        "target_id": "b0.mlp.fc1.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0.mlp.act",
+        "target_id": "b0.mlp.act.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.0.mlp.fc2",
+        "target_id": "b0.mlp.fc2.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5.norm1",
+        "target_id": "b5.norm1.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5.attn.proj",
+        "target_id": "b5.attn.proj.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5.norm2",
+        "target_id": "b5.norm2.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5.mlp.fc1",
+        "target_id": "b5.mlp.fc1.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5.mlp.act",
+        "target_id": "b5.mlp.act.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.5.mlp.fc2",
+        "target_id": "b5.mlp.fc2.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11.norm1",
+        "target_id": "b11.norm1.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11.attn.proj",
+        "target_id": "b11.attn.proj.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11.norm2",
+        "target_id": "b11.norm2.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11.mlp.fc1",
+        "target_id": "b11.mlp.fc1.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11.mlp.act",
+        "target_id": "b11.mlp.act.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "blocks.11.mlp.fc2",
+        "target_id": "b11.mlp.fc2.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "patch_embed",
+        "target_id": "patch.sum.c0",
+        "token": -1
+      },
+      {
+        "channel": 192,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "patch_embed",
+        "target_id": "patch.sum.c192",
+        "token": -1
+      },
+      {
+        "channel": 384,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "patch_embed",
+        "target_id": "patch.sum.c384",
+        "token": -1
+      },
+      {
+        "channel": 767,
+        "head": -1,
+        "kind": "patch_channel_sum",
+        "location": "output",
+        "module": "patch_embed",
+        "target_id": "patch.sum.c767",
+        "token": -1
+      },
+      {
+        "channel": 0,
+        "head": -1,
+        "kind": "token_channel",
+        "location": "output",
+        "module": "norm",
+        "target_id": "final.cls.c0",
+        "token": 0
+      },
+      {
+        "channel": -1,
+        "head": -1,
+        "kind": "ground_truth_logit",
+        "location": "output",
+        "module": "",
+        "target_id": "class.gt",
+        "token": -1
+      },
+      {
+        "channel": -1,
+        "head": -1,
+        "kind": "frozen_clean_top1_logit",
+        "location": "output",
+        "module": "",
+        "target_id": "class.clean_top1",
+        "token": -1
+      }
+    ]
+  }
+}

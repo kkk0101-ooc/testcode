@@ -1,0 +1,170 @@
+{
+  "atlas": {
+    "cross_model_channels": "coordinate alignment only, no semantic identity",
+    "failures": "all failure/near-zero index rows retained; gallery failure panels clearly marked",
+    "maps": "one signed RGB-sum map, linear symmetric own max scale with scale saved; no smoothing/clipping; positive/negative/mass derivatives labeled",
+    "near_zero": "max abs<=1e-12 => zero display flag; retain numeric row",
+    "selection": "all registered target summaries on all400 evaluation images; retain full raw atlas on first16 evaluation IDs in frozen order; fixed gallery first8; no hand-picked image claims"
+  },
+  "enhanced_methods": {
+    "expected_gradients": "NOT_PLANNED",
+    "gradcam": "descriptive, last-block norm1, class target only, token map explicitly labeled; no universal comparator requirement",
+    "smoothgrad_ig": "NOT_PLANNED"
+  },
+  "fidelity": {
+    "blur": {
+      "kernel": [
+        31,
+        31
+      ],
+      "operator": "torchvision.functional.gaussian_blur with explicit kernel/sigma; frozen clean blur once",
+      "padding": "reflect",
+      "sigma": [
+        10.0,
+        10.0
+      ],
+      "source": "clean224crop RGB float32 in[0,1], then normalize per model"
+    },
+    "cell_counts": [
+      3136,
+      196
+    ],
+    "deletion": "replace selected cell RGB by same-location baseline b starting clean",
+    "fractions": [
+      0.0,
+      0.05,
+      0.1,
+      0.15,
+      0.2,
+      0.25,
+      0.3,
+      0.35,
+      0.4,
+      0.45,
+      0.5,
+      0.55,
+      0.6,
+      0.65,
+      0.7,
+      0.75,
+      0.8,
+      0.85,
+      0.9,
+      0.95,
+      1.0
+    ],
+    "insertion": "start b, restore same cells from clean",
+    "normalized_auc": "secondary only divide by F(x)-F(b); abs denominator<1e-6 -> NA, raw preserved",
+    "ood_conditions": "both zero and blur mandatory; no noise/inpainting replacement",
+    "pixel_shuffle": "NOT_PLANNED",
+    "primary_ordinate": "raw frozen class logit, trapezoid; insertion and deletion separate",
+    "ranking": "sum abs RGB coordinate attribution within cell; decreasing score then row-major cell ID",
+    "replacements": [
+      "normalized_zero",
+      "blur_rgb"
+    ],
+    "scales": [
+      4,
+      16
+    ],
+    "secondary_absolute_effect": "abs(F(x)-F(perturbed)), direction explicit",
+    "select_count": "floor(q*Ncells+0.5), include0 andall; x axis actual selected area/Ncells",
+    "signed_positive_secondary": "sum RGB then sum cell then max(score,0)",
+    "targets": [
+      "ground_truth_logit",
+      "frozen_clean_top1_secondary"
+    ]
+  },
+  "ig": {
+    "alpha_chunk_candidates": [
+      8,
+      4,
+      2,
+      1
+    ],
+    "baseline": "normalized_zero",
+    "candidate_nodes": [
+      32,
+      64,
+      128,
+      256,
+      512
+    ],
+    "check_nodes": [
+      64,
+      128,
+      256,
+      512,
+      1024
+    ],
+    "completeness_denominator": "max(abs(F(x)-F(0)),1e-6)",
+    "near_zero_delta_rule": "abs delta<1e-6 requires abs completeness residual<=1e-5",
+    "path": "straight",
+    "quadrature": "Gauss-Legendre",
+    "rule": "EP2 all64 calibration images and two frozen class targets; select smallest M whose relative L2 map difference to2M<=0.02 and normalized completeness residual<=0.01 on at least61/64 images per target and model; finite required on64/64; no pass -> EP2_NUMERICAL_CALIBRATION_FAILED, no new nodes",
+    "selection": "one fixed M per model shared all formal images; no per-image result-driven integration adaptation"
+  },
+  "methods_primary": [
+    "endpoint_gxi_same_identity_row",
+    "full_target_IG_zero",
+    "raw_gradient"
+  ],
+  "runtime": {
+    "K": [
+      1,
+      16,
+      64,
+      256,
+      "full_registered_atlas"
+    ],
+    "M": "frozen EP2 selection",
+    "cut_C": "all registered components/12blocks",
+    "load_io": "load once; exclusive compute timing and end-to-end timing separately",
+    "measurements": [
+      "latency p50,p95,max",
+      "targets/sec",
+      "images/sec",
+      "peak allocated/reserved bytes",
+      "stored bytes/target",
+      "total wall",
+      "GPU hours"
+    ],
+    "no_speed_threshold": true,
+    "regimes": [
+      "single-target backward",
+      "one shared forward multiple backwards",
+      "batched VJP only if implemented and validated",
+      "cut incremental",
+      "complete atlas amortized"
+    ],
+    "repeats": 10,
+    "sync": "CUDA synchronize before/after timers",
+    "warmups": 3
+  },
+  "stability": {
+    "controlled_strata_logit_delta": [
+      0.1,
+      0.5
+    ],
+    "flip": "horizontal flip in cropped RGB before normalization; exact inverse flip on maps; compare signed RGB-sum pixel Spearman and4x4 absolute-mass Spearman",
+    "internal_flip": "NOT_PLANNED due no fixed semantic correspondence",
+    "main_population": "all400, no filter",
+    "model_response": "abs(F(x)-F(Tx)), clean/flipped predicted class, correctness",
+    "noise": {
+      "clip": [
+        0.0,
+        1.0
+      ],
+      "reuse": "same physical RGB perturbation across models",
+      "rgb_sigma": [
+        0.01,
+        0.03
+      ],
+      "seed": "SHA256(namespace|sample_id|noise|sigma|repeat) first8 bytes",
+      "seeds_per_sigma": 3
+    },
+    "primary_target": "ground_truth_logit",
+    "round_trip": "T_inverse(T(x)) equality is implementation check only",
+    "strata_role": "descriptive cumulative subsets, coverage reported, not confirmation"
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "aggregate_gpu_hours": 320,
+  "basis": "prospective resource allocation frozen by EP0 scope; not a runtime prediction or authorization to consume later budgets",
+  "cap_status": "PAUSED_RESOURCE_CAP separate from scientific outcome; preserve roots; explicit prospective authorization required for any increase",
+  "current_stage_gpu_permission": false,
+  "gpu_qualification": {
+    "do_not_kill_other_processes": true,
+    "max_devices": 8,
+    "max_utilization_percent": 10,
+    "min_devices": 1,
+    "min_free_MiB": 32768,
+    "record_existing_pids": true,
+    "type": "NVIDIA H20"
+  },
+  "max_retained_GiB": 256,
+  "missing_tasks": "no favorable partial-cohort support",
+  "queue": {
+    "claim_lease_seconds": 180,
+    "dynamic_global": true,
+    "fencing_token": "monotonic per attempt; expired worker commit rejected",
+    "heartbeat_seconds": 30,
+    "implementation": "minimal SQLite3 WAL transaction claim",
+    "one_worker_per_gpu": true,
+    "oom": "halve target batch then alpha chunk in fixed candidates; no dtype/M/model/target reduction",
+    "result": "immutable validated file then transactional complete",
+    "resume": "validate hashes, reset expired claims only, exact task coverage",
+    "seed": "SHA256(namespace|task_id) first8 bytes; independent of worker count",
+    "static_modulo_sharding": false,
+    "stop": "before new claim reserve full task_timeout GPU/wall/storage bound; if insufficient -> no dispatch"
+  },
+  "retention": {
+    "all_images": "raw endpoint/IG/gradient class maps; all unit/component summary rows; masks/effects/predictions/resources",
+    "format": "float32 signed RGB arrays, no display transform, lossless compression optional",
+    "no_rendering_data_in_metrics": true,
+    "raw_atlas_and_component_maps": "first16 frozen evaluation IDs only, all models; other raw maps computed for scalar/spatial statistics then discarded after validated per-task summary"
+  },
+  "runtime_identity": {
+    "CUDA_before_import": "CUBLAS_WORKSPACE_CONFIG=:4096:8",
+    "autocast": false,
+    "cuda_uuid_and_versions_required": true,
+    "deterministic_algorithms": true,
+    "fixture_dtype": "float64 CPU and float32 CPU/GPU",
+    "production_dtype": "float32",
+    "sys_executable_realpath_required": true,
+    "tf32": false
+  },
+  "stages": [
+    {
+      "cumulative_retained_GiB": 2,
+      "gpu_hours": 0,
+      "incremental_retained_GiB": 2,
+      "stage": "EP0",
+      "wall_hours": 6
+    },
+    {
+      "cumulative_retained_GiB": 16,
+      "gpu_hours": 8,
+      "incremental_retained_GiB": 14,
+      "stage": "EP1",
+      "wall_hours": 12
+    },
+    {
+      "cumulative_retained_GiB": 40,
+      "gpu_hours": 16,
+      "incremental_retained_GiB": 24,
+      "stage": "EP2",
+      "wall_hours": 24
+    },
+    {
+      "cumulative_retained_GiB": 168,
+      "gpu_hours": 64,
+      "incremental_retained_GiB": 128,
+      "stage": "EP3",
+      "wall_hours": 72
+    },
+    {
+      "cumulative_retained_GiB": 192,
+      "gpu_hours": 96,
+      "incremental_retained_GiB": 24,
+      "stage": "EP4",
+      "wall_hours": 96
+    },
+    {
+      "cumulative_retained_GiB": 200,
+      "gpu_hours": 8,
+      "incremental_retained_GiB": 8,
+      "stage": "EP5A",
+      "wall_hours": 12
+    },
+    {
+      "cumulative_retained_GiB": 248,
+      "gpu_hours": 128,
+      "incremental_retained_GiB": 48,
+      "stage": "EP5B",
+      "wall_hours": 120
+    },
+    {
+      "cumulative_retained_GiB": 256,
+      "gpu_hours": 0,
+      "incremental_retained_GiB": 8,
+      "stage": "EP6",
+      "wall_hours": 24
+    }
+  ],
+  "worker": {
+    "cpu_rss_cap_GiB": 32,
+    "cpu_threads": 4,
+    "gpu_memory_cap_GiB": 24,
+    "max_attempts": 2,
+    "minimum_free_disk_GiB": 50,
+    "task_timeout_seconds": 1800
+  }
+}

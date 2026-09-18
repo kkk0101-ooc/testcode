@@ -1,0 +1,82 @@
+{
+  "EP2_allowed_adaptation": {
+    "alpha_batch_candidates": [
+      8,
+      4,
+      2,
+      1
+    ],
+    "disallowed": [
+      "sample count",
+      "class target",
+      "primary family",
+      "effect threshold",
+      "CI/test",
+      "backend semantics",
+      "resource cap increase",
+      "outcome-dependent per-image integration count"
+    ],
+    "selection": "largest fits within caps and fixed numerical contracts on all64 calibration inputs; deterministic order",
+    "target_batch_candidates": [
+      16,
+      8,
+      4,
+      1
+    ]
+  },
+  "acceptance": "max_abs<=atol+rtol*max_abs(reference); relativeL2 reported, check<=rtol when norm>near_zero or max_abs<=atol; no nonfinite",
+  "backend_support": "canonical unfused; fused incapable of hooks unsupported for decomposition; fused logits parity mandatory on supported GPU path",
+  "failed_regression": "EP1_FAIL fresh recovery required; no EP2 posthoc tolerance widening",
+  "float32": {
+    "atol": 1e-05,
+    "fd_atol": 0.002,
+    "fd_rtol": 0.02,
+    "finite_difference_steps": [
+      0.01,
+      0.003,
+      0.001
+    ],
+    "near_zero_norm": 1e-06,
+    "rtol": 0.0001
+  },
+  "float64": {
+    "atol": 1e-09,
+    "fd_atol": 1e-06,
+    "fd_rtol": 0.0001,
+    "finite_difference_steps": [
+      0.0001,
+      3e-05,
+      1e-05
+    ],
+    "near_zero_norm": 1e-12,
+    "rtol": 1e-07
+  },
+  "fused_unfused_logits": {
+    "float32": {
+      "atol": 0.0001,
+      "rtol": 0.0001
+    },
+    "float64": {
+      "atol": 1e-08,
+      "rtol": 1e-07
+    }
+  },
+  "required_regressions": [
+    "paper_formula_CNN_GxI",
+    "CNN_relu_off_unique_winner",
+    "energy_weight_target_same_tensor",
+    "all_block_each_target_kind",
+    "residual_wrong_total_gradient_false_pass",
+    "nonzero_head_omission",
+    "nonzero_routing_omission",
+    "QKV_branch_vs_total_scope",
+    "head_projection_bias_downstream",
+    "forward_no_hook_noop_hook_parity",
+    "finite_difference_JVP",
+    "local_direction_correctness",
+    "single_multi_worker_equivalence",
+    "expired_attempt_reject",
+    "crash_exact_coverage",
+    "P95_single_gpu_and_multi_gpu_throughput"
+  ]
+}

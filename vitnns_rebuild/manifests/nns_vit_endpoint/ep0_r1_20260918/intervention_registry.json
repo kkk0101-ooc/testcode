@@ -1,0 +1,164 @@
+{
+  "C4a": {
+    "attention_references": [
+      "raw CLS attention entropy and concentration descriptive",
+      "attention rollout separately labeled class-agnostic"
+    ],
+    "component_sets": {
+      "heads": "all12blocks x Hheads; no bypass in ranked components",
+      "residual_branches": "all12blocks x [attention,MLP],24 components",
+      "routing_value": "all12blocks x [R,V],24 components"
+    },
+    "effect": "F(clean)-F(replace), positive is score drop",
+    "predictors": {
+      "a": "sum signed E",
+      "gradient_activation": "dot(g,z_clean), abs for abs effects",
+      "gradient_norm": "L2(g)",
+      "m": "sum abs raw E",
+      "output_norm": "L2(z_clean)",
+      "p_ref": "dot(detached downstream gradient,z_clean-z_reference)",
+      "random": "hash-based component ranking,20replicates average per image"
+    }
+  },
+  "C4b": {
+    "block": 5,
+    "candidate_regions": {
+      "actual_area_fractions": [
+        0.0,
+        0.0625,
+        0.125,
+        0.25
+      ],
+      "budget_counts": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "count": 16,
+      "layout": "4x4 nonoverlapping56x56 windows, row-major, entire224crop"
+    },
+    "candidate_taylor_cache": "one perturbed forward per candidate/ref/image/model shared all selected heads, cost included",
+    "full_forward_effect": "F(clean)-F(x_region_replaced), descriptive alongside isolated effect",
+    "heads_by_model": {
+      "deit_s16": [
+        0,
+        3,
+        5
+      ],
+      "vit_b16": [
+        0,
+        6,
+        11
+      ]
+    },
+    "isolated_effect": "F(clean)-F(z_head(x_region_replaced),z_other_heads(clean),identity(clean)); recompute native projection/downstream",
+    "mandatory_rankers": [
+      "total_gxi",
+      "raw_gradient",
+      "regional_taylor",
+      "random_regions"
+    ],
+    "nonlinear_interactions": "Taylor ranks single windows; evaluate finite unions, no additivity assumed",
+    "primary_score": "mean3heads[trapezoid(abs(isolated_effect),actual_area)/0.25]",
+    "random_aggregation": "mean effect curve across20 fixed random permutations per image/head/ref before image-level statistic",
+    "random_repeats": 20,
+    "ranking": "descending candidate score then candidate index; top k union, no effect-based selection",
+    "score_endpoint": "sum abs E RGB coordinates in each candidate",
+    "score_raw_gradient": "sum abs grad_x F over candidate",
+    "score_regional_taylor": "abs(dot(g_head,z_head(clean)-z_head(x_with_single_candidate_replaced)))",
+    "score_total_gxi": "sum abs full target GxI over candidate",
+    "secondary": "signed effects and full-forward curves",
+    "status": "ENABLED_CONFIRMATORY"
+  },
+  "EP5A": {
+    "all_other_cut_edges": "clean; cotangent detached",
+    "check": "effect/eta versus a; minimum abs error across fixed eta <=1e-4+0.01*abs(a), all finite; report entire curve",
+    "direction": "v=J_zx*x at endpoint",
+    "eta": [
+      0.01,
+      0.003,
+      0.001,
+      0.0003
+    ],
+    "images": "first16 calibration for EP1, first16 evaluation after separate EP5 authorization",
+    "negative_evidence": "not C4 utility",
+    "purpose": "correctness_only"
+  },
+  "blocks": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+  ],
+  "canonical_endpoint_unchanged_by_reference": true,
+  "donors": "same-image deterministic replacement forward; no other-image donor",
+  "mixed_state_scope": "finite operational effect, not full natural causal mechanism",
+  "operations": [
+    {
+      "edge": "AV before concat, all tokens of selected head",
+      "id": "head",
+      "keep_clean": "other heads and residual bypass; recompute W_O and downstream"
+    },
+    {
+      "edge": "rowwise softmax A, all heads/tokens at registered block",
+      "id": "routing",
+      "keep_clean": "V and residual bypass"
+    },
+    {
+      "edge": "V after projection reshape, all heads/tokens",
+      "id": "value",
+      "keep_clean": "clean A and bypass"
+    },
+    {
+      "edge": "Q after projection",
+      "id": "query",
+      "keep_clean": "K,V,bypass; recompute scores,softmax,AV"
+    },
+    {
+      "edge": "K after projection",
+      "id": "key",
+      "keep_clean": "Q,V,bypass; recompute scores,softmax,AV"
+    },
+    {
+      "edge": "drop_path1 output/add input",
+      "id": "attention_branch",
+      "keep_clean": "identity"
+    },
+    {
+      "edge": "drop_path2 output/add input",
+      "id": "mlp_branch",
+      "keep_clean": "carry"
+    },
+    {
+      "edge": "A and V jointly",
+      "id": "joint_routing_value",
+      "keep_clean": "bypass; interaction e_joint-e_R-e_V descriptive"
+    }
+  ],
+  "qk_secondary_images": "first64 evaluation",
+  "references": [
+    "normalized_zero",
+    "blur_rgb"
+  ],
+  "region_ref_hash": "record perturbation masks and replacement tensor hashes on authorized execution",
+  "target": "ground_truth_logit",
+  "zeroing_secondary": {
+    "enabled": true,
+    "images": "first64 evaluation",
+    "meaning": "activation zeros not baseline-input activations",
+    "operations": [
+      "head",
+      "attention_branch",
+      "mlp_branch"
+    ]
+  }
+}
