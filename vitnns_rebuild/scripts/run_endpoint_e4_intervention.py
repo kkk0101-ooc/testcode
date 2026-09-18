@@ -26,7 +26,9 @@ SPEC_PATH = REPO / "config/nns_vit_endpoint/endpoint_e4_intervention_run_spec.js
 RUNTIME = GIT_ROOT / ".runtime/nns_vit_endpoint_e4_intervention"
 sys.path.insert(0, str(REPO / "src"))
 from vitnns.endpoint_e2_atlas import digest, file_sha256, linear_percentile, write_json_new  # noqa: E402
-from vitnns.endpoint_e4_intervention import MAIN_FAMILIES, validate_run_spec  # noqa: E402
+from vitnns.endpoint_e4_intervention import (  # noqa: E402
+    MAIN_FAMILIES, validate_recovery_run_spec, validate_run_spec,
+)
 from vitnns.endpoint_ep1_queue import audit_coverage, create_queue  # noqa: E402
 
 PASS_STATUS = "ENDPOINT_E4_PASS_EXECUTION_LOCAL_CONTRACT_AND_FINITE_REPLACEMENT"
@@ -45,6 +47,8 @@ SOURCE_FILES = [
     "scripts/run_endpoint_e4_intervention_worker.py",
     "scripts/run_endpoint_e4_intervention.py",
     "scripts/validate_endpoint_e4_intervention.py",
+    "scripts/validate_endpoint_e4_failure.py",
+    "scripts/validate_endpoint_unified_plan.py",
     "tests/test_endpoint_e4_intervention.py",
 ]
 BINDINGS = {
@@ -58,6 +62,22 @@ BINDINGS = {
     "statistical_analysis_plan_sha256": "manifests/nns_vit_endpoint/ep0_r1_20260918/statistical_analysis_plan.json",
     "target_registry_sha256": "manifests/nns_vit_endpoint/ep0_r1_20260918/target_registry.json",
     "unified_plan_sha256": "docs/NNS_ViT_Endpoint_Scanner统一研究计划与执行路线_20260918.md",
+}
+RECOVERY_SOURCE_FILES = [
+    "config/nns_vit_endpoint/endpoint_e4_intervention_recovery_r2.json",
+    "docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE4恢复R2_20260918.md",
+    "src/vitnns/endpoint_e4_intervention.py",
+    "scripts/run_endpoint_e4_intervention_worker.py",
+    "scripts/run_endpoint_e4_intervention.py",
+    "scripts/validate_endpoint_e4_intervention.py",
+    "tests/test_endpoint_e4_intervention.py",
+]
+RECOVERY_BINDINGS = {
+    **BINDINGS,
+    "endpoint_e4_r1_artifact_manifest_sha256": "reports/nns_vit_endpoint_e4_intervention_r1_20260918/artifact_manifest.json",
+    "endpoint_e4_r1_coverage_sha256": "reports/nns_vit_endpoint_e4_intervention_r1_20260918/formal_coverage_audit.json",
+    "endpoint_e4_r1_terminal_sha256": "reports/nns_vit_endpoint_e4_intervention_r1_20260918/terminal_receipt.json",
+    "endpoint_e4_r1_validation_sha256": "reports/nns_vit_endpoint_e4_intervention_r1_20260918/validation_report.json",
 }
 
 
@@ -75,8 +95,12 @@ def remote(ref: str) -> str:
 
 
 def startup() -> tuple[dict, str, list[str]]:
-    spec = load(SPEC_PATH); validate_run_spec(spec)
-    for key, relative in BINDINGS.items():
+    spec = load(SPEC_PATH)
+    recovery = spec["stage"] == "ENDPOINT-E4-R2-RECOVERY"
+    (validate_recovery_run_spec if recovery else validate_run_spec)(spec)
+    bindings = RECOVERY_BINDINGS if recovery else BINDINGS
+    source_files = RECOVERY_SOURCE_FILES if recovery else SOURCE_FILES
+    for key, relative in bindings.items():
         if file_sha256(REPO / relative) != spec["predecessors"][key]:
             raise RuntimeError("PREDECESSOR_BINDING:" + key)
     e3 = load(REPO / "reports/nns_vit_endpoint_e3_closure_r2_20260918/terminal_receipt.json")
@@ -90,6 +114,7 @@ def startup() -> tuple[dict, str, list[str]]:
         [str(PYTHON), "scripts/validate_endpoint_e2_atlas.py"],
         [str(PYTHON), "scripts/validate_endpoint_e3_closure.py",
          "reports/nns_vit_endpoint_e3_closure_r1_20260918"],
+        *([[str(PYTHON), "scripts/validate_endpoint_e4_failure.py"]] if recovery else []),
     ):
         completed = subprocess.run(
             command, cwd=REPO, env=dict(os.environ, CUDA_VISIBLE_DEVICES=""),
@@ -102,7 +127,7 @@ def startup() -> tuple[dict, str, list[str]]:
     upstream = git("rev-parse", "@{upstream}"); remote_head = remote("refs/heads/" + branch)
     if branch != "stage-d-d3-pass" or not head == upstream == remote_head:
         raise RuntimeError("E4_PRODUCER_NOT_PUBLISHED")
-    for relative in SOURCE_FILES:
+    for relative in source_files:
         if subprocess.run(["git", "cat-file", "-e", f"{head}:vitnns_rebuild/{relative}"], cwd=REPO).returncode:
             raise RuntimeError("SOURCE_NOT_COMMITTED:" + relative)
     status = git("status", "--porcelain", "--untracked-files=all")
@@ -221,8 +246,17 @@ def aggregate_descriptive(formal: dict[str, dict]) -> list[dict]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(); parser.add_argument("--max-gpus", type=int, default=8); args = parser.parse_args()
+    global SPEC_PATH, RUNTIME, PASS_STATUS, SOURCE_FILES, BINDINGS
+    parser = argparse.ArgumentParser(); parser.add_argument("--max-gpus", type=int, default=8)
+    parser.add_argument("--recovery-r2", action="store_true"); args = parser.parse_args()
+    if args.recovery_r2:
+        SPEC_PATH = REPO / "config/nns_vit_endpoint/endpoint_e4_intervention_recovery_r2.json"
+        RUNTIME = GIT_ROOT / ".runtime/nns_vit_endpoint_e4_intervention_r2"
+        PASS_STATUS = "ENDPOINT_E4_R2_PASS_EXECUTION_ANALYTIC_JVP_AND_FINITE_REPLACEMENT"
+        SOURCE_FILES = RECOVERY_SOURCE_FILES
+        BINDINGS = RECOVERY_BINDINGS
     spec, head, predecessor_validation = startup(); root = REPO / spec["outputs"]["formal_root"]
+    recovery = spec["stage"] == "ENDPOINT-E4-R2-RECOVERY"
     if root.exists():
         raise RuntimeError("E4_ROOT_EXISTS")
     if shutil.disk_usage(REPO).free < 50 * 1024 ** 3:
@@ -246,13 +280,15 @@ def main() -> int:
                 "wnid": row["wnid"], "cache_path": row["cache_path"], "image_bytes": row["bytes"],
                 "image_sha256": row["sha256"], "include_local": row["split_order"] < 16,
                 "include_secondary": row["split_order"] < 64, "intervention_batch_size": 8,
+                "local_contract_mode": "analytic_jvp_identity_r2" if recovery else "finite_eta_v1",
+                "stage": spec["stage"],
             }})
     tasks.sort(key=lambda row: row["task_id"])
     if len(tasks) != 800:
         raise RuntimeError("TASK_COUNT")
     queue = root / "formal_queue.sqlite3"; queue_identity = create_queue(queue, tasks)
     write_json_new(root / "task_manifest.json", {
-        "stage": "ENDPOINT-E4", "tasks": tasks, "task_count": 800, "evaluation_images": 400,
+        "stage": spec["stage"], "tasks": tasks, "task_count": 800, "evaluation_images": 400,
         "model_count": 2, "local_task_count": 32, "secondary_task_count": 128,
         "references": ["normalized_zero", "blur_rgb"], "queue_identity": queue_identity,
         "manifest_digest": digest(tasks), "seed_rule": "SHA256(namespace|task_id) first8 bytes",
@@ -295,14 +331,18 @@ def main() -> int:
     retained = sum(path.stat().st_size for path in root.rglob("*") if path.is_file())
     gpu_hours = formal_seconds * len(selected) / 3600
     report = {
-        "status": PASS_STATUS, "stage": "ENDPOINT-E4",
+        "status": PASS_STATUS, "stage": spec["stage"],
         "claim_scope": "EXECUTION_PASS_NOT_FINAL_C4A_CLAIM_DECISION", "producer_commit": head,
         "evaluation_images": 400, "models": spec["models"], "image_model_tasks": 800,
         "reference_count": 2, "main_component_reference_evaluations": main_count,
         "secondary_component_reference_evaluations": secondary_count,
         "zeroing_secondary_evaluations": zeroing_count, "local_component_evaluations": len(local_rows),
-        "local_eta_evaluations": len(local_rows) * 4, "all_local_contracts_pass": True,
-        "maximum_local_minimum_absolute_error": max(row["minimum_absolute_error"] for row in local_rows),
+        "local_eta_evaluations": 0 if recovery else len(local_rows) * 4,
+        "local_contract_method": spec["local_contract"].get("method", "finite_eta_v1"),
+        "historical_r1_finite_eta_failure_preserved": recovery,
+        "r1_partial_results_inherited": False if recovery else None,
+        "all_local_contracts_pass": True,
+        "maximum_local_minimum_absolute_error": None if recovery else max(row["minimum_absolute_error"] for row in local_rows),
         "maximum_local_directional_prediction_absolute_error": max(row["directional_prediction_absolute_error"] for row in local_rows),
         "maximum_noop_replacement_abs": max(result["local_contract"].get("noop_max_abs", 0.0) for result in formal.values()),
         "descriptive_per_image_spearman_summary": aggregate_descriptive(formal),
@@ -337,10 +377,11 @@ def main() -> int:
     files = [{"path": path.relative_to(root).as_posix(), "bytes": path.stat().st_size, "sha256": file_sha256(path)} for path in sorted(root.rglob("*")) if path.is_file() and path.name not in {"artifact_manifest.json", "terminal_receipt.json"}]
     manifest = {"files": files, "canonical_digest": digest(files)}; write_json_new(root / "artifact_manifest.json", manifest)
     terminal = {
-        "status": PASS_STATUS, "stage": "ENDPOINT-E4", "claim_scope": "EXECUTION_PASS_NOT_FINAL_C4A_CLAIM_DECISION",
+        "status": PASS_STATUS, "stage": spec["stage"], "claim_scope": "EXECUTION_PASS_NOT_FINAL_C4A_CLAIM_DECISION",
         "producer_commit": head, "evaluation_image_count": 400, "image_model_task_count": 800,
         "main_component_reference_evaluation_count": main_count, "secondary_component_reference_evaluation_count": secondary_count,
-        "local_component_evaluation_count": len(local_rows), "local_eta_evaluation_count": len(local_rows) * 4,
+        "local_component_evaluation_count": len(local_rows),
+        "local_eta_evaluation_count": 0 if recovery else len(local_rows) * 4,
         "zeroing_secondary_evaluation_count": zeroing_count, "validation_digest": digest(report),
         "manifest_digest": manifest["canonical_digest"], "next_authorization": "ENDPOINT_E5_REQUIRES_EXPLICIT_USER_REQUEST",
     }

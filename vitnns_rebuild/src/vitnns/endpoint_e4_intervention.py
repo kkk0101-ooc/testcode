@@ -21,6 +21,8 @@ from .endpoint_nns import _frozen_eval
 
 
 ETA_VALUES = (0.01, 0.003, 0.001, 0.0003)
+ANALYTIC_JVP_ATOL = 1e-5
+ANALYTIC_JVP_RTOL = 1e-4
 MAIN_FAMILIES = ("heads", "routing_value", "residual_branches")
 EDGE_NAMES = ("heads", "routing", "value", "query", "key", "attention", "mlp")
 
@@ -437,12 +439,15 @@ def _random_summary(task_seed: int, family: str, reference: str, effect: Sequenc
 
 def scan_e4_task(
     model: nn.Module, inputs: Tensor, references: Mapping[str, Tensor], *, class_id: int,
-    task_seed: int, include_local: bool, include_secondary: bool, chunk_size: int = 8, progress=None,
+    task_seed: int, include_local: bool, include_secondary: bool, chunk_size: int = 8,
+    local_contract_mode: str = "finite_eta_v1", progress=None,
 ) -> dict[str, Any]:
     """Compute the complete E4 record for one image-model task."""
     _check_model(model)
     if set(references) != {"normalized_zero", "blur_rgb"} or chunk_size <= 0:
         raise EndpointE4Error("REFERENCE_OR_CHUNK_CONTRACT")
+    if local_contract_mode not in {"finite_eta_v1", "analytic_jvp_identity_r2"}:
+        raise EndpointE4Error("LOCAL_CONTRACT_MODE")
     num_heads = int(model.blocks[0].attn.num_heads)
     if any(int(block.attn.num_heads) != num_heads for block in model.blocks):
         raise EndpointE4Error("HEAD_COUNT_DRIFT")
@@ -477,15 +482,11 @@ def scan_e4_task(
     local = {"performed": include_local, "components": [], "all_pass": None}
     if include_local:
         directions = directional_edges(model, inputs, class_id=class_id)
-        local_replacements: dict[str, Tensor | dict[str, Tensor]] = {}
         noop_replacements: dict[str, Tensor | dict[str, Tensor]] = {}
         for row in all_rows:
             block = int(row["block"]); component_id = row["component_id"]
             clean_z = component_tensor(clean_edges[block], row)
-            direction = component_tensor(directions[block], row)
             noop_replacements[component_id] = clean_z
-            for eta in ETA_VALUES:
-                local_replacements[f"{component_id}@{eta}"] = shifted(clean_z, direction, eta)
         noop_clean, noop_scores, _ = _run_in_chunks(
             model, inputs, class_id=class_id, rows=all_rows, replacements=noop_replacements,
             chunk_size=chunk_size, progress=progress,
@@ -493,41 +494,53 @@ def scan_e4_task(
         noop_max_abs = max(abs(noop_clean - value) for value in noop_scores.values())
         if noop_max_abs > 1e-4 + 1e-4 * abs(noop_clean):
             raise EndpointE4Error("NOOP_REPLACEMENT_PARITY")
-        expanded = []
-        replacement_map = {}
-        for row in all_rows:
-            for eta in ETA_VALUES:
-                component_id = f"{row['component_id']}@{eta}"
-                expanded.append({**row, "component_id": component_id})
-                replacement_map[component_id] = local_replacements[component_id]
-        local_clean, local_scores, _ = _run_in_chunks(
-            model, inputs, class_id=class_id, rows=expanded, replacements=replacement_map,
-            chunk_size=chunk_size, progress=progress,
-        )
-        if abs(local_clean - clean_score) > 1e-5 + 1e-4 * abs(clean_score):
-            raise EndpointE4Error("LOCAL_CLEAN_SCORE_DRIFT")
+        local_clean = noop_clean
+        local_scores: dict[str, float] = {}
+        if local_contract_mode == "finite_eta_v1":
+            expanded = []
+            replacement_map = {}
+            for row in all_rows:
+                block = int(row["block"]); clean_z = component_tensor(clean_edges[block], row)
+                direction = component_tensor(directions[block], row)
+                for eta in ETA_VALUES:
+                    expanded_id = f"{row['component_id']}@{eta}"
+                    expanded.append({**row, "component_id": expanded_id})
+                    replacement_map[expanded_id] = shifted(clean_z, direction, eta)
+            local_clean, local_scores, _ = _run_in_chunks(
+                model, inputs, class_id=class_id, rows=expanded, replacements=replacement_map,
+                chunk_size=chunk_size, progress=progress,
+            )
+            if abs(local_clean - clean_score) > 1e-5 + 1e-4 * abs(clean_score):
+                raise EndpointE4Error("LOCAL_CLEAN_SCORE_DRIFT")
         for row in all_rows:
             component_id = row["component_id"]; a_value = summaries[component_id]["a"]
             block = int(row["block"])
             directional_prediction = dot64(
                 component_tensor(gradients[block], row), component_tensor(directions[block], row),
             )
-            curve = []
-            for eta in ETA_VALUES:
-                estimate = (local_clean - local_scores[f"{component_id}@{eta}"]) / eta
-                curve.append({"eta": eta, "estimate": estimate, "absolute_error": abs(estimate - a_value)})
-            threshold = 1e-4 + 0.01 * abs(a_value)
             direction_error = abs(directional_prediction - a_value)
-            row_pass = (all(np.isfinite(item["estimate"]) for item in curve) and
-                        min(item["absolute_error"] for item in curve) <= threshold and
-                        direction_error <= threshold)
+            if local_contract_mode == "finite_eta_v1":
+                curve = []
+                for eta in ETA_VALUES:
+                    estimate = (local_clean - local_scores[f"{component_id}@{eta}"]) / eta
+                    curve.append({"eta": eta, "estimate": estimate, "absolute_error": abs(estimate - a_value)})
+                threshold = 1e-4 + 0.01 * abs(a_value)
+                row_pass = (all(np.isfinite(item["estimate"]) for item in curve) and
+                            min(item["absolute_error"] for item in curve) <= threshold and
+                            direction_error <= threshold)
+                detail = {"curve": curve, "minimum_absolute_error": min(item["absolute_error"] for item in curve)}
+            else:
+                threshold = ANALYTIC_JVP_ATOL + ANALYTIC_JVP_RTOL * abs(a_value)
+                row_pass = np.isfinite(directional_prediction) and direction_error <= threshold
+                detail = {"arithmetic": "float64_dot_of_float32_autodiff_tensors",
+                    "atol": ANALYTIC_JVP_ATOL, "rtol": ANALYTIC_JVP_RTOL}
             local["components"].append({
                 "component_id": component_id, "a": a_value,
                 "directional_prediction": directional_prediction,
-                "directional_prediction_absolute_error": direction_error, "curve": curve,
-                "minimum_absolute_error": min(item["absolute_error"] for item in curve),
-                "threshold": threshold, "pass": bool(row_pass),
+                "directional_prediction_absolute_error": direction_error,
+                "threshold": threshold, "pass": bool(row_pass), **detail,
             })
+        local["method"] = local_contract_mode
         local["noop_max_abs"] = noop_max_abs
         local["all_pass"] = all(row["pass"] for row in local["components"])
         if not local["all_pass"]:
@@ -676,3 +689,94 @@ def validate_run_spec(value: Mapping[str, Any]) -> None:
         "next_on_valid_execution": "ENDPOINT_E5_REQUIRES_EXPLICIT_USER_REQUEST",
     }:
         raise EndpointE4Error("FAILURE")
+
+
+def validate_recovery_run_spec(value: Mapping[str, Any]) -> None:
+    """Validate the prospective R2 recovery contract without accepting drift."""
+    required = {
+        "schema_version", "stage", "authorization_token", "recovery",
+        "predecessors", "cohort", "models", "target", "local_contract",
+        "finite_utility", "method_scope", "runtime", "outputs", "failure",
+    }
+    if set(value) != required or value["schema_version"] != 2 or value["stage"] != "ENDPOINT-E4-R2-RECOVERY":
+        raise EndpointE4Error("RECOVERY_RUN_SPEC_SCHEMA")
+    if value["authorization_token"] != "ENDPOINT_E4_RECOVERY_EXPLICIT_USER_REQUEST_20260918":
+        raise EndpointE4Error("RECOVERY_AUTHORIZATION")
+    if value["recovery"] != {
+        "source_root": "reports/nns_vit_endpoint_e4_intervention_r1_20260918",
+        "source_status": "ENDPOINT_E4_FAIL_LOCAL_DIRECTION_CONTRACT",
+        "source_immutable": True, "inherit_partial_results": False,
+        "outcome_blind_contract_freeze": True,
+    }:
+        raise EndpointE4Error("RECOVERY_BOUNDARY")
+    if set(value["predecessors"]) != {
+        "cohort_registry_sha256", "endpoint_e3_r1_artifact_manifest_sha256",
+        "endpoint_e3_r2_terminal_sha256", "endpoint_e3_r2_validation_sha256",
+        "endpoint_e4_r1_artifact_manifest_sha256", "endpoint_e4_r1_coverage_sha256",
+        "endpoint_e4_r1_terminal_sha256", "endpoint_e4_r1_validation_sha256",
+        "intervention_registry_sha256", "materialization_receipt_sha256",
+        "model_registry_sha256", "statistical_analysis_plan_sha256",
+        "target_registry_sha256", "unified_plan_sha256",
+    } or not all(isinstance(item, str) and len(item) == 64 for item in value["predecessors"].values()):
+        raise EndpointE4Error("RECOVERY_PREDECESSORS")
+    if value["cohort"] != {
+        "split": "evaluation", "count": 400, "models_share_rows": True,
+        "source": "ENDPOINT-E2_authoritative_materialization", "replacement_allowed": False,
+    } or value["models"] != ["vit_b16", "deit_s16"]:
+        raise EndpointE4Error("RECOVERY_COHORT_OR_MODELS")
+    if value["target"] != {"kind": "ground_truth_logit", "class_source": "frozen_EP0_class_id"}:
+        raise EndpointE4Error("RECOVERY_TARGET")
+    if value["local_contract"] != {
+        "evaluation_orders": list(range(16)), "method": "analytic_jvp_identity_r2",
+        "direction": "J_zx_times_x_at_clean_endpoint",
+        "arithmetic": "float64_dot_of_float32_autodiff_tensors",
+        "acceptance": "absolute_error_le_1e-5_plus_1e-4_abs_a_all_finite",
+        "components": "all_main_plus_query_key_joint_all12blocks",
+        "noop_replacement_parity_required": True,
+        "finite_eta_curve": "REMOVED_FROM_GATE_HISTORICAL_R1_FAILURE_PRESERVED",
+        "claim_scope": "CORRECTNESS_ONLY_NOT_C4_UTILITY",
+    }:
+        raise EndpointE4Error("RECOVERY_LOCAL_CONTRACT")
+    if value["finite_utility"] != {
+        "references": ["normalized_zero", "blur_rgb"],
+        "effect": "F_clean_minus_F_single_component_reference_replacement",
+        "main_components": "heads_routing_value_residual_branches_all12blocks_all400",
+        "secondary_components": "query_key_joint_first64_evaluation_both_references",
+        "zeroing": "heads_attention_branch_mlp_branch_first64_evaluation",
+        "primary_predictor": "endpoint_absolute_mass_m_vs_absolute_effect",
+        "signed_secondary": "endpoint_signed_sum_a_vs_signed_effect",
+        "mandatory_descriptive_comparators": ["p_ref", "output_norm", "gradient_norm", "gradient_activation", "random_20"],
+        "statistics": "per_image_spearman_only_global_bootstrap_holm_and_claim_decisions_deferred_to_ENDPOINT_E6",
+    }:
+        raise EndpointE4Error("RECOVERY_FINITE_UTILITY")
+    if value["method_scope"] != {
+        "activation_replacement_allowed": True, "c4a_per_image_metrics_allowed": True,
+        "c4b_spatial_intervention_allowed": False,
+        "global_holm_or_final_claim_decision_allowed": False,
+        "input_fidelity_allowed": False, "input_stability_allowed": False,
+        "local_direction_allowed": True, "path_ig_allowed": False,
+    }:
+        raise EndpointE4Error("RECOVERY_METHOD_SCOPE")
+    expected_runtime = {
+        "gpu_hours_cap": 136, "wall_hours_cap": 132, "incremental_retained_gib_cap": 56,
+        "max_gpus": 8, "min_gpus": 1, "gpu_type": "NVIDIA H20",
+        "min_free_mib": 32768, "max_utilization_percent": 10,
+        "gpu_memory_cap_gib": 24, "cpu_rss_cap_gib": 32, "minimum_free_disk_gib": 50,
+        "task_timeout_seconds": 1800, "claim_lease_seconds": 180, "heartbeat_seconds": 30,
+        "max_attempts": 2, "dynamic_global_queue": True, "static_modulo_sharding": False,
+        "CUBLAS_WORKSPACE_CONFIG": ":4096:8", "production_dtype": "float32",
+        "tf32": False, "autocast": False, "deterministic_algorithms": True,
+    }
+    if value["runtime"] != expected_runtime:
+        raise EndpointE4Error("RECOVERY_RUNTIME")
+    if value["outputs"] != {
+        "formal_root": "reports/nns_vit_endpoint_e4_intervention_r2_20260918",
+        "source_materialization": "reports/nns_vit_endpoint_e2_atlas_r1_20260918/materialization_receipt.json",
+    }:
+        raise EndpointE4Error("RECOVERY_OUTPUTS")
+    if value["failure"] != {
+        "missing_duplicate_nonfinite_source_drift_local_contract_or_cap": "FAIL_CLOSED_PRESERVE_ROOT",
+        "resource_cap": "PAUSED_RESOURCE_CAP",
+        "next_on_valid_execution": "ENDPOINT_E5_REQUIRES_EXPLICIT_USER_REQUEST",
+    }:
+        raise EndpointE4Error("RECOVERY_FAILURE_POLICY")

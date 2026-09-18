@@ -9,12 +9,13 @@ from timm.models.vision_transformer import VisionTransformer
 from vitnns.endpoint_e4_intervention import (
     EndpointE4Error, capture_registered_edges, component_rows, component_tensor,
     directional_edges, edge_gradients, intervention_scores, scan_e4_task, spearman,
-    validate_run_spec,
+    validate_recovery_run_spec, validate_run_spec,
 )
 
 
 REPO = Path(__file__).resolve().parents[1]
 SPEC = REPO / "config/nns_vit_endpoint/endpoint_e4_intervention_run_spec.json"
+RECOVERY_SPEC = REPO / "config/nns_vit_endpoint/endpoint_e4_intervention_recovery_r2.json"
 
 
 def tiny_model() -> VisionTransformer:
@@ -37,6 +38,12 @@ def test_run_spec_is_closed_and_rejects_scope_drift():
     drift = deepcopy(value); drift["local_contract"]["eta"][-1] = 0.0001
     with pytest.raises(EndpointE4Error, match="LOCAL_CONTRACT"):
         validate_run_spec(drift)
+
+    recovery = json.loads(RECOVERY_SPEC.read_text())
+    validate_recovery_run_spec(recovery)
+    drift = deepcopy(recovery); drift["recovery"]["inherit_partial_results"] = True
+    with pytest.raises(EndpointE4Error, match="RECOVERY_BOUNDARY"):
+        validate_recovery_run_spec(drift)
 
 
 def test_component_registry_has_all_frozen_families():
@@ -79,6 +86,21 @@ def test_complete_tiny_scan_has_finite_utility_metrics():
         assert len(reference["components"]) == 84
         assert set(reference["per_image_metrics"]) == {"heads", "routing_value", "residual_branches"}
         assert all(row["reason"] in {None, "NA_CONSTANT_VECTOR"} for family in reference["per_image_metrics"].values() for key, row in family.items() if key.endswith("effect"))
+
+
+def test_recovery_analytic_jvp_contract_is_distinct_from_finite_eta_gate():
+    model = tiny_model()
+    image = torch.randn(1, 3, 224, 224)
+    result = scan_e4_task(
+        model, image, {"normalized_zero": torch.zeros_like(image), "blur_rgb": image * 0.8},
+        class_id=9, task_seed=1234, include_local=True, include_secondary=False,
+        chunk_size=16, local_contract_mode="analytic_jvp_identity_r2",
+    )
+    local = result["local_contract"]
+    assert local["performed"] and local["all_pass"]
+    assert local["method"] == "analytic_jvp_identity_r2"
+    assert len(local["components"]) == 84
+    assert all(row["pass"] and "curve" not in row for row in local["components"])
 
 
 def test_average_tie_spearman_and_constant_na():

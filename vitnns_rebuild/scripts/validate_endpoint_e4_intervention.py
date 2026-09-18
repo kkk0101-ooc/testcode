@@ -24,6 +24,8 @@ SOURCE_FILES = [
     "scripts/run_endpoint_e4_intervention_worker.py",
     "scripts/run_endpoint_e4_intervention.py",
     "scripts/validate_endpoint_e4_intervention.py",
+    "scripts/validate_endpoint_e4_failure.py",
+    "scripts/validate_endpoint_unified_plan.py",
     "tests/test_endpoint_e4_intervention.py",
 ]
 BINDINGS = {
@@ -37,6 +39,22 @@ BINDINGS = {
     "statistical_analysis_plan_sha256": "manifests/nns_vit_endpoint/ep0_r1_20260918/statistical_analysis_plan.json",
     "target_registry_sha256": "manifests/nns_vit_endpoint/ep0_r1_20260918/target_registry.json",
     "unified_plan_sha256": "docs/NNS_ViT_Endpoint_Scanner统一研究计划与执行路线_20260918.md",
+}
+RECOVERY_SOURCE_FILES = [
+    "config/nns_vit_endpoint/endpoint_e4_intervention_recovery_r2.json",
+    "docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE4恢复R2_20260918.md",
+    "src/vitnns/endpoint_e4_intervention.py",
+    "scripts/run_endpoint_e4_intervention_worker.py",
+    "scripts/run_endpoint_e4_intervention.py",
+    "scripts/validate_endpoint_e4_intervention.py",
+    "tests/test_endpoint_e4_intervention.py",
+]
+RECOVERY_BINDINGS = {
+    **BINDINGS,
+    "endpoint_e4_r1_artifact_manifest_sha256": "reports/nns_vit_endpoint_e4_intervention_r1_20260918/artifact_manifest.json",
+    "endpoint_e4_r1_coverage_sha256": "reports/nns_vit_endpoint_e4_intervention_r1_20260918/formal_coverage_audit.json",
+    "endpoint_e4_r1_terminal_sha256": "reports/nns_vit_endpoint_e4_intervention_r1_20260918/terminal_receipt.json",
+    "endpoint_e4_r1_validation_sha256": "reports/nns_vit_endpoint_e4_intervention_r1_20260918/validation_report.json",
 }
 
 
@@ -129,13 +147,24 @@ def check_metric(observed: dict, left: Sequence[float], right: Sequence[float], 
 
 
 def validate(root: Path) -> dict:
-    root = root.resolve(); spec = load(SPEC_PATH)
+    root = root.resolve()
+    recovery = root.name == "nns_vit_endpoint_e4_intervention_r2_20260918"
+    spec_path = (REPO / "config/nns_vit_endpoint/endpoint_e4_intervention_recovery_r2.json" if recovery else SPEC_PATH)
+    spec = load(spec_path)
+    source_files = RECOVERY_SOURCE_FILES if recovery else SOURCE_FILES
+    bindings = RECOVERY_BINDINGS if recovery else BINDINGS
+    expected_status = ("ENDPOINT_E4_R2_PASS_EXECUTION_ANALYTIC_JVP_AND_FINITE_REPLACEMENT" if recovery else PASS_STATUS)
+    expected_stage = "ENDPOINT-E4-R2-RECOVERY" if recovery else "ENDPOINT-E4"
     # Import-free structural validation of the closed production spec.
-    require(set(spec) == {"schema_version", "stage", "authorization_token", "predecessors", "cohort", "models", "target", "local_contract", "finite_utility", "method_scope", "runtime", "outputs", "failure"}, "SPEC_SCHEMA")
-    require(spec["stage"] == "ENDPOINT-E4" and spec["authorization_token"] == "ENDPOINT_E4_EXPLICIT_USER_REQUEST_20260918", "SPEC_IDENTITY")
+    required = {"schema_version", "stage", "authorization_token", "predecessors", "cohort", "models", "target", "local_contract", "finite_utility", "method_scope", "runtime", "outputs", "failure"}
+    if recovery:
+        required.add("recovery")
+    require(set(spec) == required, "SPEC_SCHEMA")
+    require(spec["stage"] == expected_stage, "SPEC_STAGE")
+    require(spec["authorization_token"] == ("ENDPOINT_E4_RECOVERY_EXPLICIT_USER_REQUEST_20260918" if recovery else "ENDPOINT_E4_EXPLICIT_USER_REQUEST_20260918"), "SPEC_IDENTITY")
     report = load(root / "validation_report.json"); terminal = load(root / "terminal_receipt.json"); manifest = load(root / "artifact_manifest.json")
-    require(report["status"] == terminal["status"] == PASS_STATUS, "STATUS")
-    require(report["stage"] == terminal["stage"] == "ENDPOINT-E4", "STAGE")
+    require(report["status"] == terminal["status"] == expected_status, "STATUS")
+    require(report["stage"] == terminal["stage"] == expected_stage, "STAGE")
     require(report["claim_scope"] == terminal["claim_scope"] == "EXECUTION_PASS_NOT_FINAL_C4A_CLAIM_DECISION", "CLAIM_SCOPE")
     require(terminal["validation_digest"] == digest(report), "VALIDATION_DIGEST")
     require(terminal["manifest_digest"] == manifest["canonical_digest"] == digest(manifest["files"]), "MANIFEST_DIGEST")
@@ -147,12 +176,16 @@ def validate(root: Path) -> dict:
     producer = report["producer_commit"]
     require(subprocess.run(["git", "merge-base", "--is-ancestor", producer, "HEAD"], cwd=REPO).returncode == 0, "PRODUCER_ANCESTRY")
     for row in report["implementation_bindings"]:
-        require(row["path"] in SOURCE_FILES and row["commit"] == producer, "IMPLEMENTATION_RECORD")
+        require(row["path"] in source_files and row["commit"] == producer, "IMPLEMENTATION_RECORD")
         require(git_blob_sha(producer, row["path"]) == row["sha256"], "IMPLEMENTATION_BINDING:" + row["path"])
-    require({row["path"] for row in report["implementation_bindings"]} == set(SOURCE_FILES), "IMPLEMENTATION_COVERAGE")
-    for key, relative in BINDINGS.items():
+    require({row["path"] for row in report["implementation_bindings"]} == set(source_files), "IMPLEMENTATION_COVERAGE")
+    for key, relative in bindings.items():
         observed = git_blob_sha(producer, relative) if key == "unified_plan_sha256" else file_sha256(REPO / relative)
         require(observed == spec["predecessors"][key], "PREDECESSOR_BINDING:" + key)
+    if recovery:
+        r1 = load(REPO / spec["recovery"]["source_root"] / "terminal_receipt.json")
+        require(r1["status"] == spec["recovery"]["source_status"] == "ENDPOINT_E4_FAIL_LOCAL_DIRECTION_CONTRACT", "R1_FAILURE_STATUS")
+        require(spec["recovery"]["source_immutable"] and not spec["recovery"]["inherit_partial_results"], "R1_RECOVERY_BOUNDARY")
     e3 = load(REPO / "reports/nns_vit_endpoint_e3_closure_r2_20260918/terminal_receipt.json")
     require(e3["status"] == "ENDPOINT_E3_PASS_CORRECTNESS_ONLY_NEXT_ENDPOINT_E4_REQUIRES_EXPLICIT_REQUEST", "E3_STATUS")
     material = load(REPO / spec["outputs"]["source_materialization"])
@@ -161,26 +194,35 @@ def validate(root: Path) -> dict:
     require(tasks["task_count"] == 800 and tasks["manifest_digest"] == digest(tasks["tasks"]), "TASK_MANIFEST")
     require(tasks["tasks"] == payloads and tasks["queue_identity"]["manifest_digest"] == digest(payloads), "QUEUE_MANIFEST")
     frozen = {(model, row["split_order"]): row for model in ("vit_b16", "deit_s16") for row in material["records"]}
+    payload_by_task = {row["task_id"]: row["payload"] for row in payloads}
     local_count = local_eta_count = main_count = secondary_count = zeroing_count = 0
     for task_id, result in results.items():
         row = frozen[(result["model_id"], result["split_order"])]
         require((result["sample_id"], result["class_id"], result["wnid"], result["image_sha256"]) == (row["sample_id"], row["class_id"], row["wnid"], row["sha256"]), "TASK_COHORT")
-        require(result["stage"] == "ENDPOINT-E4" and result["claim_scope"] == "LOCAL_CORRECTNESS_AND_FINITE_REPLACEMENT_NO_FINAL_CLAIM_DECISION", "RESULT_SCOPE")
+        require(result["stage"] == expected_stage and result["claim_scope"] == "LOCAL_CORRECTNESS_AND_FINITE_REPLACEMENT_NO_FINAL_CLAIM_DECISION", "RESULT_SCOPE")
         require(result["input_shape"] == [1, 3, 224, 224] and result["dtype"] == "torch.float32", "INPUT_CONTRACT")
         expected_main = 192 if result["model_id"] == "vit_b16" else 120
         expected_all = expected_main + (36 if result["split_order"] < 64 else 0)
         require(result["main_component_count"] == expected_main and result["all_component_count"] == expected_all, "COMPONENT_SCOPE")
         require(result["include_local"] == (result["split_order"] < 16) and result["include_secondary"] == (result["split_order"] < 64), "SUBSET_SCOPE")
+        require(payload_by_task[task_id]["local_contract_mode"] == ("analytic_jvp_identity_r2" if recovery else "finite_eta_v1"), "TASK_LOCAL_MODE")
         local = result["local_contract"]
         if result["include_local"]:
             require(local["performed"] and local["all_pass"] and len(local["components"]) == expected_all, "LOCAL_SCOPE")
             require(local["noop_max_abs"] <= 1e-4 + 1e-4 * abs(result["clean_score"]), "NOOP_PARITY")
             for component in local["components"]:
-                require(component["pass"] and len(component["curve"]) == 4, "LOCAL_PASS")
-                require([item["eta"] for item in component["curve"]] == [0.01, 0.003, 0.001, 0.0003], "ETA_SCOPE")
-                require(all(math.isfinite(item["estimate"]) and math.isfinite(item["absolute_error"]) for item in component["curve"]), "LOCAL_FINITE")
-                require(component["minimum_absolute_error"] <= component["threshold"] and component["directional_prediction_absolute_error"] <= component["threshold"], "LOCAL_THRESHOLD")
-                local_count += 1; local_eta_count += 4
+                require(component["pass"] and math.isfinite(component["a"]) and math.isfinite(component["directional_prediction"]), "LOCAL_PASS")
+                if recovery:
+                    require(local["method"] == "analytic_jvp_identity_r2" and "curve" not in component, "RECOVERY_LOCAL_METHOD")
+                    require(component["atol"] == 1e-5 and component["rtol"] == 1e-4, "RECOVERY_LOCAL_TOLERANCE")
+                    require(component["directional_prediction_absolute_error"] <= component["threshold"], "RECOVERY_LOCAL_THRESHOLD")
+                else:
+                    require(len(component["curve"]) == 4, "LOCAL_PASS")
+                    require([item["eta"] for item in component["curve"]] == [0.01, 0.003, 0.001, 0.0003], "ETA_SCOPE")
+                    require(all(math.isfinite(item["estimate"]) and math.isfinite(item["absolute_error"]) for item in component["curve"]), "LOCAL_FINITE")
+                    require(component["minimum_absolute_error"] <= component["threshold"] and component["directional_prediction_absolute_error"] <= component["threshold"], "LOCAL_THRESHOLD")
+                    local_eta_count += 4
+                local_count += 1
         else:
             require(local == {"performed": False, "components": [], "all_pass": None}, "LOCAL_FORBIDDEN_OUTSIDE_SUBSET")
         for reference in ("normalized_zero", "blur_rgb"):
@@ -215,7 +257,7 @@ def validate(root: Path) -> dict:
         identity = result["worker_identity"]
         require(identity["CUBLAS_WORKSPACE_CONFIG"] == ":4096:8" and identity["startup_matmul_backward"] == "PASS", "CUDA_STARTUP")
         require(identity["deterministic_algorithms"] and not identity["cuda_matmul_allow_tf32"] and not identity["cudnn_allow_tf32"] and not identity["autocast"], "DETERMINISM")
-    require((local_count, local_eta_count, main_count, secondary_count, zeroing_count) == (6144, 24576, 249600, 9216, 16896), "GLOBAL_COUNTS")
+    require((local_count, local_eta_count, main_count, secondary_count, zeroing_count) == (6144, 0 if recovery else 24576, 249600, 9216, 16896), "GLOBAL_COUNTS")
     require(report["local_component_evaluations"] == terminal["local_component_evaluation_count"] == local_count, "REPORT_LOCAL_COUNT")
     require(report["local_eta_evaluations"] == terminal["local_eta_evaluation_count"] == local_eta_count, "REPORT_ETA_COUNT")
     require(report["main_component_reference_evaluations"] == terminal["main_component_reference_evaluation_count"] == main_count, "REPORT_MAIN_COUNT")
@@ -225,6 +267,9 @@ def validate(root: Path) -> dict:
     require(report["gpu_hours_upper_observed"] <= 136 and report["formal_wall_seconds"] <= 132 * 3600, "TIME_CAP")
     require(report["peak_reserved_gpu_bytes_max"] <= 24 * 1024 ** 3 and report["peak_cpu_rss_bytes_max"] <= 32 * 1024 ** 3, "MEMORY_CAP")
     require(report["retained_bytes_before_report"] <= 56 * 1024 ** 3, "STORAGE_CAP")
+    if recovery:
+        require(report["local_contract_method"] == "analytic_jvp_identity_r2", "REPORT_LOCAL_METHOD")
+        require(report["historical_r1_finite_eta_failure_preserved"] and report["r1_partial_results_inherited"] is False, "REPORT_RECOVERY_BOUNDARY")
     require(report["deferred"] == {
         "c4a_bootstrap": "ENDPOINT-E6", "c4a_holm": "ENDPOINT-E6", "c4a_claim_decisions": "ENDPOINT-E6",
         "c4b_spatial_intervention": "ENDPOINT-E5_REQUIRES_EXPLICIT_USER_REQUEST",
@@ -232,7 +277,7 @@ def validate(root: Path) -> dict:
     }, "DEFERRED_SCOPE")
     require(report["next_authorization"] == terminal["next_authorization"] == "ENDPOINT_E5_REQUIRES_EXPLICIT_USER_REQUEST", "NEXT_AUTHORIZATION")
     return {
-        "status": PASS_STATUS, "evaluation_images": 400, "image_model_tasks": 800,
+        "status": expected_status, "evaluation_images": 400, "image_model_tasks": 800,
         "main_component_reference_evaluations": main_count,
         "secondary_component_reference_evaluations": secondary_count,
         "local_component_evaluations": local_count, "local_eta_evaluations": local_eta_count,

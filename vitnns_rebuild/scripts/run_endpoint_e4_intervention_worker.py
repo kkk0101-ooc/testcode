@@ -152,6 +152,7 @@ def execute(model, task: dict, claim: dict, queue: Path, device: torch.device) -
         model, image, references, class_id=task["class_id"], task_seed=claim["seed"],
         include_local=bool(task["include_local"]),
         include_secondary=bool(task["include_secondary"]), chunk_size=task["intervention_batch_size"],
+        local_contract_mode=task.get("local_contract_mode", "finite_eta_v1"),
         progress=progress,
     )
     torch.cuda.synchronize(); scan_seconds = time.perf_counter() - started
@@ -166,7 +167,8 @@ def execute(model, task: dict, claim: dict, queue: Path, device: torch.device) -
     if rss_bytes > 32 * 1024 ** 3:
         raise RuntimeError("PAUSED_RESOURCE_CAP_CPU_RSS")
     return {
-        "stage": "ENDPOINT-E4", "claim_scope": "LOCAL_CORRECTNESS_AND_FINITE_REPLACEMENT_NO_FINAL_CLAIM_DECISION",
+        "stage": task.get("stage", "ENDPOINT-E4"),
+        "claim_scope": "LOCAL_CORRECTNESS_AND_FINITE_REPLACEMENT_NO_FINAL_CLAIM_DECISION",
         "model_id": task["model_id"], "sample_id": task["sample_id"],
         "split_order": task["split_order"], "class_id": task["class_id"], "wnid": task["wnid"],
         "image_sha256": task["image_sha256"], "image_bytes": task["image_bytes"],

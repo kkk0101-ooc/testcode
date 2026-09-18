@@ -48,10 +48,11 @@ evidence and are indexed from that page. The Endpoint-only atlas stage
 `ENDPOINT-E2` has passed its registered scan and resource audit. `ENDPOINT-E3`
 has also passed formal all-block structural closure for the two frozen models
 and 400-image evaluation cohort; this is a correctness result, not a utility
-result. `ENDPOINT-E4` was explicitly authorized but failed its frozen local
-finite-direction contract before complete utility coverage. Partial
-finite-replacement outputs are excluded from scientific interpretation; E5 is
-not authorized, and any E4 recovery requires a prospective amendment and new root.
+result. `ENDPOINT-E4` R1 failed its frozen local finite-direction contract
+before complete utility coverage. Partial R1 outputs remain excluded from
+scientific interpretation. The explicitly authorized R2 recovery has frozen
+an analytic JVP correctness gate and a fresh full finite-replacement run; E5
+remains unauthorized pending the R2 terminal.
 
 ## Environment
 
