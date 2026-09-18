@@ -72,12 +72,15 @@ def validate(root: Path) -> dict:
     material = load(root / "materialization_receipt.json")
     tasks = load(root / "task_manifest.json")
     formal_coverage = load(root / "formal_coverage_audit.json")
-    replay_coverage = load(root / "single_replay/coverage_audit.json")
     require(report["status"] == terminal["status"] == PASS_STATUS, "STATUS")
     require(report["stage"] == terminal["stage"] == "ENDPOINT-E2", "STAGE")
     require(report["claim_decision"] == terminal["claim_decision"] == "C2_REGISTERED_SCAN_COMPLETION_AND_RESOURCES", "CLAIM_SCOPE")
     require(report["scientific_utility_claims"] == "NOT_RUN_NOT_ALLOWED", "UTILITY_SCOPE")
     require(report["path_ig"] == report["input_fidelity_stability"] == report["finite_intervention"] == "NOT_RUN_NOT_ALLOWED", "METHOD_SCOPE")
+    amendment = load(REPO / report["execution_amendment"]["path"])
+    require(report["execution_amendment"]["sha256"] == terminal["execution_amendment_sha256"] == file_sha256(REPO / report["execution_amendment"]["path"]), "AMENDMENT_BINDING")
+    require(amendment["execution_change"]["full_single_gpu_replay_required"] is False and amendment["execution_change"]["partial_replay_use_in_pass_decision"] is False, "AMENDMENT_SCOPE")
+    require(terminal["amendment_commit"] == report["amendment_commit"], "AMENDMENT_COMMIT")
     require(terminal["validation_digest"] == digest(report), "VALIDATION_DIGEST")
     require(terminal["manifest_digest"] == manifest["canonical_digest"] == digest(manifest["files"]), "MANIFEST_DIGEST")
     paths = [row["path"] for row in manifest["files"]]
@@ -90,7 +93,8 @@ def validate(root: Path) -> dict:
         ["git", "merge-base", "--is-ancestor", report["producer_commit"], "HEAD"], cwd=REPO,
     ).returncode == 0, "PRODUCER_ANCESTRY")
     for row in report["implementation_bindings"]:
-        require(git_blob_sha(report["producer_commit"], row["path"]) == row["sha256"], "IMPLEMENTATION_BINDING:" + row["path"])
+        require(row["role"] in {"formal_production", "post_formal_user_amendment"}, "IMPLEMENTATION_ROLE")
+        require(git_blob_sha(row["commit"], row["path"]) == row["sha256"], "IMPLEMENTATION_BINDING:" + row["path"])
     cohort = load(EP0 / "cohort_registry.json")
     expected = sorted(
         (row for row in cohort["rows"] if row["split"] == "evaluation"),
@@ -126,13 +130,13 @@ def validate(root: Path) -> dict:
     require(tasks["target_count_by_model"] == {"vit_b16": 457, "deit_s16": 385}, "TARGET_COUNTS")
     require(tasks["target_evaluations"] == terminal["target_evaluation_count"] == 336800, "TARGET_EVALUATIONS")
     require(tasks["manifest_digest"] == digest(tasks["tasks"]), "TASK_DIGEST")
-    require(tasks["queue_identities"]["formal"] == tasks["queue_identities"]["single_replay"], "SAME_TASK_MANIFEST")
-    for coverage in (formal_coverage, replay_coverage):
-        require(coverage["status"] == "PASS" and coverage["task_count"] == coverage["completed_count"] == 800, "COVERAGE")
-        require(not coverage["missing_task_ids"] and not coverage["invalid"] and not coverage["duplicate_task_ids"], "COVERAGE_DETAILS")
+    require(formal_coverage["status"] == "PASS" and formal_coverage["task_count"] == formal_coverage["completed_count"] == 800, "COVERAGE")
+    require(not formal_coverage["missing_task_ids"] and not formal_coverage["invalid"] and not formal_coverage["duplicate_task_ids"], "COVERAGE_DETAILS")
     formal = load_queue(root, root / "formal_queue.sqlite3", root / "formal_results", 800)
-    replay = load_queue(root, root / "single_replay/queue.sqlite3", root / "single_replay/results", 800)
-    require(set(formal) == set(replay), "SINGLE_MULTI_TASK_SET")
+    canceled = load(root / "replay_cancellation_receipt.json")
+    require(canceled == report["canceled_replay"] and canceled["status"] == "USER_CANCELED_ENGINEERING_REPLAY_NOT_E2_EVIDENCE", "REPLAY_CANCELLATION")
+    require(canceled["included_in_endpoint_e2_pass"] is False and canceled["included_in_scientific_evidence"] is False and canceled["completion_required"] is False, "REPLAY_EXCLUDED")
+    require(canceled["completed_task_count"] < 800 and canceled["queue_states_at_cancellation"].get("completed", 0) == canceled["completed_task_count"], "REPLAY_INCOMPLETE_PRESERVED")
     target_registry = load(EP0 / "target_registry.json")
     target_counts = {model_id: len(rows) for model_id, rows in target_registry["targets_by_model"].items()}
     require(target_counts == {"vit_b16": 457, "deit_s16": 385}, "REGISTRY_TARGET_COUNTS")
@@ -141,8 +145,6 @@ def validate(root: Path) -> dict:
     full_atlases = 0
     observed_near_zero = []
     for task_id, result in formal.items():
-        replay_result = replay[task_id]
-        require(result["numeric_digest"] == replay_result["numeric_digest"], "SINGLE_MULTI_NUMERIC")
         require(result["summaries_digest"] == digest(result["summaries"]), "SUMMARY_DIGEST")
         target_rows = target_registry["targets_by_model"][result["model_id"]]
         require(result["target_count"] == len(result["summaries"]) == len(target_rows), "TARGET_COVERAGE")
@@ -151,7 +153,6 @@ def validate(root: Path) -> dict:
         require(all(math.isfinite(float(row[key])) for row in result["summaries"] for key in ("value", "signed_sum", "absolute_mass", "max_abs")), "FINITE_SUMMARIES")
         require(result["method_id"] == "canonical_endpoint_x_times_gradient" and result["forward_count"] == 1, "METHOD_IDENTITY")
         require(result["input_shape"] == [1, 3, 224, 224] and result["dtype"] == "torch.float32", "INPUT_IDENTITY")
-        require(result["image_sha256"] == replay_result["image_sha256"] and result["logits_sha256"] == replay_result["logits_sha256"], "REPLAY_SOURCE")
         artifacts = {row["kind"]: row for row in result["artifacts"]}
         require(set(artifacts) >= {"raw_signed_rgb_class_maps"}, "CLASS_MAP_MISSING")
         class_maps += 1
@@ -190,8 +191,7 @@ def validate(root: Path) -> dict:
         path = root / row["path"]
         require(row["selection_orders"] == list(range(8)) and row["display_only_not_statistics"] and not row["smoothing"] and not row["clipping"], "GALLERY_SCOPE")
         require(path.is_file() and path.stat().st_size == row["bytes"] and file_sha256(path) == row["sha256"], "GALLERY_HASH")
-    require(report["single_multi_exact_numeric_digest_count"] == 800 and not report["single_multi_mismatch_task_ids"], "SINGLE_MULTI_REPORT")
-    require(report["formal_workers"] >= 1 and report["replay_workers"] == 1, "WORKERS")
+    require(report["formal_workers"] == 4, "WORKERS")
     require(report["gpu_hours_upper_observed"] <= 64 and report["total_wall_seconds"] <= 72 * 3600, "TIME_CAP")
     require(report["peak_reserved_gpu_bytes_max"] <= 24 * 1024 ** 3 and report["peak_cpu_rss_bytes_max"] <= 32 * 1024 ** 3, "MEMORY_CAP")
     require(report["retained_bytes_before_report"] <= 128 * 1024 ** 3 and report["raw_retained_bytes"] > 0, "STORAGE_CAP")
@@ -202,7 +202,7 @@ def validate(root: Path) -> dict:
         "status": PASS_STATUS, "producer_commit": report["producer_commit"],
         "evaluation_images": 400, "image_model_tasks": 800,
         "target_evaluations": 336800, "full_raw_atlas_tasks": 32,
-        "raw_class_map_tasks": 800, "single_multi_exact": 800,
+        "raw_class_map_tasks": 800, "canceled_replay_included": False,
         "gpu_hours": report["gpu_hours_upper_observed"],
         "next_authorization": report["next_authorization"],
     }

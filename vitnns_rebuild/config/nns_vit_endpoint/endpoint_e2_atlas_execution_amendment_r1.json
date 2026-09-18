@@ -1,0 +1,56 @@
+{
+  "amendment_id": "ENDPOINT_E2_ATLAS_EXECUTION_AMENDMENT_R1_20260918",
+  "amendment_timing": "AFTER_FORMAL_MULTI_GPU_COMPLETION_AND_DURING_OPTIONAL_ENGINEERING_REPLAY",
+  "authority": {
+    "instruction": "不要单卡重放了，没意义啊，多卡跑完就行了，你设计规划的有问题",
+    "issued_by": "user",
+    "scope": "cancel full single-GPU production replay and finish ENDPOINT-E2 from the completed multi-GPU formal queue"
+  },
+  "base_contract": {
+    "path": "config/nns_vit_endpoint/endpoint_e2_atlas_run_spec.json",
+    "producer_commit": "b28ec78af3abdceed0a86bd7e2130a7e6210cf8e",
+    "sha256": "dcd768a76bccefe81e5eacfeb885a38c8fa31293f91a8d691bd828d2f8b4bd02"
+  },
+  "preserved_formal_evidence": {
+    "formal_queue_status": "800_OF_800_COMPLETED",
+    "formal_worker_count": 4,
+    "image_model_tasks": 800,
+    "target_evaluations": 336800,
+    "formal_failures": 0,
+    "formal_retries": 0
+  },
+  "execution_change": {
+    "full_single_gpu_replay_required": false,
+    "partial_replay_use_in_pass_decision": false,
+    "partial_replay_use_as_scientific_evidence": false,
+    "single_multi_engineering_contract_source": "reports/nns_vit_endpoint_ep1_r11_20260918/terminal_receipt.json",
+    "endpoint_e2_acceptance_source": "formal multi-GPU 800-task queue plus independent CPU artifact validation"
+  },
+  "unchanged": {
+    "cohort": "400 frozen evaluation rows",
+    "models": [
+      "vit_b16",
+      "deit_s16"
+    ],
+    "target_counts": {
+      "deit_s16": 385,
+      "vit_b16": 457
+    },
+    "method": "canonical_endpoint_x_times_gradient",
+    "claim_decision": "C2_REGISTERED_SCAN_COMPLETION_AND_RESOURCES",
+    "path_ig_allowed": false,
+    "input_fidelity_or_stability_allowed": false,
+    "finite_intervention_allowed": false,
+    "utility_claim_allowed": false,
+    "resource_caps_unchanged": true
+  },
+  "canceled_replay_disposition": {
+    "root": "reports/nns_vit_endpoint_e2_atlas_r1_20260918/single_replay",
+    "status": "USER_CANCELED_ENGINEERING_REPLAY_NOT_E2_EVIDENCE",
+    "preserve_without_completion": true,
+    "delete_or_rewrite_allowed": false
+  },
+  "next_on_valid_formal_completion": "ENDPOINT_E2_PASS_NEXT_ENDPOINT_E3_REQUIRES_EXPLICIT_REQUEST",
+  "schema_version": 1,
+  "stage": "ENDPOINT-E2"
+}

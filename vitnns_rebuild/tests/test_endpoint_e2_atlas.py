@@ -90,3 +90,19 @@ def test_display_is_linear_symmetric_and_zero_safe():
     image, scale, near_zero = display_rgb_signed_sum(value)
     assert scale == 2 and not near_zero
     assert tuple(image[0, 0]) == (255, 0, 0) and tuple(image[0, 1]) == (0, 0, 255)
+
+
+def test_execution_amendment_cancels_replay_without_scope_drift():
+    value = json.loads((ROOT / "config/nns_vit_endpoint/endpoint_e2_atlas_execution_amendment_r1.json").read_text())
+    assert value["stage"] == "ENDPOINT-E2"
+    assert value["preserved_formal_evidence"] == {
+        "formal_queue_status": "800_OF_800_COMPLETED", "formal_worker_count": 4,
+        "image_model_tasks": 800, "target_evaluations": 336800,
+        "formal_failures": 0, "formal_retries": 0,
+    }
+    assert value["execution_change"]["full_single_gpu_replay_required"] is False
+    assert value["execution_change"]["partial_replay_use_in_pass_decision"] is False
+    assert value["execution_change"]["partial_replay_use_as_scientific_evidence"] is False
+    assert value["unchanged"]["method"] == METHOD_ID
+    assert not value["unchanged"]["path_ig_allowed"]
+    assert not value["unchanged"]["finite_intervention_allowed"]
