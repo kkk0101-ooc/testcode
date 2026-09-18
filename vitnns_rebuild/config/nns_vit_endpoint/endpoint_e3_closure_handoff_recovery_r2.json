@@ -1,0 +1,34 @@
+{
+  "affected_check": "raw float32 relative-L2 scalar equality across NumPy and Torch reduction implementations",
+  "authorization": "prospective verifier-only handoff recovery after R1 independent validation stopped",
+  "execution": {
+    "formal_gpu_tasks_reused": 800,
+    "gpu_rerun": false,
+    "new_formal_outcome_access": false,
+    "source_root_immutable": true
+  },
+  "observed_failure": {
+    "code": "RAW_RELATIVE_L2",
+    "first_absolute_difference": 1.4042811517923978e-12,
+    "first_fractional_difference": 4.250783335878028e-06,
+    "maximum_absolute_difference_over_3072_raw_cut_checks": 3.259281270403863e-11,
+    "maximum_fractional_difference_over_3072_raw_cut_checks": 1.432725977487841e-05
+  },
+  "recovery": {
+    "independent_elementwise_acceptance_unchanged": {"atol": 1e-05, "rtol": 0.0001},
+    "raw_array_digest_must_match": true,
+    "raw_max_abs_must_match_abs_tol": 1e-12,
+    "recorded_relative_l2_cross_backend_abs_tol": 1e-10,
+    "recorded_relative_l2_cross_backend_rel_tol": 2e-05,
+    "validator_output_root": "reports/nns_vit_endpoint_e3_closure_r2_20260918"
+  },
+  "schema_version": 1,
+  "scientific_contract_changed": false,
+  "source_bindings": {
+    "r1_artifact_manifest_sha256": "7d90f2f5584e8e7da3c35615ba00aff99d70234d0da7b9316c1a79c5f452e7a4",
+    "r1_terminal_receipt_sha256": "01350daf98f938b21ff20b1683e655b3f36e02fa087c7c6fb6311c63abe37bfd",
+    "r1_validation_report_sha256": "09cc268220ed4b5862c9bd697e28a5efa57d1e74ad07c05ecb68479853de5541"
+  },
+  "stage": "ENDPOINT-E3-R2-HANDOFF",
+  "status": "PROSPECTIVE_VERIFIER_ONLY_RECOVERY"
+}

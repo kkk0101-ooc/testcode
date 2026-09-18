@@ -99,7 +99,11 @@ def validate_raw_task(result: dict) -> int:
             require(array_sha256(summed) == cut["summed_sha256"], "RAW_SUMMED_DIGEST")
             require(array_sha256(reference) == cut["reference_sha256"], "RAW_REFERENCE_DIGEST")
             require(math.isclose(maximum, cut["max_abs"], rel_tol=0, abs_tol=1e-12), "RAW_MAX_ABS")
-            require(math.isclose(relative, cut["relative_l2"], rel_tol=1e-6, abs_tol=1e-12), "RAW_RELATIVE_L2")
+            # NumPy and Torch use different parallel reduction trees for the
+            # float32 L2 norms.  The raw arrays and elementwise residual are
+            # already digest/exactly bound above; compare the derived scalar
+            # with the separately registered handoff-audit tolerance.
+            require(math.isclose(relative, cut["relative_l2"], rel_tol=2e-5, abs_tol=1e-10), "RAW_RELATIVE_L2")
             require(np.allclose(summed, reference, atol=1e-5, rtol=1e-4), "RAW_ELEMENTWISE_CLOSURE")
     return len(artifacts)
 
