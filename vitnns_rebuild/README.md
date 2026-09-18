@@ -51,6 +51,11 @@ See the [nine example figures](docs/endpoint_nns_vit_scanner_figures_20260918.md
 and `scripts/run_endpoint_vit_scan.py` for the reproducible CPU demonstration.
 This interface uses no reference or path integration.
 
+The [paper plan](docs/NNS_ViT_Endpoint_Scanner论文思路与规划与步骤_20260918.md)
+defines the experimental sequence, image-level statistics and dynamic multi-GPU
+execution requirements. The [mathematical comparison gallery](reports/nns_vit_endpoint_math_comparison_r1_20260918/gallery.html)
+contains nine analytic figures comparing Endpoint, the earlier Path IG and NNS-CNN.
+
 ## Environment
 
 ```bash
