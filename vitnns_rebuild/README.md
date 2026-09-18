@@ -40,40 +40,12 @@ does not claim to be full Q/K/V attribution or a class-logit explanation.
 
 ## NNS-ViT Endpoint Scanner
 
-The [NNS-ViT Endpoint Scanner](docs/endpoint_nns_vit_scanner_20260918.md) uses
-the original-input rule `x * grad(s)` on the native ViT graph. It supports
-individual token/channel units, aggregate responses, heads, logits and margins,
-plus complete endpoint edge decompositions for heads, Q/K/V and residuals.
-The [mathematical analysis](docs/NNS_ViT_Endpoint_Scanner数学分析与方法对比_20260918.md)
-derives the method and compares it with the earlier path-integrated NNS-ViT
-and the original NNS-CNN equations.
-See the [nine example figures](docs/endpoint_nns_vit_scanner_figures_20260918.md)
-and `scripts/run_endpoint_vit_scan.py` for the reproducible CPU demonstration.
-This interface uses no reference or path integration.
-
-The [paper plan](docs/NNS_ViT_Endpoint_Scanner论文思路与规划与步骤_20260918.md)
-defines the experimental sequence, image-level statistics and dynamic multi-GPU
-execution requirements. The [mathematical comparison gallery](reports/nns_vit_endpoint_math_comparison_r1_20260918/gallery.html)
-contains nine analytic figures comparing Endpoint, the earlier Path IG and NNS-CNN.
-
-The [EP0 frozen protocol](docs/NNS_ViT_Endpoint_Scanner_EP0协议冻结_20260918.md)
-registers two models, disjoint 64/64/400 image cohorts, 16 statistical families,
-28 tests, explicit reconstruction targets and dynamic multi-GPU resource caps.
-EP0 is metadata-only; EP1 and production experiments require separate authorization.
-
-The [EP1 implementation and regression report](docs/NNS_ViT_Endpoint_Scanner_EP1实现与回归_20260918.md)
-records the completed energy target, unfused edge capture, branch/total cut
-validation, SQLite fenced task queue, 44 CPU regressions, and single-/four-GPU
-parity on deterministic synthetic inputs. EP1 is PASS; no production image
-outcome was accessed, and EP2 still requires a separate explicit request.
-
-The [EP2 calibration report](docs/NNS_ViT_Endpoint_Scanner_EP2校准结果_20260918.md)
-records complete 64-image, two-model calibration. DeiT-S selected M=512, but
-ViT-B failed the frozen 61/64 gate at the largest allowed M; the immutable
-stage result is `EP2_NUMERICAL_CALIBRATION_FAILED`, with no EP3 authorization.
-The subsequent [Endpoint/Path track-split amendment](docs/NNS_ViT_Endpoint_Scanner主轨拆分修订_20260918.md)
-keeps that failure immutable, blocks Path-dependent comparisons, and makes the
-Endpoint-only atlas stage the next separately authorized step.
+Use the [unified research plan and execution route](docs/NNS_ViT_Endpoint_Scanner统一研究计划与执行路线_20260918.md)
+as the single current entry point. It contains the method definition, current
+state, Endpoint/Path split, completed evidence, future stage contracts, resource
+rules and claim boundaries. Earlier EP0/EP1/EP2 documents remain immutable
+evidence and are indexed from that page. The next requestable stage is the
+Endpoint-only atlas stage `ENDPOINT-E2`; it has not started.
 
 ## Environment
 
