@@ -20,8 +20,9 @@ def main():
     for path,text in zip(paths[:3],texts[:3]):
         for table in report['tables'].values():
             require(table in text,'REPORT_TABLE:'+path.name);table_count+=1
-        for token in ('400','2','5','10','672','10000','11/12','NOT_SUPPORTED','Gradient × Input','Image #1','Image #2','Image #3'):
+        for token in ('400','2','5','10','672','11/12','NOT_SUPPORTED','Gradient × Input','Image #1','Image #2','Image #3'):
             require(token in text,'REQUIRED_TEXT:'+token)
+        require('10000' in text or '10,000' in text,'BOOTSTRAP_COUNT')
         require('M3' not in text or path.name=='endpoint_m2_results_20260919.md','NO_UNSUPPORTED_M3_CLAIM')
     # Both languages use the same section numbering and complete numeric tables.
     require(re.findall(r'^## (\d+)\.',texts[1],re.M)==re.findall(r'^## (\d+)\.',texts[2],re.M),'SECTION_PARITY')
@@ -32,6 +33,11 @@ def main():
     require(sha(ROOT/'task_validation.json')==report['task_validation_sha256'],'TASK_BINDING')
     require(sha(ROOT/'inference_validation.json')==report['inference_validation_sha256'],'INFERENCE_BINDING')
     require((paper/'qc/endpoint_m2_writing_audit.md').is_file(),'WRITING_AUDIT')
+    english=texts[2].lower()
+    for phrase in ('supplementary frozen study','does not establish equivalence','global optimum'):
+        require(english.count(phrase)==1,'WRITING_PHRASE_COUNT:'+phrase)
+    for phrase in ('we emphasize','it should be noted','to ensure fairness','we do not claim'):
+        require(phrase not in english,'DEFENSIVE_PHRASE:'+phrase)
     visual=load(ROOT/'visual_inspection.json');require(visual['status']=='PASS' and len(visual['figures'])==3,'VISUAL_INSPECTION')
     write(ROOT/'document_validation.json',dict(status='PASS',documents=len(paths),links=link_count,
         bound_table_copies=table_count,figure_count=3,bilingual_section_parity=True,primary_omnibus='NOT_SUPPORTED',
