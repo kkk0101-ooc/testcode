@@ -5,7 +5,7 @@ import hashlib,json
 from pathlib import Path
 REPO=Path(__file__).resolve().parents[1]
 ROOT=REPO/"reports/nns_vit_endpoint_unified_paper_figures_r2_20260918"
-OUTPUT=REPO/"manuscript/endpoint_figure_manifest.json"
+OUTPUT=REPO/"papers/nns_vit_endpoint/figure_manifest.json"
 MAIN={1,2,5,10,12,14,16,20,21,24,26,28}
 def sha(path):
  h=hashlib.sha256()

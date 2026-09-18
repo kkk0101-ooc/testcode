@@ -86,9 +86,15 @@ component map 在该空间干预任务中带来联合信息增益”的 C4b 主�
 - `reports/nns_vit_endpoint_e6_release_r3_20260918/`：逐图统计输入、bootstrap、sign test、
   Holm、family/aggregate decisions、两张 SVG 结果图、source read audit、reproduction
   manifest、validation report、artifact manifest 和 terminal receipt；
-- `manuscript/en/endpoint_scanner_results_release_r3.md` 与
-  `manuscript/zh/endpoint_scanner_results_release_r3.md`：同步双语论文结果；
-- `manuscript/notes/endpoint_scanner_e6_evidence_matrix_r3.md`：claim-to-evidence 映射；
-- `manuscript/qc/endpoint_scanner_e6_defensive_writing_audit_r3.md`：防御性写作审计。
+- `papers/nns_vit_endpoint/en/endpoint_scanner_results_release_r3.md` 与
+  `papers/nns_vit_endpoint/zh/endpoint_scanner_results_release_r3.md`：同步双语论文结果；
+- `papers/nns_vit_endpoint/notes/endpoint_scanner_e6_evidence_matrix_r3.md`：claim-to-evidence 映射；
+- `papers/nns_vit_endpoint/qc/endpoint_scanner_e6_defensive_writing_audit_r3.md`：防御性写作审计。
 - `reports/nns_vit_endpoint_unified_paper_figures_r2_20260918/`：28 张 Endpoint 论文图、
   84 个 PNG/PDF/SVG 导出、双语 caption、逐图分析与封存回执。
+
+目录迁移说明：E6 封存回执、run spec 和 reproduction manifest 保留生产时的
+`manuscript/...` 路径作为 provenance；当前活动论文根已迁移至
+`papers/nns_vit_endpoint/`，活动验证器按
+[论文目录迁移修订 R1](NNS_ViT_Endpoint_Scanner论文目录迁移修订R1_20260918.md)
+解析旧路径并继续校验 bytes 与 SHA-256。

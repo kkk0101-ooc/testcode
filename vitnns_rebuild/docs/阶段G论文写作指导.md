@@ -38,26 +38,23 @@
 ```text
 vitnns_rebuild/
 ├── AGENTS.md
-├── manuscript/
-│   ├── zh/
-│   │   ├── outline.md
-│   │   ├── abstract.md
-│   │   ├── introduction.md
-│   │   ├── experimental.md
-│   │   ├── results_discussion.md
-│   │   └── conclusion.md
-│   └── en/
-│       ├── outline.md
-│       ├── abstract.md
-│       ├── introduction.md
-│       ├── experimental.md
-│       ├── results_discussion.md
-│       └── conclusion.md
-│   ├── notes/
-│   ├── references/
-│   ├── tables/
-│   ├── figure_manifest.json
-│   └── qc/
+├── papers/
+│   ├── nns_vit_path/
+│   │   ├── zh/
+│   │   ├── en/
+│   │   ├── notes/
+│   │   ├── references/
+│   │   ├── scripts/
+│   │   ├── figure_manifest.json
+│   │   └── qc/
+│   └── nns_vit_endpoint/
+│       ├── zh/
+│       ├── en/
+│       ├── notes/
+│       ├── references/
+│       ├── scripts/
+│       ├── figure_manifest.json
+│       └── qc/
 ├── docs/
 │   ├── 阶段F规划.md
 │   ├── 阶段F_F3工作包与产物索引.md
@@ -67,7 +64,7 @@ vitnns_rebuild/
 └── reports/stage_g_writing_*/
 ```
 
-论文图片不复制进新的临时 `figures/` 目录。`manuscript/figure_manifest.json` 应通过路径、SHA-256 和 Stage F source record 引用冻结图包。
+论文图片不复制进新的临时 `figures/` 目录。每篇论文各自的 `papers/<paper_id>/figure_manifest.json` 应通过路径、SHA-256 和 Stage F/Endpoint source record 引用冻结图包。
 
 核心文献材料位于 `../相关文章/Understanding neural network through neuron level visualization/`，其中 `README.md` 给出 DOI、期刊、页码和中英文拆分文件。阶段 G 应把该目录登记为 `primary_reference_anchor`。后续加入 `../相关文章/` 的其他文献可以进入 related work、背景或对照方法矩阵，但默认不改变这篇 NNS 源文献的核心地位。
 
@@ -101,8 +98,8 @@ This repository contains an SCI manuscript.
 # Language versions
 
 - Maintain separate Chinese and English manuscript files.
-- Store Chinese files under `manuscript/zh/`.
-- Store English files under `manuscript/en/`.
+- Store Chinese files under `papers/<paper_id>/zh/`.
+- Store English files under `papers/<paper_id>/en/`.
 - Keep section structure, figure and table numbering, numerical values, and scientific conclusions consistent between the two versions.
 - Do not mix Chinese and English manuscript content in the same file.
 
@@ -290,8 +287,8 @@ notes/Figure_3.md
 中文版本和英文版本应分别写入以下文件：
 
 ```text
-manuscript/zh/results_discussion.md
-manuscript/en/results_discussion.md
+papers/<paper_id>/zh/results_discussion.md
+papers/<paper_id>/en/results_discussion.md
 ```
 
 可以先用中文版本确认论证逻辑，再生成对应英文版本；生成英文版本后，需要复核两者的数据、图表编号和结论是否一致。
@@ -517,7 +514,7 @@ What this study does
 references/
 ```
 
-本项目的第一条文献记录必须来自 `../相关文章/Understanding neural network through neuron level visualization/README.md`，并在 `manuscript/references/literature_notes.md` 中固定为：
+本项目的第一条文献记录必须来自 `../相关文章/Understanding neural network through neuron level visualization/README.md`，并在对应 paper root 的 `references/literature_notes.md` 中固定为：
 
 ```text
 primary_reference_anchor:
@@ -580,7 +577,7 @@ For every literature-dependent statement, classify it as:
 ```text
 Read:
 - notes/scientific_story.md
-- manuscript/en/results_discussion.md
+- papers/<paper_id>/en/results_discussion.md
 - references/literature_notes.md
 
 Create an Introduction outline.
@@ -848,7 +845,7 @@ anticipated objection → disclaimer → justification → weakened claim → an
 
 ### 24.4 固定审计输出
 
-在 `manuscript/qc/defensive_writing_audit.md` 输出：
+在 `papers/<paper_id>/qc/defensive_writing_audit.md` 输出：
 
 | Location | Original | Type | Severity | Necessary caveat? | Why it feels defensive | Likely reviewer reaction | Recommended action | Rewrite |
 |---|---|---|---|---|---|---|---|---|

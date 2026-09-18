@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[3]
 SECTIONS = (
     "outline.md", "abstract.md", "introduction.md", "related_work.md",
     "methods.md", "experimental.md", "results_discussion.md",
@@ -49,17 +50,16 @@ for lang in ("zh", "en"):
 manifest = json.loads((ROOT / "figure_manifest.json").read_text(encoding="utf-8"))
 if manifest.get("figure_count") != 35:
     errors.append("figure manifest count is not 35")
-repo = ROOT.parent
 for figure in manifest.get("figures", []):
     for kind in ("png", "pdf", "svg"):
         record = figure[kind]
-        path = repo / record["path"]
+        path = REPO / record["path"]
         if not path.is_file():
             errors.append(f"missing figure asset: {record['path']}")
         elif sha256(path) != record["sha256"]:
             errors.append(f"figure digest mismatch: {record['path']}")
 for record in manifest.get("support_files", []):
-    path = repo / record["path"]
+    path = REPO / record["path"]
     if not path.is_file():
         errors.append(f"missing support file: {record['path']}")
     elif sha256(path) != record["sha256"]:

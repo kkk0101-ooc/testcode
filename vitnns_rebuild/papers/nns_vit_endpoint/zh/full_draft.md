@@ -5,7 +5,7 @@
 - 通讯作者：`[CORRESPONDING AUTHOR REQUIRED]`
 
 > 初稿 R1，2026-09-18。正文图号沿用封存 Endpoint 图包 Figure 1–28；投稿排版可按
-> `docs/论文大纲_NNS_ViT_Endpoint_R1_20260918.md` 的建议重新编号。
+> `papers/nns_vit_endpoint/zh/outline.md` 的建议重新编号。
 
 ## 摘要
 
@@ -512,5 +512,5 @@ NNS-ViT Endpoint Scanner 把原始 NNS 的终点传播原则适配到 Vision Tra
 ## 参考文献
 
 本初稿使用的参考文献清单见
-`manuscript/references/endpoint_scanner_references_r1.md`。投稿前需完成最终 BibTeX、DOI、
+`papers/nns_vit_endpoint/references/endpoint_scanner_references_r1.md`。投稿前需完成最终 BibTeX、DOI、
 页码和 venue metadata 审计。

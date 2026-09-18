@@ -6,8 +6,8 @@ import json
 import re
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-MANUSCRIPT = ROOT / "manuscript"
+PAPER = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[3]
 FIGURE_ROOT = ROOT / "reports/nns_vit_unified_paper_figures_r10_r4_20260917"
 INDEX = FIGURE_ROOT / "figure_index.md"
 ROW = re.compile(
@@ -69,6 +69,6 @@ payload = {
     "figure_count": len(figures),
     "figures": figures,
 }
-(MANUSCRIPT / "figure_manifest.json").write_text(
+(PAPER / "figure_manifest.json").write_text(
     json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
 )

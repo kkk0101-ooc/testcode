@@ -37,8 +37,8 @@
 | 无结果后挑图 | `render_manifest.json`、`source_inventory.json` | 固定 evaluation order 0、注册 target IDs、block 5 与注册 heads | PASS |
 | 中英文 caption | `captions_en.md`、`captions_zh.md` | Figure 1–28 完整覆盖；英文无 CJK | PASS |
 | 逐图中文分析 | `figure_analysis.md` | `Image #1`–`Image #28` 完整覆盖 | PASS |
-| 主文/补充材料分配 | `manuscript/notes/endpoint_scanner_figure_mapping_r1.md` | 12 张主文建议、16 张补充建议 | PASS |
-| 论文引用清单 | `manuscript/endpoint_figure_manifest.json` | 28 图的 PNG/PDF/SVG 路径、bytes、SHA-256 | PASS |
+| 主文/补充材料分配 | `papers/nns_vit_endpoint/notes/endpoint_scanner_figure_mapping_r1.md` | 12 张主文建议、16 张补充建议 | PASS |
+| 论文引用清单 | `papers/nns_vit_endpoint/figure_manifest.json` | 28 图的 PNG/PDF/SVG 路径、bytes、SHA-256 | PASS |
 | CPU-only 与无新实验 | `source_inventory.json`、terminal | Torch/timm/model forward=0；`new_scientific_inference=false` | PASS |
 | 机器验证 | `validation_report.json` | 来源、数值、格式、尺寸、链接、布局均 PASS | PASS |
 | 人工视觉检查 | `manual_visual_qc.json` | 28/28 PNG 直接审阅并绑定 SHA-256 | PASS |

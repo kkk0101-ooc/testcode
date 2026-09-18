@@ -67,9 +67,10 @@ supported. The Endpoint primary track is complete. See the
 The sealed Endpoint paper figure package contains 28 figures and 84 PNG/PDF/SVG
 exports; see the [package report](docs/NNS_ViT_Endpoint_Scanner统一论文图包结果_20260918.md)
 and [gallery](reports/nns_vit_endpoint_unified_paper_figures_r2_20260918/gallery.html). The
-[Endpoint paper outline](docs/论文大纲_NNS_ViT_Endpoint_R1_20260918.md) and bilingual R1 drafts
-(`manuscript/zh/endpoint_scanner_full_draft_r1.md` and
-`manuscript/en/endpoint_scanner_full_draft_r1.md`) are also available.
+[Endpoint paper outline](papers/nns_vit_endpoint/zh/outline.md) and bilingual R1 drafts
+(`papers/nns_vit_endpoint/zh/full_draft.md` and
+`papers/nns_vit_endpoint/en/full_draft.md`) are also available. The independent
+path-integrated and Endpoint paper projects are indexed from [papers/README.md](papers/README.md).
 
 ## Environment
 

@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping, Sequence, Union
 
 import numpy as np
 
@@ -24,7 +24,7 @@ PASS="ENDPOINT_E6_R3_PASS_STATISTICS_AND_PAPER_RELEASE_COMPLETE"
 NEXT="NONE_ENDPOINT_PRIMARY_TRACK_COMPLETE"
 SOURCE_CODE=["config/nns_vit_endpoint/endpoint_e6_release_run_spec.json","docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6执行合同_20260918.md","docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6恢复R2_20260918.md","docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6封存验证器修订R1_20260918.md","docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6恢复R3_20260918.md","src/vitnns/endpoint_e6_release.py","scripts/run_endpoint_e6_release.py","scripts/validate_endpoint_e6_release.py","tests/test_endpoint_e6_release.py"]
 VALIDATOR_PATH="scripts/validate_endpoint_e6_release.py"
-VALIDATOR_AMENDMENT="docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE6R3封存验证器修订R1_20260918.md"
+VALIDATOR_AMENDMENT="docs/NNS_ViT_Endpoint_Scanner论文目录迁移修订R1_20260918.md"
 REFERENCE_PATHS={
  "endpoint_e6_r1_failure_sha256":"reports/nns_vit_endpoint_e6_release_r1_20260918/failure_receipt.json",
  "endpoint_e6_r2_terminal_sha256":"reports/nns_vit_endpoint_e6_release_r2_20260918/terminal_receipt.json","endpoint_e6_r2_manifest_sha256":"reports/nns_vit_endpoint_e6_release_r2_20260918/artifact_manifest.json",
@@ -61,6 +61,14 @@ def sha(path: Path) -> str:
     with path.open("rb") as stream:
         for chunk in iter(lambda:stream.read(1024*1024),b""):value.update(chunk)
     return value.hexdigest()
+
+
+def active_path(relative: Union[str, Path]) -> Path:
+    """Resolve immutable E6 manuscript paths after the two-paper directory split."""
+    value=Path(relative)
+    if value.parts and value.parts[0]=="manuscript":
+        value=Path("papers/nns_vit_endpoint",*value.parts[1:])
+    return REPO/value
 
 
 def load(path: Path) -> Any: return json.loads(path.read_text())
@@ -171,7 +179,7 @@ def recompute_inference(rows:list[dict],plan:dict) -> tuple[list[dict],list[dict
 def validate(root:Path) -> dict[str,Any]:
     require(os.environ.get("CUDA_VISIBLE_DEVICES")=="" and not set(sys.modules).intersection({"torch","timm","PIL"}),"CPU_ONLY");root=root.resolve();spec=load(SPEC_PATH);report=load(root/"validation_report.json");terminal=load(root/"terminal_receipt.json");manifest=load(root/"artifact_manifest.json")
     require(report["status"]==terminal["status"]==PASS and report["stage"]==terminal["stage"]=="ENDPOINT-E6-R3-RECOVERY" and report["next_authorization"]==terminal["next_authorization"]==NEXT,"TERMINAL_STATUS");require(terminal["validation_digest"]==digest(report) and terminal["manifest_digest"]==manifest["canonical_digest"]==digest(manifest["files"]),"TERMINAL_DIGEST");require(not (root/"terminal_receipt.pending.json").exists() and not (root/"failure_receipt.json").exists(),"ATOMIC_TERMINAL")
-    r1=load(REPO/REFERENCE_PATHS["endpoint_e6_r1_failure_sha256"]);require(r1=={"error":"name 'selected' is not defined","error_type":"NameError","next_authorization":"NONE","stage":"ENDPOINT-E6","status":"ENDPOINT_E6_FAIL_CLOSED"},"R1_FAILURE_PRESERVATION")
+    r1=load(active_path(REFERENCE_PATHS["endpoint_e6_r1_failure_sha256"]));require(r1=={"error":"name 'selected' is not defined","error_type":"NameError","next_authorization":"NONE","stage":"ENDPOINT-E6","status":"ENDPOINT_E6_FAIL_CLOSED"},"R1_FAILURE_PRESERVATION")
     paths=[r["path"] for r in manifest["files"]];require(len(paths)==len(set(paths)),"MANIFEST_DUPLICATE")
     for row in manifest["files"]:path=root/row["path"];require(path.is_file() and path.stat().st_size==row["bytes"] and sha(path)==row["sha256"],"MANIFEST_FILE:"+row["path"])
     producer=terminal["producer_commit"];require(subprocess.run(["git","merge-base","--is-ancestor",producer,"HEAD"],cwd=REPO).returncode==0,"PRODUCER_ANCESTRY")
@@ -182,8 +190,8 @@ def validate(root:Path) -> dict[str,Any]:
     validator_commit=subprocess.check_output(["git","log","-1","--format=%H","--",f"vitnns_rebuild/{VALIDATOR_PATH}"],cwd=REPO,text=True).strip()
     require(git_blob_sha(validator_commit,VALIDATOR_PATH)==sha(Path(__file__)) and git_blob_sha(validator_commit,VALIDATOR_AMENDMENT)==sha(REPO/VALIDATOR_AMENDMENT),"VALIDATOR_AMENDMENT_BINDING")
     require(spec["predecessors"].keys()==REFERENCE_PATHS.keys(),"PREDECESSOR_KEYS")
-    for key,relative in REFERENCE_PATHS.items():observed=git_blob_sha(producer,relative) if key=="unified_plan_sha256" else sha(REPO/relative);require(observed==spec["predecessors"][key],"PREDECESSOR:"+key)
-    require(load(REPO/REFERENCE_PATHS["endpoint_ep1_r11_terminal_sha256"])["status"]=="PASS_EP1_IMPLEMENTATION_AND_REGRESSION","EP1_STATUS");require(load(REPO/REFERENCE_PATHS["endpoint_e2_r4_terminal_sha256"])["status"].startswith("ENDPOINT_E2_PASS"),"E2_STATUS");require(load(REPO/REFERENCE_PATHS["endpoint_e3_r2_terminal_sha256"])["status"].startswith("ENDPOINT_E3_PASS_CORRECTNESS_ONLY"),"E3_STATUS");require(load(REPO/REFERENCE_PATHS["endpoint_e4_r1_terminal_sha256"])["status"]=="ENDPOINT_E4_FAIL_LOCAL_DIRECTION_CONTRACT","E4_R1_HISTORY");require(load(REPO/REFERENCE_PATHS["endpoint_e4_r2_terminal_sha256"])["status"]=="ENDPOINT_E4_R2_FAIL_ANALYTIC_JVP_CONTRACT","E4_R2_HISTORY");require(load(REPO/REFERENCE_PATHS["endpoint_e4_r3_terminal_sha256"])["status"].startswith("ENDPOINT_E4_R3_PASS"),"E4_R3_STATUS");e5_terminal=load(REPO/REFERENCE_PATHS["endpoint_e5_terminal_sha256"]);require(e5_terminal["status"].startswith("ENDPOINT_E5_PASS") and e5_terminal["next_authorization"]=="ENDPOINT_E6_REQUIRES_EXPLICIT_USER_REQUEST","E5_STATUS")
+    for key,relative in REFERENCE_PATHS.items():observed=git_blob_sha(producer,relative) if key=="unified_plan_sha256" else sha(active_path(relative));require(observed==spec["predecessors"][key],"PREDECESSOR:"+key)
+    require(load(active_path(REFERENCE_PATHS["endpoint_ep1_r11_terminal_sha256"]))["status"]=="PASS_EP1_IMPLEMENTATION_AND_REGRESSION","EP1_STATUS");require(load(active_path(REFERENCE_PATHS["endpoint_e2_r4_terminal_sha256"]))["status"].startswith("ENDPOINT_E2_PASS"),"E2_STATUS");require(load(active_path(REFERENCE_PATHS["endpoint_e3_r2_terminal_sha256"]))["status"].startswith("ENDPOINT_E3_PASS_CORRECTNESS_ONLY"),"E3_STATUS");require(load(active_path(REFERENCE_PATHS["endpoint_e4_r1_terminal_sha256"]))["status"]=="ENDPOINT_E4_FAIL_LOCAL_DIRECTION_CONTRACT","E4_R1_HISTORY");require(load(active_path(REFERENCE_PATHS["endpoint_e4_r2_terminal_sha256"]))["status"]=="ENDPOINT_E4_R2_FAIL_ANALYTIC_JVP_CONTRACT","E4_R2_HISTORY");require(load(active_path(REFERENCE_PATHS["endpoint_e4_r3_terminal_sha256"]))["status"].startswith("ENDPOINT_E4_R3_PASS"),"E4_R3_STATUS");e5_terminal=load(active_path(REFERENCE_PATHS["endpoint_e5_terminal_sha256"]));require(e5_terminal["status"].startswith("ENDPOINT_E5_PASS") and e5_terminal["next_authorization"]=="ENDPOINT_E6_REQUIRES_EXPLICIT_USER_REQUEST","E5_STATUS")
     audit=load(root/"source_read_audit.json");require(audit["cpu_only"] and audit["cuda_visible_devices"]=="" and audit["forbidden_imports_loaded"]==[] and audit["image_files_read"]==audit["model_files_read"]==0 and audit["read_count"]==len(audit["reads"]),"READ_AUDIT")
     combined=load(E4_R3/"combined_result_index.json");expected_reads={SPEC_PATH.relative_to(REPO).as_posix(),*REFERENCE_PATHS.values(),*{row["source_result_path"] for row in combined["records"]},*{f"reports/nns_vit_endpoint_e5_spatial_r1_20260918/formal_results/attempts/{model}__{order:03d}/attempt-01.json" for model in ("vit_b16","deit_s16") for order in range(400)}}
     require({r["path"] for r in audit["reads"]}==expected_reads and len(audit["reads"])==len(expected_reads),"READ_WHITELIST")
@@ -192,12 +200,12 @@ def validate(root:Path) -> dict[str,Any]:
             data=subprocess.check_output(["git","show",f"{producer}:vitnns_rebuild/{row['path']}"],cwd=REPO)
             require(len(data)==row["bytes"] and hashlib.sha256(data).hexdigest()==row["sha256"],"READ_HASH:"+row["path"])
         else:
-            path=REPO/row["path"];require(path.is_file() and path.stat().st_size==row["bytes"] and sha(path)==row["sha256"],"READ_HASH:"+row["path"])
+            path=active_path(row["path"]);require(path.is_file() and path.stat().st_size==row["bytes"] and sha(path)==row["sha256"],"READ_HASH:"+row["path"])
     e4,e5=load_sources();rows=image_rows(e4,e5);per=load(root/"per_image_statistics.json");require(per["row_count"]==1600 and per["rows_digest"]==digest(rows) and per["rows"]==rows,"PER_IMAGE_RECOMPUTE");plan=load(REPO/spec["inputs"]["statistical_plan"]);families,tests,holm=recompute_inference(rows,plan);decision=load(root/"family_decisions.json");require(decision["family_count"]==16 and decision["families"]==families,"FAMILY_RECOMPUTE");require(load(root/"holm_report.json")["tests"]==holm and load(root/"sign_test_report.json")["test_count"]==28 and load(root/"bootstrap_report.json")["family_count"]==16,"INFERENCE_REPORTS")
     aggregate={claim:("INVALID" if any(r["status"]=="INVALID" for r in families if r["claim"]==claim) else "INCONCLUSIVE" if any(r["status"]=="INCONCLUSIVE" for r in families if r["claim"]==claim) else "SUPPORTED" if all(r["status"]=="SUPPORTED" for r in families if r["claim"]==claim) else "NOT_SUPPORTED") for claim in ("C4a","C4b")};require(decision["aggregate_claims"]==report["aggregate_claims"]==aggregate and terminal["C4a"]==aggregate["C4a"] and terminal["C4b"]==aggregate["C4b"],"AGGREGATE_DECISION")
     require(report["evaluation_images"]==terminal["evaluation_image_count"]==400 and report["family_count"]==terminal["family_count"]==16 and report["test_count"]==terminal["test_count"]==report["holm_family_count"]==28 and report["gpu_hours"]==0 and not report["new_empirical_compute"] and report["image_decode_count"]==report["model_load_count"]==0,"REPORT_COUNTS")
-    for row in reproduction["paper_release_files"]:path=REPO/row["path"];require(path.is_file() and path.stat().st_size==row["bytes"] and sha(path)==row["sha256"],"PAPER_FILE")
-    en=(REPO/spec["outputs"]["paper_release_en"]).read_text();zh=(REPO/spec["outputs"]["paper_release_zh"]).read_text();require(f"**C4a {aggregate['C4a']}**" in en and f"**C4b {aggregate['C4b']}**" in en and f"**C4a {aggregate['C4a']}**" in zh and f"**C4b {aggregate['C4b']}**" in zh,"BILINGUAL_DECISIONS");require(en.count("| C4")==zh.count("| C4")==16,"BILINGUAL_FAMILY_TABLE")
+    for row in reproduction["paper_release_files"]:path=active_path(row["path"]);require(path.is_file() and path.stat().st_size==row["bytes"] and sha(path)==row["sha256"],"PAPER_FILE")
+    en=active_path(spec["outputs"]["paper_release_en"]).read_text();zh=active_path(spec["outputs"]["paper_release_zh"]).read_text();require(f"**C4a {aggregate['C4a']}**" in en and f"**C4b {aggregate['C4b']}**" in en and f"**C4a {aggregate['C4a']}**" in zh and f"**C4b {aggregate['C4b']}**" in zh,"BILINGUAL_DECISIONS");require(en.count("| C4")==zh.count("| C4")==16,"BILINGUAL_FAMILY_TABLE")
     require(r"\n\n" not in en and r"\n\n" not in zh and en.count("\n\n")>=4 and zh.count("\n\n")>=4,"BILINGUAL_MARKDOWN_FORMAT")
     for row in reproduction["figures"]:path=root/row["path"];text=path.read_text();require(path.suffix==".svg" and path.stat().st_size==row["bytes"] and sha(path)==row["sha256"] and text.count("<circle")== (12 if "c4a" in path.name else 16),"FIGURE")
     require(report["path_track_status"]=="EP2_R1_PATH_NUMERICAL_CALIBRATION_FAILED_IMMUTABLE" and load(root/"claim_decisions.json")["Path_IG"]["status"]==report["path_track_status"],"PATH_BOUNDARY")

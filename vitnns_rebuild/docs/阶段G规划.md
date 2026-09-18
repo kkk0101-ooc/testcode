@@ -69,10 +69,15 @@ Stage A–D：方法、验证与主实验（已封存）
 
 ## 4. 写作目录
 
-阶段 G 新稿件统一写入仓库根目录下的 `manuscript/`，不再写入 `evidence/stage_f/f4_*` 或 `reports/stage_f_f4_*`：
+阶段 G 新稿件统一写入仓库根目录下的 `papers/<paper_id>/`，不再写入 `evidence/stage_f/f4_*` 或 `reports/stage_f_f4_*`。当前已拆分为两个自包含 paper root：
+
+- `papers/nns_vit_path/`：path-integrated NNS-ViT learning-image 论文；
+- `papers/nns_vit_endpoint/`：Endpoint Scanner 论文。
+
+每个 paper root 使用同构目录：
 
 ~~~text
-manuscript/
+papers/<paper_id>/
 ├── AGENTS.md
 ├── zh/
 │   ├── outline.md
@@ -105,7 +110,7 @@ manuscript/
 ### G0：稿件初始化与证据绑定
 
 - 验证阶段 F 最终图包及所有上游 completion/ref/hash；
-- 建立 `manuscript/AGENTS.md`、中英文同构目录和写作状态表；
+- 建立 `papers/<paper_id>/AGENTS.md`、中英文同构目录和写作状态表；
 - 冻结 figure/table 编号、术语、允许/禁止主张和缺证据标记规则；
 - 不写 Results 正文，不修改任何科学图或数字。
 

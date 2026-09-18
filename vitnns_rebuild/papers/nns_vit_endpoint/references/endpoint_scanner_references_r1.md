@@ -1,7 +1,6 @@
 # Endpoint Scanner draft R1: provisional references
 
-This list supports `zh/endpoint_scanner_full_draft_r1.md` and
-`en/endpoint_scanner_full_draft_r1.md`. It combines the previously verified manuscript bibliography
+This list supports `zh/full_draft.md` and `en/full_draft.md`. It combines the previously verified manuscript bibliography
 with the targeted prior-art registry frozen at Endpoint EP0. Final submission metadata and BibTeX
 keys still require an editorial audit.
 

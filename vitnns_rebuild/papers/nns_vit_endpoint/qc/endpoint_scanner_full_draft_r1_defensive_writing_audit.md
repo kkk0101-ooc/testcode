@@ -2,8 +2,8 @@
 
 Audited files:
 
-- `manuscript/zh/endpoint_scanner_full_draft_r1.md`
-- `manuscript/en/endpoint_scanner_full_draft_r1.md`
+- `papers/nns_vit_endpoint/zh/full_draft.md`
+- `papers/nns_vit_endpoint/en/full_draft.md`
 
 The audit follows `claim -> evidence -> concise boundary`. It does not rescore novelty or recompute
 scientific results.

@@ -35,6 +35,6 @@
 
 ## Figures
 
-- Reference figures through `../figure_manifest.json`; do not duplicate or rerender the frozen figure package inside `manuscript/`.
+- Reference figures through `figure_manifest.json`; do not duplicate or rerender the frozen figure package inside this paper root.
 - Treat display-normalized blue maps as spatial-shape views, not cross-panel magnitude measurements.
 - Use raw signed arrays and source records, not PNG pixels, for numerical claims.

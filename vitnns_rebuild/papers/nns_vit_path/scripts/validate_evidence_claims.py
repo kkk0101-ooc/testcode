@@ -6,8 +6,9 @@ import math
 import statistics
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[2]
-OUT = REPO / "manuscript/qc/evidence_validation_report.json"
+PAPER = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[3]
+OUT = PAPER / "qc/evidence_validation_report.json"
 checks = []
 
 

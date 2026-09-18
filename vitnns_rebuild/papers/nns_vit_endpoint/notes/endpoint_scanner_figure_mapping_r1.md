@@ -28,4 +28,4 @@ Source: `reports/nns_vit_endpoint_unified_paper_figures_r2_20260918`.
 - Figures 23, 25, and 27: spatial protocol, one-image curves, and compact RQ4 matrix.
 
 Main-text and supplement placement is editorial. Figure numbers, source arrays, numerical labels,
-and conclusions are frozen by `manuscript/endpoint_figure_manifest.json`.
+and conclusions are frozen by `papers/nns_vit_endpoint/figure_manifest.json`.

@@ -6,10 +6,10 @@
 
 论文初稿：
 
-- 中文：`manuscript/zh/endpoint_scanner_full_draft_r1.md`；
-- 英文：`manuscript/en/endpoint_scanner_full_draft_r1.md`；
-- 证据矩阵：`manuscript/notes/endpoint_scanner_paper_evidence_matrix_r1.md`；
-- 防御性写作审计：`manuscript/qc/endpoint_scanner_full_draft_r1_defensive_writing_audit.md`；
+- 中文：`papers/nns_vit_endpoint/zh/full_draft.md`；
+- 英文：`papers/nns_vit_endpoint/en/full_draft.md`；
+- 证据矩阵：`papers/nns_vit_endpoint/notes/endpoint_scanner_paper_evidence_matrix_r1.md`；
+- 防御性写作审计：`papers/nns_vit_endpoint/qc/endpoint_scanner_full_draft_r1_defensive_writing_audit.md`；
 - 图包：`reports/nns_vit_endpoint_unified_paper_figures_r2_20260918/`。
 
 ## 1. 题目与一句话主线

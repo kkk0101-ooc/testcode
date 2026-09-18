@@ -6,7 +6,7 @@
 
 > Draft R1, September 18, 2026. Figure numbers follow the sealed Endpoint package (Figures 1–28).
 > They may be renumbered for submission according to
-> `docs/论文大纲_NNS_ViT_Endpoint_R1_20260918.md` without changing figure content, numerical
+> `papers/nns_vit_endpoint/zh/outline.md` without changing figure content, numerical
 > values, or conclusions.
 
 ## Abstract
@@ -569,5 +569,5 @@ license, archival DOI, and data-access statement remain `[REPOSITORY AND ARCHIVE
 ## References
 
 The references used by this draft are listed in
-`manuscript/references/endpoint_scanner_references_r1.md`. Final BibTeX, DOI, page-range, and venue
+`papers/nns_vit_endpoint/references/endpoint_scanner_references_r1.md`. Final BibTeX, DOI, page-range, and venue
 metadata require a submission-stage audit.

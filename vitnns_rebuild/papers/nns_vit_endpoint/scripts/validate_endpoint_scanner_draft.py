@@ -7,11 +7,11 @@ import re
 from pathlib import Path
 
 
-MANUSCRIPT = Path(__file__).resolve().parents[1]
-REPO = MANUSCRIPT.parent
-ZH = MANUSCRIPT / "zh/endpoint_scanner_full_draft_r1.md"
-EN = MANUSCRIPT / "en/endpoint_scanner_full_draft_r1.md"
-OUT = MANUSCRIPT / "qc/endpoint_scanner_draft_validation_report_r1.json"
+PAPER = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[3]
+ZH = PAPER / "zh/full_draft.md"
+EN = PAPER / "en/full_draft.md"
+OUT = PAPER / "qc/endpoint_scanner_draft_validation_report_r1.json"
 
 
 def load_json(relative: str):
@@ -130,7 +130,7 @@ for language, text in (("zh", zh), ("en", en)):
 check("rq3_synthesis:zh", "整体支持，并存在一个注册边界例外" in zh)
 check("rq3_synthesis:en", "supported overall with one registered boundary exception" in en)
 
-manifest = load_json("manuscript/endpoint_figure_manifest.json")
+manifest = load_json("papers/nns_vit_endpoint/figure_manifest.json")
 check("figures:count", manifest.get("figure_count") == 28)
 for figure in manifest.get("figures", []):
     for kind in ("png", "pdf", "svg"):

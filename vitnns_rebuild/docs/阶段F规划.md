@@ -360,7 +360,7 @@ evidence/stage_f/f3_final_<id>/paper/
   caption_inventory.json
 ```
 
-阶段 G 的 manuscript、reference 和 QC 输出使用 `manuscript/`、`evidence/stage_g_writing/` 与 `reports/stage_g_writing_*`，不得再写入 Stage F root。
+阶段 G 的 paper、reference 和 QC 输出使用 `papers/<paper_id>/`、`evidence/stage_g_writing/` 与 `reports/stage_g_writing_*`，不得再写入 Stage F root。
 
 每阶段均采用 pending→terminal receipt；terminal receipt 必须在所有 payload、manifest、inventory 和 validator 完成后原子发布。不得修改或覆盖上一阶段 root。
 
