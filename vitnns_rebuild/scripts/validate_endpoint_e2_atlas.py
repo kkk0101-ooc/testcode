@@ -18,7 +18,7 @@ import numpy as np
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 REPO = Path(__file__).resolve().parents[1]
-ROOT = REPO / "reports/nns_vit_endpoint_e2_atlas_r1_20260918"
+ROOT = REPO / "reports/nns_vit_endpoint_e2_atlas_r2_20260918"
 EP0 = REPO / "manifests/nns_vit_endpoint/ep0_r1_20260918"
 SPEC_PATH = REPO / "config/nns_vit_endpoint/endpoint_e2_atlas_run_spec.json"
 sys.path.insert(0, str(REPO / "src"))
@@ -69,9 +69,19 @@ def validate(root: Path) -> dict:
     report = load(root / "validation_report.json")
     terminal = load(root / "terminal_receipt.json")
     manifest = load(root / "artifact_manifest.json")
-    material = load(root / "materialization_receipt.json")
-    tasks = load(root / "task_manifest.json")
-    formal_coverage = load(root / "formal_coverage_audit.json")
+    source_binding = load(root / "formal_source_binding.json")
+    require(source_binding == report["formal_source_binding"], "SOURCE_BINDING_REPORT")
+    require(source_binding["preliminary_finalization_status"] == "INVALID_TRANSIENT_SQLITE_FILES_IN_MANIFEST_PRESERVED_NOT_AUTHORITY", "PRELIMINARY_INVALID_STATUS")
+    require(source_binding["formal_source_files_digest"] == digest(source_binding["formal_source_files"]), "SOURCE_FILES_DIGEST")
+    source_root = (REPO / source_binding["formal_source_root"]).resolve()
+    require(source_root.is_relative_to(REPO) and source_root.is_dir(), "SOURCE_ROOT")
+    for row in source_binding["formal_source_files"]:
+        path = (source_root / row["path"]).resolve()
+        require(path.is_relative_to(source_root) and path.is_file(), "SOURCE_FILE_PATH")
+        require(path.stat().st_size == row["bytes"] and file_sha256(path) == row["sha256"], "SOURCE_FILE_HASH:" + row["path"])
+    material = load(source_root / "materialization_receipt.json")
+    tasks = load(source_root / "task_manifest.json")
+    formal_coverage = load(source_root / "formal_coverage_audit.json")
     require(report["status"] == terminal["status"] == PASS_STATUS, "STATUS")
     require(report["stage"] == terminal["stage"] == "ENDPOINT-E2", "STAGE")
     require(report["claim_decision"] == terminal["claim_decision"] == "C2_REGISTERED_SCAN_COMPLETION_AND_RESOURCES", "CLAIM_SCOPE")
@@ -80,6 +90,9 @@ def validate(root: Path) -> dict:
     amendment = load(REPO / report["execution_amendment"]["path"])
     require(report["execution_amendment"]["sha256"] == terminal["execution_amendment_sha256"] == file_sha256(REPO / report["execution_amendment"]["path"]), "AMENDMENT_BINDING")
     require(amendment["execution_change"]["full_single_gpu_replay_required"] is False and amendment["execution_change"]["partial_replay_use_in_pass_decision"] is False, "AMENDMENT_SCOPE")
+    recovery = load(REPO / report["handoff_recovery"]["path"])
+    require(report["handoff_recovery"]["sha256"] == file_sha256(REPO / report["handoff_recovery"]["path"]), "RECOVERY_BINDING")
+    require(recovery["status"] == "PROSPECTIVE_HANDOFF_RECOVERY_ONLY" and not recovery["failure"]["formal_scientific_results_affected"] and not recovery["recovery"]["rerun_gpu_tasks"], "RECOVERY_SCOPE")
     require(terminal["amendment_commit"] == report["amendment_commit"], "AMENDMENT_COMMIT")
     require(terminal["validation_digest"] == digest(report), "VALIDATION_DIGEST")
     require(terminal["manifest_digest"] == manifest["canonical_digest"] == digest(manifest["files"]), "MANIFEST_DIGEST")
@@ -132,7 +145,7 @@ def validate(root: Path) -> dict:
     require(tasks["manifest_digest"] == digest(tasks["tasks"]), "TASK_DIGEST")
     require(formal_coverage["status"] == "PASS" and formal_coverage["task_count"] == formal_coverage["completed_count"] == 800, "COVERAGE")
     require(not formal_coverage["missing_task_ids"] and not formal_coverage["invalid"] and not formal_coverage["duplicate_task_ids"], "COVERAGE_DETAILS")
-    formal = load_queue(root, root / "formal_queue.sqlite3", root / "formal_results", 800)
+    formal = load_queue(root, source_root / "formal_queue.sqlite3", source_root / "formal_results", 800)
     canceled = load(root / "replay_cancellation_receipt.json")
     require(canceled == report["canceled_replay"] and canceled["status"] == "USER_CANCELED_ENGINEERING_REPLAY_NOT_E2_EVIDENCE", "REPLAY_CANCELLATION")
     require(canceled["included_in_endpoint_e2_pass"] is False and canceled["included_in_scientific_evidence"] is False and canceled["completion_required"] is False, "REPLAY_EXCLUDED")

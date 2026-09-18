@@ -18,9 +18,11 @@ from PIL import Image, ImageDraw
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 REPO = Path(__file__).resolve().parents[1]
-ROOT = REPO / "reports/nns_vit_endpoint_e2_atlas_r1_20260918"
+SOURCE_ROOT = REPO / "reports/nns_vit_endpoint_e2_atlas_r1_20260918"
+ROOT = REPO / "reports/nns_vit_endpoint_e2_atlas_r2_20260918"
 CACHE = REPO / "assets/data/nns_vit_endpoint_e2_evaluation_20260918"
 AMENDMENT = REPO / "config/nns_vit_endpoint/endpoint_e2_atlas_execution_amendment_r1.json"
+RECOVERY = REPO / "config/nns_vit_endpoint/endpoint_e2_atlas_handoff_recovery_r2.json"
 sys.path.insert(0, str(REPO / "src"))
 from vitnns.endpoint_e2_atlas import (  # noqa: E402
     PASS_STATUS, digest, display_rgb_signed_sum, file_sha256, linear_percentile, write_json_new,
@@ -59,7 +61,7 @@ def queue_results(queue: Path, results: Path) -> dict[str, dict]:
 
 
 def replay_disposition() -> dict:
-    queue = ROOT / "single_replay/queue.sqlite3"
+    queue = SOURCE_ROOT / "single_replay/queue.sqlite3"
     with sqlite3.connect(queue) as connection:
         states = dict(connection.execute("SELECT state,count(*) FROM tasks GROUP BY state").fetchall())
         attempts = dict(connection.execute("SELECT status,count(*) FROM attempts GROUP BY status").fetchall())
@@ -126,19 +128,18 @@ def render_galleries(formal: dict[str, dict]) -> dict:
 
 
 def main() -> int:
-    for name in ("validation_report.json", "artifact_manifest.json", "terminal_receipt.json",
-                 "gallery_manifest.json", "near_zero_index.json", "failure_index.json",
-                 "replay_cancellation_receipt.json"):
-        if (ROOT / name).exists():
-            raise RuntimeError("FINAL_ARTIFACT_EXISTS:" + name)
+    if ROOT.exists():
+        raise RuntimeError("FINAL_ROOT_EXISTS")
+    ROOT.mkdir(parents=True)
     amendment = load(AMENDMENT)
+    recovery = load(RECOVERY)
     if file_sha256(REPO / amendment["base_contract"]["path"]) != amendment["base_contract"]["sha256"]:
         raise RuntimeError("BASE_CONTRACT_BINDING")
     amendment_commit = git("rev-parse", "HEAD")
     branch = git("symbolic-ref", "--short", "HEAD")
     if branch != "stage-d-d3-pass" or not amendment_commit == git("rev-parse", "@{upstream}") == remote("refs/heads/" + branch):
         raise RuntimeError("AMENDMENT_NOT_PUBLISHED")
-    formal = queue_results(ROOT / "formal_queue.sqlite3", ROOT / "formal_results")
+    formal = queue_results(SOURCE_ROOT / "formal_queue.sqlite3", SOURCE_ROOT / "formal_results")
     canceled = replay_disposition()
     write_json_new(ROOT / "replay_cancellation_receipt.json", canceled)
     gallery = render_galleries(formal)
@@ -158,7 +159,7 @@ def main() -> int:
     task_latencies = [row["task_seconds"] for row in formal.values()]
     total_targets = sum(row["target_count"] for row in formal.values())
     raw_bytes = sum(item["bytes"] for row in formal.values() for item in row["artifacts"])
-    with sqlite3.connect(ROOT / "formal_queue.sqlite3") as connection:
+    with sqlite3.connect(SOURCE_ROOT / "formal_queue.sqlite3") as connection:
         bounds = connection.execute("SELECT min(claimed_ns),max(completed_ns) FROM attempts").fetchone()
     formal_wall_seconds = (bounds[1] - bounds[0]) / 1e9
     model_costs = {}
@@ -171,7 +172,25 @@ def main() -> int:
             "p95_seconds_per_complete_atlas": linear_percentile(values, 0.95),
             "max_seconds_per_complete_atlas": max(values),
         }
-    retained_before_report = sum(path.stat().st_size for path in ROOT.rglob("*") if path.is_file())
+    retained_before_report = sum(path.stat().st_size for path in SOURCE_ROOT.rglob("*") if path.is_file())
+    source_files = []
+    source_prefixes = ("formal_results/", "raw/", "logs/formal/")
+    source_names = {"materialization_receipt.json", "task_manifest.json", "startup_snapshot.json",
+                    "formal_coverage_audit.json", "formal_queue.sqlite3"}
+    for path in sorted(SOURCE_ROOT.rglob("*")):
+        if not path.is_file():
+            continue
+        relative = path.relative_to(SOURCE_ROOT).as_posix()
+        if relative in source_names or relative.startswith(source_prefixes):
+            source_files.append({"path": relative, "bytes": path.stat().st_size, "sha256": file_sha256(path)})
+    source_binding = {
+        "formal_source_root": SOURCE_ROOT.relative_to(REPO).as_posix(),
+        "preliminary_finalization_status": "INVALID_TRANSIENT_SQLITE_FILES_IN_MANIFEST_PRESERVED_NOT_AUTHORITY",
+        "preliminary_terminal": "terminal_receipt.json",
+        "canceled_replay_root": "single_replay",
+        "formal_source_files": source_files, "formal_source_files_digest": digest(source_files),
+    }
+    write_json_new(ROOT / "formal_source_binding.json", source_binding)
     production_paths = [
         "config/nns_vit_endpoint/endpoint_e2_atlas_run_spec.json",
         "docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE2执行合同_20260918.md",
@@ -181,7 +200,9 @@ def main() -> int:
     ]
     amendment_paths = [
         "config/nns_vit_endpoint/endpoint_e2_atlas_execution_amendment_r1.json",
+        "config/nns_vit_endpoint/endpoint_e2_atlas_handoff_recovery_r2.json",
         "docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE2执行修订R1_20260918.md",
+        "docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE2封存恢复R2_20260918.md",
         "scripts/finalize_endpoint_e2_atlas_r1.py", "scripts/validate_endpoint_e2_atlas.py",
     ]
     report = {
@@ -191,11 +212,16 @@ def main() -> int:
             "path": AMENDMENT.relative_to(REPO).as_posix(), "sha256": file_sha256(AMENDMENT),
             "timing": amendment["amendment_timing"],
         },
+        "handoff_recovery": {
+            "path": RECOVERY.relative_to(REPO).as_posix(), "sha256": file_sha256(RECOVERY),
+            "status": recovery["status"],
+        },
+        "formal_source_binding": source_binding,
         "scientific_utility_claims": "NOT_RUN_NOT_ALLOWED", "path_ig": "NOT_RUN_NOT_ALLOWED",
         "input_fidelity_stability": "NOT_RUN_NOT_ALLOWED", "finite_intervention": "NOT_RUN_NOT_ALLOWED",
         "producer_commit": amendment["base_contract"]["producer_commit"],
         "amendment_commit": amendment_commit,
-        "formal_coverage": load(ROOT / "formal_coverage_audit.json"),
+        "formal_coverage": load(SOURCE_ROOT / "formal_coverage_audit.json"),
         "canceled_replay": canceled, "evaluation_images": 400,
         "models": ["vit_b16", "deit_s16"], "image_model_tasks": 800,
         "target_count_by_model": target_counts, "target_evaluations": total_targets,
