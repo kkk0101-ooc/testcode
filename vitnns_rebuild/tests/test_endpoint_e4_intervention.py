@@ -9,13 +9,15 @@ from timm.models.vision_transformer import VisionTransformer
 from vitnns.endpoint_e4_intervention import (
     EndpointE4Error, capture_registered_edges, component_rows, component_tensor,
     directional_edges, edge_gradients, intervention_scores, scan_e4_task, spearman,
-    validate_recovery_run_spec, validate_run_spec,
+    absolute_dot_mass64, validate_recovery_r3_run_spec, validate_recovery_run_spec,
+    validate_run_spec,
 )
 
 
 REPO = Path(__file__).resolve().parents[1]
 SPEC = REPO / "config/nns_vit_endpoint/endpoint_e4_intervention_run_spec.json"
 RECOVERY_SPEC = REPO / "config/nns_vit_endpoint/endpoint_e4_intervention_recovery_r2.json"
+RECOVERY_R3_SPEC = REPO / "config/nns_vit_endpoint/endpoint_e4_intervention_recovery_r3.json"
 
 
 def tiny_model() -> VisionTransformer:
@@ -44,6 +46,12 @@ def test_run_spec_is_closed_and_rejects_scope_drift():
     drift = deepcopy(recovery); drift["recovery"]["inherit_partial_results"] = True
     with pytest.raises(EndpointE4Error, match="RECOVERY_BOUNDARY"):
         validate_recovery_run_spec(drift)
+
+    recovery_r3 = json.loads(RECOVERY_R3_SPEC.read_text())
+    validate_recovery_r3_run_spec(recovery_r3)
+    drift = deepcopy(recovery_r3); drift["recovery"]["rerun_evaluation_orders"] = list(range(15))
+    with pytest.raises(EndpointE4Error, match="R3_RECOVERY_BOUNDARY"):
+        validate_recovery_r3_run_spec(drift)
 
 
 def test_component_registry_has_all_frozen_families():
@@ -101,6 +109,21 @@ def test_recovery_analytic_jvp_contract_is_distinct_from_finite_eta_gate():
     assert local["method"] == "analytic_jvp_identity_r2"
     assert len(local["components"]) == 84
     assert all(row["pass"] and "curve" not in row for row in local["components"])
+
+
+def test_recovery_r3_uses_condition_scaled_analytic_jvp_contract():
+    model = tiny_model()
+    image = torch.randn(1, 3, 224, 224)
+    result = scan_e4_task(
+        model, image, {"normalized_zero": torch.zeros_like(image), "blur_rgb": image * 0.8},
+        class_id=9, task_seed=1234, include_local=True, include_secondary=False,
+        chunk_size=16, local_contract_mode="condition_scaled_jvp_r3",
+    )
+    local = result["local_contract"]
+    assert local["performed"] and local["all_pass"]
+    assert local["method"] == "condition_scaled_jvp_r3"
+    assert all(row["pass"] and row["absolute_dot_mass"] >= abs(row["directional_prediction"]) for row in local["components"])
+    assert absolute_dot_mass64(torch.tensor([1.0, -2.0]), torch.tensor([-3.0, -4.0])) == 11.0
 
 
 def test_average_tie_spearman_and_constant_na():

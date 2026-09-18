@@ -14,6 +14,7 @@ ENDPOINT-E2_PASS_REGISTERED_ATLAS_AND_RESOURCES
 ENDPOINT-E3_PASS_CORRECTNESS_ONLY
 ENDPOINT-E4_FAIL_LOCAL_DIRECTION_CONTRACT
 ENDPOINT-E4-R2_FAIL_ANALYTIC_JVP_CONTRACT
+ENDPOINT-E4-R3_RECOVERY_AUTHORIZED_AND_CONTRACT_FROZEN
 
 PATH_DEPENDENT_TRACK_BLOCKED
 EP2_R1_PATH_NUMERICAL_CALIBRATION_FAILED_IMMUTABLE
@@ -25,15 +26,16 @@ FORMAL_EVALUATION_COHORT_BOUND=400_SHARED_IDS
 当前可以请求的唯一下一阶段是：
 
 ```text
-NO_NEXT_STAGE_AUTHORIZATION
-PROSPECTIVE_E4_RECOVERY_AMENDMENT_REQUIRED
+ENDPOINT_E4_R3_EXECUTION_AUTHORIZED
+ENDPOINT_E5_NOT_AUTHORIZED_PENDING_E4_R3_TERMINAL
 ```
 
 ENDPOINT-E2 已由 R4 handoff 独立验证通过；ENDPOINT-E3 已按用户明确授权完成并由
 R2 handoff 独立验证通过。ENDPOINT-E4 已按用户明确授权执行，但冻结的局部 finite-eta
 合同未通过，阶段 fail closed。R1 FAIL 保持不可变；用户随后明确授权的 R2 恢复也在
-解析 JVP 合同处 fail closed，队列为 799 completed、1 failed。原规划中的 EP3、Path
-IG 恢复和 ENDPOINT-E5 均未授权。
+解析 JVP 合同处 fail closed，队列为 799 completed、1 failed。已发布的失败任务诊断
+把差异定位为强消除下使用 $|a_k|$ 缩放误差界不合适；用户的 E4 恢复授权继续由 R3
+执行。原规划中的 EP3、Path IG 恢复和 ENDPOINT-E5 均未授权。
 
 ## 2. 论文定位与核心主张
 
@@ -174,6 +176,7 @@ ENDPOINT-E2  注册目标 atlas 与规模/资源审计         PASS
 ENDPOINT-E3  正式 cohort 全 block 结构闭合          PASS
 ENDPOINT-E4  局部合同与有限 activation replacement FAIL，局部合同未通过
 ENDPOINT-E4-R2  解析 JVP correctness + 全量有限 replacement  FAIL，1 个任务未通过
+ENDPOINT-E4-R3  条件尺度 JVP 门 + 严格重绑定/缺口重算          已授权、合同已冻结
 ENDPOINT-E5  空间定向干预与 mandatory baselines     未授权，受 E4 阻塞
 ENDPOINT-E6  统计分析与论文 release                 待前序完成
 ```
@@ -324,6 +327,13 @@ correctness 门，并从零重算原冻结的有限 activation replacement；R1 
 `vit_b16__009` 两次均未通过解析 JVP 门，因此 R2 也保持 FAIL，799 个部分结果全部
 排除科学解释。后续恢复必须使用新的前瞻性 amendment 和新根；ENDPOINT-E5 继续未授权。
 
+R2 的已发布诊断显示唯一失败成分 `b04.head_00` 的 absolute error 为
+`1.6550834084888555e-05`，而 $\sum_i|g_i(Jx)_i|=11.907848079663662$；R2 以强消除后的
+$|a_k|=0.028492351636103308$ 缩放容差，不能反映点积归约的数值条件。R3 在读取新
+outcome 前冻结为 `1e-5 + 1e-5 * sum_abs_products`，重跑全部 32 个局部 cohort tasks；
+其余 768 个无局部门任务只有在逐文件 source revalidation 后才能重绑定。R3 不继承
+R2 的 31 个局部结果，也不选择或删除 `vit_b16__009`。
+
 ### ENDPOINT-E5：空间定向干预
 
 目标：检验完整输入分辨 component map 是否比普通标量或简单图提供额外信息。
@@ -399,8 +409,8 @@ INVALID → INCONCLUSIVE → SUPPORTED → NOT_SUPPORTED
 ## 10. 下一步怎么执行
 
 当前不要执行原 EP3，也不要恢复 Path IG。ENDPOINT-E4 R1 与恢复 R2 均已 fail closed；
-不得启动 ENDPOINT-E5。若继续恢复 E4，必须先诊断 R2 唯一失败任务，再创建新的前瞻性
-amendment、冻结数值验收方案并使用新结果根。
+不得启动 ENDPOINT-E5。R2 唯一失败任务已诊断，R3 前瞻性 amendment、条件尺度验收、
+全局 800-task 覆盖规则和新结果根已冻结。当前唯一授权动作是执行并独立验证 E4 R3。
 
 若用户未来要求恢复 Path 轨，必须先创建新的 `P-IG3` 前瞻性 amendment；不得
 复用本 Endpoint 主轨授权。
@@ -424,6 +434,7 @@ amendment、冻结数值验收方案并使用新结果根。
 - [ENDPOINT-E4 权威结果](NNS_ViT_Endpoint_Scanner_ENDPOINTE4结果_20260918.md)；
 - [ENDPOINT-E4 恢复 R2](NNS_ViT_Endpoint_Scanner_ENDPOINTE4恢复R2_20260918.md)；
 - [ENDPOINT-E4 恢复 R2 结果](NNS_ViT_Endpoint_Scanner_ENDPOINTE4恢复R2结果_20260918.md)；
+- [ENDPOINT-E4 恢复 R3](NNS_ViT_Endpoint_Scanner_ENDPOINTE4恢复R3_20260918.md)；
 - [方法数学分析](NNS_ViT_Endpoint_Scanner数学分析与方法对比_20260918.md)；
 - [实现与使用说明](endpoint_nns_vit_scanner_20260918.md)。
 
