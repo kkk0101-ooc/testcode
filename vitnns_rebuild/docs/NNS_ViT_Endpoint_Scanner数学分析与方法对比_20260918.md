@@ -40,8 +40,8 @@ $$
 | NNS-ViT Endpoint Scanner | $x\odot\nabla s(x)$ | 内部目标的 Gradient × Input scanner |
 | 此前的 response learning image | internal-target IG，见式 (2) | 路径积分 learning image |
 | Conditional Value-path NNS-ViT | 固定 clean attention 后，对 $A_{\rm clean}V(x)$ 内部标量做 IG | 条件 Value 路径，不是完整 attention |
-| NNS-v2 complete-cut | 对最终类别 IG 做完整计算切面分解 | path conductance / path-Jacobian decomposition |
-| Endpoint complete-cut | 对最终类别 $x\odot\nabla F(x)$ 做终点完整切面分解 | endpoint Jacobian decomposition |
+| NNS-v2 complete-cut | 对最终类别 IG 做完整计算切面分解 | input-resolved path conductance |
+| Endpoint structured decomposition | 对最终类别 $x\odot\nabla F(x)$ 做结构化终点分解 | edge-cut 与 attention differential-path decomposition |
 
 因此，Endpoint Scanner 的基础归因公式并不是一个不同于 Gradient × Input 的新量。它的技术内容位于 ViT 内部目标注册、真实算子适配、单元扫描，以及不漏项、不重复记账的 head、Q/K/V 和 residual 终点分解。
 
@@ -147,7 +147,14 @@ $$
 \tag{8}
 $$
 
-Endpoint 与 Path 的差为
+式 (9) 比较 baseline-relative endpoint extension
+
+$$
+L_s^{\mathrm{Endpoint},\Delta}(x;x_0)
+=(x-x_0)\odot\nabla_xs(x)
+$$
+
+与 Path IG。两者逐坐标之差为
 
 $$
 \begin{aligned}
@@ -162,7 +169,26 @@ L_s^{\mathrm{Endpoint},\Delta}[i]
 \tag{9}
 $$
 
-只有当路径上的相关 Jacobian 恒定时，两者才相等。架构本身不会把 Endpoint 自动变成 IG；架构只决定括号里的 Jacobian 怎样随 $\alpha$ 变化。
+二者逐坐标相等的充要条件是式 (9) 的右侧对所有 $i$ 为零。对于 $x_i\ne x_{0i}$ 的坐标，这等价于
+
+$$
+\frac{\partial s(x)}{\partial x_i}
+=\int_0^1
+\frac{\partial s(x_\alpha)}{\partial x_i}\,\mathrm d\alpha.
+$$
+
+路径 Jacobian 恒定会保证这个等式，因而是充分条件，不是必要条件。即使 Jacobian 变化，路径平均梯度仍可能因抵消而等于终点梯度；$x_i=x_{0i}$ 的坐标则在两种方法中都归零。
+
+式 (9) 比较的不是主定义式 (1)。Canonical Endpoint 使用 seed $x$，一般 baseline IG 使用 seed $x-x_0$；它们逐坐标相等的条件是
+
+$$
+x_i\frac{\partial s(x)}{\partial x_i}
+=(x_i-x_{0i})
+\int_0^1
+\frac{\partial s(x_\alpha)}{\partial x_i}\,\mathrm d\alpha.
+$$
+
+即使路径 Jacobian 恒定，当 $x_0\ne0$ 时该等式也未必成立。当 $x_0=0$ 时，canonical Endpoint 与 baseline-relative endpoint 使用相同 seed，比较退化为终点梯度与路径平均梯度的比较。网络架构决定 Jacobian 的内容和路径变化，不决定归因规则。
 
 ## 3. 原始 NNS-CNN 的数学身份
 
@@ -236,7 +262,7 @@ $$
 
 ### 3.5 原始 NNS-CNN 单神经元的条件等价定理
 
-考虑由 affine/conv、ReLU、当前 winner MaxPool 和固定线性读出组成的前馈网络。输入初始化使用式 (3)，各层使用原论文的权重、当前 ReLU 门和 pooling winner。对当前输入处可导的标量神经元 $s(x)$，有
+考虑由 affine/conv、ReLU、当前 winner MaxPool 和固定线性读出组成的有向无环网络。输入初始化为 $\operatorname{diag}(x)$，每个非线性算子使用与模型自动微分一致的当前点局部 Jacobian。对当前输入处可导的标量目标 $s(x)$，有
 
 $$
 \boxed{
@@ -244,6 +270,13 @@ L_s^{\mathrm{NNS\text{-}CNN}}(x)
 =x\odot\nabla_xs(x)
 }.
 \tag{14}
+$$
+
+采用第 2 节的行向量约定，同一个结论可写为
+
+$$
+\mathcal L(s;x)
+=\nabla_xs(x)^\top\operatorname{diag}(x).
 $$
 
 证明是把式 (10)–(13) 的局部矩阵沿当前活动计算图相乘，再右乘 $\operatorname{diag}(x)$。因此，等价的直接来源是原论文的输入值 seed 与终点门控规则。
@@ -292,6 +325,8 @@ L_{\rm sum}=x\odot\sum_p\nabla_x h_p(x).
 $$
 
 若要在 ViT 中逐式复现原论文的滤波器级聚合，对应对象应是某个 channel 在全部 patch tokens 上的二次能量目标，而不是未加激活权重的 channel sum。当前 Scanner 已提供单 token-channel 和 channel-sum 目标；数学上还应把 energy target 定义为第三类聚合目标，当前 `EndpointTarget` 注册器尚未实现这个 `kind`。
+
+原论文第 4.2.1 节把 $f_{(x,y)}^{k,l}$ 称为 feature map 中的 activation value，但本地方法与实验文本没有进一步声明该聚合使用 ReLU 前张量还是 ReLU 后张量。因此，式 (16) 中的 $h_p$ 严格表示论文实际用于式 (15) 加权、且与 $L_{h_p}$ 对应的同一个激活标量。选择 pre-activation、post-ReLU 或其他归一化后的张量会定义不同的 energy target；只要权重和 learning-image 目标使用同一个 $h_p$，式 (16) 的代数关系不变。
 
 ### 3.7 Bias、常数与完整性
 
@@ -370,7 +405,7 @@ $$
 
 因为 $A_{\rm clean}$ 被固定，式 (22) 不含 Query/Key 对 routing 的输入依赖。它回答“在 clean routing 固定时，Value 内容来自哪些输入位置”，而不是“完整 self-attention 如何依赖输入”。
 
-### 4.3 NNS-v2 complete-cut path-Jacobian decomposition
+### 4.3 Input-resolved complete-cut path conductance
 
 给定最终类别目标 $F(x)$ 和一个完整计算切面
 
@@ -381,24 +416,26 @@ $$
 此前 NNS-v2 定义
 
 $$
-K^C_{i,j}
+K^C_{j,i}
 =(x_i-x_{0i})
 \int_0^1
-\frac{\partial F(x_\alpha)}{\partial z_j}
+\left\langle
+\nabla_{z_j}F(x_\alpha),
 \frac{\partial z_j(x_\alpha)}{\partial x_i}
+\right\rangle
 \,\mathrm d\alpha.
 \tag{23}
 $$
 
-若 $C$ 完整、无重叠，并截断所有输入到目标的可微路径，则
+这里 $z_j$ 可以是标量、向量或张量；内积遍历该成分的全部 token、channel、head 或其他内部坐标。若把每个标量坐标分别注册为成分，式 (23) 退化为标量偏导的乘积形式。若 $F$ 与切面变量沿路径几乎处处可微，并使用固定且一致的次梯度约定，而且 $C$ 在每个路径点都是针对 $F$ 的完整、不重叠计算边切面，使每条输入到目标的输入依赖路径恰好穿过一个注册边，则
 
 $$
-\sum_{j=1}^mK^C_{i,j}
+\sum_{j=1}^mK^C_{j,i}
 =\operatorname{IG}_i(F;x,x_0).
 \tag{24}
 $$
 
-每个 $K^C_{:,j}$ 是同一最终类别 IG 在该切面内分配给成分 $j$ 的图。不同层的完整切面是同一总 IG 的不同分解视图，不能跨层相加。
+每个 $K^C_{j,:}$ 是同一最终类别 IG 在该切面内分配给成分 $j$ 的输入坐标图；对输入坐标求和才得到常见的成分级 conductance 标量。不同层的完整切面是同一总 IG 的不同分解视图，不能跨层相加。
 
 ### 4.4 此前 NNS-ViT 与原始 NNS-CNN 的关系
 
@@ -481,6 +518,8 @@ $$
 
 式 (28) 包含均值、方差和通道耦合。只乘 $\gamma/\sigma$ 会漏掉两条归一化路径。
 
+该式对应 PyTorch LayerNorm 的总体方差（biased variance）约定，即方差分母为 $D$；使用其他方差分母时，相应 Jacobian 系数也会改变。Affine offset $\beta$ 对当前输入 $u$ 的局部导数为零，但它参与后续算子的真实状态并影响后续 Jacobian。
+
 ### 5.4 GELU
 
 对 $y=\operatorname{GELU}(u)$：
@@ -529,6 +568,8 @@ $$
 
 式 (31)–(32)产生 Value、Query routing、Key routing，以及存在输入相关 bias 时的 bias-routing 路径。完整 attention 目标必须包含这些路径；固定 $A$ 的 Value-path 只保留 $A(dV)$。
 
+$J_{\rm softmax}$ 对每个 query row 独立作用。若 $B$ 是固定位置偏置，则 $dB=0$；只有输入相关 bias 才产生输入归因路径。完整 ViT attention 传播还包括多头 concat、output projection $W_O$ 和后续网络；projection bias 的直接输入导数为零，但它仍改变下游状态。当前实现固定 `eval()` 模式，因此 attention dropout 与 drop path 关闭。
+
 ### 5.6 Residual
 
 对
@@ -562,10 +603,11 @@ E_{{\rm attn},i}
 \tag{34}
 $$
 
-因此
+若 $F$ 是 $r$ 的下游函数，且从当前输入到 $F$ 的所有输入依赖路径都经过这个 residual add，则
 
 $$
-E_{\rm id}+E_{\rm attn}=x\odot\nabla_xF.
+E_{\rm id}+E_{\rm attn}
+=x\odot\nabla_xF(r(x)).
 \tag{35}
 $$
 
@@ -573,7 +615,7 @@ identity 成分使用加法器输出处的 $g_r$。若直接把总导数 $\nabla
 
 原 NNS 论文在残差网络上展示了 block 前、中、后的 learning images，但方法节没有单独给多输入加法器的传播式。式 (33)–(35)把这一算子合同写明，并区分“residual 输出单元自身的图”和“某条 residual 输入边对更下游目标的成分图”。
 
-## 6. Endpoint 的完整切面分解
+## 6. Structured endpoint decomposition
 
 给定最终目标 $F(x)$ 和一个完整计算边切面 $C=\{z_1,\ldots,z_m\}$，定义
 
@@ -587,7 +629,15 @@ E^C_{j,i}
 \tag{36}
 $$
 
-若切面中的边互不重叠并截断所有输入到目标的路径，则
+若 $F$ 在当前点可微，或所有非光滑算子采用固定且一致的次梯度约定，并且 $C$ 满足以下条件：
+
+1. 每条从输入 $x_i$ 到目标 $F$ 的输入依赖路径恰好穿过一个注册切面边；
+2. 不存在绕过切面的输入依赖路径；
+3. 同一计算路径没有被两个成分重复覆盖；
+4. residual 等共享源节点使用显式加法器输入边，而非已经汇合多条下游路径的原始节点总梯度；
+5. 切面包含全部输入相关路径；模型常数无需作为像素成分，因为它们对 $x$ 的直接导数为零；
+
+则
 
 $$
 \boxed{
@@ -597,19 +647,30 @@ $$
 \tag{37}
 $$
 
-Endpoint Scanner 当前实现以下完整切面：
+### 6.1 Computational edge cuts
+
+Residual 和 multi-head 分解直接对应计算图输入边：
 
 | 切面 | 成分 | 闭合目标 |
 |---|---|---|
-| 第一次 residual | identity + attention | 完整类别 endpoint 图 |
-| 第二次 residual | carry + MLP | 完整类别 endpoint 图 |
-| 多 head | identity + 所有 projection 前 head slices | 完整类别 endpoint 图 |
+| 第一次 residual edge cut | identity + attention | 完整类别 endpoint 图 |
+| 第二次 residual edge cut | carry + MLP | 完整类别 endpoint 图 |
+| Multi-head edge cut | identity + 所有 projection 前 head slices | 完整类别 endpoint 图 |
+
+每个 head 的下游 cotangent 包含原生 concat、output projection 和后续网络。
+
+### 6.2 Attention differential-path decompositions
+
+Q/K/V 和 routing/value 来自乘法与 softmax 的全微分：
+
+| 微分路径分解 | 成分 | 闭合目标 |
+|---|---|---|
 | Q/K/V | identity + Query + Key + Value | 完整类别 endpoint 图 |
 | routing/value | identity + (Query + Key) + Value | 完整类别 endpoint 图 |
 
-每个 head 的下游 cotangent 包含原生 concat、output projection 和后续网络。`routing = Query + Key` 是一个合并成分；它不能与 Query、Key 再次相加。每一行都是对同一总图的独立完整分解，不同切面也不能彼此相加。
+`routing = Query + Key` 是一个合并成分；它不能与 Query、Key 再次相加。本文用 **structured endpoint decomposition** 统称 computational edge cuts 与 attention differential-path decompositions。这里的“完整”始终相对于注册目标、指定 block 和精确 hook edge；每一行独立重构同一总图，不同切面、不同 block 或两种 attention 分解不能彼此相加。
 
-式 (36) 与此前的式 (23) 只有两个核心差异：
+式 (36) 与此前的式 (23) 采用对称的向量/张量成分写法，核心差异是 input seed 和 Jacobian 的求值范围：
 
 $$
 \begin{array}{lll}
@@ -682,7 +743,7 @@ $$
 
 下表比较的是归因定义。实际数值比较还必须固定同一个标量目标、输入坐标、预处理、reference（Path 方法）、RGB 聚合和显示前张量；若其中任一项不同，地图差异不能归因于 Endpoint/Path 规则本身。
 
-| 性质 | 原始 NNS-CNN 单神经元 | NNS-ViT Endpoint Scanner | 此前 internal-target IG | NNS-v2 path complete-cut |
+| 性质 | 原始 NNS-CNN 单神经元 | NNS-ViT Endpoint Scanner | 此前 internal-target IG | NNS-v2 input-resolved path conductance |
 |---|---|---|---|---|
 | 输入 seed | $x$ | 实际模型输入 $x$ | $x-x_0$ | $x-x_0$ |
 | Jacobian 位置 | 当前输入终点 | 当前输入终点 | $x_0\rightarrow x$ 路径 | $x_0\rightarrow x$ 路径 |
@@ -692,7 +753,7 @@ $$
 | Bias/常数 | 影响门，不直接分配到像素 | 影响状态/Jacobian，不直接分配到像素 | 通过响应差和路径状态体现 | 同左，并在完整切面中记直接路径为零 |
 | 响应 completeness | 一般无 | 一般无 | 数值收敛时有 | total IG 与每个完整切面均要求闭合 |
 | 计算结构 | 显式终点传播；全扫描存储随“单元数 × 输入坐标数”增长 | 一次共享前向 + 每目标一次 VJP | 多个路径点前向/反向 | 多路径点 × 多成分 VJP |
-| 与 Gradient × Input 的关系 | 条件等价 | 恒等 | Jacobian 沿路径恒定时才相等 | total 等于 IG，不等于一般 Endpoint |
+| 与 canonical $x\odot\nabla s(x)$ 的关系 | 门控一致等条件下相等 | 恒等 | 满足第 2.3 节逐坐标条件时相等；Jacobian 恒定只在 $x_0=0$ 时直接给出该结论 | total 等于 IG；与 canonical Endpoint 的关系继承左侧逐坐标条件 |
 | 原始科学张量 | 输入坐标 learning image；论文另有热图后处理 | signed `[C,H,W]` | signed `[C,H,W]` | total 与 component signed maps |
 
 ### 8.1 一个最小反例
@@ -732,7 +793,7 @@ $$
 \nabla s(x_\alpha)
 $$
 
-沿路径连续变化。完整 Endpoint 与 Path 一般满足
+沿路径连续变化。Canonical Endpoint 与一般 baseline Path IG 通常满足
 
 $$
 x\odot\nabla s(x)
@@ -765,7 +826,7 @@ $$
 
 1. `scan_endpoint_vit`：一次真实前向，注册 token/channel/head/logit/margin 目标；每个目标返回原始 signed $x\odot\nabla s$；
 2. `attention_endpoint_components`：对一个内部 head 标量分解 Query、Key、Value；
-3. `decompose_endpoint_vit`：固定同一个类别 logit 或 margin，在完整 residual/head/QKV 输入边切面上分解总 Endpoint 图。
+3. `decompose_endpoint_vit`：固定同一个类别 logit 或 margin，用 residual/head computational edge cuts 以及 Q/K/V、routing/value differential paths 分解总 Endpoint 图。
 
 单图演示使用冻结的 ViT-B/16 和 `ILSVRC2012_val_00007922.JPEG` 的既有 RGB crop，结果如下：
 
@@ -776,22 +837,40 @@ $$
 | 类别 Endpoint 与独立 Gradient × Input 最大误差 | 0 |
 | 内部 head Q/K/V 闭合最大误差 | $5.93\times10^{-21}$ |
 | 聚合响应 residual 闭合最大误差 | $7.06\times10^{-14}$ |
-| 同一类别完整切面闭合最大误差 | $4.44\times10^{-16}$ |
-| 完整切面最大相对 L2 误差 | $3.14\times10^{-15}$ |
+| 同一类别 structured decomposition 闭合最大误差 | $4.44\times10^{-16}$ |
+| Structured decomposition 最大相对 L2 误差 | $3.14\times10^{-15}$ |
 | 40 目标扫描，CPU float64、4 threads | 4.32 s |
+
+式 (7)、式 (14) 和式 (37) 的数学身份来自链式法则。上表是实现验证：它检查当前代码的 hooks、VJP cotangents、目标选择和 component bookkeeping 是否满足这些定义。表中的“独立 Gradient × Input”使用另一个调用路径，但仍依赖同一 PyTorch autograd 图，因此属于 parity test，而非对链式法则的独立数学证明。闭合误差也不衡量归因 fidelity 或成分的因果效应。
 
 对应报告为 [scan_report.json](../reports/endpoint_nns_vit_scan_r3_20260918/scan_report.json)，原始数组和 Image #1–#9 的解释见 [逐图说明](endpoint_nns_vit_scanner_figures_20260918.md)。
 
-此前 20 图 Endpoint/Path 探索性比较给出：
+此前 20 图 Endpoint/Path 探索性比较使用两个参考张量：normalized-zero（RGB 0.5）和 normalized-minus-one（RGB 0）。对 normalized-zero 条件，baseline-relative endpoint 为
 
-| 指标 | Endpoint | Path-integrated |
+$$
+(x-0)\odot\nabla s(x)=x\odot\nabla s(x),
+$$
+
+因此它在该条件下与 canonical Endpoint 数值相同。下表的 fidelity、flip 和 runtime 全部来自这个 normalized-zero/canonical 条件：
+
+| 指标 | Canonical Endpoint = zero-relative endpoint | Zero-baseline Path IG |
 |---|---:|---:|
 | 4×4 combined fidelity 中位数 | 0.03639 | 0.10143 |
 | 16×16 combined fidelity 中位数 | 0.01161 | 0.02120 |
 | flip Spearman 中位数 | 0.34104 | 0.47416 |
 | Endpoint/Path 运行时间比中位数 | 0.01492 | 1 |
 
-该协议的决策为 `NO_GO_CURRENT_ENDPOINT_PROTOCOL`：Endpoint 计算明显更快，但没有通过当时预设的 fidelity、reference 和 flip 稳定性门。因此，当前证据支持把 Scanner 用作终点内部分析工具，不支持用它替换 path-integrated learning image 作为论文主归因方法。完整结果见 [20 图决策文档](endpoint_nns_vit_level4_decision_20260917.md)。
+所谓 reference gate 另行比较了两个 baseline-relative extensions：
+
+$$
+L^{\Delta,0}=x\odot\nabla s(x),
+\qquad
+L^{\Delta,-1}=(x+1)\odot\nabla s(x).
+$$
+
+其中第一项恰好是 canonical Endpoint，第二项是 black-RGB reference 下的扩展。记录的 reference Pearson 中位数 $-0.07869$ 衡量这两个 multiplier 定义之间的一致性；它不是 canonical Endpoint 自身具有 reference 参数或 reference sensitivity。
+
+该协议的决策为 `NO_GO_CURRENT_ENDPOINT_PROTOCOL`：normalized-zero/canonical Endpoint 通过了 4×4 positive-fidelity 门和 runtime 门，但没有通过相对 Path IG 的 4×4 非劣启发式门与 flip 门；额外的 two-multiplier comparison 也没有通过预设 reference gate。因此，当前证据支持把 Scanner 用作终点内部分析工具，不支持用它替换 path-integrated learning image 作为论文主归因方法。完整结果见 [20 图决策文档](endpoint_nns_vit_level4_decision_20260917.md)。
 
 ## 11. 推荐的术语体系
 
@@ -804,12 +883,12 @@ $$
 | `baseline-relative endpoint extension` | $(x-x_0)\odot\nabla s(x)$；不是主 Endpoint 定义 |
 | `internal-target IG` / `path-integrated learning image` | 式 (19) |
 | `conditional fixed-attention Value-path IG` | 式 (22) |
-| `complete-cut path conductance` | 式 (23) |
-| `complete-cut endpoint decomposition` | 式 (36) |
+| `input-resolved complete-cut path conductance` | 式 (23)；保留 component-by-input map |
+| `structured endpoint decomposition` | 式 (36)；含 computational edge cuts 与 attention differential paths |
 
 ### 11.1 可用于方法部分的准确表述
 
-> NNS-ViT Endpoint Scanner 将原始 NNS 的输入值初始化和当前状态传播原则扩展到 ViT。对任意注册的内部标量或输出目标，它在真实输入处传播 patch embedding、LayerNorm、GELU、完整 self-attention、MLP 和 residual 的局部 Jacobian，得到 $x\odot\nabla_xs(x)$。完整计算边切面进一步把同一终点图分解为 head、Q/K/V、routing/value 或 residual 成分，并在切面内重构总图。
+> NNS-ViT Endpoint Scanner 将原始 NNS 的输入值初始化和当前状态传播原则扩展到 ViT。对任意注册的内部标量或输出目标，它在真实输入处传播 patch embedding、LayerNorm、GELU、完整 self-attention、MLP 和 residual 的局部 Jacobian，得到 $x\odot\nabla_xs(x)$。Structured endpoint decomposition 进一步用 residual/head computational edge cuts 和 attention differential paths 分解同一终点图，并分别重构总图。
 
 ### 11.2 方法贡献的边界
 
@@ -817,9 +896,9 @@ Endpoint Scanner 的基础 attribution 是 Gradient × Input。方法增量由�
 
 - 与原 NNS 对齐的 ViT 单元目标注册；
 - 真实 native-forward 中间张量扫描；
-- attention 的 Query、Key、Value 和 routing 终点分解；
+- attention 的 Query、Key、Value 和 routing 微分路径分解；
 - 两次 residual 的输入边记账；
-- 同一最终类别目标下的多 head 完整切面；
+- 同一最终类别目标下的多 head 完整计算边切面；
 - 原始 signed RGB maps、成分账本和数值闭合验证。
 
 此前 path-integrated NNS-ViT 继续承担 reference-relative attribution、响应差 completeness 和 path conductance 分解。两套方法回答不同问题：Endpoint 描述当前模型状态的局部一阶输入结构；Path 描述从参考输入到当前输入的累计变化。
@@ -846,7 +925,7 @@ x\odot\nabla s_{\rm ViT}(x),\\
 \tag{46}
 $$
 
-前两项共享终点传播原则，差别来自 CNN 与 ViT 的 Jacobian；第三项改变了归因定义，因此等于 IG。NNS-ViT Endpoint Scanner 对原始 NNS 最忠实的部分，是输入值 seed、当前状态 Jacobian、内部单元扫描和输入坐标保留；它对 ViT 新增的部分，是完整 attention、LayerNorm/GELU、双 residual 与结构切面的显式记账。
+前两项共享终点传播原则，差别来自 CNN 与 ViT 的 Jacobian；第三项改变了归因定义，因此等于 IG。NNS-ViT Endpoint Scanner 对原始 NNS 最忠实的部分，是输入值 seed、当前状态 Jacobian、内部单元扫描和输入坐标保留；它对 ViT 新增的部分，是完整 attention、LayerNorm/GELU、双 residual 与结构化分解的显式记账。
 
 ## 参考实现与材料
 
