@@ -19,10 +19,10 @@ from PIL import Image, ImageDraw
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 REPO = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = REPO / "reports/nns_vit_endpoint_e2_atlas_r1_20260918"
-ROOT = REPO / "reports/nns_vit_endpoint_e2_atlas_r2_20260918"
+ROOT = REPO / "reports/nns_vit_endpoint_e2_atlas_r3_20260918"
 CACHE = REPO / "assets/data/nns_vit_endpoint_e2_evaluation_20260918"
 AMENDMENT = REPO / "config/nns_vit_endpoint/endpoint_e2_atlas_execution_amendment_r1.json"
-RECOVERY = REPO / "config/nns_vit_endpoint/endpoint_e2_atlas_handoff_recovery_r2.json"
+RECOVERY = REPO / "config/nns_vit_endpoint/endpoint_e2_atlas_handoff_recovery_r3.json"
 sys.path.insert(0, str(REPO / "src"))
 from vitnns.endpoint_e2_atlas import (  # noqa: E402
     PASS_STATUS, digest, display_rgb_signed_sum, file_sha256, linear_percentile, write_json_new,
@@ -40,6 +40,11 @@ def git(*args: str) -> str:
 def remote(ref: str) -> str:
     fields = subprocess.check_output(["git", "ls-remote", "origin", ref], cwd=REPO, text=True).split()
     return fields[0] if len(fields) == 2 else ""
+
+
+def git_blob_sha(commit: str, path: str) -> str:
+    value = subprocess.check_output(["git", "show", f"{commit}:vitnns_rebuild/{path}"], cwd=REPO)
+    return hashlib.sha256(value).hexdigest()
 
 
 def queue_results(queue: Path, results: Path) -> dict[str, dict]:
@@ -185,8 +190,11 @@ def main() -> int:
             source_files.append({"path": relative, "bytes": path.stat().st_size, "sha256": file_sha256(path)})
     source_binding = {
         "formal_source_root": SOURCE_ROOT.relative_to(REPO).as_posix(),
-        "preliminary_finalization_status": "INVALID_TRANSIENT_SQLITE_FILES_IN_MANIFEST_PRESERVED_NOT_AUTHORITY",
-        "preliminary_terminal": "terminal_receipt.json",
+        "preliminary_finalization_status": "R1_INVALID_TRANSIENT_SQLITE_FILES_R2_INVALID_PRODUCER_BLOB_HASH_PRESERVED_NOT_AUTHORITY",
+        "preliminary_terminals": [
+            "reports/nns_vit_endpoint_e2_atlas_r1_20260918/terminal_receipt.json",
+            "reports/nns_vit_endpoint_e2_atlas_r2_20260918/terminal_receipt.json"
+        ],
         "canceled_replay_root": "single_replay",
         "formal_source_files": source_files, "formal_source_files_digest": digest(source_files),
     }
@@ -201,8 +209,10 @@ def main() -> int:
     amendment_paths = [
         "config/nns_vit_endpoint/endpoint_e2_atlas_execution_amendment_r1.json",
         "config/nns_vit_endpoint/endpoint_e2_atlas_handoff_recovery_r2.json",
+        "config/nns_vit_endpoint/endpoint_e2_atlas_handoff_recovery_r3.json",
         "docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE2执行修订R1_20260918.md",
         "docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE2封存恢复R2_20260918.md",
+        "docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE2封存恢复R3_20260918.md",
         "scripts/finalize_endpoint_e2_atlas_r1.py", "scripts/validate_endpoint_e2_atlas.py",
     ]
     report = {
@@ -253,8 +263,8 @@ def main() -> int:
             for model_id in ("vit_b16", "deit_s16")
         },
         "implementation_bindings": (
-            [{"path": path, "sha256": file_sha256(REPO / path), "commit": amendment["base_contract"]["producer_commit"], "role": "formal_production"} for path in production_paths]
-            + [{"path": path, "sha256": file_sha256(REPO / path), "commit": amendment_commit, "role": "post_formal_user_amendment"} for path in amendment_paths]
+            [{"path": path, "sha256": git_blob_sha(amendment["base_contract"]["producer_commit"], path), "commit": amendment["base_contract"]["producer_commit"], "role": "formal_production"} for path in production_paths]
+            + [{"path": path, "sha256": git_blob_sha(amendment_commit, path), "commit": amendment_commit, "role": "post_formal_user_amendment"} for path in amendment_paths]
         ),
         "resource_caps": {"gpu_hours": 64, "wall_hours": 72, "incremental_retained_gib": 128},
         "next_authorization": "ENDPOINT_E3_REQUIRES_EXPLICIT_USER_REQUEST",

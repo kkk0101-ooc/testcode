@@ -18,7 +18,7 @@ import numpy as np
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 REPO = Path(__file__).resolve().parents[1]
-ROOT = REPO / "reports/nns_vit_endpoint_e2_atlas_r2_20260918"
+ROOT = REPO / "reports/nns_vit_endpoint_e2_atlas_r3_20260918"
 EP0 = REPO / "manifests/nns_vit_endpoint/ep0_r1_20260918"
 SPEC_PATH = REPO / "config/nns_vit_endpoint/endpoint_e2_atlas_run_spec.json"
 sys.path.insert(0, str(REPO / "src"))
@@ -71,7 +71,7 @@ def validate(root: Path) -> dict:
     manifest = load(root / "artifact_manifest.json")
     source_binding = load(root / "formal_source_binding.json")
     require(source_binding == report["formal_source_binding"], "SOURCE_BINDING_REPORT")
-    require(source_binding["preliminary_finalization_status"] == "INVALID_TRANSIENT_SQLITE_FILES_IN_MANIFEST_PRESERVED_NOT_AUTHORITY", "PRELIMINARY_INVALID_STATUS")
+    require(source_binding["preliminary_finalization_status"] == "R1_INVALID_TRANSIENT_SQLITE_FILES_R2_INVALID_PRODUCER_BLOB_HASH_PRESERVED_NOT_AUTHORITY", "PRELIMINARY_INVALID_STATUS")
     require(source_binding["formal_source_files_digest"] == digest(source_binding["formal_source_files"]), "SOURCE_FILES_DIGEST")
     source_root = (REPO / source_binding["formal_source_root"]).resolve()
     require(source_root.is_relative_to(REPO) and source_root.is_dir(), "SOURCE_ROOT")
@@ -92,7 +92,11 @@ def validate(root: Path) -> dict:
     require(amendment["execution_change"]["full_single_gpu_replay_required"] is False and amendment["execution_change"]["partial_replay_use_in_pass_decision"] is False, "AMENDMENT_SCOPE")
     recovery = load(REPO / report["handoff_recovery"]["path"])
     require(report["handoff_recovery"]["sha256"] == file_sha256(REPO / report["handoff_recovery"]["path"]), "RECOVERY_BINDING")
-    require(recovery["status"] == "PROSPECTIVE_HANDOFF_RECOVERY_ONLY" and not recovery["failure"]["formal_scientific_results_affected"] and not recovery["recovery"]["rerun_gpu_tasks"], "RECOVERY_SCOPE")
+    require(recovery["status"] == "PROSPECTIVE_HANDOFF_RECOVERY_ONLY" and not recovery["formal_scientific_results_affected"] and not recovery["recovery"]["rerun_gpu_tasks"], "RECOVERY_SCOPE")
+    require([row["code"] for row in recovery["failed_handoffs"]] == [
+        "MANIFEST_CONTAINED_TRANSIENT_SQLITE_WAL_SHM",
+        "IMPLEMENTATION_BINDING_USED_CURRENT_FILE_HASH_FOR_PRODUCER_COMMIT",
+    ], "RECOVERY_HISTORY")
     require(terminal["amendment_commit"] == report["amendment_commit"], "AMENDMENT_COMMIT")
     require(terminal["validation_digest"] == digest(report), "VALIDATION_DIGEST")
     require(terminal["manifest_digest"] == manifest["canonical_digest"] == digest(manifest["files"]), "MANIFEST_DIGEST")
