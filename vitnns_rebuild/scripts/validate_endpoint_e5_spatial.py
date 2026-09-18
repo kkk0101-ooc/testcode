@@ -37,6 +37,7 @@ SOURCE_FILES = [
     "scripts/run_endpoint_e5_spatial.py", "scripts/validate_endpoint_e5_spatial.py",
     "scripts/validate_endpoint_unified_plan.py", "tests/test_endpoint_e5_spatial.py",
 ]
+VALIDATOR_AMENDMENT = "docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE5封存验证器修订R1_20260918.md"
 BINDINGS = {
     "cohort_registry_sha256": "manifests/nns_vit_endpoint/ep0_r1_20260918/cohort_registry.json",
     "endpoint_e4_r3_terminal_sha256": "reports/nns_vit_endpoint_e4_intervention_r3_20260918/terminal_receipt.json",
@@ -122,9 +123,10 @@ def validate_reference(result: dict, reference: str, task_seed: int) -> None:
     require(set(scores) == set(METHODS), "RANKER_COVERAGE")
     require(set(scores["endpoint_component"]) == {f"head_{head}" for head in result["heads"]} and
             set(scores["regional_taylor"]) == {f"head_{head}" for head in result["heads"]} and
-            set(scores["total_gxi"]) == {"shared"} and set(scores["raw_gradient"]) == {"shared"}, "RANKER_SCHEMA")
+            isinstance(scores["total_gxi"], list) and isinstance(scores["raw_gradient"], list), "RANKER_SCHEMA")
     for method in METHODS:
-        for row in scores[method].values():
+        rows = scores[method].values() if isinstance(scores[method], dict) else (scores[method],)
+        for row in rows:
             ranking(list(row))
     candidates = value["candidate_single_region_full_forward_scores"]
     effects = value["candidate_single_region_full_forward_effects"]
@@ -148,9 +150,11 @@ def validate_reference(result: dict, reference: str, task_seed: int) -> None:
             require(curve["random_seed"] == seed and curve["ranking"] == order and
                     curve["curve_id"] == f"random_regions.head_{head}.repeat_{repeat:02d}", "RANDOM_CURVE")
         else:
-            key = f"head_{head}" if method in {"endpoint_component", "regional_taylor"} else "shared"
+            expected_ranking = (ranking(scores[method][f"head_{head}"])
+                                if method in {"endpoint_component", "regional_taylor"}
+                                else ranking(scores[method]))
             require(curve["repeat"] is None and curve["random_seed"] is None and
-                    curve["ranking"] == ranking(scores[method][key]) and
+                    curve["ranking"] == expected_ranking and
                     curve["curve_id"] == f"{method}.head_{head}", "DETERMINISTIC_CURVE")
         require(len(curve["points"]) == 4, "POINT_COVERAGE")
         for point, count, area in zip(curve["points"], (0, 1, 2, 4), (0.0, .0625, .125, .25)):
@@ -223,11 +227,11 @@ def validate_result(result: dict, frozen: dict, task_seed: int, e4_result: dict,
                 require(row["shape"] == [1, 3, 224, 224] and row["dtype"] == "float32" and
                         row["array_sha256"] == hashlib.sha256(value.tobytes()).hexdigest(), "RAW_MAP_DIGEST")
                 source = (result["references"]["normalized_zero"]["ranking_scores"]["endpoint_component"][name]
-                          if name.startswith("head_") else result["references"]["normalized_zero"]["ranking_scores"][name]["shared"])
+                          if name.startswith("head_") else result["references"]["normalized_zero"]["ranking_scores"][name])
                 for observed, expected in zip(source, computed): close(observed, expected, "RAW_MAP_REGION_SCORE", 1e-8)
                 for reference in REFERENCES:
                     other = (result["references"][reference]["ranking_scores"]["endpoint_component"][name]
-                             if name.startswith("head_") else result["references"][reference]["ranking_scores"][name]["shared"])
+                             if name.startswith("head_") else result["references"][reference]["ranking_scores"][name])
                     require(other == source, "REFERENCE_INDEPENDENT_RANKER_DRIFT")
 
 
@@ -254,6 +258,11 @@ def validate(root: Path) -> dict:
     require({row["path"] for row in report["implementation_bindings"]} == set(SOURCE_FILES), "IMPLEMENTATION_COVERAGE")
     for row in report["implementation_bindings"]:
         require(row["commit"] == producer and git_blob_sha(producer, row["path"]) == row["sha256"], "IMPLEMENTATION_BINDING")
+    validator_commit = subprocess.check_output(["git", "log", "-1", "--format=%H", "--",
+        "vitnns_rebuild/scripts/validate_endpoint_e5_spatial.py"], cwd=REPO, text=True).strip()
+    require(git_blob_sha(validator_commit, "scripts/validate_endpoint_e5_spatial.py") == file_sha256(Path(__file__)) and
+            git_blob_sha(validator_commit, VALIDATOR_AMENDMENT) == file_sha256(REPO / VALIDATOR_AMENDMENT),
+            "VALIDATOR_AMENDMENT_BINDING")
     for key, relative in BINDINGS.items():
         observed = git_blob_sha(producer, relative) if key == "unified_plan_sha256" else file_sha256(REPO / relative)
         require(observed == spec["predecessors"][key], "PREDECESSOR_BINDING:" + key)
