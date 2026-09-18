@@ -61,6 +61,12 @@ registers two models, disjoint 64/64/400 image cohorts, 16 statistical families,
 28 tests, explicit reconstruction targets and dynamic multi-GPU resource caps.
 EP0 is metadata-only; EP1 and production experiments require separate authorization.
 
+The [EP1 implementation and regression report](docs/NNS_ViT_Endpoint_Scanner_EP1实现与回归_20260918.md)
+records the completed energy target, unfused edge capture, branch/total cut
+validation, SQLite fenced task queue, 44 CPU regressions, and single-/four-GPU
+parity on deterministic synthetic inputs. EP1 is PASS; no production image
+outcome was accessed, and EP2 still requires a separate explicit request.
+
 ## Environment
 
 ```bash
