@@ -26,10 +26,10 @@ components under finite interventions. We evaluated ViT-B/16 and DeiT-S/16 on a 
 336,800 finite target evaluations. Structural tests passed 76,800 positive closure checks,
 rejected 28,800 omission or double-counting controls, and passed 6,144 condition-scaled analytic
 JVP checks. Under matched activation replacement, 11 of 12 preregistered families met the
-correlation, direction, precision, and multiplicity criteria. The sole exception had a median
-Spearman correlation of 0.099565, which was 0.000435 below the prespecified threshold of 0.10.
-We therefore interpret RQ3 as supported overall with one registered boundary exception, while
-retaining `NOT_SUPPORTED` for the frozen 12-of-12 omnibus field. In spatially targeted
+family-level criteria. RQ3 showed broad but non-universal support at the family level, while
+the preregistered all-family omnibus criterion was not supported (`NOT_SUPPORTED`). The
+remaining family retained a significant positive association, but its confidence interval
+spanned the 0.10 practical-effect threshold. In spatially targeted
 interventions, none of four families simultaneously outperformed total G×I, raw gradient,
 regional Taylor, and random regions; regional Taylor attained a higher median effect in every
 family. Endpoint components can thus predict component-level finite effects, but that property
@@ -89,8 +89,8 @@ Third, it defines complete edge cuts that map heads, attention differential path
 residual branches into a common input coordinate system and reconstruct their registered objects.
 Fourth, it evaluates correctness and utility separately using closure controls, analytic JVPs,
 matched activation replacement, and spatially targeted intervention. Fifth, it reports two
-complementary empirical outcomes: component-level finite-effect prediction is supported overall
-with one boundary exception, whereas full-resolution spatial ranking does not outperform a strong
+complementary empirical outcomes: component-level finite-effect association has broad but non-universal
+family-level support, whereas full-resolution spatial ranking does not outperform a strong
 local Taylor baseline.
 
 ## 2. Related Work
@@ -324,6 +324,29 @@ target registries, task payloads, and result files.
 | Normalization mean | [0.5, 0.5, 0.5] | [0.485, 0.456, 0.406] |
 | Normalization std | [0.5, 0.5, 0.5] | [0.229, 0.224, 0.225] |
 
+**Table 6. Actual coverage of the original registry.** B=12, T=197 (CLS + 196 patches), D=768/384, and head width=64. Candidate populations follow the object definitions below. Module aggregates use the six modules at blocks 0/5/11: four D-wide modules and two 4D-wide modules per selected block.
+
+| Model | Object | Candidate definition | Candidates | Registered/image | Coverage | Strategy | Scalar neuron |
+|---|---|---|---:|---:|---:|---|---|
+| vit_b16 | post-block token-channel | 12*197*D | 1,815,552 | 192 | 0.01058% | 12 blocks x 4 tokens x 4 channels | yes |
+| vit_b16 | post-block patch sum/energy | 2*12*D | 18,432 | 96 | 0.52083% | 12 blocks x 4 channels x 2 aggregates | no |
+| vit_b16 | attention-head coordinate | 12*H*197*64 | 1,815,552 | 144 | 0.00793% | all heads; CLS token; within-head channel 0 | yes |
+| vit_b16 | module patch aggregate | 3*(4D+2*4D) | 27,648 | 18 | 0.06510% | blocks 0/5/11; six modules; channel 0 | no |
+| vit_b16 | patch embedding aggregate | D | 768 | 4 | 0.52083% | four fixed channels; sum over patches | no |
+| vit_b16 | final CLS coordinate | D | 768 | 1 | 0.13021% | channel 0 | yes |
+| vit_b16 | ground-truth logit | 1000 | 1,000 | 1 | 0.10000% | frozen image label | output |
+| vit_b16 | clean-top1 logit | 1000 | 1,000 | 1 | 0.10000% | frozen clean prediction | output |
+| deit_s16 | post-block token-channel | 12*197*D | 907,776 | 192 | 0.02115% | 12 blocks x 4 tokens x 4 channels | yes |
+| deit_s16 | post-block patch sum/energy | 2*12*D | 9,216 | 96 | 1.04167% | 12 blocks x 4 channels x 2 aggregates | no |
+| deit_s16 | attention-head coordinate | 12*H*197*64 | 907,776 | 72 | 0.00793% | all heads; CLS token; within-head channel 0 | yes |
+| deit_s16 | module patch aggregate | 3*(4D+2*4D) | 13,824 | 18 | 0.13021% | blocks 0/5/11; six modules; channel 0 | no |
+| deit_s16 | patch embedding aggregate | D | 384 | 4 | 1.04167% | four fixed channels; sum over patches | no |
+| deit_s16 | final CLS coordinate | D | 384 | 1 | 0.26042% | channel 0 | yes |
+| deit_s16 | ground-truth logit | 1000 | 1,000 | 1 | 0.10000% | frozen image label | output |
+| deit_s16 | clean-top1 logit | 1000 | 1,000 | 1 | 0.10000% | frozen clean prediction | output |
+
+A complete scan is registry-complete: every preregistered entry was executed. Post-block coordinates cover 0.01058%/0.02115% of their candidate populations. Head coordinates select one CLS head-channel scalar. Ground-truth and clean-top1 remain two registry entries but select the same logit on correctly classified images; registry-entry counts differ from distinct scalar-function counts. Endpoint is normalized-input Gradient × Input. Structural accounting decomposes the local Jacobian, rather than a causal decomposition of function values.
+
 ### 4.2 Confirmatory analysis
 
 Before evaluation outcomes were read, the analysis plan froze 16 families and 28 test IDs. C4a
@@ -415,7 +438,7 @@ it does not substitute for the finite replacements in the next section.
 | Condition-scaled analytic JVP | 6,144 | all passed | absolute = 2.64808e-05 |
 | JVP condition-scaled ratio | 6,144 | all passed | 6.94876e-06 |
 
-### 5.4 RQ3: Structural components predicted matched finite effects overall
+### 5.4 RQ3: Broad but non-universal component-level finite-effect association
 
 RQ3 compares Endpoint component mass $m_k$ within an image with the absolute finite replacement
 effect $|e_k|$ of the same component. Eleven of the twelve preregistered families satisfied all
@@ -429,17 +452,14 @@ The only family that did not meet all conditions was ViT-B/16 × normalized zero
 Its estimate was 0.09956521739130435, with a 95% interval of [0.07478260869565218,
 0.12260869565217392] and a Holm-adjusted $p$ value of
 $3.0036026037128944\times10^{-14}$. The direction was positive and survived multiplicity
-correction, but the point estimate was 0.000435 below the prespecified practical-effect threshold
-of 0.10 (Figure 21). We therefore interpret RQ3 as **supported overall with one registered
-boundary exception**. The frozen family status and 12-of-12 omnibus C4a field remain
-`NOT_SUPPORTED`: the threshold was not moved, and 0.099565 was not rounded into a pass.
+correction. The estimate was close to the preregistered 0.10 threshold, but its confidence
+interval spanned values below and above that threshold (Figure 21).
 
-This two-level report answers distinct questions. The strict machine field records that the
-preregistered all-family rule was not fully met. The scientific synthesis records that 11 of 12
-families across models, references, and component types met every condition, while the remaining
-family retained a positive, statistically detectable association. C4a evaluates ranking of finite
-component effects; it does not test whether Endpoint outperforms activation-space Taylor or other
-predictors.
+**RQ3 showed broad but non-universal support at the family level, while the preregistered
+all-family omnibus criterion was not supported.** C4a remains `NOT_SUPPORTED`. Eleven of
+twelve families met every condition; the remaining family retained a significant positive
+association. Original C4a evaluates absolute ranking association; supplementary M1 separately
+evaluates incremental performance against predictor baselines.
 
 **Table 4. The 12 C4a families for RQ3.** Each row has $n=400$; $p$ is adjusted over all 28
 tests by Holm's method.
@@ -485,6 +505,39 @@ baseline. A family required all four contrasts to be at least +0.05.
 | DeiT-S/16 | normalized zero | −0.0018 | −0.0006 | −0.0299 | 0.0107 | NOT_SUPPORTED |
 | DeiT-S/16 | blur | 0.0002 | −0.0002 | −0.0356 | 0.0085 | NOT_SUPPORTED |
 
+
+
+<!-- M1_SUPPLEMENT_START -->
+### 5.6 M1: Predictor baselines and stratified ranking (supplementary frozen study)
+
+M1 was frozen after the primary study, using the same 400 images, two models, 12 blocks,
+two references, and ground-truth logit. Seven predictors share component definitions:
+Endpoint mass, activation norm, gradient norm, absolute activation×gradient, displacement
+norm, absolute activation-space Taylor, and random. Heads, routing, value/V, Q, K and both
+residual families cover 400 images; value/V names the same edge. Each set uses 1,000 random
+permutations, totaling 128,000,000. Image bootstrap uses 10,000 replicates and 95% CIs.
+Paired Spearman tests receive joint Holm correction; median rho>0 and >0.10 are separate tests.
+
+**Table 7. M1 within-block head ranking.** Metrics are first averaged across 12 blocks per
+image and then summarized by the median over 400 images.
+
+| Model | Reference | Endpoint rho | Taylor rho | Endpoint Capture@1 | Taylor Capture@1 | Endpoint Capture@3 | Taylor Capture@3 | Endpoint Regret@1 | Taylor Regret@1 |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| vit_b16 | normalized_zero | 0.2815 | 0.6742 | 0.5174 | 0.8038 | 0.6149 | 0.8567 | 0.1701 | 0.0571 |
+| vit_b16 | blur_rgb | 0.2727 | 0.6856 | 0.5075 | 0.8203 | 0.6185 | 0.8659 | 0.1163 | 0.0346 |
+| deit_s16 | normalized_zero | 0.1952 | 0.6095 | 0.5609 | 0.8028 | 0.7122 | 0.8894 | 0.2381 | 0.0860 |
+| deit_s16 | blur_rgb | 0.1476 | 0.6238 | 0.5506 | 0.8426 | 0.7105 | 0.8970 | 0.1326 | 0.0443 |
+
+Taylor had higher Spearman and Capture and lower Regret in all four combinations.
+Across-block residual identity showed positive Endpoint-minus-Taylor median Spearman
+differences of 0.0865–0.4209, all passing joint Holm; corresponding Capture@1 median
+differences were zero. Incremental utility depends on the component and metric. QKV
+triplets and residual pairs use pairwise/top1 accuracy, with Spearman recorded as NA.
+Pooled results first average the two models per image and are descriptive. Complete
+stratified tables, CIs, random-relative gains and source recomputation are in
+docs/endpoint_m1_results_20260918.md and the M1 result root. Original C4a remains NOT_SUPPORTED.
+<!-- M1_SUPPLEMENT_END -->
+
 ## 6. Discussion
 
 ### 6.1 Identity, correctness, and utility are different conclusions
@@ -514,17 +567,16 @@ that regional Taylor is universally superior at other layers, spatial scales, ta
 
 ### 6.3 Interpreting the RQ3 boundary family
 
-The ViT-B/16 normalized-zero routing/value estimate of 0.099565 is a localized boundary result. It
-passed direction and Holm criteria but did not reach the frozen practical-effect threshold of 0.10,
-so its family status remains `NOT_SUPPORTED`. The gap was 0.000435, and the other 11 families met
-every condition. Reducing the entire RQ3 result to a failure would therefore discard the principal
-cross-family empirical pattern. We retain both the strict field and the scientific synthesis and
-do not assign an untested architectural or reference-specific mechanism to the single exception.
+The ViT-B/16 normalized-zero routing/value estimate was 0.099565, with a 95% interval of
+[0.0748, 0.1226]. The directional test supports a positive association, while attainment of
+the practical-effect threshold of 0.10 remains uncertain. Eleven of twelve families meeting
+all conditions supports broad but non-universal association; the preregistered all-family
+omnibus remains `NOT_SUPPORTED`.
 
 ### 6.4 Implications for evaluating internal ViT explanations
 
 An internal explanation may possess some of the following properties without possessing all of
-them: complete target coverage, structurally closed accounting, locally correct derivatives,
+them: complete registered-target coverage, structurally closed accounting, locally correct derivatives,
 prediction of whole-component finite effects, and spatial selection beyond strong baselines. Each
 property requires a corresponding test. In particular, display resolution describes coordinate
 granularity, not the amount of additional intervention-relevant information. Evaluation should
@@ -553,9 +605,10 @@ cross-image claims use raw signed tensors, component summaries, and finite-inter
 NNS-ViT Endpoint Scanner adapts the endpoint-propagation principle of NNS to Vision Transformers,
 associates registered internal targets with a common input-coordinate map, and uses complete edge
 cuts to reconcile attention and residual structure. Experiments on two models and 400 images
-support complete scanning, structural closure, and local differential correctness. Under matched
+support registry-complete scanning, structural closure, and local differential correctness. Under matched
 activation replacement, Endpoint component mass met every confirmatory condition in 11 of 12
-families; RQ3 is supported overall with one registered boundary exception at 0.099565. Spatially
+families, supporting broad but non-universal association; the all-family omnibus remains
+`NOT_SUPPORTED`. Spatially
 targeted interventions did not show joint gain over four mandatory baselines, and regional Taylor
 was stronger in all four families. Component-level structural explanation and local-region
 selection should therefore be treated as distinct uses requiring distinct validation.

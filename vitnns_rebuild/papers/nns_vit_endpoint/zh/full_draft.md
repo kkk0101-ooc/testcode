@@ -21,9 +21,9 @@ $L_s^{\mathrm{Endpoint}}(x)=x\odot\nabla_xs(x)$，并以完整计算边切面把
 DeiT-S/16。注册扫描完成 800/800 个图像—模型任务和 336,800 个有限目标值；结构验证
 通过 76,800 个正向闭合检查，拒绝 28,800 个遗漏或重复记账负例，并通过 6,144 个
 condition-scaled analytic JVP 检查。对于匹配 activation replacement，12 个预注册
-family 中有 11 个达到相关、方向、精度和多重检验条件。唯一例外的中位 Spearman
-相关为 0.099565，比预设 0.10 阈值低 0.000435；因此 RQ3 的科学综合结论为整体支持且
-存在一个注册边界例外，而要求 12/12 的冻结 omnibus 字段仍为 `NOT_SUPPORTED`。在
+family 中有 11 个达到全部 family-level 条件。RQ3 呈现广泛但非普遍的成分级关联，
+预注册 all-family omnibus 为 `NOT_SUPPORTED`。未通过 family 的相关仍显著为正，
+但其置信区间跨越 0.10，不能确认达到预设实际效应水平。在
 空间定向干预中，0/4 family 同时优于 total G×I、raw gradient、regional Taylor 和
 随机区域；regional Taylor 在四个 family 中均取得更高的中位效果。结果表明，Endpoint
 结构成分可以预测成分级有限效应，但这种能力不自动意味着其像素分布是更优的局部区域
@@ -73,7 +73,7 @@ normalized-input 坐标原点以及 LayerNorm、GELU、softmax attention、MLP �
 上完成 336,800 个目标评价。第三，我们定义完整 edge cuts，把 head、attention differential
 paths 和两处 residual 分支映回同一输入坐标并重构注册对象。第四，我们用闭合负例、解析
 JVP、匹配 activation replacement 和空间定向干预分别评价 correctness 与 utility。第五，
-我们给出两类互补的经验结论：成分级有限效应预测整体成立并保留一个边界例外，而完整
+我们给出两类互补的经验结论：成分级有限效应关联呈现广泛但非普遍的 family-level 支持，而完整
 输入分辨空间排序没有超过强局部 Taylor 基线。
 
 ## 2. 相关工作
@@ -292,6 +292,29 @@ SHA-256 绑定。
 | Normalization mean | [0.5, 0.5, 0.5] | [0.485, 0.456, 0.406] |
 | Normalization std | [0.5, 0.5, 0.5] | [0.229, 0.224, 0.225] |
 
+**Table 6. 原 registry 的实际覆盖率。** B=12，T=197（CLS + 196 patches），D=768/384，head width=64。候选总体按表中对象定义；module aggregate 总体固定为 blocks 0/5/11 的六个模块，每层四个 D 宽度模块和两个 4D 宽度模块。
+
+| Model | Object | Candidate definition | Candidates | Registered/image | Coverage | Strategy | Scalar neuron |
+|---|---|---|---:|---:|---:|---|---|
+| vit_b16 | post-block token-channel | 12*197*D | 1,815,552 | 192 | 0.01058% | 12 blocks x 4 tokens x 4 channels | yes |
+| vit_b16 | post-block patch sum/energy | 2*12*D | 18,432 | 96 | 0.52083% | 12 blocks x 4 channels x 2 aggregates | no |
+| vit_b16 | attention-head coordinate | 12*H*197*64 | 1,815,552 | 144 | 0.00793% | all heads; CLS token; within-head channel 0 | yes |
+| vit_b16 | module patch aggregate | 3*(4D+2*4D) | 27,648 | 18 | 0.06510% | blocks 0/5/11; six modules; channel 0 | no |
+| vit_b16 | patch embedding aggregate | D | 768 | 4 | 0.52083% | four fixed channels; sum over patches | no |
+| vit_b16 | final CLS coordinate | D | 768 | 1 | 0.13021% | channel 0 | yes |
+| vit_b16 | ground-truth logit | 1000 | 1,000 | 1 | 0.10000% | frozen image label | output |
+| vit_b16 | clean-top1 logit | 1000 | 1,000 | 1 | 0.10000% | frozen clean prediction | output |
+| deit_s16 | post-block token-channel | 12*197*D | 907,776 | 192 | 0.02115% | 12 blocks x 4 tokens x 4 channels | yes |
+| deit_s16 | post-block patch sum/energy | 2*12*D | 9,216 | 96 | 1.04167% | 12 blocks x 4 channels x 2 aggregates | no |
+| deit_s16 | attention-head coordinate | 12*H*197*64 | 907,776 | 72 | 0.00793% | all heads; CLS token; within-head channel 0 | yes |
+| deit_s16 | module patch aggregate | 3*(4D+2*4D) | 13,824 | 18 | 0.13021% | blocks 0/5/11; six modules; channel 0 | no |
+| deit_s16 | patch embedding aggregate | D | 384 | 4 | 1.04167% | four fixed channels; sum over patches | no |
+| deit_s16 | final CLS coordinate | D | 384 | 1 | 0.26042% | channel 0 | yes |
+| deit_s16 | ground-truth logit | 1000 | 1,000 | 1 | 0.10000% | frozen image label | output |
+| deit_s16 | clean-top1 logit | 1000 | 1,000 | 1 | 0.10000% | frozen clean prediction | output |
+
+“完整扫描”仅指 registry-complete，即所有预注册条目均执行；post-block 坐标只覆盖 0.01058%/0.02115%，并非全部 ViT 神经元。head coordinate 是 CLS 的单一 head-channel 坐标，不代表该 head 全部 token-channel 坐标。ground-truth 与 clean-top1 是两个注册条目，在预测正确时对应相同 logit；条目数不等于不同标量函数数。Endpoint 是 normalized-input Gradient × Input；结构记账分解局部 Jacobian，不是函数值的因果分解。
+
 ### 4.2 确认性统计
 
 统计计划在读取 evaluation outcomes 前冻结 16 个 family 和 28 个 test IDs。C4a 由
@@ -377,7 +400,7 @@ finite replacement 评价。
 | Condition-scaled analytic JVP | 6,144 | 全部通过 | absolute = 2.64808e-05 |
 | JVP condition-scaled ratio | 6,144 | 全部通过 | 6.94876e-06 |
 
-### 5.4 RQ3：结构成分整体上预测匹配的有限 activation effect
+### 5.4 RQ3：广泛但非普遍的成分级有限效应关联
 
 RQ3 比较每图的 Endpoint component absolute mass $m_k$ 与同一成分有限 replacement
 effect 的绝对值 $|e_k|$。12 个预注册 family 中，11 个满足点估计至少 0.10、正方向、
@@ -388,15 +411,12 @@ Holm 显著、覆盖和 CI 精度的全部条件（Figure 20）。各 family 中
 
 唯一未达到全部条件的是 ViT-B/16 × normalized-zero × routing/value。其点估计为
 0.09956521739130435，95% CI 为 [0.07478260869565218, 0.12260869565217392]，Holm
-校正 $p=3.0036026037128944\times10^{-14}$。相关方向为正且通过多重检验，但点估计比
-预设实际效应阈值 0.10 低 0.000435（Figure 21）。我们据此将 RQ3 解释为
-**整体支持，并存在一个注册边界例外**。同时，冻结的 family 状态和要求 12/12 的 omnibus
-C4a 字段继续为 `NOT_SUPPORTED`；阈值没有移动，该数值也没有四舍五入成通过。
+校正 $p=3.0036026037128944\times10^{-14}$。该点估计接近预注册的 0.10 门槛，
+但其置信区间覆盖门槛上下，不能确认达到预设实际效应水平（Figure 21）。
 
-这一双层报告分别回答两个问题：严格机器字段说明预注册的 all-family 规则未被完全满足；
-科学综合说明 11/12 个跨模型、reference 和成分族的结果满足所有条件，剩余 family 也呈
-正向且统计可辨的关联。C4a 只检验 Endpoint mass 对有限效应的排序关系，不检验其是否
-优于 activation-space Taylor 或其他 predictor。
+**RQ3 在 family level 上表现出广泛但非普遍的支持，而预注册的 all-family omnibus
+标准未得到支持。** C4a 保持 `NOT_SUPPORTED`。11/12 family 满足全部条件，未通过
+family 的相关仍显著为正；原 C4a 检验绝对排序关联，基线增量由补充 M1 单独评价。
 
 **Table 4. RQ3 的 12 个 C4a family。** 每项 $n=400$；$p$ 为全 28 项 Holm 校正值。
 
@@ -440,6 +460,34 @@ Regional Taylor 在全部四个 family 中得到更高的中位效果。Endpoint
 | DeiT-S/16 | normalized-zero | −0.0018 | −0.0006 | −0.0299 | 0.0107 | NOT_SUPPORTED |
 | DeiT-S/16 | blur | 0.0002 | −0.0002 | −0.0356 | 0.0085 | NOT_SUPPORTED |
 
+
+
+<!-- M1_SUPPLEMENT_START -->
+### 5.6 M1：强基线与分层排序（补充冻结实验）
+
+M1在原研究之后冻结，采用同一400图、两模型、12层、两种reference和ground-truth logit。
+七种predictor共享成分定义：Endpoint mass、activation norm、gradient norm、absolute
+activation×gradient、displacement norm、absolute activation-space Taylor和random。
+head、routing、value/V、Q、K及两类residual均覆盖400图，value/V为同一edge别名。
+每集合1,000次random permutation，共128,000,000次；image bootstrap为10,000次、95% CI。
+主Spearman配对检验统一Holm，median rho>0与>0.10分别检验。
+
+**Table 7. M1同层head排序。** 每图先平均12层指标，再对400图取中位数。
+
+| Model | Reference | Endpoint rho | Taylor rho | Endpoint Capture@1 | Taylor Capture@1 | Endpoint Capture@3 | Taylor Capture@3 | Endpoint Regret@1 | Taylor Regret@1 |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| vit_b16 | normalized_zero | 0.2815 | 0.6742 | 0.5174 | 0.8038 | 0.6149 | 0.8567 | 0.1701 | 0.0571 |
+| vit_b16 | blur_rgb | 0.2727 | 0.6856 | 0.5075 | 0.8203 | 0.6185 | 0.8659 | 0.1163 | 0.0346 |
+| deit_s16 | normalized_zero | 0.1952 | 0.6095 | 0.5609 | 0.8028 | 0.7122 | 0.8894 | 0.2381 | 0.0860 |
+| deit_s16 | blur_rgb | 0.1476 | 0.6238 | 0.5506 | 0.8426 | 0.7105 | 0.8970 | 0.1326 | 0.0443 |
+
+Taylor在四个组合中均取得更高Spearman和Capture、更低Regret。跨层residual identity的
+Endpoint−Taylor Spearman配对中位差为0.0865–0.4209，均通过统一Holm；对应Capture@1
+差值中位数均为0。增量价值依赖成分与指标。QKV三项和residual两项使用pairwise/top1，
+Spearman记为NA。pooled先合并同图像两模型，仅为描述性补充。完整分层表、CI、随机提升
+与复算来源见docs/endpoint_m1_results_20260918.md及M1结果根。原C4a保持NOT_SUPPORTED。
+<!-- M1_SUPPLEMENT_END -->
+
 ## 6. 讨论
 
 ### 6.1 Identity、Correctness 与 Utility 是三种不同结论
@@ -465,15 +513,14 @@ regional Taylor 优势支持这一任务层面的解释。当前实验不进一�
 
 ### 6.3 如何解释 RQ3 的边界 family
 
-ViT-B/16 normalized-zero routing/value family 的 0.099565 是一个可定位的边界结果。它
-通过方向和 Holm 检验，但没有达到冻结的 0.10 实际效应阈值，因此 family 状态必须保持
-`NOT_SUPPORTED`。与此同时，差值只有 0.000435，且其余 11 个 family 满足全部条件，
-所以把整个 RQ3 简化为“失败”会丢失跨 family 的主要经验模式。本文在结果中同时保留
-严格字段和科学综合，不为这个单一例外提出未经检验的架构或 reference 机制。
+ViT-B/16 normalized-zero routing/value family 的点估计为 0.099565，95% CI
+为 [0.0748, 0.1226]。方向检验支持正相关，实际效应是否达到 0.10 仍不确定。
+11/12 family 满足全部条件支持广泛但非普遍的关联；预注册 all-family omnibus
+保持 `NOT_SUPPORTED`。
 
 ### 6.4 对 ViT 内部解释评价的启示
 
-本研究显示，一种内部解释可以同时具备以下部分属性而缺少另一些属性：目标覆盖完整、
+本研究显示，一种内部解释可以同时具备以下部分属性而缺少另一些属性：注册目标覆盖完整、
 结构记账闭合、局部方向正确、成分级有限效应可预测、空间区域选择优于强基线。这些属性
 需要各自的测试。特别是，可视化分辨率描述图像的坐标粒度，不等于其中包含额外可用的
 干预信息。解释方法的评价应与使用目的对应：若任务是筛选结构成分，RQ3 的结果更直接；
@@ -497,9 +544,10 @@ Endpoint–Path fidelity、stability 或成本—质量比较。该数值失败�
 
 NNS-ViT Endpoint Scanner 把原始 NNS 的终点传播原则适配到 Vision Transformer，为
 注册内部目标提供统一的输入坐标图，并通过完整 edge cuts 对 attention 与 residual 结构进行
-可核对分解。两个模型和 400 张图的实验支持其扫描完整性、结构闭合与局部微分正确性。
+可核对分解。两个模型和 400 张图的实验支持其注册扫描完整性、结构闭合与局部微分正确性。
 匹配 activation replacement 进一步表明，Endpoint 成分质量在 12 个 family 中有 11 个
-满足全部确认性条件，RQ3 整体得到支持并保留一个 0.099565 的注册边界例外。空间定向
+满足全部 family-level 条件，支持广泛但非普遍的关联；all-family omnibus 保持
+`NOT_SUPPORTED`。空间定向
 实验没有发现相对四个 mandatory baselines 的联合增益，regional Taylor 在四个 family 中
 均更强。由此，结构成分级解释和空间区域选择应被视为两个需要分别验证的用途。
 

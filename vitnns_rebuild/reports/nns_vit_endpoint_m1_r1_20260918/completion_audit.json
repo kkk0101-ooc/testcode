@@ -1,0 +1,350 @@
+{
+  "objective": "Execute Stage M M1 completely; stop before M2",
+  "status": "PASS",
+  "requirements": [
+    {
+      "requirement": "M1 prerequisite: original E3/E6 source-recomputed PASS",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/predecessor_validation.json",
+          "sha256": "49a4e988aa53780b42e413ecc047e1b0c548aa45c4dfd5935bdb199f46be74fc",
+          "bytes": 770
+        }
+      ],
+      "evidence": "E3: 9,600 block evaluations and 384 raw blocks rechecked; E6: 1,600 image rows/16 families/28 tests recomputed"
+    },
+    {
+      "requirement": "Supplementary freeze; primary NOT_SUPPORTED preserved",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "config/nns_vit_endpoint/endpoint_m1.json",
+          "sha256": "a8f192d4aa5f920c1789a048b68564434b4329b19ebb0d578c2566a4227a00c6",
+          "bytes": 4476
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/freeze.json",
+          "sha256": "9c827ad96db1649077efca212d0b8bab65139f8eb64b83a0f79e802be9f63c5f",
+          "bytes": 935
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/analysis_freeze.json",
+          "sha256": "11e3662939124ec0e8ef12181a65da931e33905f5b4810b5221ddd92bb17599f",
+          "bytes": 473
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/startup.json",
+          "sha256": "0f2eff98d469422656c8b51c30c8da90e46cbe948eeec7b8c14b11aeabfd2a56",
+          "bytes": 2314
+        }
+      ],
+      "evidence": "Acquisition producer published before formal access; analysis implementation committed before metrics; primary and supplementary labels separate"
+    },
+    {
+      "requirement": "2.1 RQ3a and RQ3b separate",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "docs/endpoint_m1_results_20260918.md",
+          "sha256": "281573f7465dd98cb156615e6f7823ae230cae83622a52a23d0af8c00a00aef6",
+          "bytes": 17760
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/absolute_spearman_tests.json",
+          "sha256": "88792e573422bbb4a7f1ba3fa2f99a05ffdca8fa21c3541a7e5b6b5d2600b3b8",
+          "bytes": 203357
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/paired_spearman_tests.json",
+          "sha256": "cc509442978986961ffb2404f298e53ca0b09dadc4e4b6392465c4c899cdf538",
+          "bytes": 686469
+        }
+      ],
+      "evidence": "672 absolute tests and 2,016 paired baseline tests; no utility-positive requirement for execution completion"
+    },
+    {
+      "requirement": "2.2 same component/target/reference; absolute effect and mass",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/task_manifest.json",
+          "sha256": "0aca0376c728b8b69701b4289ea36fdfdd61bc6ec39e5d37457a39b9e6328801",
+          "bytes": 1331810
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/task_validation.json",
+          "sha256": "85e393c99867a9e89fffab9726870591a42615d9e13500f40085cb1a877db3bb",
+          "bytes": 215262
+        }
+      ],
+      "evidence": "800 tasks; 326,400 unique component-reference conditions; effect=clean-replacement, absolute effect verified; mean mass=m/150528"
+    },
+    {
+      "requirement": "2.3 all six baselines and fixed 1,000 random rankings per comparison",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/metrics_manifest.json",
+          "sha256": "33dee264c73b2f544af5b9d7db6bc7b5d2c8094a8197e2dfb138ea5b892d2d85",
+          "bytes": 115259
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/task_validation.json",
+          "sha256": "85e393c99867a9e89fffab9726870591a42615d9e13500f40085cb1a877db3bb",
+          "bytes": 215262
+        }
+      ],
+      "evidence": "128,000 original sets x 1,000 permutations; exhaustive regeneration includes seeds, distributions and Capture lift"
+    },
+    {
+      "requirement": "2.4 Spearman, Capture@1/@3, Regret@1 plus NDCG/pairwise/top1",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/task_validation.json",
+          "sha256": "85e393c99867a9e89fffab9726870591a42615d9e13500f40085cb1a877db3bb",
+          "bytes": 215262
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/all_summary.csv",
+          "sha256": "0c109dcca4fa7fb502a33eb371e9473d4d9c90a0471b2fe8b9cdfeff85d77391",
+          "bytes": 3366319
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/all_paired_comparisons.csv",
+          "sha256": "6a78bd48b0adb16243c98d28f9f6792b45b8927f86136df113749a66f75d9bf8",
+          "bytes": 1866696
+        }
+      ],
+      "evidence": "All seven metrics regenerated; independent reference formula verifies 256,000 Endpoint/Taylor sets"
+    },
+    {
+      "requirement": "2.5A all-head within-block ranking: ViT12/DeiT6",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/task_validation.json",
+          "sha256": "85e393c99867a9e89fffab9726870591a42615d9e13500f40085cb1a877db3bb",
+          "bytes": 215262
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/m1_head_ranking.png",
+          "sha256": "b85995ff8536dd7009b312f4d46e519c7c6322d1b0348d2a7da27b64f4214ed7",
+          "bytes": 314273
+        }
+      ],
+      "evidence": "Exact component IDs per block/model/image; all 12 block strata and image-level within-block mean"
+    },
+    {
+      "requirement": "2.5B/C across-block and early0-3/middle4-7/late8-11",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/all_summary.csv",
+          "sha256": "0c109dcca4fa7fb502a33eb371e9473d4d9c90a0471b2fe8b9cdfeff85d77391",
+          "bytes": 3366319
+        },
+        {
+          "path": "docs/endpoint_m1_results_20260918.md",
+          "sha256": "281573f7465dd98cb156615e6f7823ae230cae83622a52a23d0af8c00a00aef6",
+          "bytes": 17760
+        }
+      ],
+      "evidence": "Separate raw comparison sets, model-level tables and paired tests"
+    },
+    {
+      "requirement": "2.5D model-specific and pooled descriptive",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/inference_validation.json",
+          "sha256": "84d643b8c3deed0e3a1778ee0143fc0878889f934f51d2519f7d0bfc9033bf67",
+          "bytes": 77
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/summary.json.gz",
+          "sha256": "8c598984db98341164a51ad4cb5bfc52d42c7a25eecaea3daedea70f50853e12",
+          "bytes": 515216
+        }
+      ],
+      "evidence": "400 identical image IDs per model; pooled averages matched images before statistics"
+    },
+    {
+      "requirement": "2.5E all eight named families and small-set handling",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/task_validation.json",
+          "sha256": "85e393c99867a9e89fffab9726870591a42615d9e13500f40085cb1a877db3bb",
+          "bytes": 215262
+        },
+        {
+          "path": "docs/endpoint_m1_execution_20260918.md",
+          "sha256": "9b85e2d48dfd028dfa53ba5bf76b162de67e772669353660dedbda70cdebfec6",
+          "bytes": 4308
+        }
+      ],
+      "evidence": "head/routing/value/Q/K/V/residual identity/residual branch; value/V aliases disclosed; n<4 rho NA with pairwise/top1 retained"
+    },
+    {
+      "requirement": "2.6 image medians, 10,000 bootstrap, paired sign and Holm",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/inference_validation.json",
+          "sha256": "84d643b8c3deed0e3a1778ee0143fc0878889f934f51d2519f7d0bfc9033bf67",
+          "bytes": 77
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/test_results.json",
+          "sha256": "7d607939ff7c095531e594753b22d607faa55b57de6fc81b6bf7483d3cef0b49",
+          "bytes": 350
+        }
+      ],
+      "evidence": "504 groups, 24,696 summaries and 14,112 paired differences checked; sign p verified with scipy binomtest; Holm independently recomputed"
+    },
+    {
+      "requirement": "2.6 tests above zero versus above0.10 distinguished",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/absolute_spearman_tests.json",
+          "sha256": "88792e573422bbb4a7f1ba3fa2f99a05ffdca8fa21c3541a7e5b6b5d2600b3b8",
+          "bytes": 203357
+        },
+        {
+          "path": "docs/endpoint_m1_results_20260918.md",
+          "sha256": "281573f7465dd98cb156615e6f7823ae230cae83622a52a23d0af8c00a00aef6",
+          "bytes": 17760
+        }
+      ],
+      "evidence": "Separate one-sided null thresholds and Holm-adjusted decisions reported"
+    },
+    {
+      "requirement": "10.3 observed Endpoint>Taylor: tensor, reference, gradient and layer checks",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/taylor_implementation_diagnostic.json",
+          "sha256": "0bdf1bcd166117b238e3b5da34a28c1ba6f6a68c59bb35f9d952cb8d2810a857",
+          "bytes": 41614
+        },
+        {
+          "path": "docs/endpoint_m1_validation_amendment_20260918.md",
+          "sha256": "23f837866bdde17597d268a99937a3b0923cada639fa35deeeb9495c5d0ec445",
+          "bytes": 1157
+        }
+      ],
+      "evidence": "48 float64 displacement-direction checks; manual skip counterfactual; full per-task noops/E4 comparator parity; higher-order mechanisms not claimed"
+    },
+    {
+      "requirement": "9 and13 paper RQ3 rewritten;11/12;omnibus unchanged",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "papers/nns_vit_endpoint/zh/full_draft.md",
+          "sha256": "7b4633e2ee27423cb709853ee7e7de9339ca1a905453a3a94dbb3ac83fbc53da",
+          "bytes": 34257
+        },
+        {
+          "path": "papers/nns_vit_endpoint/en/full_draft.md",
+          "sha256": "bd48d87670665ec70894da31a1f78378a79d61f2ce25b0f0f40771d7c876669d",
+          "bytes": 38382
+        },
+        {
+          "path": "papers/nns_vit_endpoint/qc/endpoint_scanner_draft_validation_report_m1.json",
+          "sha256": "25725acd5e422c4ba1d8b64f813ab9300ac5e0ea0308eae2d23ce7b99684e1fe",
+          "bytes": 202
+        }
+      ],
+      "evidence": "Both drafts broad but non-universal; old overall-supported/gap wording removed; primary tables exact; all 293 checks pass"
+    },
+    {
+      "requirement": "5 and13 registry table with candidate denominators and complete scope",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/registry_coverage.json",
+          "sha256": "ea66dd141fd78a0800d7c86b0b2eff4dec8d6f69466b4521d551697fecc2bbf5",
+          "bytes": 4283
+        },
+        {
+          "path": "scripts/build_endpoint_m1_coverage.py",
+          "sha256": "bfb000b282b5adc653709b10fbe40ce6b6e1609908a36dbc8aba30db3f7c7a96",
+          "bytes": 4344
+        }
+      ],
+      "evidence": "16 coverage rows verified against candidate formulas and actual registry counts; registry-complete, normalized-input GxI and local Jacobian scope in both drafts"
+    },
+    {
+      "requirement": "Reproducibility and necessary tests",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/test_results.json",
+          "sha256": "7d607939ff7c095531e594753b22d607faa55b57de6fc81b6bf7483d3cef0b49",
+          "bytes": 350
+        },
+        {
+          "path": "scripts/validate_endpoint_m1.py",
+          "sha256": "d1b4feb25331be9b5dc1e8170f459b0c11d59bc775748169894c928a2d022273",
+          "bytes": 11739
+        },
+        {
+          "path": "tests/test_endpoint_m1.py",
+          "sha256": "c6e22203fcd3563ef6605f1a542084d798352666a2efb289eb75d3776ea21d3e",
+          "bytes": 2428
+        },
+        {
+          "path": "tests/test_endpoint_m1_statistics.py",
+          "sha256": "d67316b6296121e13338626af5733a535166c59f4556796e3502253cb7b93601",
+          "bytes": 1712
+        }
+      ],
+      "evidence": "6 focused tests passed; exhaustive source/metrics/random/inference audit passed; signed effects retained separately"
+    },
+    {
+      "requirement": "Writing quality and numbered figure interpretation",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "papers/nns_vit_endpoint/qc/endpoint_m1_writing_audit.md",
+          "sha256": "590b6c1451db9d64e9be4caf4b92201eabcfa3ec869e25e3da83c83afb01459d",
+          "bytes": 2684
+        },
+        {
+          "path": "papers/nns_vit_endpoint/notes/endpoint_m1_evidence_matrix.md",
+          "sha256": "ca073f46b04d9dfbcffc96947b67ef83c6f79211c2193e9bdda68c7ee9dbce51",
+          "bytes": 1743
+        },
+        {
+          "path": "docs/endpoint_m1_results_20260918.md",
+          "sha256": "281573f7465dd98cb156615e6f7823ae230cae83622a52a23d0af8c00a00aef6",
+          "bytes": 17760
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/m1_head_ranking.png",
+          "sha256": "b85995ff8536dd7009b312f4d46e519c7c6322d1b0348d2a7da27b64f4214ed7",
+          "bytes": 314273
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m1_r1_20260918/m1_head_ranking.pdf",
+          "sha256": "595e1196c11ed047869462b89e164e164548590a37ff4a29723eb9d221f3e9a2",
+          "bytes": 27040
+        }
+      ],
+      "evidence": "Image #1 inspected for axes, legend and visible CI; no sealed original figure edited"
+    }
+  ],
+  "requirement_count": 17,
+  "missing": [],
+  "unverified": [],
+  "scope_not_applicable": [
+    "M2 spatial budgets",
+    "M3 token/channel samples",
+    "M4-M6 experiments",
+    "optional calibration/intervention curves and mixed-effects model"
+  ],
+  "current_head": "fc2dbed7cf3b7397e66ca78dd389344b2e619bfb"
+}

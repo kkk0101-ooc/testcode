@@ -4,6 +4,7 @@
 import hashlib
 import json
 import re
+import gzip
 from pathlib import Path
 
 
@@ -11,7 +12,7 @@ PAPER = Path(__file__).resolve().parents[1]
 REPO = Path(__file__).resolve().parents[3]
 ZH = PAPER / "zh/full_draft.md"
 EN = PAPER / "en/full_draft.md"
-OUT = PAPER / "qc/endpoint_scanner_draft_validation_report_r1.json"
+OUT = PAPER / "qc/endpoint_scanner_draft_validation_report_m1.json"
 
 
 def load_json(relative: str):
@@ -55,7 +56,7 @@ check("balanced_display_math:en", en.count("$$") % 2 == 0, str(en.count("$$")))
 check("no_literal_patch_escape:zh", "\\n+" not in zh)
 check("no_literal_patch_escape:en", "\\n+" not in en)
 
-for table in range(1, 6):
+for table in range(1, 8):
     check(f"table:{table}:zh", f"**Table {table}." in zh)
     check(f"table:{table}:en", f"**Table {table}." in en)
 
@@ -121,14 +122,41 @@ for family in c4b:
 for language, text in (("zh", zh), ("en", en)):
     for value in (
         "336,800", "76,800", "28,800", "6,144", "0.09956521739130435",
-        "0.000435", "1,752.71", "1.9475", "192.16", "9.290",
+        "1,752.71", "1.9475", "192.16", "9.290",
     ):
         check(f"headline:{language}:{value}", value in text)
     check(f"rq3_omnibus:{language}", "C4a" in text and "NOT_SUPPORTED" in text)
     check(f"rq4:{language}", "RQ4" in text and "NOT_SUPPORTED" in text)
 
-check("rq3_synthesis:zh", "整体支持，并存在一个注册边界例外" in zh)
-check("rq3_synthesis:en", "supported overall with one registered boundary exception" in en)
+check("rq3_synthesis:zh", "广泛但非普遍" in zh and "整体支持" not in zh)
+check("rq3_synthesis:en", "broad but non-universal" in en and "supported overall" not in en)
+check("m1_separate:zh", "补充冻结实验" in zh and "128,000,000" in zh)
+check("m1_separate:en", "supplementary frozen study" in en and "128,000,000" in en)
+check("registry_coverage:zh", "registry-complete" in zh and "0.01058%" in zh)
+check("registry_coverage:en", "registry-complete" in en and "0.01058%" in en)
+check("no_threshold_gap_excuse", "0.000435" not in zh and "0.000435" not in en)
+
+m1_root = REPO / 'reports/nns_vit_endpoint_m1_r1_20260918'
+with gzip.open(m1_root / 'summary.json.gz', 'rt') as stream:
+    m1_summary = json.load(stream)
+m1_index = {(r['model'], r['reference'], r['family'], r['stratum'],
+             r['predictor'], r['metric']): r for r in m1_summary}
+for model in ('vit_b16', 'deit_s16'):
+    for reference in ('normalized_zero', 'blur_rgb'):
+        values = [m1_index[model, reference, 'head', 'within_block_mean', predictor, metric]['median']
+                  for metric in ('spearman', 'capture_at_1', 'capture_at_3', 'regret_at_1')
+                  for predictor in ('endpoint', 'taylor')]
+        row = '| ' + model + ' | ' + reference + ' | ' + ' | '.join(f'{v:.4f}' for v in values) + ' |'
+        check('m1_table7:' + model + ':' + reference, row in zh and row in en, row)
+coverage = json.loads((m1_root / 'registry_coverage.json').read_text())
+registry = load_json('manifests/nns_vit_endpoint/ep0_r1_20260918/target_registry.json')
+for model in ('vit_b16', 'deit_s16'):
+    check('registry_total:' + model, sum(r['registered'] for r in coverage if r['model'] == model)
+          == len(registry['targets_by_model'][model]))
+for r in coverage:
+    row = (f"| {r['model']} | {r['object']} | {r['population_formula']} | {r['population']:,} | "
+           f"{r['registered']} | {100*r['coverage']:.5f}% | {r['strategy']} | {r['scalar_neuron']} |")
+    check('registry_row:' + r['model'] + ':' + r['object'], row in zh and row in en)
 
 manifest = load_json("papers/nns_vit_endpoint/figure_manifest.json")
 check("figures:count", manifest.get("figure_count") == 28)

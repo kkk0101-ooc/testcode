@@ -1,0 +1,162 @@
+[
+  {
+    "model": "vit_b16",
+    "object": "post-block token-channel",
+    "population_formula": "12*197*D",
+    "population": 1815552,
+    "registered": 192,
+    "coverage": 0.00010575296108291032,
+    "strategy": "12 blocks x 4 tokens x 4 channels",
+    "scalar_neuron": "yes"
+  },
+  {
+    "model": "vit_b16",
+    "object": "post-block patch sum/energy",
+    "population_formula": "2*12*D",
+    "population": 18432,
+    "registered": 96,
+    "coverage": 0.005208333333333333,
+    "strategy": "12 blocks x 4 channels x 2 aggregates",
+    "scalar_neuron": "no"
+  },
+  {
+    "model": "vit_b16",
+    "object": "attention-head coordinate",
+    "population_formula": "12*H*197*64",
+    "population": 1815552,
+    "registered": 144,
+    "coverage": 7.931472081218273e-05,
+    "strategy": "all heads; CLS token; within-head channel 0",
+    "scalar_neuron": "yes"
+  },
+  {
+    "model": "vit_b16",
+    "object": "module patch aggregate",
+    "population_formula": "3*(4D+2*4D)",
+    "population": 27648,
+    "registered": 18,
+    "coverage": 0.0006510416666666666,
+    "strategy": "blocks 0/5/11; six modules; channel 0",
+    "scalar_neuron": "no"
+  },
+  {
+    "model": "vit_b16",
+    "object": "patch embedding aggregate",
+    "population_formula": "D",
+    "population": 768,
+    "registered": 4,
+    "coverage": 0.005208333333333333,
+    "strategy": "four fixed channels; sum over patches",
+    "scalar_neuron": "no"
+  },
+  {
+    "model": "vit_b16",
+    "object": "final CLS coordinate",
+    "population_formula": "D",
+    "population": 768,
+    "registered": 1,
+    "coverage": 0.0013020833333333333,
+    "strategy": "channel 0",
+    "scalar_neuron": "yes"
+  },
+  {
+    "model": "vit_b16",
+    "object": "ground-truth logit",
+    "population_formula": "1000",
+    "population": 1000,
+    "registered": 1,
+    "coverage": 0.001,
+    "strategy": "frozen image label",
+    "scalar_neuron": "output"
+  },
+  {
+    "model": "vit_b16",
+    "object": "clean-top1 logit",
+    "population_formula": "1000",
+    "population": 1000,
+    "registered": 1,
+    "coverage": 0.001,
+    "strategy": "frozen clean prediction",
+    "scalar_neuron": "output"
+  },
+  {
+    "model": "deit_s16",
+    "object": "post-block token-channel",
+    "population_formula": "12*197*D",
+    "population": 907776,
+    "registered": 192,
+    "coverage": 0.00021150592216582064,
+    "strategy": "12 blocks x 4 tokens x 4 channels",
+    "scalar_neuron": "yes"
+  },
+  {
+    "model": "deit_s16",
+    "object": "post-block patch sum/energy",
+    "population_formula": "2*12*D",
+    "population": 9216,
+    "registered": 96,
+    "coverage": 0.010416666666666666,
+    "strategy": "12 blocks x 4 channels x 2 aggregates",
+    "scalar_neuron": "no"
+  },
+  {
+    "model": "deit_s16",
+    "object": "attention-head coordinate",
+    "population_formula": "12*H*197*64",
+    "population": 907776,
+    "registered": 72,
+    "coverage": 7.931472081218273e-05,
+    "strategy": "all heads; CLS token; within-head channel 0",
+    "scalar_neuron": "yes"
+  },
+  {
+    "model": "deit_s16",
+    "object": "module patch aggregate",
+    "population_formula": "3*(4D+2*4D)",
+    "population": 13824,
+    "registered": 18,
+    "coverage": 0.0013020833333333333,
+    "strategy": "blocks 0/5/11; six modules; channel 0",
+    "scalar_neuron": "no"
+  },
+  {
+    "model": "deit_s16",
+    "object": "patch embedding aggregate",
+    "population_formula": "D",
+    "population": 384,
+    "registered": 4,
+    "coverage": 0.010416666666666666,
+    "strategy": "four fixed channels; sum over patches",
+    "scalar_neuron": "no"
+  },
+  {
+    "model": "deit_s16",
+    "object": "final CLS coordinate",
+    "population_formula": "D",
+    "population": 384,
+    "registered": 1,
+    "coverage": 0.0026041666666666665,
+    "strategy": "channel 0",
+    "scalar_neuron": "yes"
+  },
+  {
+    "model": "deit_s16",
+    "object": "ground-truth logit",
+    "population_formula": "1000",
+    "population": 1000,
+    "registered": 1,
+    "coverage": 0.001,
+    "strategy": "frozen image label",
+    "scalar_neuron": "output"
+  },
+  {
+    "model": "deit_s16",
+    "object": "clean-top1 logit",
+    "population_formula": "1000",
+    "population": 1000,
+    "registered": 1,
+    "coverage": 0.001,
+    "strategy": "frozen clean prediction",
+    "scalar_neuron": "output"
+  }
+]

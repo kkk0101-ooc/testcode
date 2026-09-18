@@ -13,9 +13,9 @@ a new statistical analysis.
 | P6 | 76,800 positive closures passed and 28,800 negative controls were rejected | `docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE3结果_20260918.md` | 16 | SUPPORTED_CORRECTNESS | Applies to registered cuts in two standard timm ViTs |
 | P7 | Maximum closure relative L2 was 1.4144569831842091e-05 | E3-R2 validation report | 16 | SUPPORTED_CORRECTNESS | Compared with frozen `rtol=1e-4` and elementwise tolerance |
 | P8 | 6,144 condition-scaled analytic JVP checks passed | `docs/NNS_ViT_Endpoint_Scanner_ENDPOINTE4恢复R3结果_20260918.md` | 18 | SUPPORTED_CORRECTNESS | Local differential check, not a finite-effect result |
-| P9 | Component absolute mass predicts matched finite replacement effects overall | E6-R3 `family_decisions.json` and R4 interpretation | 19–21 | OVERALL_SUPPORTED_WITH_ONE_REGISTERED_BOUNDARY_EXCEPTION | C4a does not compare Endpoint against Taylor |
+| P9 | Component absolute mass shows broad but non-universal association with finite replacement effects | E6-R3 `family_decisions.json` and R4 interpretation | 19–21 | BROAD_BUT_NON_UNIVERSAL_FAMILY_LEVEL_SUPPORT | C4a does not compare Endpoint against Taylor |
 | P10 | Eleven of twelve C4a families met every condition | E6-R3 `family_decisions.json` | 20 | SUPPORTED_11_OF_12 | Frozen all-family omnibus remains `NOT_SUPPORTED` |
-| P11 | The sole exception was ViT-B × normalized-zero × routing/value at 0.09956521739130435 | E6-R3 family and Holm reports | 21 | REGISTERED_BOUNDARY_EXCEPTION | 0.000435 below 0.10; do not round into a pass |
+| P11 | The sole exception was ViT-B × normalized-zero × routing/value at 0.09956521739130435 | E6-R3 family and Holm reports | 21 | REGISTERED_BOUNDARY_EXCEPTION | CI spans 0.10; practical threshold attainment remains uncertain |
 | P12 | The boundary family was positive and Holm-significant | E6-R3 Holm-adjusted p = 3.0036026037128944e-14 | 21 | SUPPORTED_DIRECTION_AND_MULTIPLICITY_ONLY | Practical-effect threshold still missed |
 | P13 | Full-resolution component maps did not produce registered spatial information gain | E6-R3 C4b family decisions | 23–27 | NOT_SUPPORTED | Scope is fixed block, heads, region pool, references, and effect metric |
 | P14 | Endpoint-minus-random medians were positive but only 0.001069–0.010689 | E6-R3 bootstrap report | 26–27 | BELOW_PRACTICAL_THRESHOLD | All are below the frozen 0.05 threshold |
@@ -29,7 +29,7 @@ a new statistical analysis.
 The paper-level conclusion is:
 
 ```text
-RQ3 was supported overall with one registered boundary exception.
+RQ3 showed broad but non-universal support at the family level, while the preregistered all-family omnibus criterion was not supported.
 ```
 
 The machine-auditable preregistered field is:
@@ -42,6 +42,9 @@ Both must be retained. The first synthesizes the 11/12 pattern. The second recor
 omnibus rule required 12/12 and was not changed after outcomes were known.
 
 ## Source roots
+
+Supplementary M1 and current Tables 6/7 are bound separately in
+`notes/endpoint_m1_evidence_matrix.md`. M1 does not revise original E6 decisions.
 
 - RQ1: `reports/nns_vit_endpoint_e2_atlas_r4_20260918/`
 - RQ2: `reports/nns_vit_endpoint_e3_closure_r2_20260918/`

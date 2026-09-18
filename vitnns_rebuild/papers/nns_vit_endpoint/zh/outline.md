@@ -52,7 +52,7 @@ $$
    回到同一输入坐标并重构注册对象。
 4. 用解析 JVP、匹配 activation replacement 和空间定向干预把 Identity、Correctness
    与 Utility 分开检验。
-5. 给出同时包含正结果和负结果的经验边界：RQ3 整体支持且有一个注册边界例外；
+5. 给出同时包含正结果和负结果的经验边界：RQ3 呈现广泛但非普遍的 family-level 支持；
    RQ4 不支持，regional Taylor 在全部四个 family 中更强。
 
 不能写成：
@@ -73,8 +73,8 @@ $$
    最终目标。
 3. 规模与正确性：两个模型、400 图、336,800 target evaluations；76,800 个正向闭合、
    28,800 个负例和 6,144 个 condition-scaled JVP checks。
-4. Utility：C4a 11/12 family 完全满足标准；唯一例外 0.099565，低于 0.10 达 0.000435；
-   RQ3 整体支持，但冻结 12/12 omnibus 字段仍为 `NOT_SUPPORTED`。
+4. Utility：C4a 11/12 family 完全满足标准；唯一例外 0.099565，其 CI 跨越 0.10；
+   RQ3 广泛但非普遍地支持关联，冻结 12/12 omnibus 字段仍为 `NOT_SUPPORTED`。
 5. 负结果与含义：C4b 0/4 family 同时胜过四个 mandatory baseline，regional Taylor
    全部更强，说明结构成分的全局排序效用不自动转化为空间区域选择增益。
 
@@ -282,8 +282,8 @@ RQ3 主统计量是每图 $\operatorname{Spearman}(m_k,|e_k|)$，按图像聚合
 - family 中位相关范围 0.099565–0.306320；
 - 唯一例外为 ViT-B × normalized-zero × routing/value：
   0.099565，95% CI [0.074783, 0.122609]，Holm $p=3.00\times10^{-14}$；
-- 它低于 0.10 达 0.000435，因此 family 和 12/12 omnibus 字段保持 `NOT_SUPPORTED`；
-- 论文解释为 `OVERALL_SUPPORTED_WITH_ONE_REGISTERED_BOUNDARY_EXCEPTION`。
+- 其置信区间跨越 0.10，因此 family 和 12/12 omnibus 字段保持 `NOT_SUPPORTED`；
+- 论文解释为 `BROAD_BUT_NON_UNIVERSAL_FAMILY_LEVEL_SUPPORT`。
 
 图：Figure 20（全 family）和 Figure 21（边界放大）。
 
@@ -387,4 +387,4 @@ RQ3 主统计量是每图 $\operatorname{Spearman}(m_k,|e_k|)$，按图像聚合
 2. 填写作者、单位、通讯作者、基金与利益冲突；
 3. 对 provisional bibliography 做最终 DOI、页码、大小写和 BibTeX 审计；
 4. 决定标题是否保留 `NNS-ViT` 品牌词；
-5. 在导师反馈后确定是否将 RQ3 的“整体支持”放入标题或只放摘要/结果。
+5. RQ3 使用“广泛但非普遍”，M1 与原确认性分析分开报告。

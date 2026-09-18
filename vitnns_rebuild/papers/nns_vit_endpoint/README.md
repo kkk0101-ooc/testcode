@@ -18,8 +18,13 @@ The frozen 28-figure binding is `figure_manifest.json`. The source package remai
 copied into this paper root.
 
 The paper-level RQ3 synthesis is
-`OVERALL_SUPPORTED_WITH_ONE_REGISTERED_BOUNDARY_EXCEPTION`. The frozen 12-of-12 omnibus C4a field
+`BROAD_BUT_NON_UNIVERSAL_FAMILY_LEVEL_SUPPORT`. The frozen 12-of-12 omnibus C4a field
 remains `NOT_SUPPORTED`. RQ4/C4b remains `NOT_SUPPORTED`.
+
+Supplementary M1 results are integrated in the current bilingual drafts (Tables 6 and 7).
+See `notes/endpoint_m1_evidence_matrix.md` and `docs/endpoint_m1_results_20260918.md`.
+Earlier release/interpretation files record their historical wording; the current drafts follow
+the Stage M broad-but-non-universal formulation.
 
 Run the independent draft check from the repository root:
 

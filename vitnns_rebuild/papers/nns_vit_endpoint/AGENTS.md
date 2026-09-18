@@ -14,8 +14,9 @@
   scalar target. Do not present the base formula as novel.
 - Separate Identity, Correctness, and Utility. Closure and JVP results do not establish finite
   intervention utility.
-- State RQ3 as overall supported with one registered boundary exception; retain the frozen omnibus
-  C4a `NOT_SUPPORTED` field.
+- Following Stage M, state RQ3 as broad but non-universal family-level support (11/12);
+  retain the frozen all-family omnibus C4a `NOT_SUPPORTED` field. Report supplementary M1
+  comparisons separately from the original confirmatory analysis.
 - Preserve RQ4/C4b `NOT_SUPPORTED` and the stronger registered regional-Taylor result.
 - Do not publish cross-model Endpoint–Path claims because ViT-B Path-IG calibration failed.
 
