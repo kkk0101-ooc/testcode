@@ -1,0 +1,147 @@
+{
+  "stage": "ENDPOINT-M1",
+  "status": "supplementary_frozen_after_primary_study",
+  "original_omnibus": "NOT_SUPPORTED",
+  "models": [
+    "vit_b16",
+    "deit_s16"
+  ],
+  "images_per_model": 400,
+  "blocks": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+  ],
+  "references": [
+    "normalized_zero",
+    "blur_rgb"
+  ],
+  "target": "frozen_ground_truth_logit",
+  "predictors": [
+    "endpoint",
+    "activation_norm",
+    "gradient_norm",
+    "activation_gradient",
+    "displacement_norm",
+    "taylor",
+    "random"
+  ],
+  "families": [
+    "head",
+    "routing",
+    "value",
+    "Q",
+    "K",
+    "V",
+    "residual_identity",
+    "residual_branch"
+  ],
+  "value_V_alias": "same value projection edge; report both names without counting as independent evidence",
+  "strata": {
+    "early": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "middle": [
+      4,
+      5,
+      6,
+      7
+    ],
+    "late": [
+      8,
+      9,
+      10,
+      11
+    ]
+  },
+  "metrics": [
+    "spearman",
+    "capture_at_1",
+    "capture_at_3",
+    "regret_at_1",
+    "ndcg",
+    "pairwise_accuracy",
+    "top1_accuracy"
+  ],
+  "random": {
+    "namespace": "ENDPOINT_M1_20260918_V1",
+    "seed": 20260918,
+    "permutations": 1000,
+    "report": [
+      "mean",
+      "std",
+      "q025",
+      "q500",
+      "q975",
+      "spearman_histogram_20bins"
+    ]
+  },
+  "statistics": {
+    "unit": "image",
+    "bootstrap_replicates": 10000,
+    "confidence_level": 0.95,
+    "summary": "median",
+    "paired_test": "exact_one_sided_sign_endpoint_minus_baseline",
+    "holm_scope": "all_model_reference_family_stratum_spearman_baseline_tests_one_family",
+    "absolute_thresholds": [
+      0,
+      0.1
+    ],
+    "absolute_holm_scope": "all_endpoint_spearman_groups_times_two_thresholds",
+    "small_sets": "n<4 spearman NA; pairwise and top1 accuracy",
+    "within_block_summary": "mean_of_block_metrics_per_image_before_inference",
+    "pooled": "paired_image_mean_across_models_descriptive_only",
+    "ties": "average_spearman_ranks; stable_component_id_topK; half_credit_pairwise_predictor_ties; outcome_ties_omitted",
+    "zero_denominator": "NA; no epsilon; report finite_image_count",
+    "exclusions": "no image exclusion; per_metric_undefined_values_NA; inference_invalid_if_any_image_missing"
+  },
+  "numeric": {
+    "atol": 0.0001,
+    "rtol": 0.0001,
+    "dtype": "float32",
+    "summary_dtype": "float64",
+    "input_coordinates": 150528
+  },
+  "supplemental_compute": {
+    "identity_edges": [
+      "identity1=u in r1=u+attention(norm1(u))",
+      "identity2=r1 in r2=r1+mlp(norm2(r1))"
+    ],
+    "identity_replacement": "replace skip only; sibling branch uses clean activation",
+    "QK": "reuse original first64; acquire remaining336",
+    "all_other_predictors": "reuse E4 exact per-component values",
+    "endpoint_mass": "reuse E3 sealed summaries for missing edges",
+    "references": "E4 exact resize248/crop224; blur raw RGB kernel31 sigma10; normalized zero",
+    "queue": "dynamic_atomic_sqlite_claims",
+    "gpus_max": 8,
+    "min_free_mib": 32768,
+    "max_utilization_percent": 10,
+    "CUBLAS_WORKSPACE_CONFIG": ":4096:8",
+    "tf32": false,
+    "autocast": false,
+    "deterministic_algorithms": true
+  },
+  "source_bindings": {
+    "docs/阶段M_endpointnnsvit.md": "631a03e00f9cdb3cfd2d63e2936b311c778728b2cf742482a841f698d5b18940",
+    "reports/nns_vit_endpoint_e6_release_r3_20260918/terminal_receipt.json": "50342a81e2acfa98e155671858d3fa675a7d8eca8868b94ab7890e9bd5287f9e",
+    "reports/nns_vit_endpoint_e6_release_r3_20260918/family_decisions.json": "f0e13af23e86ac7c9d11f20e8c90aec698429d8fc9e8bb5b1f2aae5b7d3a1a8d",
+    "reports/nns_vit_endpoint_e4_intervention_r3_20260918/combined_result_index.json": "9927efcb7e577a03f7d3a74ce873ec8ddb2a9377dbfb8b08de1c5bbe2cf00ea9",
+    "reports/nns_vit_endpoint_e3_closure_r2_20260918/terminal_receipt.json": "675cf4c6bec7dd681497f57bbd31b638dece7a5dfe0abc2b99e921bdbfbfe8ac",
+    "reports/nns_vit_endpoint_e3_closure_r1_20260918/artifact_manifest.json": "7d90f2f5584e8e7da3c35615ba00aff99d70234d0da7b9316c1a79c5f452e7a4",
+    "reports/nns_vit_endpoint_e4_intervention_r2_20260918/task_manifest.json": "dd84245f64442c8fd648cb1988bc7bd488f4efc3379db32e82906e631fee31b1",
+    "manifests/nns_vit_endpoint/ep0_r1_20260918/target_registry.json": "c2f8a5075d1bae28ae122ad9190731a675cc21774f3eb0f5b6a37c9019c2b626"
+  },
+  "output_root": "reports/nns_vit_endpoint_m1_r1_20260918"
+}
