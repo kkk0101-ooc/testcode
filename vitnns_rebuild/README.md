@@ -48,8 +48,10 @@ evidence and are indexed from that page. The Endpoint-only atlas stage
 `ENDPOINT-E2` has passed its registered scan and resource audit. `ENDPOINT-E3`
 has also passed formal all-block structural closure for the two frozen models
 and 400-image evaluation cohort; this is a correctness result, not a utility
-result. The next requestable stage is `ENDPOINT-E4`, and it still requires an
-explicit user request.
+result. `ENDPOINT-E4` was explicitly authorized but failed its frozen local
+finite-direction contract before complete utility coverage. Partial
+finite-replacement outputs are excluded from scientific interpretation; E5 is
+not authorized, and any E4 recovery requires a prospective amendment and new root.
 
 ## Environment
 
