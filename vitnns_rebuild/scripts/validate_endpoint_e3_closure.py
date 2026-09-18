@@ -133,7 +133,7 @@ def validate(root: Path) -> dict:
     e2 = load(REPO / "reports/nns_vit_endpoint_e2_atlas_r4_20260918/terminal_receipt.json")
     require(e2["status"] == "ENDPOINT_E2_PASS_NEXT_ENDPOINT_E3_REQUIRES_EXPLICIT_REQUEST", "E2_STATUS")
     require(e2["next_authorization"] == "ENDPOINT_E3_REQUIRES_EXPLICIT_USER_REQUEST", "E2_AUTHORIZATION")
-    for key, relative in {
+    predecessor_paths = {
         "cohort_registry_sha256": "manifests/nns_vit_endpoint/ep0_r1_20260918/cohort_registry.json",
         "endpoint_e2_source_binding_sha256": "reports/nns_vit_endpoint_e2_atlas_r4_20260918/formal_source_binding.json",
         "endpoint_e2_terminal_sha256": "reports/nns_vit_endpoint_e2_atlas_r4_20260918/terminal_receipt.json",
@@ -143,8 +143,13 @@ def validate(root: Path) -> dict:
         "model_registry_sha256": "manifests/nns_vit_endpoint/ep0_r1_20260918/model_registry.json",
         "target_registry_sha256": "manifests/nns_vit_endpoint/ep0_r1_20260918/target_registry.json",
         "unified_plan_sha256": "docs/NNS_ViT_Endpoint_Scanner统一研究计划与执行路线_20260918.md",
-    }.items():
-        require(file_sha256(REPO / relative) == spec["predecessors"][key], "PREDECESSOR_BINDING:" + key)
+    }
+    for key, relative in predecessor_paths.items():
+        if key == "unified_plan_sha256":
+            observed = git_blob_sha(report["producer_commit"], relative)
+        else:
+            observed = file_sha256(REPO / relative)
+        require(observed == spec["predecessors"][key], "PREDECESSOR_BINDING:" + key)
     material = load(REPO / spec["outputs"]["source_materialization"])
     require(material["status"] == "PASS_EVALUATION_MATERIALIZATION" and len(material["records"]) == 400, "MATERIALIZATION")
     require(material["records_digest"] == report["materialization_records_digest"] == digest(material["records"]), "MATERIALIZATION_DIGEST")
