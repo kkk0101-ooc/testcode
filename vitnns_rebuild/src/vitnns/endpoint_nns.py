@@ -14,6 +14,7 @@ from typing import Callable, Iterable, Iterator
 
 import torch
 from torch import nn
+from torch.nn import functional as F
 
 Tensor = torch.Tensor
 ScalarCallback = Callable[[Tensor], Tensor]
@@ -180,3 +181,61 @@ def finite_difference_gradient(
             y_minus = _one_scalar_per_sample(callback(minus.reshape_as(inputs)), inputs.shape[0])
         flat[:, index] = (y_plus - y_minus) / (2.0 * epsilon)
     return result
+
+
+def paper_cnn_conv_relu_maxpool_residual(
+    inputs: Tensor,
+    conv_weight: Tensor,
+    conv_bias: Tensor,
+    readout_weight: Tensor,
+    residual_weight: Tensor,
+    *,
+    pool_kernel: int = 2,
+) -> Tensor:
+    """Explicit paper-formula endpoint map for the EP1 CNN fixture.
+
+    The graph is ``conv -> ReLU -> non-overlapping MaxPool -> affine readout``
+    plus a direct linear residual from the flattened input. Biases affect gates
+    and winners but receive no input-coordinate seed. Tied MaxPool winners are
+    rejected because this regression contract requires a unique winner.
+    """
+    if inputs.ndim != 4 or inputs.shape[0] != 1 or not inputs.is_floating_point():
+        raise ValueError("paper CNN fixture expects one floating-point image")
+    if conv_weight.ndim != 4 or conv_bias.shape != (conv_weight.shape[0],):
+        raise ValueError("invalid convolution parameters")
+    if conv_weight.shape[1] != inputs.shape[1] or pool_kernel <= 0:
+        raise ValueError("convolution/input or pool geometry mismatch")
+    with torch.no_grad():
+        pre = F.conv2d(inputs, conv_weight, conv_bias)
+        active = pre > 0
+        height, width = pre.shape[-2:]
+        if height % pool_kernel or width % pool_kernel:
+            raise ValueError("pool must tile the convolution output")
+        pooled_h, pooled_w = height // pool_kernel, width // pool_kernel
+        expected_readout = conv_weight.shape[0] * pooled_h * pooled_w
+        if readout_weight.numel() != expected_readout:
+            raise ValueError("readout weight does not match pooled output")
+        if residual_weight.numel() != inputs.numel():
+            raise ValueError("residual weight does not match input")
+
+        coefficient = residual_weight.reshape_as(inputs).clone()
+        readout = readout_weight.reshape(conv_weight.shape[0], pooled_h, pooled_w)
+        for channel in range(conv_weight.shape[0]):
+            for pool_y in range(pooled_h):
+                for pool_x in range(pooled_w):
+                    y0, x0 = pool_y * pool_kernel, pool_x * pool_kernel
+                    window = pre[0, channel, y0:y0 + pool_kernel, x0:x0 + pool_kernel]
+                    maximum = window.max()
+                    winners = (window == maximum).nonzero(as_tuple=False)
+                    if winners.shape[0] != 1:
+                        raise ValueError("MAXPOOL_TIE_NOT_ALLOWED")
+                    wy, wx = (int(v) for v in winners[0])
+                    out_y, out_x = y0 + wy, x0 + wx
+                    if not bool(active[0, channel, out_y, out_x]):
+                        continue
+                    scale = readout[channel, pool_y, pool_x]
+                    kh, kw = conv_weight.shape[-2:]
+                    coefficient[0, :, out_y:out_y + kh, out_x:out_x + kw] += (
+                        scale * conv_weight[channel]
+                    )
+        return inputs.detach() * coefficient

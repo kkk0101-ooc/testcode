@@ -9,6 +9,7 @@ from torch import nn
 from vitnns.endpoint_nns import (
     endpoint_learning_image,
     finite_difference_gradient,
+    paper_cnn_conv_relu_maxpool_residual,
     paper_relu_weight_propagation,
 )
 
@@ -54,6 +55,38 @@ def test_maxpool_selects_the_endpoint_winner() -> None:
     expected = torch.zeros_like(x)
     expected[0, 0, 0, 1] = 3.0
     torch.testing.assert_close(result.attribution, expected)
+
+
+def test_paper_cnn_formula_covers_bias_closed_gate_unique_pool_and_residual() -> None:
+    x = torch.tensor([[[[0.2, -0.4, 0.7], [1.1, 0.3, -0.8], [0.6, -0.2, 0.9]]]], dtype=torch.float64)
+    conv_weight = torch.tensor(
+        [[[[0.4, -0.2], [0.1, 0.3]]], [[[-0.3, 0.2], [0.5, -0.1]]]],
+        dtype=torch.float64,
+    )
+    conv_bias = torch.tensor([0.15, -2.0], dtype=torch.float64)
+    readout = torch.tensor([0.7, -0.4], dtype=torch.float64)
+    residual = torch.linspace(-0.2, 0.2, x.numel(), dtype=torch.float64)
+
+    def target(value):
+        hidden = nn.functional.relu(nn.functional.conv2d(value, conv_weight, conv_bias))
+        pooled = nn.functional.max_pool2d(hidden, 2)
+        return pooled.flatten(1) @ readout[:, None] + value.flatten(1) @ residual[:, None]
+
+    paper = paper_cnn_conv_relu_maxpool_residual(x, conv_weight, conv_bias, readout, residual)
+    independent = endpoint_learning_image(target, x).attribution
+    torch.testing.assert_close(paper, independent, atol=1e-12, rtol=1e-12)
+    assert paper.abs().sum() > 0
+    assert bool((nn.functional.conv2d(x, conv_weight, conv_bias)[0, 1] < 0).all())
+
+
+def test_paper_cnn_formula_rejects_maxpool_tie() -> None:
+    x = torch.ones((1, 1, 3, 3), dtype=torch.float64)
+    with pytest.raises(ValueError, match="MAXPOOL_TIE_NOT_ALLOWED"):
+        paper_cnn_conv_relu_maxpool_residual(
+            x, torch.ones((1, 1, 2, 2), dtype=torch.float64),
+            torch.zeros(1, dtype=torch.float64), torch.ones(1, dtype=torch.float64),
+            torch.zeros(x.numel(), dtype=torch.float64),
+        )
 
 
 def test_convolution_relu_matches_finite_difference() -> None:

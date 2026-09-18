@@ -7,7 +7,9 @@ input. Hooks only observe tensors. No baseline forward or integration is used.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Sequence
+from contextlib import contextmanager
+from types import MethodType
+from typing import Iterator, Sequence
 
 import torch
 from torch import Tensor, nn
@@ -53,6 +55,9 @@ class EndpointDecomposition:
     full: Tensor
     components: dict[str, Tensor]
     cuts: dict[str, tuple[str, ...]]
+    cut_reconstruction: dict[str, str]
+    reconstructions: dict[str, Tensor]
+    captured_edges: tuple[str, ...]
     closure_max_abs: dict[str, float]
     closure_relative_l2: dict[str, float]
 
@@ -60,9 +65,13 @@ class EndpointDecomposition:
 def _select(
     model: nn.Module, spec: EndpointTarget, value: Tensor,
 ) -> tuple[EndpointTarget, Tensor, Tensor | None]:
-    if spec.kind in {"logit", "margin"}:
+    if spec.kind in {"logit", "margin", "ground_truth_logit", "frozen_clean_top1_logit"}:
         if spec.module or spec.location != "output" or value.ndim != 2:
             raise ValueError("logit/margin targets must use the native model output")
+        if spec.kind == "ground_truth_logit" and spec.class_id is None:
+            raise ValueError("ground-truth logit requires class_id")
+        if spec.kind == "frozen_clean_top1_logit" and spec.class_id is not None:
+            raise ValueError("clean top-1 must be selected by the clean forward")
         class_id = int(value[0].detach().argmax()) if spec.class_id is None else spec.class_id
         if not 0 <= class_id < value.shape[1]:
             raise ValueError("class_id out of range")
@@ -106,6 +115,12 @@ def _select(
         if prefix >= value.shape[1]:
             raise ValueError("target has no patch tokens")
         score = token_values[:, prefix:].sum(1)
+    elif spec.kind == "patch_channel_energy":
+        prefix = 0 if spec.module == "patch_embed" else model.num_prefix_tokens
+        if prefix >= value.shape[1]:
+            raise ValueError("target has no patch tokens")
+        activations = token_values[:, prefix:]
+        score = 0.5 * activations.square().sum(1)
     elif spec.kind in {"token_channel", "head_channel"}:
         if not 0 <= spec.token < value.shape[1]:
             raise ValueError("token out of range")
@@ -143,7 +158,7 @@ def scan_endpoint_vit(
             raise ValueError("location must be input or output")
         if spec.module:
             modules[(spec.module, spec.location)] = model.get_submodule(spec.module)
-        elif spec.kind not in {"logit", "margin"}:
+        elif spec.kind not in {"logit", "margin", "ground_truth_logit", "frozen_clean_top1_logit"}:
             raise ValueError("only logit/margin targets use the model output")
     captured: dict[tuple[str, str], Tensor] = {}
     handles = []
@@ -241,6 +256,124 @@ def default_endpoint_targets(
     return tuple(targets)
 
 
+@contextmanager
+def capture_unfused_attention_edges(
+    attention: nn.Module, observed: dict[str, Tensor],
+) -> Iterator[None]:
+    """Expose the registered unfused timm Attention edges without mutation.
+
+    timm 0.9.16 does not represent row softmax or ``A @ V`` as submodules, so
+    ordinary hooks cannot observe them. This scoped forward replacement is the
+    canonical EP1 implementation. It is byte-for-byte the registered unfused
+    operator order and restores the original bound method on every exit path.
+    """
+    if getattr(attention, "fused_attn", True):
+        raise ValueError("STRUCTURAL_BACKEND_REQUIRES_UNFUSED_ATTENTION")
+    original = attention.forward
+    had_instance_forward = "forward" in attention.__dict__
+
+    def explicit_forward(module: nn.Module, value: Tensor) -> Tensor:
+        batch, tokens, channels = value.shape
+        qkv_projection = module.qkv(value)
+        qkv = qkv_projection.reshape(
+            batch, tokens, 3, module.num_heads, module.head_dim,
+        ).permute(2, 0, 3, 1, 4)
+        query_projection, key_projection, value_projection = qkv.unbind(0)
+        query = module.q_norm(query_projection)
+        key = module.k_norm(key_projection)
+        scaled_query = query * module.scale
+        scores = scaled_query @ key.transpose(-2, -1)
+        probabilities = scores.softmax(dim=-1)
+        dropped_probabilities = module.attn_drop(probabilities)
+        av = dropped_probabilities @ value_projection
+        projection_input = av.transpose(1, 2).reshape(batch, tokens, channels)
+        projection_output = module.proj(projection_input)
+        output = module.proj_drop(projection_output)
+        observed.update({
+            "qkv_projection": qkv_projection,
+            "query_projection": query_projection,
+            "key_projection": key_projection,
+            "value_projection": value_projection,
+            "query_after_norm": query,
+            "key_after_norm": key,
+            "attention_scores": scores,
+            "attention_softmax": probabilities,
+            "attention_after_dropout": dropped_probabilities,
+            "av_before_concat": av,
+            "projection_input": projection_input,
+            "projection_output": projection_output,
+            "attention_output": output,
+        })
+        return output
+
+    attention.forward = MethodType(explicit_forward, attention)
+    try:
+        yield
+    finally:
+        if had_instance_forward:
+            attention.forward = original
+        else:
+            del attention.forward
+
+
+def validate_decomposition_cut(
+    *,
+    components: dict[str, Tensor],
+    keys: Sequence[str],
+    reference: Tensor,
+    reconstruction_id: str,
+    atol: float,
+    rtol: float,
+) -> tuple[float, float]:
+    """Fail closed when a registered cut omits or double-counts a path."""
+    if reconstruction_id not in {"A_F", "L_F"}:
+        raise ValueError("UNKNOWN_RECONSTRUCTION_ID")
+    keys = tuple(keys)
+    if not keys or len(keys) != len(set(keys)):
+        raise ValueError("DUPLICATE_OR_EMPTY_CUT")
+    missing = [key for key in keys if key not in components]
+    if missing:
+        raise ValueError("MISSING_COMPONENT:" + ",".join(missing))
+    summed = sum((components[key] for key in keys), torch.zeros_like(reference))
+    if not bool(torch.isfinite(summed).all()) or not bool(torch.isfinite(reference).all()):
+        raise ValueError("NONFINITE_DECOMPOSITION")
+    error = summed - reference
+    maximum = float(error.abs().max())
+    relative = float(error.norm() / reference.norm().clamp_min(1e-30))
+    try:
+        torch.testing.assert_close(summed, reference, atol=atol, rtol=rtol)
+    except AssertionError as exc:
+        raise ValueError("CUT_CLOSURE_FAILED:" + reconstruction_id) from exc
+    return maximum, relative
+
+
+def numeric_parity(
+    observed: Tensor, reference: Tensor, *, atol: float, rtol: float, near_zero_norm: float,
+) -> dict[str, float | str | bool]:
+    """Apply the EP0 absolute/relative acceptance branches explicitly."""
+    if min(atol, rtol, near_zero_norm) < 0:
+        raise ValueError("NUMERIC_TOLERANCE_NEGATIVE")
+    if observed.shape != reference.shape or observed.dtype != reference.dtype:
+        raise ValueError("NUMERIC_TENSOR_IDENTITY")
+    if not bool(torch.isfinite(observed).all()) or not bool(torch.isfinite(reference).all()):
+        raise ValueError("NUMERIC_NONFINITE")
+    error = observed - reference
+    maximum = float(error.abs().max()) if error.numel() else 0.0
+    reference_maximum = float(reference.abs().max()) if reference.numel() else 0.0
+    reference_norm = float(reference.norm())
+    relative = float(error.norm() / reference.norm().clamp_min(1e-30))
+    elementwise = maximum <= atol + rtol * reference_maximum
+    if reference_norm <= near_zero_norm:
+        branch, branch_pass = "absolute_near_zero", maximum <= atol
+    else:
+        branch, branch_pass = "relative_nonzero", relative <= rtol
+    return {
+        "pass": bool(elementwise and branch_pass), "branch": branch,
+        "max_abs": maximum, "relative_l2": relative,
+        "reference_norm": reference_norm,
+    }
+
+
 def attention_endpoint_components(
     model: nn.Module, inputs: Tensor, *, block: int = 0, head: int = 0,
     channel: int = 0, token: int = 0,
@@ -263,7 +396,7 @@ def attention_endpoint_components(
         raise ValueError("disable gradient checkpointing")
     spec = EndpointTarget("head", f"blocks.{block}.attn.proj", kind="head_channel",
                           location="input", head=head, channel=channel, token=token)
-    observed = {}
+    observed: dict[str, Tensor] = {}
     handles = []
     def save_qkv(_module, _args, output):
         observed["qkv"] = output
@@ -319,7 +452,7 @@ def decompose_endpoint_vit(
         raise ValueError("edge contract requires the standard timm Block and Attention")
     if getattr(model, "grad_checkpointing", False):
         raise ValueError("disable gradient checkpointing")
-    if target.kind not in {"logit", "margin"} or target.module:
+    if target.kind not in {"logit", "margin", "ground_truth_logit", "frozen_clean_top1_logit"} or target.module:
         raise ValueError("decomposition target must be a class logit or margin")
     if atol < 0 or rtol < 0:
         raise ValueError("closure tolerances must be nonnegative")
@@ -345,7 +478,7 @@ def decompose_endpoint_vit(
                 def post_hook(_m, _args, output, name=name):
                     observed[name] = output
                 handles.append(module.register_forward_hook(post_hook))
-        with _frozen_eval(model), torch.enable_grad():
+        with _frozen_eval(model), capture_unfused_attention_edges(current.attn, observed), torch.enable_grad():
             logits = model(clean)
             resolved, score, _ = _select(model, target, logits)
             torch.testing.assert_close(observed["r1"], observed["u"] + observed["attention"], atol=0, rtol=0)
@@ -382,21 +515,47 @@ def decompose_endpoint_vit(
             cuts = {
                 "residual1": ("identity", "attention"),
                 "residual2": ("carry", "mlp"),
+                "heads_branch": tuple(f"head_{h}" for h in range(current.attn.num_heads)),
                 "heads_with_bypass": ("identity",) + tuple(f"head_{h}" for h in range(current.attn.num_heads)),
+                "qkv_branch": ("query", "key", "value"),
+                "routing_value_branch": ("routing", "value"),
                 "qkv_with_bypass": ("identity", "query", "key", "value"),
                 "routing_value_with_bypass": ("identity", "routing", "value"),
             }
             full = full.detach().cpu()
+            branch = components["attention"]
+            reconstructions = {"A_F": branch, "L_F": full}
+            cut_reconstruction = {
+                "residual1": "L_F", "residual2": "L_F",
+                "heads_branch": "A_F", "heads_with_bypass": "L_F",
+                "qkv_branch": "A_F", "routing_value_branch": "A_F",
+                "qkv_with_bypass": "L_F", "routing_value_with_bypass": "L_F",
+            }
             abs_errors, rel_errors = {}, {}
             if not bool(torch.isfinite(full).all()) or any(not bool(torch.isfinite(v).all()) for v in components.values()):
                 raise ValueError("nonfinite decomposition")
             for name, keys in cuts.items():
-                summed = sum((components[key] for key in keys), torch.zeros_like(full))
-                error = summed - full
-                abs_errors[name] = float(error.abs().max())
-                rel_errors[name] = float(error.norm() / full.norm().clamp_min(1e-30))
-                torch.testing.assert_close(summed, full, atol=atol, rtol=rtol)
-            return EndpointDecomposition(resolved, score.detach().cpu(), full, components, cuts, abs_errors, rel_errors)
+                reconstruction_id = cut_reconstruction[name]
+                absolute, relative = validate_decomposition_cut(
+                    components=components, keys=keys,
+                    reference=reconstructions[reconstruction_id],
+                    reconstruction_id=reconstruction_id, atol=atol, rtol=rtol,
+                )
+                abs_errors[name], rel_errors[name] = absolute, relative
+            captured_edges = tuple(sorted(observed))
+            required_edges = {
+                "qkv_projection", "query_projection", "key_projection",
+                "value_projection", "attention_softmax",
+                "av_before_concat", "projection_input",
+                "projection_output", "u", "attention", "r1",
+                "mlp", "r2",
+            }
+            if not required_edges.issubset(observed):
+                raise ValueError("UNFUSED_EDGE_CAPTURE_INCOMPLETE")
+            return EndpointDecomposition(
+                resolved, score.detach().cpu(), full, components, cuts,
+                cut_reconstruction, reconstructions, captured_edges, abs_errors, rel_errors,
+            )
     finally:
         for handle in handles:
             handle.remove()

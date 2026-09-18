@@ -6,8 +6,8 @@ from timm.models.vision_transformer import VisionTransformer
 from vitnns.endpoint_nns import endpoint_learning_image, paper_relu_weight_propagation
 
 from vitnns.endpoint_vit import (
-    EndpointTarget, attention_endpoint_components, decompose_endpoint_vit,
-    default_endpoint_targets, scan_endpoint_vit,
+    EndpointTarget, attention_endpoint_components, capture_unfused_attention_edges, decompose_endpoint_vit,
+    default_endpoint_targets, numeric_parity, scan_endpoint_vit, validate_decomposition_cut,
 )
 
 
@@ -83,6 +83,80 @@ def test_native_targets_against_directional_finite_difference(tiny, kind):
     finite = (scalar(image + epsilon * direction) - scalar(image - epsilon * direction)) / (2 * epsilon)
     analytic = (result.gradient * direction).sum().reshape(1)
     torch.testing.assert_close(analytic, finite, atol=1e-9, rtol=2e-5)
+    if kind == "logit":
+        _, jvp = torch.func.jvp(lambda value: model(value)[:, 1], (image,), (direction,))
+        torch.testing.assert_close(analytic, jvp, atol=1e-9, rtol=1e-7)
+
+
+def test_float32_directional_finite_difference_uses_frozen_tolerance():
+    torch.manual_seed(29)
+    model = VisionTransformer(
+        img_size=8, patch_size=4, embed_dim=12, depth=2, num_heads=3,
+        mlp_ratio=2, num_classes=4,
+    ).float().eval()
+    for block in model.blocks:
+        block.attn.fused_attn = False
+    image = torch.randn(1, 3, 8, 8)
+    result = scan_endpoint_vit(model, image, [EndpointTarget("s", "", kind="logit", class_id=1)]).units["s"]
+    direction = torch.randn_like(image); direction /= direction.norm()
+    analytic = (result.gradient * direction).sum()
+    epsilon = 0.01
+    finite = ((model(image + epsilon * direction)[:, 1] - model(image - epsilon * direction)[:, 1]) / (2 * epsilon)).sum()
+    torch.testing.assert_close(analytic, finite, atol=0.002, rtol=0.02)
+
+
+def test_local_direction_contract_uses_edge_displacement_jvp(tiny):
+    model, image = tiny
+    block = model.blocks[1]
+    target_class = 1
+    observed = {}
+    handle = block.attn.proj.register_forward_pre_hook(lambda _m, args: observed.setdefault("z", args[0]))
+    clean = image.clone().requires_grad_()
+    try:
+        score = model(clean)[:, target_class].sum()
+    finally:
+        handle.remove()
+    z = observed["z"]
+    g = torch.autograd.grad(score, z, retain_graph=True)[0]
+    direction = torch.randn_like(image); direction /= direction.norm()
+    _, jz = torch.func.jvp(
+        lambda value: _capture_projection_input(model, value, 1), (image,), (direction,),
+    )
+    predicted = (g.detach() * jz).sum()
+    epsilon = 1e-4
+    def intervene(eta):
+        handle = block.attn.proj.register_forward_pre_hook(
+            lambda _m, _args: (z.detach() + eta * jz.detach(),),
+        )
+        try:
+            return model(image)[:, target_class]
+        finally:
+            handle.remove()
+    plus = intervene(epsilon)
+    minus = intervene(-epsilon)
+    finite = ((plus - minus) / (2 * epsilon)).sum()
+    torch.testing.assert_close(predicted, finite, atol=1e-6, rtol=1e-4)
+
+
+def _capture_projection_input(model, value, block):
+    observed = []
+    handle = model.blocks[block].attn.proj.register_forward_pre_hook(lambda _m, args: observed.append(args[0]))
+    try:
+        model(value)
+        return observed[0]
+    finally:
+        handle.remove()
+
+
+def test_energy_target_uses_the_same_captured_activation(tiny):
+    model, image = tiny
+    spec = EndpointTarget(
+        "energy", "blocks.1", kind="patch_channel_energy", channel=3,
+    )
+    result = scan_endpoint_vit(model, image, [spec]).units["energy"]
+    expected = 0.5 * result.token_values[:, model.num_prefix_tokens:].square().sum(1)
+    torch.testing.assert_close(result.value, expected, atol=0, rtol=0)
+    assert result.attribution.abs().sum() > 0
 
 
 def test_scan_restores_mixed_training_states_and_hooks_on_error(tiny):
@@ -139,14 +213,88 @@ def test_final_target_edge_cuts_include_bypass_without_duplicate_branch(tiny, bl
     result = decompose_endpoint_vit(model, image, block=block, target=target)
     scan = scan_endpoint_vit(model, image, [target])
     torch.testing.assert_close(result.full, scan.units["terminal"].attribution, atol=0, rtol=0)
-    for cut in result.cuts.values():
+    for name, cut in result.cuts.items():
         total = sum(result.components[key] for key in cut)
-        torch.testing.assert_close(total, result.full, atol=1e-12, rtol=1e-9)
+        torch.testing.assert_close(
+            total, result.reconstructions[result.cut_reconstruction[name]],
+            atol=1e-12, rtol=1e-9,
+        )
     heads = sum(result.components[f"head_{head}"] for head in range(3))
     torch.testing.assert_close(heads, result.components["attention"], atol=1e-12, rtol=1e-9)
     assert result.components["identity"].abs().sum() > 0
     assert result.components["attention"].abs().sum() > 0
     assert max(result.closure_relative_l2.values()) < 1e-9
+    assert {"qkv_projection", "attention_softmax", "av_before_concat",
+            "projection_input", "projection_output"}.issubset(result.captured_edges)
+
+
+def test_omission_and_duplicate_accounting_fixtures_are_rejected(tiny):
+    model, image = tiny
+    with torch.no_grad():
+        model.blocks[1].attn.proj.bias.copy_(torch.linspace(-0.2, 0.2, 12, dtype=torch.float64))
+    result = decompose_endpoint_vit(
+        model, image, block=1, target=EndpointTarget("terminal", "", kind="logit", class_id=1),
+    )
+    assert result.components["head_2"].abs().sum() > 1e-12
+    assert result.components["routing"].abs().sum() > 1e-12
+    assert model.blocks[1].attn.proj.bias.abs().sum() > 0  # bias changes the downstream state/cotangent
+    wrong_total = dict(result.components)
+    wrong_total["identity"] = result.components["identity"] + result.components["attention"]
+    cases = [
+        (wrong_total, result.cuts["residual1"], "L_F", result.full),
+        (result.components, tuple(k for k in result.cuts["heads_branch"] if k != "head_2"), "A_F", result.reconstructions["A_F"]),
+        (result.components, ("value",), "A_F", result.reconstructions["A_F"]),
+    ]
+    for components, keys, reconstruction_id, reference in cases:
+        with pytest.raises(ValueError, match="CUT_CLOSURE_FAILED"):
+            validate_decomposition_cut(
+                components=components, keys=keys, reference=reference,
+                reconstruction_id=reconstruction_id, atol=1e-12, rtol=1e-9,
+            )
+
+
+def test_ground_truth_and_frozen_top1_target_contract(tiny):
+    model, image = tiny
+    with pytest.raises(ValueError, match="requires class_id"):
+        scan_endpoint_vit(model, image, [EndpointTarget("gt", "", kind="ground_truth_logit")])
+    top1 = scan_endpoint_vit(model, image, [EndpointTarget("top1", "", kind="frozen_clean_top1_logit")])
+    assert top1.units["top1"].target.class_id == int(top1.logits.argmax())
+
+
+def test_unfused_edge_capture_matches_native_and_restores_forward(tiny):
+    model, image = tiny
+    attention = model.blocks[0].attn
+    original = attention.forward
+    expected = model(image)
+    observed = {}
+    with capture_unfused_attention_edges(attention, observed):
+        actual = model(image)
+    torch.testing.assert_close(actual, expected, atol=0, rtol=0)
+    assert attention.forward == original
+    assert {"query_projection", "key_projection", "value_projection",
+            "attention_softmax", "av_before_concat", "projection_input",
+            "projection_output"}.issubset(observed)
+
+
+def test_fused_backend_is_not_accepted_for_structural_edge_capture(tiny):
+    model, _image = tiny
+    model.blocks[0].attn.fused_attn = True
+    with pytest.raises(ValueError, match="STRUCTURAL_BACKEND_REQUIRES_UNFUSED_ATTENTION"):
+        with capture_unfused_attention_edges(model.blocks[0].attn, {}):
+            pass
+
+
+@pytest.mark.parametrize("dtype,atol,rtol,near_zero", [
+    (torch.float64, 1e-9, 1e-7, 1e-12),
+    (torch.float32, 1e-5, 1e-4, 1e-6),
+])
+def test_absolute_and_relative_numeric_contract_branches(dtype, atol, rtol, near_zero):
+    zero = torch.zeros(8, dtype=dtype)
+    absolute = numeric_parity(zero.clone(), zero, atol=atol, rtol=rtol, near_zero_norm=near_zero)
+    assert absolute["pass"] and absolute["branch"] == "absolute_near_zero"
+    reference = torch.ones(8, dtype=dtype)
+    relative = numeric_parity(reference.clone(), reference, atol=atol, rtol=rtol, near_zero_norm=near_zero)
+    assert relative["pass"] and relative["branch"] == "relative_nonzero"
 
 
 def test_original_cnn_weight_gate_propagation_matches_same_endpoint_principle():

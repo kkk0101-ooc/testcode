@@ -119,14 +119,22 @@ def validate(root):
             expected_cuts = {
                 "residual1": ("identity", "attention"),
                 "residual2": ("carry", "mlp"),
+                "heads_branch": heads,
                 "heads_with_bypass": ("identity",) + heads,
+                "qkv_branch": ("query", "key", "value"),
+                "routing_value_branch": ("routing", "value"),
                 "qkv_with_bypass": ("identity", "query", "key", "value"),
                 "routing_value_with_bypass": ("identity", "routing", "value"),
             }
             require(set(decomposition["cuts"]) == set(expected_cuts), "incomplete cut registry")
             for name, keys in decomposition["cuts"].items():
                 require(set(keys) == set(expected_cuts[name]) and len(keys) == len(set(keys)), "missing or overlapping cut component")
-                error = sum((components[key] for key in keys), np.zeros_like(full)) - full
+                reconstruction = (
+                    sum((components[key] for key in expected_cuts["heads_branch"]), np.zeros_like(full))
+                    if name in {"heads_branch", "qkv_branch", "routing_value_branch"}
+                    else full
+                )
+                error = sum((components[key] for key in keys), np.zeros_like(full)) - reconstruction
                 maximum = float(np.abs(error).max())
                 relative = float(np.linalg.norm(error) / max(np.linalg.norm(full), 1e-30))
                 require(maximum == decomposition["closure_max_abs"][name], "cut max error mismatch")
