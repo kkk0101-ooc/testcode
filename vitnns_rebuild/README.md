@@ -52,9 +52,9 @@ result. `ENDPOINT-E4` R1 failed its frozen local finite-direction contract
 before complete utility coverage. Partial R1 outputs remain excluded from
 scientific interpretation. The explicitly authorized R2 recovery used a fresh
 root and analytic JVP correctness gate, but one ViT-B task failed twice; its
-799 partial results are also excluded. A prospective R3 contract now requires
-all 32 local tasks to rerun under a condition-scaled analytic JVP gate and permits
-the other 768 tasks only after strict source revalidation. E5 remains unauthorized.
+799 partial results are also excluded. R3 reran all 32 local tasks under a
+condition-scaled analytic JVP gate and strictly revalidated the other 768 tasks;
+the 800-task union passed. E5 is now the next stage but remains unauthorized.
 
 ## Environment
 
