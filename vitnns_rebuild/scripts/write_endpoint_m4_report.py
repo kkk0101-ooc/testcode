@@ -18,7 +18,7 @@ def rows(name):
         output = list(csv.DictReader(stream))
     for row in output:
         for key in ("block", "head", "n", "na"):
-            if key in row:
+            if key in row and row[key] != "":
                 row[key] = int(row[key])
         if "median" in row:
             row["median"] = None if row["median"] == "" else float(row["median"])
@@ -248,8 +248,10 @@ M4 quantifies local Jacobian path accounting at the observed input for the froze
     (REPO / "docs/endpoint_m4_results_20260919.md").write_text(zh)
     (PAPER / "zh/endpoint_m4_supplement.md").write_text(zh)
     (PAPER / "en/endpoint_m4_supplement.md").write_text(en)
-    replace_marker(PAPER / "zh/full_draft.md", "M4_MECHANISM", "### 5.8 M4：Attention routing/value 与 residual 机制\n\n" + "\n\n".join(zh.split("\n\n")[2:]))
-    replace_marker(PAPER / "en/full_draft.md", "M4_MECHANISM", "### 5.8 M4: Attention routing/value and residual mechanisms\n\n" + "\n\n".join(en.split("\n\n")[2:]))
+    zh_body = "\n\n".join(zh.split("\n\n")[2:]).replace("\n## ", "\n#### ")
+    en_body = "\n\n".join(en.split("\n\n")[2:]).replace("\n## ", "\n#### ")
+    replace_marker(PAPER / "zh/full_draft.md", "M4_MECHANISM", "### 5.8 M4：Attention routing/value 与 residual 机制\n\n" + zh_body)
+    replace_marker(PAPER / "en/full_draft.md", "M4_MECHANISM", "### 5.8 M4: Attention routing/value and residual mechanisms\n\n" + en_body)
     evidence = """# Endpoint M4 evidence matrix
 
 | Claim | Evidence | Status |
