@@ -1,6 +1,14 @@
 # NNS-ViT 补充实验完整方案
 
-> **冻结的分层 token-channel 抽样**
+> **当前进度（2026-09-19）：M1、M2 已完成；M3–M6 为后续计划。**
+
+[M2 结果](endpoint_m2_results_20260919.md)显示，在 patch 预算下，Taylor 对完整输入区域替换通过 11/12 项方向性优势检验，对单 head 隔离效应通过 12/12 项；Endpoint 的对应优势均为 0/12。完整输入效应的例外为 DeiT-S、normalized-zero、block 5，未通过校正检验不表示两者等效。
+
+后续补充实验围绕 Endpoint 的设计目标展开：reference 未指定时的统一复用与成分筛选、attention/residual 的结构诊断、神经元输入依赖的分布。性能、成本和机制优势均由实验检验。本次更新的是方案，以下新增实验尚未执行。
+
+五类实验直接归入现有模块：reference 稳定性与复用见 §7.5，reference-free 成分筛选见 §7.6，frozen-attention 诊断见 §7.1–7.2，residual 记账见 §7.3–7.4，neuron-atlas 分布见 §4.8。执行顺序与记录方式见第十四节。
+
+**M3 采用冻结的分层 token-channel 抽样：**
 
 
 - 比仅扫描 CLS channel 的方案 A 更能覆盖空间 patch token；
@@ -29,9 +37,9 @@
 |---|---|---:|
 | **M1. RQ3 强基线与分层分析** | 判断 Endpoint 是否具有额外的成分排序价值 | 必做 |
 | **M2. RQ4 跨层、全 head 扩展** | 检验空间负结果是否跨层成立 | 必做 |
-| **M3. 分层 token-channel 神经元审计** | 加强与原始 NNS 的联系并说明覆盖范围 | 必做 |
+| **M3. 分层 token-channel 神经元审计与分布分析** | 说明覆盖范围，研究输入依赖随层深和位置的变化 | 必做 |
 | **M4. Transformer 解释方法比较** | 界定不同方法回答的问题 | 推荐 |
-| **M5. 关键消融与敏感性分析** | 解释 Endpoint 成功和失败的原因 | 推荐 |
+| **M5. Reference 复用、成分筛选与结构诊断** | 评价 reference-free 使用场景及 routing/residual 机制 | 本轮新增重点 |
 | **M6. 失败案例与机制可视化** | 提升机制解释和论文可读性 | 推荐 |
 
 除以上六个实验模块外，还必须同步完成两项论文层面的修改：
@@ -527,7 +535,7 @@ H_0:
 - 10%；
 - 25%。
 
-如果当前实现主要使用 4×4 像素区域，还应增加 patch-aligned 区域，因为 ViT 的原始空间处理单元是 patch。
+M2 已执行的主要几何为 14×14 个 16×16 patch，预算为 1、10、20、49 个 patch。原 E5 几何是 4×4 个 56×56 区域的网格，并非 4×4 像素区域；该几何以 1、2、4 个区域作为次要比较。
 
 可以比较：
 
@@ -764,7 +772,7 @@ C(E)
 \frac{
 \left|\sum_iE_i\right|
 }{
-\sum_i|E_i|+\epsilon
+\sum_i|E_i|
 }.
 \]
 
@@ -781,7 +789,7 @@ p_j
 \frac{
 \sum_{i\in\text{patch }j}|E_i|
 }{
-\sum_i|E_i|+\epsilon
+\sum_i|E_i|
 },
 \]
 
@@ -790,6 +798,8 @@ H(E)
 =
 -\sum_jp_j\log p_j.
 \]
+
+上述比例和熵在总 absolute mass 大于 0 时定义，采用 \(0\log0=0\)。总质量为零时记录 NA 并单独统计发生率；不通过给分母加 epsilon 将零图解释为低熵或低抵消图。RGB 通道保留至取绝对值之后，再汇总 patch mass。
 
 ---
 
@@ -931,6 +941,52 @@ D_\epsilon(v)
 更准确的限定是：
 
 > 该审计扩展了 token-channel 神经元在层级、空间位置和 channel 维度上的覆盖，但不包括全部 MLP hidden units、全部 Q/K/V coordinates 或全部 token-channel 组合。
+
+---
+
+## 4.8 Neuron-atlas 分布实验：输入依赖是否由局部变为全局
+
+这一实验直接使用 M3 的 6,144 个 token-channel 目标及同一次生产的统计量。默认采用原 400 图中按固定规则抽取的 100 图，两模型使用相同图像；若采用 400 图，应在运行前确定。样本规模不能根据初步结果调整。
+
+### 4.8.1 分布指标
+
+对每个目标 \(h_{b,t,c}\)，令 \(a_j=\sum_{i\in P_j}|E_{b,t,c,i}|\)、\(p_j=a_j/\sum_ja_j\)。主要记录 normalized spatial entropy 和 signed cancellation：
+
+\[
+H_{norm}(E)=-\frac{\sum_{j=1}^{196}p_j\log p_j}{\log196},
+\qquad
+C(E)=1-\frac{|\sum_iE_i|}{\sum_i|E_i|}.
+\]
+
+同时保存 196 维 patch absolute mass 与 patch signed sum；两者分别用于空间分布和带符号图相似性，前者不能由后者取绝对值恢复。零质量和零梯度单列发生率。
+
+### 4.8.2 局部性与依赖距离
+
+熵升高只说明质量更分散。为了检验“局部到全局”，对 patch token \(t\) 增加相对其自身位置的局部质量和平均距离：
+
+\[
+L_t=\sum_{j:\|coord(j)-coord(t)\|_\infty\le1}p_j,
+\qquad
+D_t=\sum_jp_j\frac{\|coord(j)-coord(t)\|_2}{13\sqrt2}.
+\]
+
+报告 \(L_t\)、\(D_t\) 及它们减去均匀 patch 分布对应值后的差异，校正边缘邻域较小、几何距离不同的影响。CLS 无自身 patch 位置，只报告熵、抵消和空间图，不计算 own-token locality。
+
+### 4.8.3 分层比较与神经元相似性
+
+主要比较包括：
+
+- early/middle/late 的 entropy、local mass、distance 和 cancellation；
+- CLS 与 patch neuron 的差异；
+- 中心 token 与边缘 token 的差异；
+- ViT-B/16 与 DeiT-S 在相同图像上的差异；
+- 同 token 不同 channel、不同 token 的 Endpoint 图相似性随深度的变化。
+
+中心定义为行列都在 4–9 的 patch，边缘定义为距边界不超过 1 格的 patch，其余位置进入全部 patch 汇总。先在每图每层平均抽样 channels，再平均指定 token 集合，最后跨图像推断。不同模型的 channel ID 不作为同一神经元配对。
+
+相似性使用 patch absolute distribution 的 cosine 和 patch signed vector 的 cosine，分别报告。每层从 same-token/different-channel 与 different-token 两组各固定抽取 256 个 unit pairs，规则与 seed 在计算前确定；聚类如需展示，仅作为描述性补充。
+
+entropy 上升、own-token local mass 下降及距离增加共同支持所抽样单元的依赖趋于分散；仅凭几张清晰的图不能确认该层级规律。保留 §4.6 的数值验证与覆盖率说明。
 
 ---
 
@@ -1128,9 +1184,9 @@ Attention rollout、Chefer 等输出级方法不一定能够自然对应某个�
 
 ---
 
-# 七、M5：关键消融与敏感性分析
+# 七、M5：Reference 复用、成分筛选与结构诊断
 
-不建议无限增加消融。优先完成以下五组。
+M5 包括两条共享数据的分析线：§7.1–7.4 使用 attention/residual 分解研究结构，§7.5–7.6 共用“成分 × reference”有限效应表研究复用与筛选。结果可以呈现性能—成本权衡，也可以表明某项增量未获支持。
 
 ---
 
@@ -1154,16 +1210,46 @@ Frozen-attention approximation 为：
 A(\mathrm dV).
 \]
 
-比较内容包括：
+对应的 Jacobian 作用为：
 
-- Endpoint map 差异；
-- 结构闭合误差；
-- M1 成分排序性能；
-- M2 区域选择效果；
-- early/middle/late 差异；
-- routing mass 被忽略的比例。
+\[
+J_{O,x}v=(J_{A,x}v)V+A(J_{V,x}v),
+\qquad
+J_{O,x}^{FA}v=A(J_{V,x}v).
+\]
 
-该消融能够说明为什么必须显式处理 Q/K routing path。
+每次只在被测 block/head 将 clean attention 概率固定，保留相同前向数值，并切断该位置对 Q/K 的反向传播；其余层、heads 和 residual 正常计算。固定完整模型的 clean cotangent \(g_h=\nabla_{O_h}F\)，得到：
+
+\[
+E_h^{full}=E_h^{routing}+E_h^{value},
+\qquad E_h^{FA}=E_h^{value}.
+\]
+
+这衡量一个位置的 frozen-attention 近似，不与全网络同时冻结 attention 混为一项。覆盖两模型、400 图、全部 12 层与全部 heads。
+
+主要报告各 head 的 omitted routing mass、绝对误差、相对误差及完整分解闭合残差：
+
+\[
+R_h^{routing}=
+\frac{\|E_h^{routing}\|_1}
+{\|E_h^{routing}\|_1+\|E_h^{value}\|_1},
+\qquad
+\eta_h^E=\frac{\|E_h^{full}-E_h^{FA}\|_2}{\|E_h^{full}\|_2}.
+\]
+
+分支份额 \(R_h^{routing}\) 在 [0,1]；routing 与 value 抵消时，相对误差可超过 1。分母为零时记录 NA 并报告绝对误差。同时计算未乘输入 \(x\) 的 contracted-gradient 误差，避免小输入坐标掩盖导数差异。
+
+用 native autodiff、显式 Q/K/V 分解和 attention detach 实现交叉检查，验证 forward parity、完整闭合以及 \(E^{full}-E^{FA}=E^{routing}\)。完整 Jacobian 的作用另用每图固定 8 个单位范数 Rademacher 方向做 JVP 检查：
+
+\[
+\eta_h^{JVP}=
+\sqrt{\frac{\sum_v\|(J_{O_h,x}-J_{O_h,x}^{FA})v\|_2^2}
+{\sum_v\|J_{O_h,x}v\|_2^2}}.
+\]
+
+该值是抽样方向上的误差，Endpoint map 则是特定 cotangent 下的输入坐标表示。报告逐层、逐 head 和 early/middle/late 差异；按跨图中位误差列出最不适合 frozen attention 的 heads，附 bootstrap 排名频率。
+
+完整分解的闭合残差用于检查实现，省略 routing 后的残差用于测量近似误差。经验发现应回答遗漏在哪些层和 heads 更大，而不把代数等式本身写成机制发现。
 
 ---
 
@@ -1189,15 +1275,19 @@ E^{\mathrm{routing}}
 E^Q+E^K.
 \]
 
-建议报告：
+沿用 §7.1 的分解，报告 routing/value mass、Q/K cancellation、early/middle/late 变化及两模型差异。E3 已有整体 routing/value 汇总可复用；逐 head 结果必须使用该 head 的 cotangent，不能将整体比例平均分配给 heads。
 
-- 各层 routing/value absolute mass 比例；
-- signed mass 比例；
-- routing/value cancellation；
-- 哪类成分更能预测有限效应；
-- attention saturation 与 routing mass 的关系；
-- early/middle/late 层级变化；
-- 两个模型之间的差异。
+Attention saturation 定义为平均 query-row normalized entropy 的补数：
+
+\[
+s_h=1-\frac1{197}\sum_q
+\frac{-\sum_{j=1}^{197}A_{h,qj}\log A_{h,qj}}{\log197},
+\qquad 0\log0=0.
+\]
+
+同时保存 CLS query 的 saturation。每图每层在 heads 内比较 \(s_h\) 与 routing share、\(\eta_h^E\) 的关系，再按图像汇总，避免将共同的层深趋势当作 head 内关系。
+
+Saturation 与误差关系采用双向检验。尖锐的 softmax 可缩小 routing Jacobian，其实际误差还受 Q/K/V 和 downstream cotangent 影响，方向由结果确定。若某些 heads 的 routing mass 和独立 JVP 误差持续较大，可报告 frozen attention 在这些位置遗漏较多局部输入依赖；有限替换效用仍使用对应干预结果评价。
 
 ---
 
@@ -1206,18 +1296,26 @@ E^Q+E^K.
 对于：
 
 \[
-y=x+f(x),
+y=u+f(u),
 \]
 
 局部 Jacobian 为：
 
 \[
-J_{y,x}
+J_{y,u}
 =
-I+J_{f,x}.
+I+J_{f,u}.
 \]
 
-对应 Endpoint 闭合为：
+对模型输入 \(x\)，固定 residual 输出的 clean cotangent \(g_y=\nabla_yF\)，两条路径为：
+
+\[
+E^{identity}=x\odot J_{u,x}^{\mathsf T}g_y,
+\qquad
+E^{branch}=x\odot J_{u,x}^{\mathsf T}J_{f,u}^{\mathsf T}g_y.
+\]
+
+Identity 使用 \(g_y\)，不能使用已经包含 branch 的 \(\nabla_uF\)。对应 Endpoint 闭合为：
 
 \[
 E^{\mathrm{output}}
@@ -1227,14 +1325,25 @@ E^{\mathrm{identity}}
 E^{\mathrm{branch}}.
 \]
 
-不建议真正删除模型中的 residual identity，因为这会改变模型函数。
+分别对 attention residual 的 identity/attention 和 MLP residual 的 carry/MLP 进行分析。模型函数保持原样，检查完整闭合，并以省略非零 identity 的记账结果作为负向控制。
 
-建议执行两类分析：
+定义 identity/branch 的 absolute mass 份额与跨路径抵消：
 
-1. 正确记账下的完整闭合；
-2. 故意省略 identity branch 的负向控制。
+\[
+R^{identity}=
+\frac{\|E^{identity}\|_1}{\|E^{identity}\|_1+\|E^{branch}\|_1},
+\qquad R^{branch}=1-R^{identity},
+\]
 
-负向控制应显示闭合显著失败，以证明 identity branch 不能被忽略。
+\[
+C^{path}=1-
+\frac{\|E^{identity}+E^{branch}\|_1}
+{\|E^{identity}\|_1+\|E^{branch}\|_1}.
+\]
+
+报告每层质量份额、signed sum、正负质量和 cancellation，比较 early/middle/late、两模型以及 attention/MLP residual。用 identity 与 branch 的 cosine 检查方向关系，用 output 与 identity 的 patch absolute distribution 差异检查空间依赖是否改变。
+
+由此检验：深层局部输入依赖是否更多经 carry 传播；branch 质量大时是否被 identity 抵消；哪些层主要放大既有依赖，哪些层改变其空间分布。各层 cut 都在分解同一个目标的输入依赖，不能将不同层 branch mass 相加视为总贡献，也不能把局部质量份额解释为删层后的性能保持率。
 
 ---
 
@@ -1269,49 +1378,176 @@ C_k
 \frac{
 |\sum_iE_{k,i}|
 }{
-\sum_i|E_{k,i}|+\epsilon
+\sum_i|E_{k,i}|
 }.
 \]
+
+总质量为零时记 NA。这里的 signed cancellation 衡量单张 map 内的正负抵消，§7.3 的 path cancellation 衡量同一输入坐标上的跨路径抵消，两者分别报告。
 
 检验以下问题：
 
 - cancellation 高时 absolute mass 是否高估有限效应；
-- signed score 是否更适合预测效应方向；
+- 未取绝对值的 signed sum 是否更适合预测效应方向；\(|\sum_iE_i|\) 本身不包含方向信息；
 - absolute mass 是否更适合预测效应大小；
 - routing 和 value 是否具有不同的 cancellation 模式。
 
 ---
 
-## 7.5 Target 和 reference 敏感性
+## 7.5 Reference 稳定性与复用实验
 
-建议保留：
+### 7.5.1 问题与共同设置
 
-### Targets
+问题是：在 reference 未指定或需要多次更换时，一个固定排名能提供怎样的效用与成本？Endpoint 的排名不随干预 reference 变化是定义属性，实验需要测量这种复用的实际效果。
 
-- ground-truth logit；
-- clean-top1 logit。
+主分析沿用共享 400 图、两模型、ground-truth logit，比较全部 12 层内的全部 heads；不将跨层尺度差异混入层内排名。Clean-top1 logit 可另作次要 target 分析。对 head \(k\)，使用同一 projection 输入 slice 的激活 \(z_k\) 和 clean 梯度 \(g_k=\nabla_{z_k}F\)。
 
-Probability target 可以作为次要分析，因为 softmax probability 会引入：
+Reference-free 指生成排名不需要指定干预 reference。Endpoint 仍依赖坐标原点：若 \(x=(r-\mu)/\sigma\)，则 \(x\odot\nabla_xF=(r-\mu)\odot\nabla_rF\)。这不表示它对预处理变化保持不变。
 
-- 类别间耦合；
-- 概率饱和；
-- logit scale 影响。
+### 7.5.2 六类 reference
 
-主结果仍建议使用 logit。
+| Reference | 定义 | 需要记录的参数 |
+|---|---|---|
+| normalized-zero | 归一化输入为 0，原始 RGB 等于预处理均值 \(\mu\) | 模型预处理均值与标准差 |
+| blur | 原始 RGB Gaussian blur 后归一化 | 沿用 M2：kernel 31、sigma 10 及同一边界处理 |
+| dataset mean | 独立 calibration 图像集的经验 RGB 三通道均值，广播至全图 | 数据来源、图像列表、变换与实际均值 |
+| black | 原始 RGB 为 0，归一化后为 \(-\mu/\sigma\) | 与 normalized-zero 分开 |
+| noise | 原始 RGB 为 \(\operatorname{clip}(0.5+0.2\epsilon,0,1)\)，\(\epsilon\sim N(0,1)\) | 每图固定 3 次采样，记录 seed 与生成器 |
+| another image | 独立 donor 图像经相同评估变换后归一化 | 每图固定 3 个不同 donor，记录配对 |
 
-### References
+Calibration 与 donor 共用一个独立的 1,000 图集合，优先从 ImageNet training split 按固定随机种子抽取，排除评估图像；不用类别、预测或效应挑 donor。实际可用来源须在计算前确定。Dataset mean 是该集合经过固定评估变换后的经验均值，不用常见预处理常量代填。若其最终参考张量与 normalized-zero 相同，则作为同一 reference 的别名，在平均中只计一次。
 
-- normalized-zero；
-- blur。
+六类 reference 等权；noise 与 donor 的重复先在类内平均。最低表现指这组预定 reference 中的最低表现，不代表对任意 reference 的保证。
 
-可以增加以下探索性 reference：
+### 7.5.3 效应表与比较方法
 
-- dataset mean；
-- black image；
-- Gaussian noise；
-- another-image reference。
+对 reference \(r\) 的实例 \(j\)，计算同成分替换效应：
 
-但不能在查看结果后选择表现最好的 reference 作为主结果。
+\[
+e_{k,r,j}=F(x)-F(x;z_k\leftarrow z_k(x_{r,j}^{ref})),
+\qquad
+y_{k,r}=\frac1{J_r}\sum_j|e_{k,r,j}|.
+\]
+
+其余 heads 与 residual bypass 保持 clean。先对每实例取绝对值，再平均，保留 signed effect 供分析。
+
+| 方法 | 分数/策略 | 所需 reference 信息 |
+|---|---|---|
+| Endpoint | \(\lVert x\odot J_{z_k,x}^{\mathsf T}g_k\rVert_1\) | 无 |
+| Activation norm | \(\lVert z_k\rVert_2\) | 无 |
+| Gradient norm | \(\lVert g_k\rVert_2\) | 无 |
+| Activation × gradient | \(\lvert g_k^{\mathsf T}z_k\rvert\) | 无外部输入 reference |
+| Attention weight | \(\sum_{t=1}^{196}A_{k,CLS,t}=1-A_{k,CLS,CLS}\) | 无，限 head 集合 |
+| Random | 固定 1,000 个随机排列，逐次评价后平均 | 无，排列跨 reference 复用 |
+| Reference-specific Taylor | \(t_{k,r}=J_r^{-1}\sum_j\lvert g_k^{\mathsf T}(z_k-z_k^{ref_{r,j}})\rvert\) | 当前 reference |
+| Anchor Taylor | 用 normalized-zero 生成排名，在所有 reference 上复用 | 一个固定 reference |
+| Multi-reference Taylor | 每类 Taylor 分数先转 percentile rank，再跨类平均 | 全部 reference |
+| Leave-one-reference-out Taylor | 平均其余类的 Taylor percentile rank，在留出类评价，轮换全部类 | 除测试类以外的 reference |
+
+Attention 所有 query 行的总和恒定，不能直接用作 head 分数；上述 CLS-to-patch mass 另报离散度与 ties。所有方法使用同一候选集合，top-K 同分按 component ID，Spearman 使用 average ranks。Taylor 的 percentile rank 定义为 \((rank_{ascending}-1)/(H-1)\)，\(H\) 为该层 head 数，ties 使用 average ranks。
+
+### 7.5.4 性能与排名稳定性
+
+主预算 \(K=3\)，\(K=1\) 为补充。每图每层每 reference 计算 §2.4 的 Capture@K、Spearman 和 Regret@1，设 \(U_{b,r,m}=\operatorname{Capture@3}(m;y_r)\)。主要报告：
+
+\[
+U^{ref}_{r,m}=\frac1{12}\sum_bU_{b,r,m},\quad
+U^{avg}_m=\frac1{12}\sum_b\frac1R\sum_rU_{b,r,m},\quad
+U^{worst}_m=\frac1{12}\sum_b\min_rU_{b,r,m}.
+\]
+
+归一化 capture 为主，原始 logit 效应同时报告，避免高效应尺度的 reference 单独主导平均。列出最差 reference 的发生频次。
+
+跨 reference 排名稳定性为：
+
+\[
+S_m=\frac{2}{R(R-1)}\sum_{r<s}
+\operatorname{Spearman}(m_{\cdot,r},m_{\cdot,s}).
+\]
+
+另报 Top-3 overlap \(|\operatorname{Top3}(m_r)\cap\operatorname{Top3}(m_s)|/3\)。Endpoint 与其他固定排名的 overlap 为 1，非恒定分数的 Spearman 为 1；这验证复用一致性，不等于筛选有效。Constant ranks 的 Spearman 记 NA。
+
+增加 Taylor 迁移矩阵：在 reference \(r\) 上生成排名，在 \(s\) 上计算 capture；对角线是 reference-specific 性能。实际有限效应排名 \(y_r,y_s\) 的稳定性也要报告，以区分“方法排名变化”和“任务的重要成分本身变化”。
+
+### 7.5.5 每增加一个 reference 的成本
+
+分别记录第一次生成排名的成本和复用时的增量：
+
+\[
+C_m(R)=C_m^{initial}+\sum_{r=1}^R\Delta C_{m,r}.
+\]
+
+Endpoint 首次获取各 head VJP 的时间、显存和缓存全部计入。Taylor 复用 clean 激活与梯度，新增 reference 通常只需 reference forward、位移及点积，不能按每次重做 clean backward 计费。固定 reference 的跨图缓存和批处理同样计入。
+
+报告独立运行总成本与共享 clean cache 后的边际成本，包括 forward/VJP 次数、同步计时、GPU-hours、峰值显存及缓存大小。有限效应评价作为所有方法共享的评估成本单列。固定排名的 reference 增量重算次数为 0，读取缓存仍计实际成本。成本曲线实际出现交叉时才报告交叉点。
+
+### 7.5.6 与 M2 对齐的空间复用补充
+
+空间复用沿用 blocks 2/5/10、全部 heads、1/10/20/49 patch 预算及 M2 方法定义，扩展到上述 reference。完整输入效应和单 head 隔离效应分别报告 reference-specific、平均和最差 AUC，附各类原始效应尺度。
+
+区域 Taylor 仍使用区域替换后指定 head 的有限激活位移。在 reference \(r\) 生成的选区迁移至 \(s\) 时，应实际计算该选区在 \(s\) 上的效应。此项为固定设置下的描述性复用分析，不追加区域形状或 blur 强度搜索。
+
+## 7.6 Reference-free 成分筛选
+
+### 7.6.1 两阶段使用场景
+
+第一阶段只使用 clean 输入、模型、目标和候选集合，保存 Endpoint、activation norm、gradient norm、activation×gradient、attention weight、random 的分数与 Top-1/Top-3 列表。第二阶段指定 §7.5 的 reference，使用同一张效应表评价，候选列表不再调整。
+
+Taylor 参加第二阶段比较，并按 reference-specific、anchor、multi-reference、leave-one-reference-out 标注信息条件。第一阶段的筛选代码不读取 reference 激活和有限效应；研究者已经看到 M1/M2 的结果，这属于明确披露的补充实验，不重新声称原研究盲法。
+
+### 7.6.2 跨 reference 效应与覆盖率
+
+定义平均跨 reference 重要性与 reference-robust 重要性：
+
+\[
+\bar y_k=\frac1R\sum_ry_{k,r},
+\qquad
+y_k^{robust}=\min_ry_{k,r}.
+\]
+
+这里 robust 表示每类 reference 下都有较大的绝对效应。\(\max_ry_{k,r}\) 则表示至少在一类下效应大，是另一种问题。
+
+主要指标为：
+
+\[
+\operatorname{MeanCapture@3}=\operatorname{Capture@3}(m;\bar y),
+\qquad
+\operatorname{RobustCapture@3}=\operatorname{Capture@3}(m;y^{robust}),
+\]
+
+\[
+\operatorname{MultiRefCoverage@3}=
+\frac1R\sum_r\frac{|\operatorname{Top3}(m)\cap\operatorname{Top3}(y_r)|}{3}.
+\]
+
+先在每图每层计算，再平均 12 层。MeanCapture 是“平均效应上的 capture”，不同于 §7.5 的“各 reference capture 的平均”；RobustCapture 是“逐成分最小效应上的 capture”，不同于固定集合的最差表现。
+
+用 \(q_{k,r}=y_{k,r}/\sum_ky_{k,r}\) 替换原始效应再计算平均/最小值，作为效应尺度敏感性分析。所有零分母返回 NA 并报告发生率。
+
+Endpoint 的筛选增量由它相对五种 clean-only 基线的配对差值判断。Taylor 在已知 reference 时更准、固定表示便于统一复用，是可检验的权衡；Endpoint 是否比其他固定表示更有用，必须由这些比较回答。
+
+## 7.7 新增实验的统计与报告
+
+图像是统计单位，不能把同图的 heads、references、tokens 或 channels 当成独立样本。重复实例、heads/层或 token/channel 按各节规则先在图像内聚合，两模型差异按相同 image ID 配对。
+
+使用中位数、10,000 次图像 bootstrap、95% CI；主要配对差值用双侧精确符号检验和 Holm 校正，零差值单列，不计入正负样本数。Reference 平均/最差指标须保留该图全部规定 reference；缺少某类时不能用剩余类替代。
+
+主检验按以下模块分别构成 Holm family，并报告完整比较数；模型分别检验，不另合并一个 omnibus：
+
+| 分析 | 主要比较 | 其余报告 |
+|---|---|---|
+| Reference 复用 | Endpoint−reference-specific Taylor：各 reference、平均、最差 Capture@3 | Anchor/多 reference/留一法、稳定性、成本、空间 AUC |
+| 成分筛选 | Endpoint−五种 clean-only 基线：MeanCapture、RobustCapture、MultiRefCoverage | K=1、尺度敏感性、Taylor 信息条件对照 |
+| Routing 诊断 | routing share 的 late−early；head 内 saturation/error 相关系数相对 0 | 逐层/head、JVP 误差与排序频率 |
+| Residual 诊断 | 两 residual 类型的 identity share、path cancellation 的 late−early | 模型间差异、cosine 与空间分布 |
+| Neuron atlas | patch entropy/local mass/distance/cancellation 的 late−early；CLS−patch entropy | 中心/边缘、模型差异、相似性/聚类 |
+
+六类 reference 均不同的情况下，上述五个 family 分别包含 16、30、4、8、10 项双侧检验，均包含两个模型。若 reference 去重，第一组按 \(2(R+2)\) 重新确定；实际列表在新增结果计算前固定。未执行或无定义的项不从校正范围删除，使用 p=1 占位并保留对应状态。
+
+Routing share 每层先平均 heads，再分别平均 early/late 的四层；saturation/error 的 head 内相关系数先算每图每层，再平均层。Residual 的两类 cut 分开计算；neuron 指标按 §4.8 的 channel/token 权重聚合，CLS−patch entropy 在全部层平均后比较。
+
+有效成对图像少于原 cohort 的 90% 时该比较记为指标不足；缺失任务或数值错误须与合法的零质量分开记录。图像内聚合也要求至少 90% 的规定单元指标有效，并报告分母；reference 平均/最差仍要求全部规定 reference 有定义。未通过校正检验表示对应增量未获支持，不表示等效。CI 是逐比较区间。
+
+复用已见结果的分析标为 post-hoc reanalysis，新增数据的分析规则在计算前确定。原 C4a/C4b 仍为 NOT_SUPPORTED。结构分解的闭合和排名不变属于方法性质，层/head/神经元分布才是经验发现；标准 autodiff 同样可实现这些诊断，论文贡献聚焦统一表示、诊断流程和实际观测。
 
 ---
 
@@ -1451,11 +1687,9 @@ Cancellation ratio 位于最高 5%。
 
 ---
 
-## 10.4 如果 M2 中 Endpoint 仍不优于 Taylor
+## 10.4 M2 完成后的结论
 
-可以写：
-
-> 成分级排序能力和空间区域选择能力是两种不同性质。Endpoint 可以对内部成分的重要性提供一定信息，但其高分辨率输入图不自动保证更优的有限区域选择。
+M2 已观察到 Taylor 的优势，具体计数与范围见本文开头及 M2 结果报告。高分辨率 Endpoint 图并未自动转化为更优的有限区域选择。后续研究按 §7.5–7.6 检验统一复用与候选筛选，按 §7.1–7.4 和 §4.8 研究结构与 neuron 分布。
 
 ---
 
@@ -1543,6 +1777,8 @@ Cancellation ratio 位于最高 5%。
 - 图像子集规则；
 - 数值验证；
 - 层级和空间分布；
+- entropy、own-token locality、依赖距离与 cancellation 的深度变化；
+- CLS/patch、中心/边缘、两模型及 neuron 相似性；
 - 可选神经元 replacement。
 
 ---
@@ -1568,6 +1804,8 @@ Cancellation ratio 位于最高 5%。
 - residual identity；
 - signed/absolute；
 - target/reference；
+- 多 reference 的平均/最差效用、排名稳定性与实际复用成本；
+- reference 未指定时的成分筛选和高效应成分覆盖率；
 - 自动冻结的失败案例。
 
 ---
@@ -1597,7 +1835,7 @@ Cancellation ratio 位于最高 5%。
 
 # 十三、补充实验的最低可行版本
 
-如果计算资源有限，最低限度建议完成以下五项。
+M1、M2 已完成，保留其结果。后续优先完成 M3、M5 新增实验及对应报告；以下列表用于核对覆盖范围。
 
 ## 必做 1：M1 强基线
 
@@ -1665,130 +1903,52 @@ Cancellation ratio 位于最高 5%。
 - 明确 Endpoint 是 normalized-input Gradient × Input；
 - 明确结构分解是局部 Jacobian 分解，而不是函数值因果分解。
 
----
+## 新增重点：M5 复用、筛选与结构诊断
 
-# 十四、推荐的新增实验冻结文件
-
-为了提高可审计性，建议为新增实验发布一个独立配置文件，例如：
-
-```yaml
-supplementary_protocol:
-  status: frozen_after_primary_study
-  confirmatory_status: supplementary
-  models:
-    - vit_b_16
-    - deit_small_patch16_224
-
-M1:
-  predictors:
-    - endpoint_absolute_mass
-    - activation_norm
-    - gradient_norm
-    - activation_gradient
-    - reference_displacement_norm
-    - attribution_patching
-    - random
-  metrics:
-    - spearman
-    - capture_at_1
-    - capture_at_3
-    - regret_at_1
-    - ndcg
-  strata:
-    - within_block
-    - across_block
-    - early
-    - middle
-    - late
-  references:
-    - normalized_zero
-    - blur
-
-M2:
-  blocks:
-    - 2
-    - 5
-    - 10
-  heads: all
-  references:
-    - normalized_zero
-    - blur
-  budgets:
-    - one_patch
-    - 0.05
-    - 0.10
-    - 0.25
-  methods:
-    - endpoint_absolute
-    - endpoint_signed
-    - regional_taylor
-    - gradient_only
-    - displacement_only
-    - random
-    - center
-
-M3:
-  blocks: all
-  tokens_per_block: 16
-  cls_tokens_per_block: 1
-  patch_tokens_per_block: 15
-  channels_per_block: 32
-  image_subset:
-    method: deterministic_hash
-    size: 100
-  numerical_validation:
-    tokens_per_block: 2
-    channels_per_block: 4
-    directions_per_target: 5
-    precision:
-      - float32
-      - float64
-
-multiple_testing:
-  method: holm
-
-bootstrap:
-  unit: image
-  confidence_level: 0.95
-  replicates: 10000
-```
-
-实际字段可以根据代码实现调整，但以下内容必须冻结：
-
-- 图像列表；
-- token 列表；
-- channel 列表；
-- blocks；
-- heads；
-- references；
-- 空间预算；
-- predictor；
-- 统计指标；
-- 多重检验方法；
-- 排除规则；
-- 数值容差。
+- Reference-specific、across-reference average、worst-reference performance；
+- 固定排名与 Taylor 的迁移稳定性、额外计算成本；
+- 平均重要性、reference-robust importance、multi-reference top-coverage；
+- Frozen-attention 遗漏的 routing、闭合残差与 saturation 关系；
+- Attention/MLP residual 的 identity/branch 份额和 signed/path cancellation。
 
 ---
 
-# 十五、整合后的论文核心结论
+# 十四、后续执行顺序与必要记录
 
-完成 M1–M6 后，论文不应以“Endpoint 全面优于其他方法”为目标。
+本文件是阶段 M 的统一方案入口。实验参数与实际结果在对应章节更新；实现需要的配置复用已有结构，避免为同一事项重复建立协议、附录和审计文件。历史实验保留原配置与结果，复现时使用对应 Git 提交中的当时版本。
 
-更稳健、也更有科学意义的主结论是：
+| 顺序 | 工作 | 数据复用与交付 |
+|---|---|---|
+| 1 | 汇总 E3/M1 已有结构数据，开展 M5 routing/residual 分析 | 复用可重算的记录；缺少逐 head 分解或图形统计时补算所需内容，交付层/head 诊断表 |
+| 2 | 按 M3 生成分层 neuron atlas，并完成 §4.8 分布分析 | 同一次生产保存数值验证、patch 图与汇总，不为分布分析重跑 atlas |
+| 3 | 确定 reference 来源及参数，先保存 clean-only 筛选结果，再计算新增 reference 效应 | M5 §7.5–7.6 共用效应表，继承 M1 中定义一致的 normalized-zero/blur 数据 |
+| 4 | 完成 reference 复用、筛选比较与成本测量 | 输出各 reference/平均/最差效用、三种筛选指标、迁移矩阵和成本曲线 |
+| 5 | 按 §7.5.6 完成空间复用补充，再整合 M6 图示与论文解释 | 复用 M2 可用记录，补足新 reference/迁移选区；保留完整输入与隔离效应的区别 |
 
-> NNS-ViT 将原始 NNS 的输入坐标传播思想形式化为适用于 ViT 注册标量目标的局部 Jacobian Endpoint，并提供可闭合的 attention 和 residual 结构记账。分层神经元审计表明，该方法可以稳定应用于跨层、跨空间位置的 token-channel 单元，但当前扫描仍然是冻结抽样，而不是全部神经元穷举。行为实验显示，Endpoint mass 对有限成分效应提供广泛但非普遍的排序信息；其增量价值取决于成分类型、层级和 reference，并且 reference-matched attribution patching 通常更适合预测具体有限替换。进一步地，成分级排序能力不会自动转化为空间区域选择优势。
+这是一份后续执行计划，本次文档更新不表示这些实验已经运行。每次实际执行按指定模块推进。
 
-这套方案将论文的三种能力明确区分开：
+运行前记录影响科学解释的设置即可：
 
-1. **数学与实现正确性**
-   结构分解能否闭合，Endpoint 是否与局部 Jacobian 一致。
+- 图像、token/channel 与 donor 的实际列表，模型、目标与层/head 范围；
+- reference 的坐标、数据来源、变换、噪声参数及 seed；
+- 方法、预算、指标、聚合顺序、NA 规则、统计比较与数值容差；
+- 已有结果的复用范围，以及实际计算的新增部分。
 
-2. **神经元和成分级行为效用**
-   Endpoint 是否能够排序有限替换效应，以及是否优于简单基线。
+运行后记录每项完成数、异常/NA 数、实际计算成本和主要结果，并保留能重算图表的逐图数据。可视化保存 PNG/PDF，配简短编号说明：reference 迁移与成本、成分覆盖率、routing 误差、residual 记账、neuron 层级分布。来源身份、模型权重和必要数据校验沿用现有机制，不为每条叙述重复生成哈希或单独收据。
 
-3. **空间级行为效用**
-   Endpoint 图是否能够选择真正有效的有限干预区域。
+---
 
-最终建议将论文定位为：
+# 十五、论文结论的组织方式
 
-> 一种对 ViT 内部注册标量目标进行统一输入坐标归因、结构化局部 Jacobian 记账和行为审计的 NNS 推广框架，而不是一种声称全面优于现有归因方法的全神经元扫描器。
+目前已获得的行为证据是：Endpoint 对有限成分效应具有广泛但非普遍的排序关联；在 M2 的空间区域替换比较中，reference-matched Taylor 表现更好。原 C4a/C4b 的 NOT_SUPPORTED 结论保持。
+
+后续论文围绕以下证据链组织：
+
+1. **表示与数值正确性**：Endpoint 提供注册标量目标的输入坐标表示，attention/residual 的局部导数分解通过独立检查。
+2. **Reference 复用与筛选效用**：比较已知 reference 的预测精度、统一排名的平均/最差效用以及实测成本，判断 Endpoint 相对其他 clean-only 方法是否增加信息。
+3. **ViT 结构发现**：用 routing omission、residual carry/branch 份额和抵消描述具体层/head 的输入依赖。
+4. **Neuron-atlas 分布**：用熵、局部质量、距离和带符号抵消检验抽样神经元的层级与空间规律。
+
+各项待完成实验的结论随结果填写。若统一复用没有带来效用或成本增益，或神经元分布没有呈现预期深度趋势，就报告该项未获支持；结构闭合正确也不能代替这些经验检验。
+
+论文定位为：对 ViT 内部注册标量目标进行统一输入坐标归因、结构化局部 Jacobian 记账与行为评价，并由具体实验界定适用场景。
