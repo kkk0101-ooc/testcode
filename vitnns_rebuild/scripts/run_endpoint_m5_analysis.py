@@ -21,7 +21,7 @@ sys.path.insert(0, str(REPO / "src"))
 from vitnns.endpoint_m5_analysis import METHOD_MATRIX, average_ranks, head_block_metrics, summarize
 
 SPEC_PATH = REPO / "config/nns_vit_endpoint/endpoint_m5.json"
-ROOT = REPO / "reports/nns_vit_endpoint_m5_r1_20260919"
+ROOT = REPO / "reports/nns_vit_endpoint_m5_r2_20260919"
 M1 = REPO / "reports/nns_vit_endpoint_m1_r1_20260918"
 M2 = REPO / "reports/nns_vit_endpoint_m2_r1_20260919"
 M4 = REPO / "reports/nns_vit_endpoint_m4_r1_20260919"
@@ -264,9 +264,10 @@ def main():
     ROOT.mkdir(parents=True)
     write_json(ROOT / "predecessor_validation.json", gate)
     write_json(ROOT / "freeze.json", {
-        "stage": "ENDPOINT-M5", "time_ns": time.time_ns(),
+        "stage": "ENDPOINT-M5-R2", "time_ns": time.time_ns(),
         "producer_commit": gate["producer_commit"], "config_sha256": sha(SPEC_PATH),
-        "source_bindings": spec["source_bindings"], "next_authorization": "STOP_AFTER_M5",
+        "source_bindings": spec["source_bindings"], "recovery": spec["recovery"],
+        "next_authorization": "STOP_AFTER_M5",
     })
     image_rows, reference_summary = reference_analysis()
     m2_rows, m2_receipt = m2_analysis()

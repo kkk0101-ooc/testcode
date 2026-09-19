@@ -28,8 +28,8 @@ def spearman(left, right):
         return None
     left_rank = average_ranks(left)
     right_rank = average_ranks(right)
-    left_mean = statistics.fmean(left_rank)
-    right_mean = statistics.fmean(right_rank)
+    left_mean = math.fsum(left_rank) / len(left_rank)
+    right_mean = math.fsum(right_rank) / len(right_rank)
     left_centered = [value - left_mean for value in left_rank]
     right_centered = [value - right_mean for value in right_rank]
     denominator = math.sqrt(
@@ -125,7 +125,7 @@ def head_block_metrics(zero_rows, blur_rows):
         exact["finite_effect"] += average_ranks(effect_zero) == average_ranks(effect_blur)
     if any(any(value is None for value in values) for values in output.values()):
         raise ValueError("UNDEFINED_HEAD_SPEARMAN")
-    return {key: statistics.fmean(values) for key, values in output.items()}, exact
+    return {key: math.fsum(values) / len(values) for key, values in output.items()}, exact
 
 
 METHOD_MATRIX = [
