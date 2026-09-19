@@ -1,39 +1,36 @@
-# NNS-ViT Endpoint Scanner：视觉 Transformer 的注册内部目标扫描与结构化分解
+# NNS-ViT：视觉 Transformer 内部目标的可审计 Endpoint 图与结构化 Jacobian 分解
 
 - 作者：`[AUTHOR REQUIRED]`
 - 单位：`[AFFILIATION REQUIRED]`
 - 通讯作者：`[CORRESPONDING AUTHOR REQUIRED]`
 
-> 初稿 R2，2026-09-19。正文图号沿用封存 Endpoint 图包 Figure 1–33 和独立细粒度
-> 展示包 Figure 34–40；投稿排版可按
+> 初稿 R3，2026-09-20。正文图号沿用已封存、统一组织的
+> `ENDPOINT-ALL-FIGURES-R2` 图包 Figure 1–40；投稿排版可按
 > `papers/nns_vit_endpoint/zh/outline.md` 的建议重新编号。
 
 ## 摘要
 
-视觉 Transformer（ViT）的内部解释对象横跨 token、channel、attention head、
-routing/value 路径、MLP 分支和 residual stream。它们的张量形状与计算角色不同，使得
-统一扫描、结构核对和行为评价难以在同一坐标系统中完成。本文提出 NNS-ViT Endpoint
-Scanner：把原始 Neural Network Scanner 的输入值初始化与当前状态传播原则适配到 ViT，
-对任意注册标量目标生成
-$L_s^{\mathrm{Endpoint}}(x)=x\odot\nabla_xs(x)$，并以完整计算边切面把同一最终目标
-分解为 head、Q/K/V、routing/value、attention residual 和 MLP residual 成分。该基础量
-与 Gradient × Input 相同；本文研究的是 ViT 目标注册、结构化记账以及这些成分在有限
-干预中的经验效用。我们在共享的 400 张 ImageNet evaluation 图像上评价 ViT-B/16 和
-DeiT-S/16。注册扫描完成 800/800 个图像—模型任务和 336,800 个有限目标值；结构验证
-通过 76,800 个正向闭合检查，拒绝 28,800 个遗漏或重复记账负例，并通过 6,144 个
-condition-scaled analytic JVP 检查。直接 fidelity bridge 又在五类兼容网络上完成原始
-逐层 NNS propagation 与 Endpoint 的 5,000 个 target-level 数值比较，全部满足对应精度
-合同。冻结的 100 图分层审计为每个 model-image 计算 6,144 个 post-block token-channel
-单元；两个模型均表现出层深相关的局部一阶输入依赖空间扩展，即 late blocks 相比 early
-blocks 具有更高 entropy、更低自身邻域 locality 和更大的 normalized distance。对于匹配
-activation replacement，12 个预注册
-family 中有 11 个达到全部 family-level 条件。RQ3 呈现广泛但非普遍的成分级关联，
-预注册 all-family omnibus 为 `NOT_SUPPORTED`。未通过 family 的相关仍显著为正，
-但其置信区间跨越 0.10，不能确认达到预设实际效应水平。在
-空间定向干预中，0/4 family 同时优于 total G×I、raw gradient、regional Taylor 和
-随机区域；regional Taylor 在四个 family 中均取得更高的中位效果。Endpoint 因而形成
-一个经数值验证的内部目标表示，其抽样 token-channel map 随深度发生空间扩展；成分级
-有限效应关联与 reference-specific 局部区域选择仍是两种不同能力。
+视觉 Transformer（ViT）的内部解释对象横跨 token-channel 单元、attention head、
+routing/value 路径、MLP 分支、residual stream 和类别输出。本文提出 NNS-ViT Endpoint
+Scanner，把原始 Neural Network Scanner 的输入值初始化与当前状态传播形式化为局部
+Jacobian propagation。对任意注册标量目标 $s$，其输入坐标图为
+$E_s(x)=x\odot\nabla_xs(x)$。该基础量与 Gradient × Input 相同；本文的技术贡献是异构
+ViT 目标的统一 registry、可闭合的 attention/residual 切面和可独立审计的数值协议。
+在共享的 400 张 ImageNet evaluation 图像上，ViT-B/16 和 DeiT-S/16 的 registry-complete
+扫描完成 800/800 个图像—模型任务和 336,800 个目标评价。结构验证通过 76,800 个正向
+闭合检查，拒绝 28,800 个遗漏或重复记账负例，并通过 6,144 个 condition-scaled analytic
+JVP 检查。直接 fidelity bridge 在五类兼容网络上比较显式逐层 NNS propagation 与
+Endpoint，共 5,000 项数值比较全部满足对应精度合同。冻结的 100 图分层审计为每个
+model-image 计算 6,144 个 post-block token-channel targets；两个模型的 late blocks 均比
+early blocks 具有更高空间 entropy、更低 own-token locality 和更大的 normalized input
+distance。对冻结 ground-truth logit，late attention 的 routing-relative path scale 更大，
+与 Value-only fixed-attention approximation 的差异也更大；post-hoc 全 cohort sensitivity
+显示 attention residual 的空间改变随深度增加，而 MLP residual 的空间改变下降。行为标定
+保持独立：12 个预注册成分 family
+中有 11 个满足有限效应关联的 family-level 条件，但 all-family omnibus 保持
+`NOT_SUPPORTED`；四个注册空间干预 family 中 regional Taylor 均取得更高的中位效果。
+NNS-ViT 因而为目标条件化的局部输入依赖提供统一、可审计的表示；有限 replacement 与
+reference-specific 区域选择仍需单独验证。
 
 关键词：Vision Transformer；神经网络解释；Gradient × Input；结构分解；activation
 replacement；attention head
@@ -62,27 +59,35 @@ LayerNorm、GELU、输入依赖的 softmax attention、两处 residual add 以�
 对象，因此需要明确其真实 Jacobian、结构切面和目标身份。本文沿用 NNS 的终点传播思想，
 但不把 $x\odot\nabla_xs(x)$ 重新命名为新的基础归因公式。
 
-我们提出 NNS-ViT Endpoint Scanner，并围绕四个原始效用问题进行评价（Figure 1），另以
-直接 NNS fidelity bridge 和分层 token-channel 机制审计补充证据链：
+Figure 1 用一条主线概括方法：在真实 ViT 中选定一个标量响应，在观测输入处求导，并把
+所得 Endpoint map 保留在原始输入坐标。本文沿五个相互衔接的问题组织证据：
 
-1. **RQ1：注册扫描。** 能否在两个冻结 ViT 上完整、有限且可审计地扫描统一登记的
-   内部标量和输出目标？
-2. **RQ2：结构正确性。** Head、Q/K/V、routing/value 和 residual cuts 能否在完整计算
-   图上重构其注册对象，并拒绝遗漏或重复记账？
-3. **RQ3：成分级效用。** Endpoint 成分的输入空间质量能否预测同一成分被 reference
-   activation 替换时的有限 logit effect？
-4. **RQ4：空间效用。** 完整输入分辨 component map 能否在固定区域池和预算下，比总
-   G×I、raw gradient、regional Taylor 和随机区域更好地定位有限效应？
+1. **RQ1：原始 NNS 忠实性。** 当前状态的 learning-image propagation 是否在理论与
+   数值上归结为同一个局部 Jacobian 对象？
+2. **RQ2：统一内部目标扫描。** 一个 registry 能否完整、可审计地扫描两个冻结 ViT 中
+   形态不同的标量目标？
+3. **RQ3：结构与数值可审计性。** Q/K/V、routing/value 和 residual identity/branch
+   cuts 能否重构注册对象并通过独立微分检查？
+4. **RQ4：ViT 内部机制。** Endpoint atlas 呈现出怎样的层深、token、routing/value 和
+   residual path 规律？
+5. **RQ5：行为相关性与解释边界。** Endpoint 图和统计量与有限 activation replacement
+   有何关系，reference 信息何时会改变合适的估计量？
 
-本文的贡献有六点。第一，我们把 NNS 的终点原则形式化为真实 ViT Jacobian，并明确
-normalized-input 坐标原点以及 LayerNorm、GELU、softmax attention、MLP 和 residual 的
-传播作用。第二，我们建立两个 ViT 的注册目标目录和可审计扫描流程，在同一 400 图 cohort
-上完成 336,800 个目标评价。第三，我们定义完整 edge cuts，把 head、attention differential
-paths 和两处 residual 分支映回同一输入坐标并重构注册对象。第四，我们用闭合负例、解析
-JVP、匹配 activation replacement 和空间定向干预分别评价 correctness 与 utility。第五，
-我们直接比较原始逐层 NNS propagation 与 Endpoint，并以 autograd 和方向有限差分验证
-11 类 ViT 算子 Jacobian。第六，我们在两个模型的冻结 token-channel 样本中观察到层深
-相关的空间扩展，并由行为实验分别界定成分级与 reference-specific 空间效用。
+![Figure 1](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_01_endpoint_scanner_method_overview.png)
+
+**Figure 1.** Endpoint Scanner 的核心流程。真实懒熊输入经过选定的 ground-truth class
+logit 和终点规则 $E_s(i)=x_i\,\partial s(x)/\partial x_i$，得到位于原输入坐标的正贡献
+learning image。主图使用蓝底 $\max(E,0)$ 和逐面板 P99 显示缩放；完整 signed map 保留在
+补充材料中。
+
+本文有四项贡献。第一，我们把原始 NNS learning-image propagation 形式化为局部 Jacobian
+传播，在推广到 LayerNorm、GELU、softmax attention、MLP 和 residual connection 前，先
+验证它与 Endpoint 的理论及数值等价。第二，我们为 token-channel、head、Q/K/V、
+routing/value、residual branch、聚合目标和类别输出提供统一 registered-scalar 接口。第三，
+我们建立完整 attention/residual differential cuts，并以正向闭合、负向控制、JVP/VJP、
+有限差分和算子测试验证。第四，我们用 atlas 测量层深相关空间扩展和目标条件化的
+attention/residual 机制，再以有限干预标定其行为含义，而不把 Endpoint 表述为通用干预
+预测器。
 
 ## 2. 相关工作
 
@@ -167,11 +172,11 @@ $$
 因此 canonical Endpoint 在 raw-RGB 坐标中以模型 normalization mean 为坐标原点。二维
 显示图由原始 signed RGB tensor 做通道求和得到；绝对值、正部或逐图显示缩放不进入统计。
 
-![Figure 2](../../../reports/nns_vit_endpoint_unified_paper_figures_r2_20260918/figures_png/figure_02_endpoint_cnn_path_method_identity.png)
+![Figure 2](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_02_endpoint_cnn_and_path_method_identity.png)
 
-**Figure 2.** 原始 NNS-CNN、ViT Endpoint 与 Path IG 的方法身份。它区分输入 seed、
-当前点 Jacobian 与路径平均 Jacobian；Endpoint 的基础量就是同一标量目标的
-$x\odot\nabla_xs(x)$。
+**Figure 2.** 三种相关方法回答不同问题。原始 NNS-CNN 和 ViT Endpoint Scanner 都按
+当前状态传播；Path IG 使用输入位移 seed 和路径平均 Jacobian。ViT 扩展改变的是被追踪的
+计算图，而不是 $x\odot\nabla_xs(x)$ 这一基础身份。
 
 ### 3.2 注册内部目标
 
@@ -187,18 +192,25 @@ $$
 DeiT-S/16 每图注册 385 个目标；两者均覆盖全部 12 个 blocks（Figure 7、11）。不同
 模型中编号相同的 channel 不解释为语义相同。
 
-![Figure 34](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r2_20260919/figures_png/figure_34_registered_target_learning_images.png)
+![Figure 11](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_11_registered_target_atlas_design.png)
 
-**Figure 34.** 展示样本 ILSVRC2012_val_00005415.JPEG 的六个真实注册目标。该样本来自
-预先保留的前 16 张 E2 full-atlas 图像，因主体轮廓和 Endpoint 空间结构较清晰而用于展示，
-不改变正式统计。蓝底主图将
-signed RGB 通道求和后显示 $\max(L,0)$，各面板独立使用 P99 缩放，因此只用于阅读
-同一目标内部的细粒度空间形态，不能比较不同面板的绝对强度。完整 signed companion
-保留在独立图包中；数值结论仍使用原始 arrays。与 path 论文的 Figure 29 不同，这里的
-对象是单个注册标量的直接 $3\times224\times224$ Endpoint map，不存在与其一一配对的
-$14\times14$ token-response 下排。
+**Figure 11.** 注册 target atlas 的构成。横向区段分别表示 token-channel、patch sum、
+energy、head 和 class targets；457 与 385 的主要差异来自两模型 attention head 数不同。
 
-![Figure 37](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r2_20260919/figures_png/figure_37_channel0_depth_progression.png)
+![Figure 13](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_13_sloth_bear_multi_target_atlas.png)
+
+**Figure 13.** 预先保留的展示样本 ILSVRC2012_val_00005415.JPEG 的六个注册标量目标。
+其封存 ImageNet 标签为 class 297，即懒熊（sloth bear，`n02134418`）。蓝底面板将 signed
+RGB 通道求和后显示 $\max(L,0)$，各面板独立使用 P99 缩放，只用于目标内部的空间阅读，
+不能比较跨面板绝对强度。完整 signed companion 和源数组哈希保留在统一 R2 图包中。
+
+![Figure 34](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_34_registered_target_learning_images.png)
+
+**Figure 34.** 同一封存懒熊样本六个注册 target 的扩展细粒度阅读页。科学 target 身份和
+raw arrays 不变；蓝底正部仅用于阅读空间形态，signed companion 位于
+`supplement/signed/`。
+
+![Figure 37](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_37_channel0_depth_progression.png)
 
 **Figure 37.** 参考原始 NNS 论文 Figure 13 的“横向跨层、上下对应”组织方式，固定
 DeiT-S/16 的同一输入和 channel 0，依次展示 patch embedding、Block 0–11、final CLS 和
@@ -233,6 +245,11 @@ $$
 routing+Value 两种注册分解（Figure 5）。LayerNorm 的均值、方差耦合和 GELU 的平滑
 导数均保留，不能替换为冻结统计量或 ReLU 二值门。
 
+![Figure 5](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_05_attention_q_k_v_differential_paths.png)
+
+**Figure 5.** Query routing、Key routing 与 Value content 在各自归因规则内重构完整
+attention contribution。Endpoint 在当前状态求值，Path IG 则沿指定路径积分相应路线。
+
 ### 3.4 Structured endpoint decomposition
 
 对最终标量 $F$ 和切面成分 $z_k$，定义输入坐标成分图
@@ -254,14 +271,19 @@ paths 重构 residual total；carry 加 MLP branch 重构第二个 residual tota
 Residual identity 必须按其真实输入边记账；遗漏一条非零 branch 或重复加入 bypass 都应被
 闭合验证拒绝。
 
-![Figure 35](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r2_20260919/figures_png/figure_35_block5_structural_learning_images.png)
+![Figure 10](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_10_structured_edge_cuts.png)
+
+**Figure 10.** Structured cuts 在保持同一个下游 target 的前提下分开 attention routes 或
+residual branches。有效切面必须让每条 input-to-target 路径恰好出现一次。
+
+![Figure 35](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_35_block5_structural_learning_images.png)
 
 **Figure 35.** 同一图像、同一 ground-truth 类别目标与同一 block 5 的细粒度结构图。
 Identity、head、routing、value、attention、MLP 和完整 Endpoint 使用与 Figure 17 相同的
 结构切面，但改为展示样本 order 14 的已封存、通过闭合验证的 raw component arrays；
 蓝底正部只是额外阅读视图，不改变 signed 科学口径。
 
-![Figure 38](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r2_20260919/figures_png/figure_38_attention_head_depth_atlas.png)
+![Figure 38](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_38_attention_head_depth_atlas.png)
 
 **Figure 38.** 固定 DeiT-S/16 输入，在 Block 0、1、5、11 展示全部六个 attention
 head edges 对同一个 ground-truth class logit 的 Endpoint contribution map。行表示深度、列
@@ -269,14 +291,14 @@ head edges 对同一个 ground-truth class logit 的 Endpoint contribution map�
 逐面板缩放只允许比较
 空间形态，不能直接比较跨 head 或跨层的绝对强度。
 
-![Figure 39](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r2_20260919/figures_png/figure_39_vit_b16_attention_head_depth_atlas.png)
+![Figure 39](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_39_vit_b16_attention_head_depth_atlas.png)
 
 **Figure 39.** ViT-B/16 的对称版本，在四个代表深度展示全部十二个 heads，并保持相同
 ground-truth class logit 作为共同下游目标。完整的
-12 blocks × 12 heads 分层页保留在图包的 `all_heads_vit_b16/`，因此论文既有紧凑主图，
+12 blocks × 12 heads 分层页保留在图包的 `supplement/all_heads/vit_b16/`，因此论文既有紧凑主图，
 也有不省略 head 的补充材料。
 
-![Figure 40](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r2_20260919/figures_png/figure_40_vit_b16_module_chain.png)
+![Figure 40](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_40_vit_b16_module_chain.png)
 
 **Figure 40.** 对固定 ViT-B/16 输入和 channel 0，沿真实模块链展示 patch embedding、
 Block 0/5/11 的 Norm1、attention projection、Norm2、MLP fc1、GELU、fc2，再到 final CLS
@@ -304,7 +326,7 @@ $$
 e_k=F(x)-F(x;z_k\leftarrow z_k^{\mathrm{ref}}).
 $$
 
-Reference 分为 normalized-zero 与 RGB blur。RQ3 的主量是每张图像内部
+Reference 分为 normalized-zero 与 RGB blur。有限效应主量是每张图像内部
 $\operatorname{Spearman}(m_k,|e_k|)$；head、routing/value 和 residual branches 分别形成
 family。Activation-displacement Taylor
 
@@ -314,9 +336,14 @@ $$
 
 作为预注册次级 predictor 报告，但不进入 C4a 的支持门（Figure 19、22）。
 
+![Figure 22](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_22_endpoint_and_registered_secondary_predictors.png)
+
+**Figure 22.** Endpoint mass 与预注册描述性 predictors 的逐图中位关联。只有蓝框中的
+Endpoint 列进入 C4a；其余列帮助解释任务，但不替代注册检验。
+
 ### 3.6 空间定向干预
 
-RQ4 固定 block 5 的 head 0、中间 head 和最后一个 head。224×224 输入被划分为 4×4 个
+空间干预审计固定 block 5 的 head 0、中间 head 和最后一个 head。224×224 输入被划分为 4×4 个
 不重叠的 56×56 区域；排序后选择前 1、2 或 4 个区域，对应 6.25%、12.5% 和 25% 面积。
 Endpoint 区域分数为成分图的 RGB-level absolute mass。四个 mandatory baselines 是
 total Endpoint/G×I、raw input gradient、regional activation-space Taylor 和 20 个冻结
@@ -426,28 +453,35 @@ comparisons 是数值验证案例，不作为独立统计样本。11 类 ViT 算
 
 ## 5. 结果
 
-### 5.1 RQ1：注册目标扫描完整且在资源上可执行
+### 5.1 RQ2：注册目标扫描完整且在资源上可执行
 
 两个模型的 800/800 个 image-model tasks 均唯一完成，无缺失、重复、无效结果或正式重试。
 ViT-B/16 每图的 457 个目标和 DeiT-S/16 每图的 385 个目标形成 336,800/336,800 个有限
 target evaluations。所有图像保留 ground-truth 与 clean-top1 raw signed RGB class maps，
 前 16 个 evaluation ID × 两模型保留 32 份 full raw atlas；未出现 near-zero 或失败索引。
-固定前 8 张图在两个模型上的结果见 Figure 12，多目标 atlas 示例见 Figure 13；Figure 34
-把预先保留的 evaluation order 14 的六个注册目标重新排成可读的蓝底细粒度视图。
+Figure 12 与 Figure 13 使用预先保留的 evaluation order 14，即 class 297 的懒熊样本，
+分别比较两个模型对同一 ground-truth class logit 的 Endpoint，并展示 DeiT-S/16 的六个
+预注册目标。Figure 34 保留来自同一封存数组的扩展六目标阅读页。
 
-![Figure 12](../../../reports/nns_vit_endpoint_unified_paper_figures_r2_20260918/figures_png/figure_12_frozen_first_eight_endpoint_gallery.png)
+![Figure 12](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_12_sloth_bear_class_logit_maps_across_models.png)
 
-**Figure 12.** 冻结前八张 evaluation 图像在 ViT-B/16 与 DeiT-S/16 上的 ground-truth
-和 clean-top1 Endpoint gallery。每行独立显示缩放，仅用于展示同一图内的空间形态。
+**Figure 12.** 同一张预留懒熊输入与同一个 ground-truth class-logit target 在 DeiT-S/16
+和 ViT-B/16 中的 Endpoint。蓝底面板分别按 P99 显示 $\max(L,0)$；这里只比较空间形态，
+不比较跨模型绝对强度，完整 signed companion 保留在 supplement。
 
 正式扫描 wall time 为 1,752.71 s，按四卡同时占用的保守上界为 1.9475 GPU-hours。峰值
 reserved GPU memory 为 2.284 GB，峰值 CPU RSS 为 2.018 GB，retained data 为 9.290 GB。
 正式吞吐为 192.16 targets/s 和 0.4564 images/s。完整 atlas 的 median/P95/max latency 在
 DeiT-S/16 上为 7.853/8.015/8.240 s，在 ViT-B/16 上为 9.485/9.751/10.615 s
-（Figure 14）。这些结果支持 RQ1：注册目标表可以在固定模型和 cohort 上完整执行并形成
+（Figure 14）。这些结果支持 RQ2：注册目标表可以在固定模型和 cohort 上完整执行并形成
 可核对的 atlas。
 
-**Table 2. RQ1 注册扫描覆盖与资源。**
+![Figure 14](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_14_scan_scale_latency_and_resources.png)
+
+**Figure 14.** Registry 宽度与实测完整-atlas latency。实心点为 median，空心点为 P95；
+运行时间是工程测量，不是科学成功门槛。
+
+**Table 2. RQ2 注册扫描覆盖与资源。**
 
 | 指标 | 结果 |
 |---|---:|
@@ -460,7 +494,7 @@ DeiT-S/16 上为 7.853/8.015/8.240 s，在 ViT-B/16 上为 9.485/9.751/10.615 s
 | Peak CPU RSS | 2.018 GB |
 | Retained data | 9.290 GB |
 
-### 5.2 RQ2：结构切面在正例和负例上均满足合同
+### 5.2 RQ3：结构切面在正例和负例上均满足合同
 
 正式闭合实验覆盖 400 张图、两个模型、全部 12 个 blocks 和每个 block 的 8 个注册 cuts，
 共 76,800 个正向检查。全部检查均满足 float32 合同
@@ -472,14 +506,19 @@ $|\mathrm{error}|\leq\mathrm{atol}+\mathrm{rtol}|\mathrm{reference}|$，后一�
 
 每个 block 还执行三个 checker 负例，故意遗漏非零 head/routing 或重复 residual，共
 28,800 项；这些负例全部按预期被拒绝（Figure 16）。前 16 个 evaluation ID 的 384 个 raw
-block arrays 又由 CPU-only validator 从 component maps 独立重算。RQ2 因此得到支持：在
+block arrays 又由 CPU-only validator 从 component maps 独立重算。RQ3 因此得到支持：在
 注册 cut 与两个标准 timm ViT 范围内，结构成分能够重构对应 attention branch 或 residual
 total，checker 也能识别典型漏项和重复记账。
 
-![Figure 17](../../../reports/nns_vit_endpoint_unified_paper_figures_r2_20260918/figures_png/figure_17_real_structural_component_maps.png)
+![Figure 16](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_16_formal_closure_and_negative_controls.png)
 
-**Figure 17.** 固定第一张 DeiT-S/16 图像与同一类别目标的 block-5 signed 结构成分图。
-它保留原始正负信息；Figure 35 是这些数组的蓝底正部阅读视图。
+**Figure 16.** 76,800 个正向闭合检查全部通过，28,800 个故意破坏的 controls 全部被
+拒绝；最坏 relative-L2 closure error 使用了冻结容差的 14.1%。
+
+![Figure 17](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_17_sloth_bear_structural_component_maps.png)
+
+**Figure 17.** 预留懒熊输入、同一 ground-truth class target 下通过闭合验证的 block-5
+结构成分。主面板采用蓝底正部阅读视图；完整 signed maps 保留在 `supplement/signed/`。
 
 ### 5.3 局部微分实现通过独立方向检查
 
@@ -491,7 +530,12 @@ $2.648076753197781\times10^{-5}$；最大
 $10^{-5}+10^{-5}\sum_i|g_i(Jx)_i|$ 边界。该结果验证局部微分实现，不替代下一节的
 finite replacement 评价。
 
-**Table 3. RQ2 结构闭合与局部微分检查。**
+![Figure 18](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_18_condition_scaled_analytic_jvp_checks.png)
+
+**Figure 18.** 6,144 个 analytic JVP checks 的覆盖、通过数和最坏 error-to-threshold ratio；
+最大比例为 0.441，仍位于 condition-scaled failure boundary 内。
+
+**Table 3. RQ3 结构闭合与局部微分检查。**
 
 | 检查 | 数量 | 结果 | 最大误差 |
 |---|---:|---|---:|
@@ -500,9 +544,9 @@ finite replacement 评价。
 | Condition-scaled analytic JVP | 6,144 | 全部通过 | absolute = 2.64808e-05 |
 | JVP condition-scaled ratio | 6,144 | 全部通过 | 6.94876e-06 |
 
-### 5.4 RQ3：广泛但非普遍的成分级有限效应关联
+### 5.4 行为标定：广泛但非普遍的成分级有限效应关联
 
-RQ3 比较每图的 Endpoint component absolute mass $m_k$ 与同一成分有限 replacement
+RQ5 的行为标定比较每图的 Endpoint component absolute mass $m_k$ 与同一成分有限 replacement
 effect 的绝对值 $|e_k|$。12 个预注册 family 中，11 个满足点估计至少 0.10、正方向、
 Holm 显著、覆盖和 CI 精度的全部条件（Figure 20）。各 family 中位 Spearman 相关介于
 0.099565 与 0.306320。Head family 在 ViT-B/16 上为 0.290853（normalized-zero）和
@@ -514,11 +558,21 @@ Holm 显著、覆盖和 CI 精度的全部条件（Figure 20）。各 family 中
 校正 $p=3.0036026037128944\times10^{-14}$。该点估计接近预注册的 0.10 门槛，
 但其置信区间覆盖门槛上下，不能确认达到预设实际效应水平（Figure 21）。
 
-**RQ3 在 family level 上表现出广泛但非普遍的支持，而预注册的 all-family omnibus
+**成分级关联在 family level 上表现出广泛但非普遍的支持，而预注册的 all-family omnibus
 标准未得到支持。** C4a 保持 `NOT_SUPPORTED`。11/12 family 满足全部条件，未通过
 family 的相关仍显著为正；原 C4a 检验绝对排序关联，基线增量由补充 M1 单独评价。
 
-**Table 4. RQ3 的 12 个 C4a family。** 每项 $n=400$；$p$ 为全 28 项 Holm 校正值。
+![Figure 20](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_20_c4a_family_estimates_and_intervals.png)
+
+**Figure 20.** 十二个 C4a family 的点估计与 95% 图像 bootstrap 区间。阴影区从预注册
+0.10 实际效应门槛开始；橙色表示唯一未满足全部支持条件的 family。
+
+![Figure 21](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_21_rq3_threshold_zoom_and_boundary_exception.png)
+
+**Figure 21.** 十一个 family 满足全部条件。剩余 ViT-B/16 normalized-zero routing/value
+family 的点估计为 0.099565；其正相关通过 Holm 校正，但置信区间跨越实际效应门槛。
+
+**Table 4. RQ5 行为标定的 12 个 C4a family。** 每项 $n=400$；$p$ 为全 28 项 Holm 校正值。
 
 | 模型 | Reference | 成分族 | 中位 Spearman | 95% CI | Holm $p$ | Family 状态 |
 |---|---|---|---:|---:|---:|---|
@@ -535,9 +589,9 @@ family 的相关仍显著为正；原 C4a 检验绝对排序关联，基线增�
 | DeiT-S/16 | blur | routing/value | 0.1600 | [0.1278, 0.1822] | 9.90e-31 | SUPPORTED |
 | DeiT-S/16 | blur | residual branches | 0.2287 | [0.2035, 0.2504] | 3.70e-54 | SUPPORTED |
 
-### 5.5 RQ4：完整输入分辨 component map 未提供注册的空间增益
+### 5.5 行为边界：完整输入分辨 component map 未提供注册的空间增益
 
-RQ4 要求每个模型—reference family 同时相对 total G×I、raw gradient、regional Taylor
+RQ5 的空间部分要求每个模型—reference family 同时相对 total G×I、raw gradient、regional Taylor
 和随机区域取得至少 0.05 的配对中位增益。四个 family 均未满足该联合条件（Figure 26）。
 Endpoint 相对随机区域的中位增益均为正，分别为 0.001069、0.004212、0.010689 和
 0.008460，但均远低于冻结的 0.05 阈值。相对 total G×I 与 raw gradient 的差值接近零，
@@ -546,23 +600,36 @@ Endpoint 相对随机区域的中位增益均为正，分别为 0.001069、0.004
 Regional Taylor 在全部四个 family 中得到更高的中位效果。Endpoint−regional Taylor
 分别为 −0.023433、−0.023697、−0.029900 和 −0.035630，bootstrap intervals 也全部位于
 零以下（Figure 27）。真实 block-5 component maps 与 baseline maps 见 Figure 24；这些图
-展示空间形态，但统计结论来自 raw arrays 和有限干预曲线。RQ4 因此为
+展示空间形态，但统计结论来自 raw arrays 和有限干预曲线。注册空间效用判定因此为
 `NOT_SUPPORTED`：在本研究固定的 head、区域池、面积预算、reference 和效果指标下，
 完整输入分辨 component map 没有显示超越四个 mandatory baselines 的联合信息增益。
 
-![Figure 24](../../../reports/nns_vit_endpoint_unified_paper_figures_r2_20260918/figures_png/figure_24_real_block_5_component_and_baseline_maps.png)
+![Figure 24](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_24_sloth_bear_block_5_maps_for_spatial_ranking.png)
 
-**Figure 24.** RQ4 固定任务使用的 signed total G×I、raw gradient 与三个 block-5 head
-component map；各面板独立显示缩放。
+**Figure 24.** 预留懒熊空间排序任务的 total G×I、raw gradient 与三个 block-5 head
+component maps。蓝底主面板使用独立 P99 显示正部空间形态；完整 signed maps 留在补充材料。
 
-![Figure 36](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r2_20260919/figures_png/figure_36_spatial_ranking_learning_images.png)
+![Figure 36](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_36_spatial_ranking_learning_images.png)
 
-**Figure 36.** 使用与 Figure 24 相同的 RQ4 map 定义，但改为展示样本 order 14 的蓝底
-细粒度阅读视图，并把输入放在同一页。该图帮助查看排序输入的空间差异，但不改变 RQ4 的
-`NOT_SUPPORTED` 结论；行为
-比较仍由 raw arrays、固定区域池和有限干预曲线决定。
+**Figure 36.** 同一预留样本和同一空间排序 map 定义的蓝底细粒度阅读页。该图显示区域
+排序的输入；行为比较仍使用封存 raw arrays 与有限效应曲线。
 
-**Table 5. RQ4 的 C4b 图像级配对中位差。** 数值为 Endpoint 减 baseline；每个 family
+![Figure 25](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_25_one_image_spatial_effect_curves.png)
+
+**Figure 25.** 同一预留懒熊任务在 normalized-zero reference 下的单图干预曲线。该页
+说明固定 0–25% 区域 AUC 的形成方式；确认性结论仍来自完整 cohort 的图像级聚合。
+
+![Figure 26](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_26_c4b_mandatory_baseline_contrasts.png)
+
+**Figure 26.** 相对四个 mandatory baselines 的全部 16 个配对 contrasts。黑线表示相等，
+红色虚线表示预注册 +0.05 增益门槛；没有区间进入阴影支持区域。
+
+![Figure 27](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_27_rq4_family_summary.png)
+
+**Figure 27.** Endpoint-minus-baseline 中位 AUC 差的紧凑 family-level 汇总。橙框中的
+regional-Taylor 列在四个 family 中均为负；相对 random 的正差也远低于 +0.05。
+
+**Table 5. RQ5 空间标定的 C4b 图像级配对中位差。** 数值为 Endpoint 减 baseline；每个 family
 需四列同时至少为 +0.05 才能支持。
 
 | 模型 | Reference | vs total G×I | vs raw gradient | vs regional Taylor | vs random | Family 状态 |
@@ -600,7 +667,7 @@ Spearman记为NA。pooled先合并同图像两模型，仅为描述性补充。�
 与复算来源见docs/endpoint_m1_results_20260918.md及M1结果根。原C4a保持NOT_SUPPORTED。
 <!-- M1_SUPPLEMENT_END -->
 
-### 5.7 M3：NNS 忠实性与层深相关空间扩展
+### 5.7 RQ1/RQ4：NNS 忠实性与层深相关空间扩展
 
 显式逐层 NNS propagation 与 Endpoint 的 5,000 个 target comparisons 全部满足对应精度
 合同。总体 relative-L2 的中位数、99% 分位和最大值分别为
@@ -610,6 +677,11 @@ $4.769\times10^{-16}$，float32 99% 分位为 $1.782\times10^{-7}$。88 个算�
 分别为 $3.431\times10^{-16}$、$2.344\times10^{-14}$ 和
 $1.632\times10^{-10}$（Figure 32）。
 
+![Figure 32](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_32_original_nns_versus_endpoint_numerical_equivalence.png)
+
+**Figure 32.** 在五类兼容网络上直接比较显式原始 NNS propagation 与 Endpoint。
+Float64 保持在机器精度附近，float32 差异约为 $10^{-7}$。
+
 200 个 image-model tasks 产生 1,228,800 个冻结 token-channel Endpoint 记录。两个模型的
 全部图像级 late-minus-early 对比都呈现注册方向：ViT-B/16 与 DeiT-S 的 entropy 分别增加
 0.2201/0.2250，locality 分别下降 0.3558/0.3424，normalized distance 分别增加
@@ -618,11 +690,21 @@ family。完整轨迹显示 entropy 的主要增长发生在 early/middle blocks
 distance 一直增加至 block 11（Figure 29）。该结果支持冻结抽样单元中**局部一阶输入依赖
 的空间扩展**，不要求 map 达到均匀全图状态，也不等价于获得全局语义。
 
+![Figure 29](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_29_m3_block_trajectories.png)
+
+**Figure 29.** Entropy、locality、normalized input distance 与 net-to-absolute mass 的层深
+轨迹；阴影是冻结 100 图样本上的图像 bootstrap 95% 区间。
+
 两个模型的每个 block 中，CLS-unit entropy 都高于 patch-unit entropy（Figure 30）。
 Block-level 配对差从 block 0 的 0.4752/0.4712 收窄至 block 11 的 0.0086/0.0238。采用
 block-first 聚合后，ViT-B/16 的 early/middle/late 图像级差值为 0.3082/0.0592/0.0283，
 DeiT-S 为 0.3084/0.0874/0.0406。这些描述性数值恢复了 CLS 输入依赖更分散的已知架构
 属性，但 entropy 不是因果信息整合量。
+
+![Figure 30](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_30_m3_cls_minus_patch_entropy_by_block.png)
+
+**Figure 30.** 各 block 的 CLS-minus-patch entropy 配对差。两个模型的正差都随深度
+缩小，但在 block 11 仍高于零。
 
 由于 signed cancellation 接近饱和，我们同时报告
 $R_{\mathrm{net}}=|\sum_iE_i|/\sum_i|E_i|$。从 block 0 到 block 11，全部抽样单元的
@@ -632,14 +714,24 @@ patch 内和 signed patch totals 之间的抵消（Figure 31）；嵌套生存�
 $6.94\times10^{-18}$。同一 24 个 map 的 float64 重算使任一 cancellation 指标最多变化
 $1.84\times10^{-6}$。Absolute mass 因而衡量局部一阶项的总幅值，而不是净方向效应。
 
+![Figure 31](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_31_m3_cancellation_scales.png)
+
+**Figure 31.** RGB channel 内、patch 内、signed patch totals 间以及全图尺度的
+cancellation ratio。所有面板共用模型配色和对齐的 block anchors。
+
 冻结 float32 方向检查在 57,600 项中保留 36 项失败（0.0625%），均来自 blocks 7-11 的
 第一个抽样 patch token。Float32 误差随所测步长减小而增大；同一坐标的 float64 曲线先
 下降后因舍入误差回升（Figure 33），36 个 float64 对照全部通过。由于目标是 post-block
 token-channel，现有证据不能把这些失败唯一归因到 LayerNorm、softmax 或其他单个上游算子。
 
+![Figure 33](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_33_m3_finite_difference_diagnostics.png)
+
+**Figure 33.** 36 个保留 float32 案例及其 float64 对照在不同有限差分步长下的误差。
+按精度分开的曲线支持“数值精度效应”，而不是对某个具体上游算子作归因。
+
 
 <!-- M4_MECHANISM_START -->
-### 5.8 M4：Attention routing/value 与 residual 机制
+### 5.8 RQ4：Attention routing/value 与 residual 机制
 
 M4 完成两模型共享 400 图、12 个 blocks 和全部 heads 的 ground-truth-logit 局部输入依赖分解，共 86,400 个 image-block-head attention records、19,200 个 image-block-residual records 和 691,200 个 direction-head JVP records。Q+K+V 逐 head 重构 native attention Endpoint；routing+value 重构同一对象；attention 和 MLP residual 的 identity/carry 加 branch 均重构完整 logit Endpoint。
 
@@ -759,6 +851,51 @@ Identity share 描述 absolute Endpoint mass 在 skip 与 branch 两条局部路
 | deit_s16 | mlp_branch | 5 | 0.3466 | 197.6662 | 0.9982 |
 | deit_s16 | mlp_branch | 11 | 0.4532 | 354.6503 | 0.9988 |
 
+#### Review-R2 敏感性与 estimand 收紧
+
+Review-R2 检验 late-block Value-only JVP discrepancy 是否由小分母造成。Block 11 的
+relative discrepancy 中位数在 ViT-B/16 和 DeiT-S/16 中为 0.9516 和 0.9636；对应的
+full-response denominator 为 14.9711 和 1.5155，absolute discrepancy 为 13.8064 和
+1.4228。因此，差异与完整响应处于相同 norm 尺度，并非普遍来自接近零的分母。
+
+![M4 Review Figure 1](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/supplement/m4_review/supp_m4_review_01_m4_review_jvp_diagnostics.png)
+
+**M4 Review Figure 1.** 两模型 block 11 的 normalized JVP discrepancy、absolute
+discrepancy 和 full-response denominator 分布。
+
+控制 head projection-input activation norm 和 downstream-cotangent norm 后，两模型的
+mean-query saturation 仍与 routing share、Endpoint error 和 JVP error 呈负相关。ViT-B/16
+与 DeiT-S/16 的 fully adjusted correlations 依次为 −0.1442/−0.3257、
+−0.1129/−0.2185 和 −0.1453/−0.2786。CLS-query 关系更弱：ViT-B 的 adjusted routing
+share 和 Endpoint-error 检验均为 Holm $p=0.0629$。因此正式 summary 使用 all-query mean
+saturation，并把关联主要定位在 early/middle blocks。
+
+![M4 Review Figure 2](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/supplement/m4_review/supp_m4_review_02_m4_review_saturation_robustness.png)
+
+**M4 Review Figure 2.** Saturation 的 unadjusted/partial-rank 关系、phase sensitivity 与较弱的
+CLS-query 结果。
+
+全 cohort 空间分析使用 output 与 identity 的归一化 14×14 patch absolute distributions
+之间的 total variation。Attention residual 的 late-minus-early 差在 ViT-B/16 和 DeiT-S/16
+中为 +0.0520（[0.0488, 0.0547]）和 +0.0282（[0.0257, 0.0300]）；MLP residual 为
+−0.0187（[−0.0220, −0.0150]）和 −0.0462（[−0.0516, −0.0412]）。四项 post-hoc
+sensitivity tests 全部通过 Holm 校正，branch-relative path scale 与 spatial TV 在图内跨层
+也呈正相关。
+
+![M4 Review Figure 3](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/supplement/m4_review/supp_m4_review_03_m4_review_residual_spatial.png)
+
+**M4 Review Figure 3.** Attention 与 MLP 子层的全 cohort residual spatial-change sensitivity。
+
+在每模型 16 张事前保留的 class-logit maps 上，Full–Value patch TV 从 block 0 的
+0.0550/0.0307 增至 block 11 的 0.1865/0.1811。其 12-block trajectory 与 M3 entropy、
+locality 和 distance 方向相容；但 M3 使用 100 图 token-channel targets，且每模型仅一张图
+重叠。因此这里只形成模型级 trajectory bridge，不构成 routing 导致空间扩展的逐单元或
+因果联系。
+
+![M4 Review Figure 4](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/supplement/m4_review/supp_m4_review_04_m4_review_m3_m4_bridge.png)
+
+**M4 Review Figure 4.** M3 空间轨迹与 Full–Value class-logit map 差异之间的描述性桥接。
+
 #### 图
 
 - Image #1（m4_attention_depth）：逐 block 展示 routing share、frozen-attention Endpoint error 与 8-direction JVP error；阴影为 10,000 次图像 bootstrap 95% CI。
@@ -780,11 +917,16 @@ hook、cotangent 和 edge bookkeeping。有限 activation replacement 与空间�
 这些量是否能预测模型在非无穷小替换下的行为。Figure 28 汇总了这三层证据。把它们分开
 可以避免两种常见推断：闭合不等于行为效用，干预中的负结果也不推翻链式法则身份。
 
-### 6.2 RQ3 与 RQ4 的差异来自评价任务
+![Figure 28](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/figures_png/figure_28_identity_correctness_utility_conclusion.png)
 
-RQ3 和 RQ4 并不矛盾。RQ3 在一张图像内比较多个结构成分，询问“哪个 head、
+**Figure 28.** 本文采用的证据层级。数学身份、实现正确性与有限干预效用分别由不同测试
+支持，不能互相替代。
+
+### 6.2 成分排序与空间排序是不同评价任务
+
+两种行为结果并不矛盾。成分排序在一张图像内比较多个结构成分，询问“哪个 head、
 routing/value 或 residual branch 的整体质量更大，哪个成分被完整替换时的影响也更大”。
-RQ4 则固定一个 head，在 16 个候选输入区域中询问“先替换哪些局部区域会产生更大的有限
+空间排序则固定一个 head，在 16 个候选输入区域中询问“先替换哪些局部区域会产生更大的有限
 效应”。前者是 component-level ranking，后者是 within-component spatial ranking。
 
 Endpoint absolute mass 保留结构成分相对输入的完整一阶分布，但它没有显式使用某个候选
@@ -793,7 +935,7 @@ cotangent 相乘，因此其估计对象与 RQ4 的区域替换更接近。四�
 regional Taylor 优势支持这一任务层面的解释。当前实验不进一步推出 regional Taylor 在
 其他层、区域尺度、任务或模型上普遍占优。
 
-### 6.3 如何解释 RQ3 的边界 family
+### 6.3 如何解释成分关联的边界 family
 
 ViT-B/16 normalized-zero routing/value family 的点估计为 0.099565，95% CI
 为 [0.0748, 0.1226]。方向检验支持正相关，实际效应是否达到 0.10 仍不确定。
@@ -805,8 +947,8 @@ ViT-B/16 normalized-zero routing/value family 的点估计为 0.099565，95% CI
 本研究显示，一种内部解释可以同时具备以下部分属性而缺少另一些属性：注册目标覆盖完整、
 结构记账闭合、局部方向正确、成分级有限效应可预测、空间区域选择优于强基线。这些属性
 需要各自的测试。特别是，可视化分辨率描述图像的坐标粒度，不等于其中包含额外可用的
-干预信息。解释方法的评价应与使用目的对应：若任务是筛选结构成分，RQ3 的结果更直接；
-若任务是选择局部区域，RQ4 表明 regional activation-space 信息不可忽略。
+干预信息。解释方法的评价应与使用目的对应：若任务是筛选结构成分，C4a 的结果更直接；
+若任务是选择局部区域，C4b 表明 regional activation-space 信息不可忽略。
 
 ### 6.5 空间扩展与 signed cancellation
 
@@ -817,6 +959,91 @@ $R_{\mathrm{net}}$ 表明这些广泛分布的 map 包含方向相反的一阶�
 Endpoint absolute mass 在 M1 中保留成分排序信息，却在 M2 的有限空间 replacement 中
 不如 reference-matched Taylor 对实际位移敏感。
 
+### 6.6 目标条件化 routing 与子层特异 residual 传递
+
+M3 与 M4 描述局部 Jacobian 的两个互补层面。M3 测量抽样 post-block token-channel map
+如何在输入坐标上扩展；M4 固定 ground-truth logit，并按 attention 与 residual 路径划分其
+downstream-cotangent 加权输入 Jacobian。两个模型的 late attention 都有更大的
+routing-relative path scale 和 Value-only approximation discrepancy。Attention residual 的
+late-minus-early 空间改变为正，MLP residual 则为负。M3 与 M4 的层深轨迹方向相容，但
+target 与 cohort 不同；证据支持模型级机制桥接，不构成逐单元因果链。
+
+控制 head-output norm 与 downstream-cotangent norm 后，mean-query saturation 仍与 routing
+scale 和两类 approximation error 呈负相关。CLS-query 关系更弱，ViT-B 的两项 fully
+adjusted 检验未通过 post-hoc sensitivity family。因此结论限定为 all-query mean
+saturation 和图内同层 head 比较。
+
+### 6.7 方法定位与 reference 信息条件
+
+对注册标量目标 $F$ 和 normalized input $x$，Endpoint 为
+$E(x)=x\odot\nabla_xF(x)$。它不需要外部选择的 intervention reference，但并非与坐标无关：
+若 $x=(r-\mu)/\sigma$，则
+$x_i\partial F/\partial x_i=(r_i-\mu_i)\partial F/\partial r_i$。因此 normalization mean
+是 canonical Endpoint 在 raw-RGB 中的坐标原点；对 logit target，它就是 normalized-input
+坐标中的 Input × Gradient。
+
+M1 的 163,200 个成分配对中，Endpoint absolute mass 与 signed sum 在 normalized-zero 和
+blur-rgb 间逐项相同；Taylor magnitude 与 absolute finite effect 每项都发生变化。跨
+reference 完全相同的排名只有 46/9,600 项 Taylor head-block 比较和 64/9,600 项
+finite-effect 比较。
+
+| 模型 | Taylor 跨 reference $\rho$ | Effect 跨 reference $\rho$ | Endpoint $\rho$：zero / blur | Taylor $\rho$：zero / blur |
+|---|---:|---:|---:|---:|
+| ViT-B/16 | 0.3782 | 0.3759 | 0.2815 / 0.2727 | 0.6742 / 0.6856 |
+| DeiT-S/16 | 0.3000 | 0.3071 | 0.1952 / 0.1476 | 0.6095 / 0.6238 |
+
+Reference 改变的是成分排序，不只是分数尺度。Endpoint 提供观测输入处的一套局部依赖
+排序；activation-space Taylor 纳入所选 replacement displacement，与本文有限 replacement
+outcome 更匹配。因此二者的差异首先是 estimand 与信息条件的差异。Attention rollout、
+
+| 方法 | 主要对象 | 内部标量 | 输入图 | 外部 reference | 局部 Jacobian 闭合 | 有限 replacement |
+|---|---|---:|---:|---:|---:|---:|
+| Endpoint | 观测输入处的局部依赖 | 是 | 是 | 否 | 是 | 经验标定 |
+| Activation-space Taylor | 指定 replacement 预测 | 是 | 区域分数 | 是 | 非主要合同 | displacement matched |
+| Integrated Gradients | baseline 到输入的路径归因 | 是 | 是 | 是 | 可扩展 | baseline difference |
+| Attention rollout | 跨层 attention flow | 通常否 | token map | 否 | 否 | 非主要合同 |
+| Grad-CAM | 类别相关粗粒度定位 | 部分 | 是 | 否 | 否 | 非主要合同 |
+| Chefer/AttnLRP | Transformer relevance propagation | 部分 | 是 | 依实现 | 依实现 | 不统一 |
+| Attention weights | token allocation | attention 对象 | token map | 否 | 否 | 不能只由权重给出 |
+
+Grad-CAM、Chefer/AttnLRP 和 raw attention 面向输出、relevance 或 token flow 等不同对象，
+本文不把它们纳入内部目标排行榜。Path IG 也不进入跨模型结论，因为 ViT-B/16 在冻结的
+512-point 上限只通过 41/64 个 ground-truth 和 40/64 个 clean-top1 校准案例，低于 61/64
+release gate。
+
+### 6.8 自动选择的机制案例
+
+M6 在读取图像前冻结十二类选择规则：十一类来自完整 M3/M4 数值记录，一类来自 M2
+estimand 边界。极端案例来自预定义 5% 尾部并按固定 ID 处理并列；跨模型案例取最接近
+cohort 中位差的样本。选择封存后才读取或重算图像与像素级 map。以下五页解释总体规律；
+population-level 结论仍以 M3/M4 图像级分析为依据。
+
+![M6 Figure 1](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/supplement/m6/supp_m6_01_m6_neuron_atlas.png)
+
+**M6 Figure 1.** 自动选择的 early-local、late-dispersed、CLS–patch 和高 signed-
+cancellation token-channel 案例，同时给出 signed/absolute map、patch mass 与注册指标。
+
+![M6 Figure 2](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/supplement/m6/supp_m6_02_m6_model_layer_comparison.png)
+
+**M6 Figure 2.** 预定义的代表性 ViT-B/16 与 DeiT-S/16 block-0/block-11 对比；channel ID
+不解释为跨模型语义匹配。
+
+![M6 Figure 3](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/supplement/m6/supp_m6_03_m6_attention_cases.png)
+
+**M6 Figure 3.** Routing-dominant、Value-dominant 和高 fixed-attention-error heads。对同一
+target，Q+K 重构 routing，routing+Value 重构 full Endpoint。
+
+![M6 Figure 4](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/supplement/m6/supp_m6_04_m6_residual_cases.png)
+
+**M6 Figure 4.** Identity-dominant、branch-dominant 和高 path-cancellation residual 案例。
+Output、identity 与 branch 共享同一个 residual-output cotangent 并满足闭合合同。
+
+![M6 Figure 5](../../../reports/nns_vit_endpoint_all_figures_r2_20260919/supplement/m6/supp_m6_05_m6_m2_semantic_boundary.png)
+
+**M6 Figure 5.** Outcome-blind 选择的 M2 边界案例，对比 observed-input Endpoint 排序与
+reference-displacement-matched regional Taylor；finite-effect 曲线只在选择后显示，用于在
+同一任务中说明两个 estimand。
+
 ## 7. 局限
 
 本研究覆盖两个 ImageNet 分类 ViT、一个共享的 400 图 evaluation cohort 和冻结的标准
@@ -826,8 +1053,12 @@ ViT-B/16 候选总体的 0.338% 和 DeiT-S 的 0.677%；不穷举全部 token-ch
 hidden units 或 Q/K/V coordinates。层深结果描述局部一阶图像坐标依赖，本身不建立全局
 语义表示或因果重要性。
 Canonical Endpoint 依赖输入坐标原点，并且一般不满足相对 baseline 的 completeness。
-RQ4 固定在 block 5、每模型三个 heads、4×4 区域池、最高 25% 面积、两种 reference 和
+空间干预审计固定在 block 5、每模型三个 heads、4×4 区域池、最高 25% 面积、两种 reference 和
 raw-logit isolated-effect AUC；其他空间尺度或干预对象可能形成不同排序。
+M4 path maps 以冻结 ground-truth-logit 的 downstream cotangent 为条件。Routing/identity
+share 是相对 path-norm scale，不是可加百分比；normalized JVP discrepancy 是方向 norm
+比值。M3–M4 raw-map bridge 每模型使用 16 张 class-logit maps，并未与 100 图
+token-channel cohort 配对。
 
 预注册 Path IG 校准在 ViT-B/16 上未达到 61/64 的数值覆盖门，因此本文没有跨模型
 Endpoint–Path fidelity、stability 或成本—质量比较。该数值失败不影响 Endpoint-only 的
@@ -843,17 +1074,20 @@ NNS-ViT Endpoint Scanner 把原始 NNS 的终点传播原则适配到 Vision Tra
 注册内部目标提供统一的输入坐标图，并通过完整 edge cuts 对 attention 与 residual 结构进行
 可核对分解。两个模型和 400 张图的实验支持其注册扫描完整性、结构闭合与局部微分正确性。
 另一个 100 图分层审计直接连接原始 NNS propagation 与 Endpoint，并在两个模型的抽样
-token-channel 中显示一致的层深相关空间扩展。
-匹配 activation replacement 进一步表明，Endpoint 成分质量在 12 个 family 中有 11 个
+token-channel 中显示层深相关空间扩展。对冻结 ground-truth logit，late attention 具有更大的
+routing-relative path scale 和 Value-only approximation discrepancy；attention residual 的
+空间改变随深度增加，而 MLP residual 的空间改变下降。这些是目标条件化的局部路径记账
+结果。有限 activation replacement 表明，Endpoint 成分质量在 12 个 family 中有 11 个
 满足全部 family-level 条件，支持广泛但非普遍的关联；all-family omnibus 保持
-`NOT_SUPPORTED`。空间定向
-实验没有发现相对四个 mandatory baselines 的联合增益，regional Taylor 在四个 family 中
-均更强。由此，结构成分级解释和空间区域选择应被视为两个需要分别验证的用途。
+`NOT_SUPPORTED`。空间干预未显示相对四个 mandatory baselines 的联合增益，regional
+Taylor 在四个 family 中均更强。Endpoint 的主要价值是可审计的内部目标表示，而不是
+成为通用干预预测器。
 
 ## 数据、代码与可复现材料
 
-代码、冻结协议、目标注册表、逐阶段验证报告、统计 release 和新增的 5 张 M3 补充图位于
-本项目仓库。提交版本的匿名链接、许可证、归档 DOI 与数据访问说明为
+代码、冻结协议、目标注册表、逐阶段验证报告、统计 release，以及带 signed、M2–M6 和
+all-head supplements 的统一 40 图包位于本项目仓库。提交版本的匿名链接、许可证、归档
+DOI 与数据访问说明为
 `[REPOSITORY AND ARCHIVE REQUIRED]`。
 
 ## 参考文献

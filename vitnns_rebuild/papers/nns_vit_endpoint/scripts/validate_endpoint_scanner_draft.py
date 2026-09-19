@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the bilingual Endpoint Scanner R2 draft against sealed evidence."""
+"""Validate the bilingual Endpoint Scanner R3 draft against sealed evidence."""
 
 import hashlib
 import json
@@ -36,6 +36,8 @@ def check(name: str, condition: bool, detail: str = ""):
 
 zh = ZH.read_text(encoding="utf-8")
 en = EN.read_text(encoding="utf-8")
+readme = (PAPER / "README.md").read_text(encoding="utf-8")
+outline = (PAPER / "zh/outline.md").read_text(encoding="utf-8")
 
 required_sections = [
     ("摘要", "Abstract"),
@@ -159,7 +161,9 @@ for r in coverage:
     check('registry_row:' + r['model'] + ':' + r['object'], row in zh and row in en)
 
 manifest = load_json("papers/nns_vit_endpoint/figure_manifest.json")
-check("figures:count", manifest.get("figure_count") == 28)
+check("figures:source_revision", manifest.get("source_revision") == "ENDPOINT-ALL-FIGURES-R2")
+check("figures:count", manifest.get("figure_count") == 40)
+check("figures:numbering", [x.get("figure") for x in manifest.get("figures", [])] == list(range(1, 41)))
 for figure in manifest.get("figures", []):
     for kind in ("png", "pdf", "svg"):
         record = figure[kind]
@@ -171,74 +175,46 @@ for figure in manifest.get("figures", []):
                 sha256(path) == record["sha256"],
                 record["path"],
             )
-
-supplement = load_json("papers/nns_vit_endpoint/figure_manifest_m3_sup_r2.json")
-check("m3_figures:stage", supplement.get("stage") == "ENDPOINT-M3-SUP-R2")
-check("m3_figures:count", len(supplement.get("figures", [])) == 5)
-check("m3_figures:numbers", [x.get("paper_number") for x in supplement.get("figures", [])] == list(range(29, 34)))
-for figure in supplement.get("figures", []):
-    for record in figure.get("paper_files", []):
+supplemental_records = manifest.get("supplemental_records", [])
+check("figures:supplemental_record_count", len(supplemental_records) == 52)
+check(
+    "figures:supplemental_groups",
+    {item.get("group") for item in supplemental_records}
+    == {"signed", "all_head_pages", "supp_m2", "supp_m3", "supp_m4", "supp_m4_review", "supp_m6"},
+)
+for index, item in enumerate(supplemental_records):
+    records = item.get("outputs", [item])
+    for record in records:
         path = REPO / record["path"]
-        check(f"m3_figure:{figure['paper_number']}:{path.suffix}:exists", path.is_file(), record["path"])
+        key = f"{index}:{record['path']}"
+        check(f"supplement:{key}:exists", path.is_file(), record["path"])
         if path.is_file():
-            check(f"m3_figure:{figure['paper_number']}:{path.suffix}:sha256", sha256(path) == record["sha256"], record["path"])
-
-fine_grained = load_json("papers/nns_vit_endpoint/figure_manifest_fine_grained_blue_r2.json")
-check("fine_grained_figures:count", fine_grained.get("figure_count") == 7)
-check(
-    "fine_grained_figures:numbers",
-    [item.get("paper_number") for item in fine_grained.get("figures", [])] == [34, 35, 36, 37, 38, 39, 40],
-)
-source_manifest = fine_grained.get("source_manifest", {})
-source_manifest_path = REPO / source_manifest.get("path", "")
-check(
-    "fine_grained_figures:source_manifest_exists",
-    source_manifest_path.is_file(),
-    source_manifest.get("path", ""),
-)
-if source_manifest_path.is_file():
-    check(
-        "fine_grained_figures:source_manifest_sha256",
-        sha256(source_manifest_path) == source_manifest.get("sha256"),
-        source_manifest.get("path", ""),
-    )
-for figure in fine_grained.get("figures", []):
-    for kind in ("png", "pdf", "svg", "signed_companion"):
-        record = figure[kind]
-        path = REPO / record["path"]
-        check(
-            f"fine_grained_figure:{figure['paper_number']}:{kind}:exists",
-            path.is_file(),
-            record["path"],
-        )
-        if path.is_file():
-            check(
-                f"fine_grained_figure:{figure['paper_number']}:{kind}:sha256",
-                sha256(path) == record["sha256"],
-                record["path"],
-            )
-supplemental_head_pages = fine_grained.get("supplemental_all_head_pages", [])
-check("fine_grained_figures:supplemental_head_page_count", len(supplemental_head_pages) == 24)
-check(
-    "fine_grained_figures:supplemental_models",
-    {item.get("model_id") for item in supplemental_head_pages} == {"deit_s16", "vit_b16"},
-)
-for record in supplemental_head_pages:
-    path = REPO / record["path"]
-    key = f"{record.get('model_id')}:{record.get('block')}"
-    check(f"fine_grained_supplement:{key}:exists", path.is_file(), record["path"])
-    if path.is_file():
-        check(
-            f"fine_grained_supplement:{key}:sha256",
-            sha256(path) == record["sha256"],
-            record["path"],
-        )
+            check(f"supplement:{key}:sha256", sha256(path) == record["sha256"], record["path"])
+manifest_paths = {figure[kind]["path"] for figure in manifest.get("figures", []) for kind in ("png", "pdf", "svg")}
+for item in supplemental_records:
+    manifest_paths.update(record["path"] for record in item.get("outputs", [item]))
+embedded_paths = {}
 for language, text in (("zh", zh), ("en", en)):
-    for number in (2, 12, 17, 24, 34, 35, 36, 37, 38, 39, 40):
+    paths = re.findall(r"!\[[^]]+\]\(([^)]+)\)", text)
+    normalized = [(PAPER / language / value).resolve().relative_to(REPO.resolve()).as_posix() for value in paths]
+    embedded_paths[language] = normalized
+    check(f"embedded_paths:{language}:organized_root", all("nns_vit_endpoint_all_figures_r2_20260919" in value for value in normalized))
+    check(f"embedded_paths:{language}:manifest_bound", all(value in manifest_paths for value in normalized))
+    check(f"embedded_paths:{language}:unique", len(normalized) == len(set(normalized)), str(len(normalized)))
+check("embedded_paths:bilingual_match", embedded_paths["zh"] == embedded_paths["en"])
+check("no_legacy_figure_roots", all(value not in zh + en for value in ("nns_vit_endpoint_unified_paper_figures", "nns_vit_endpoint_fine_grained_blue_figures", "../figures/m6/")))
+for language, text in (("zh", zh), ("en", en)):
+    for number in manifest.get("main_text_recommended", []):
         check(
             f"embedded_figure:{language}:{number}",
             re.search(rf"!\[Figure {number}\]\([^\n]+\)", text) is not None,
         )
+    for group, count in (("m4_review", 4), ("m6", 5)):
+        for number in range(1, count + 1):
+            check(
+                f"embedded_supplement:{language}:{group}:{number}",
+                f"supplement/{group}/supp_{group}_{number:02d}_" in text,
+            )
 
 m3 = load_json("reports/nns_vit_endpoint_m3_r1_20260919/terminal_receipt.json")
 check("m3:terminal", m3["status"] == "ENDPOINT_M3_PASS_EXECUTION_AND_AUDIT")
@@ -247,6 +223,31 @@ for language, text in (("zh", zh), ("en", en)):
     for value in ("1,228,800", "0.338%", "0.677%", "0.0625%", "0.2201", "0.2250"):
         check(f"m3_headline:{language}:{value}", value in text)
     check(f"m3_broadening:{language}", "空间扩展" in text if language == "zh" else "spatial broadening" in text)
+    for label in ("RQ1", "RQ2", "RQ3", "RQ4", "RQ5"):
+        check(f"stage_m_question:{language}:{label}", label in text)
+    check(f"m4_review:{language}", "0.9516" in text and "0.9636" in text and "0.0520" in text)
+    check(f"m5_positioning:{language}", "163,200" in text and "46/9,600" in text and "41/64" in text)
+    check(f"m6_atlas:{language}", "supplement/m6/supp_m6_05" in text)
+check("stage_m_title:zh", zh.startswith("# NNS-ViT：视觉 Transformer 内部目标的可审计 Endpoint 图与结构化 Jacobian 分解"))
+check("stage_m_title:en", en.startswith("# NNS-ViT: Auditable Endpoint Maps and Structured Jacobian Decomposition for Internal Targets in Vision Transformers"))
+check("stage_m_contributions:zh", "本文有四项贡献" in zh)
+check("stage_m_contributions:en", "This work makes four contributions" in en)
+check("stage_m_positioning:zh", "通用干预预测器" in zh)
+check("stage_m_positioning:en", "not a universal intervention estimator" in en)
+check("paper_index:readme", "ENDPOINT-ALL-FIGURES-R2" in readme and "52" in readme)
+check("paper_index:outline", "论文大纲（R3）" in outline and all(f"RQ{i}" in outline for i in range(1, 6)))
+stage_terminals = {
+    "m1": ("reports/nns_vit_endpoint_m1_r1_20260918/terminal_receipt.json", "ENDPOINT_M1_PASS_EXECUTION_AND_AUDIT"),
+    "m2": ("reports/nns_vit_endpoint_m2_r1_20260919/terminal_receipt.json", "ENDPOINT_M2_PASS_EXECUTION_AND_AUDIT"),
+    "m3": ("reports/nns_vit_endpoint_m3_r1_20260919/terminal_receipt.json", "ENDPOINT_M3_PASS_EXECUTION_AND_AUDIT"),
+    "m3_sup_r2": ("reports/nns_vit_endpoint_m3_sup_r2_20260919/terminal_receipt.json", "ENDPOINT_M3_SUP_R2_PASS"),
+    "m4": ("reports/nns_vit_endpoint_m4_r1_20260919/terminal_receipt.json", "ENDPOINT_M4_PASS_EXECUTION_AND_AUDIT"),
+    "m4_review_r2": ("reports/nns_vit_endpoint_m4_review_r2_20260919/terminal_receipt.json", "ENDPOINT_M4_REVIEW_R2_PASS_POST_HOC_SENSITIVITY"),
+    "m5": ("reports/nns_vit_endpoint_m5_r2_20260919/terminal_receipt.json", "ENDPOINT_M5_PASS_EXECUTION_AND_AUDIT"),
+    "m6": ("reports/nns_vit_endpoint_m6_r1_20260919/terminal_receipt.json", "ENDPOINT_M6_PASS_EXECUTION_AND_AUDIT"),
+}
+for stage, (path, expected) in stage_terminals.items():
+    check(f"stage_terminal:{stage}", load_json(path).get("status") == expected, path)
 
 for path in (ZH, EN):
     data = path.read_bytes()
@@ -268,11 +269,8 @@ report = {
     "error_count": len(errors),
     "errors": errors,
     "source_revision": manifest.get("source_revision"),
-    "figure_count": (
-        manifest.get("figure_count")
-        + len(supplement.get("figures", []))
-        + fine_grained.get("figure_count", 0)
-    ),
+    "figure_count": manifest.get("figure_count"),
+    "supplemental_record_count": len(supplemental_records),
     "c4a_supported_families": sum(x["status"] == "SUPPORTED" for x in c4a),
     "c4b_supported_families": sum(x["status"] == "SUPPORTED" for x in c4b),
 }
