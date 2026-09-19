@@ -2,8 +2,10 @@
 ## 目标对齐版
 
 > **当前进度：2026-09-19**  
-> 原确认性实验、M1、M2 和 M3 已完成；M3 补充分析 R2 已封存。M4–M6 为后续计划。
+> 原确认性实验、M1、M2、M3 和 M4 已完成；M3 补充分析 R2、M4 主分析和 M4 外部评价修订 R2 已封存。M5–M6 为后续计划。
 > 本文档用于替换此前以 Endpoint–Taylor 性能比较为中心的后续方案。
+>
+> **状态回填说明：** M4 正式执行配置绑定的是本文档执行前版本的 SHA-256；本页现为封存后状态与结果总览。原 M4 根、terminal receipt 和 artifact manifest 保持不变，外部评价建议通过版本化 `M4-Review-R2` 补充根处理。
 
 ---
 
@@ -179,17 +181,17 @@ RQ5 用于标定 Endpoint 的含义，不再作为论文的中心竞争任务。
 | **M1. Endpoint 成分统计量的行为标定** | 已完成 | 测量 Endpoint mass 与有限成分效应的关系 | 行为相关性 |
 | **M2. Endpoint 图的干预解释边界** | 已完成 | 检验 Endpoint 图能否直接用于 reference-specific 区域干预 | 解释边界 |
 | **M3. NNS 忠实性桥接与分层神经元审计** | 已完成 | 证明与原始 NNS 的等价关系并扩展 token-channel 覆盖 | 忠实性与统一性 |
-| **M4. Attention 与 residual 结构机制分析** | 待执行 | 使用结构化 Endpoint 分析 routing/value 和 carry/branch | 核心机制发现 |
+| **M4. Attention 与 residual 结构机制分析** | 已完成 | 使用结构化 Endpoint 分析 routing/value 和 carry/branch | 核心机制发现 |
 | **M5. 方法语义、reference 属性与最小比较** | 待整理，必要时补算 | 界定 Endpoint 与其他方法回答的问题 | 方法定位 |
 | **M6. 机制案例与可视化 atlas** | 待执行 | 展示自动选择的代表性机制案例 | 解释与呈现 |
 
 剩余模块优先级为：
 
 \[
-\boxed{M4 > M6 > M5}
+\boxed{M6 > M5}
 \]
 
-M1、M2、M3 已完成。M1、M2 不再扩展为大规模方法竞赛；M3 的既有结果只允许通过版本化补充根扩展，不修改已封存根。
+M1、M2、M3、M4 已完成。M1、M2 不再扩展为大规模方法竞赛；M3 与 M4 的既有结果只允许通过版本化补充根扩展，不修改已封存根。
 
 ---
 
@@ -1185,7 +1187,18 @@ M3 支持原始 NNS 与 Endpoint 的理论—数值桥梁，并在两个 ViT 的
 
 # 九、M4：Attention 与 residual 结构机制分析
 
-M4 是当前下一优先级模块，也是论文最可能形成新机制发现的部分。
+M4 已完成，并形成 attention routing/value、frozen-attention approximation、residual identity/branch 与 cancellation 的封存机制结果。正式执行覆盖：
+
+- 两模型共享 400 图；
+- 12 层和全部 heads；
+- 86,400 个 image-block-head attention records；
+- 19,200 个 image-block-residual records；
+- 691,200 个 direction-head JVP records；
+- 230,400 个与既有 E3 结果的独立 summary 交叉核验。
+
+原 M4 主根状态为 `ENDPOINT_M4_PASS_EXECUTION_AND_AUDIT`，19/19 completion requirements 和 838 个根文件哈希均通过。随后按外部评价建立版本化 Review-R2 补充根，状态为 `ENDPOINT_M4_REVIEW_R2_PASS_POST_HOC_SENSITIVITY`；该补充收紧 estimand 解释并补充 JVP 分母、saturation 稳健性、residual 空间改变和 M3–M4 描述性桥接，不修改原 M4 主检验。
+
+M4 的所有路径结果都以当前输入、冻结 ground-truth logit 及其 downstream cotangent 为条件。因此，下文的 routing share 和 identity share 是相对 Endpoint path-norm scale，不是函数值或因果贡献百分比；JVP error 是归一化 RMS 方向差异，不是遗漏百分比。
 
 ---
 
@@ -1391,13 +1404,65 @@ s_h
 
 可以写：
 
-> 某些层或 heads 的局部输入依赖中，routing 项占比较高，因此只保留 value path 的 frozen-attention approximation 会遗漏较多局部输入依赖。
+> 某些层或 heads 的目标条件化局部输入依赖中，routing relative path-norm scale 较大，且只保留 value path 的 frozen-attention approximation 与完整 Jacobian 存在较大的方向响应差异。
 
 不能写：
 
 > routing share 较高的 head 在因果上更重要。
 
 除非有独立干预证据支持。
+
+---
+
+## 10.8 M4-A 封存结果
+
+M4-A 在每图每层先对 heads 取中位数，再在 early/late 的 4 个 blocks 内取中位数。原冻结 attention family 的四项检验均按模型分别进行 Holm 校正。
+
+| 模型 | 冻结比较 | 图像级中位数 | 95% image-bootstrap CI | 正/负/平 | Holm p |
+|---|---|---:|---:|---:|---:|
+| ViT-B/16 | late−early routing relative path-norm scale | +0.0523 | [0.0467, 0.0587] | 360/40/0 | 1.715e-65 |
+| ViT-B/16 | late−early frozen-attention Endpoint error | +0.1444 | [0.1329, 0.1518] | 383/17/0 | 5.545e-91 |
+| DeiT-S | late−early routing relative path-norm scale | +0.1355 | [0.1277, 0.1429] | 399/1/0 | 9.317e-118 |
+| DeiT-S | late−early frozen-attention Endpoint error | +0.2896 | [0.2788, 0.3013] | 400/0/0 | 3.098e-120 |
+
+结果支持：在两个测试模型和冻结目标下，late attention 中 Q/K-mediated routing path 相对于 routing/value 两条路径的 norm 尺度更高，Value-only approximation 与完整 target-conditioned attention Endpoint 的差异也更大。
+
+Block 11 的 8-direction JVP 诊断进一步给出：
+
+| 模型 | Normalized RMS discrepancy median [95% CI] | q10–q90 | Absolute discrepancy median | Full-response denominator median | Denominator q10 |
+|---|---:|---:|---:|---:|---:|
+| ViT-B/16 | 0.9516 [0.9450, 0.9634] | [0.8295, 0.9975] | 13.8064 | 14.9711 | 5.5214 |
+| DeiT-S | 0.9636 [0.9546, 0.9718] | [0.8212, 1.0191] | 1.4228 | 1.5155 | 0.5719 |
+
+高 relative error 伴随同量级 absolute discrepancy，且图像级 head-median 分母并非普遍接近零。该比值表示 frozen-attention 与完整 Jacobian 的方向响应差异已与完整响应同量级，不是“遗漏约 95%”或“routing 贡献约 95%”。
+
+---
+
+## 10.9 Saturation 结果与稳健性边界
+
+原冻结的同图同层 head-level 分析得到：
+
+| 模型 | Saturation–routing scale median rho | Saturation–Endpoint error median rho |
+|---|---:|---:|
+| ViT-B/16 | −0.2937 | −0.2238 |
+| DeiT-S | −0.3143 | −0.2286 |
+
+Review-R2 使用 M1 封存的 head projection-input activation norm 和 downstream-cotangent norm 做 partial rank sensitivity。Fully adjusted mean-query 结果仍为负：
+
+| 模型 | Routing scale | Endpoint error | JVP discrepancy |
+|---|---:|---:|---:|
+| ViT-B/16 | −0.1442 | −0.1129 | −0.1453 |
+| DeiT-S | −0.3257 | −0.2185 | −0.2786 |
+
+因此，mean-query attention sharpness 在当前 head-level 比较中不是 routing dependence 的正向代理。该关系具有深度异质性，主要集中在 early/middle blocks，late phase 接近零。CLS-query sensitivity 更弱：ViT-B/16 fully adjusted routing scale 与 Endpoint error 的 Holm p 均为 0.0629，未获支持；故正式结论以全部 query 的平均 saturation 为主，不把单一 CLS row 当作等价代理。以上是相关关系，不识别 saturation 对 routing 的因果作用。
+
+---
+
+## 10.10 Attention cut、cotangent 与最大数值误差
+
+Attention cut 位于每个 head 的 \(AV\) 输出、head concatenation 和 output projection 之前；head concat、output projection 和所有后续层的作用进入该 \(AV\) edge 的 downstream cotangent。Q/K 使用 q/k normalization 后的实际 edge，Value 使用 value projection edge。
+
+逐 head Q+K+V 与 routing+value 均重构 native attention Endpoint；384 个 attention-detach block checks 通过。最大 explicit-vs-native JVP relative error 为 2.502e-5，位于 ViT-B/16、`ILSVRC2012_val_00025231.JPEG`、block 0、head 3。最大 Q/K/V closure absolute error 为 1.574e-5，位于 ViT-B/16、`ILSVRC2012_val_00005415.JPEG`、block 11、head 0。
 
 ---
 
@@ -1552,6 +1617,40 @@ M4-B 检验：
 
 ---
 
+## 11.6 M4-B 封存结果
+
+ViT-B/16 和 DeiT-S 的 attention residual identity relative path-norm scale 均随深度下降，而 MLP residual 均随深度上升：
+
+| 模型 | Residual 类型 | Late−early identity relative path-norm scale | 95% image-bootstrap CI | 正/负/平 | Holm p |
+|---|---|---:|---:|---:|---:|
+| ViT-B/16 | Attention | −0.1242 | [−0.1343, −0.1161] | 38/362/0 | 4.068e-67 |
+| ViT-B/16 | MLP | +0.1798 | [0.1666, 0.1890] | 396/4/0 | 1.644e-111 |
+| DeiT-S | Attention | −0.0449 | [−0.0486, −0.0393] | 48/352/0 | 6.053e-58 |
+| DeiT-S | MLP | +0.1780 | [0.1662, 0.1884] | 397/3/0 | 1.652e-113 |
+
+因此，统一的“深层 residual 更依赖 identity”叙事不成立：在冻结目标条件下，attention residual 的 branch-relative Endpoint norm 增大，而 MLP residual 的 identity-relative Endpoint norm 增大。这里的 share 是相对路径 norm 尺度，不是因果 carry fraction。
+
+模型为 pre-LN timm ViT。第一处 residual 为 \(r_1=u+\operatorname{attention}(\operatorname{norm1}(u))\)，identity 和 attention branch 共同使用 clean \(g_{r_1}\)；第二处 residual 为 \(r_2=r_1+\operatorname{MLP}(\operatorname{norm2}(r_1))\)，carry 和 MLP branch 共同使用 clean \(g_{r_2}\)。全部 19,200 个省略非零 identity/carry 的负向控制都按预期闭合失败。
+
+---
+
+## 11.7 空间保留与重写
+
+空间改变定义为 output 与 identity 的归一化 14×14 patch absolute distributions 之间的 total variation distance。Review-R2 对全 400 图执行 late−early image-level sensitivity：
+
+| 模型 | Residual 类型 | Late−early spatial TV | 95% image-bootstrap CI | 正/负/平 | Holm p | Branch-share–TV rho [95% CI] |
+|---|---|---:|---:|---:|---:|---:|
+| ViT-B/16 | Attention | +0.0520 | [0.0488, 0.0547] | 378/22/0 | 2.144e-84 | 0.9161 [0.9091, 0.9231] |
+| ViT-B/16 | MLP | −0.0187 | [−0.0220, −0.0150] | 111/289/0 | 2.181e-19 | 0.6084 [0.5664, 0.6434] |
+| DeiT-S | Attention | +0.0282 | [0.0257, 0.0300] | 383/17/0 | 1.109e-90 | 0.9021 [0.8951, 0.9091] |
+| DeiT-S | MLP | −0.0462 | [−0.0516, −0.0412] | 36/364/0 | 4.300e-69 | 0.8182 [0.7972, 0.8322] |
+
+四项 post-hoc spatial sensitivity tests 均通过 Holm。Attention residual 在 late blocks 相比 early blocks 对 identity-only 空间分布造成更大改变；MLP residual 的对应距离下降。Branch-relative path-norm scale 与空间 TV 在图像内跨层高度正相关。由此，“attention residual 的空间重写随深度增强”同时得到 norm 和空间分布证据，但仍是目标条件化局部 Jacobian 结果，不是有限干预效应。
+
+最大 residual closure absolute error 为 2.480e-5，位于 ViT-B/16、`ILSVRC2012_val_00005592.JPEG`、block 11 的 MLP residual。
+
+---
+
 # 十二、M4-C：Signed、absolute 与 cancellation
 
 比较：
@@ -1596,6 +1695,53 @@ C_k
 - absolute mass 较大但 signed aggregate 较小的情况。
 
 行为相关性可以复用 M1，不再建立新一轮大规模 predictor 竞赛。
+
+---
+
+## 12.1 M4-C 封存结果
+
+Routing、value、identity 和 branch 的 map cancellation 普遍很高；例如 block 11 的 routing/value map cancellation 在 ViT-B/16 为 0.9982/0.9981，在 DeiT-S 为 0.9986/0.9985。较大的 absolute mass 可以由大量符号相反的输入坐标项构成，因此不能用 signed aggregate 替代 absolute path scale。
+
+Path cancellation 与 map cancellation 回答不同问题。Identity–branch path cancellation 的 late−early 结果为：
+
+| 模型 | Residual 类型 | Late−early path cancellation | 95% image-bootstrap CI | 正/负/平 | Holm p |
+|---|---|---:|---:|---:|---:|
+| ViT-B/16 | Attention | −0.0105 | [−0.0166, −0.0032] | 173/227/0 | 7.970e-03 |
+| ViT-B/16 | MLP | +0.0688 | [0.0561, 0.0832] | 304/96/0 | 2.840e-26 |
+| DeiT-S | Attention | −0.0074 | [−0.0159, −0.0024] | 171/229/0 | 4.314e-03 |
+| DeiT-S | MLP | −0.0588 | [−0.0674, −0.0492] | 103/297/0 | 6.661e-23 |
+
+两模型的 attention residual path cancellation 都小幅下降。MLP residual 则在 ViT-B/16 中上升、在 DeiT-S 中下降；四项原 M4 冻结检验均通过各自 Holm family。故 MLP 可以报告为两模型呈相反的显著层深趋势，不能归纳为跨模型统一规律。
+
+---
+
+## 12.2 M3–M4 描述性桥接
+
+E3 事前保留的每模型 16 个 class-logit raw maps 支持 full attention 与 Value-only approximation 的空间比较：
+
+| 模型 | Full–Value patch TV，block 0 | Block 5 | Block 11 |
+|---|---:|---:|---:|
+| ViT-B/16 | 0.0550 | 0.1835 | 0.1865 |
+| DeiT-S | 0.0307 | 0.1565 | 0.1811 |
+
+Late attention 的完整 map 与 Value-only map 具有更大的空间形态差异。\(H(E^{\mathrm{full}})-H(E^{\mathrm{value}})\) 非单调，且 ViT-B/16 block 11 的 95% CI 跨零，因此不支持“routing 可加地增加 entropy”。
+
+M3 entropy 与 Full–Value TV 的 12-block model-median trajectory Spearman 为 0.2727/0.4406，locality 为 −0.3357/−0.5105，distance 为 0.3357/0.5105。方向与 M3 spatial broadening 相容；但 M3 使用 100 图 token-channel targets，bridge 使用 16 图 class-logit targets，每模型只有 1 张图重叠。因此这里只能形成模型级深度轨迹桥接，不能识别 routing 对 M3 空间扩展的因果效应。
+
+---
+
+## 12.3 M4 正式结论与交付
+
+在所测试模型、当前输入和冻结 ground-truth logit 下，late attention 的目标条件化局部输入 Jacobian 更难由固定 attention weights 的 Value-only 路径近似；attention residual 的 branch-relative path norm 与空间改变随深度增强，而 MLP residual 的 identity-relative path norm 增强。这些是局部 Jacobian 路径和空间分布结果，不是函数值贡献比例或有限因果重要性。
+
+正式交付包括：
+
+- `docs/endpoint_m4_results_20260919.md`：原 M4 主结果；
+- `reports/nns_vit_endpoint_m4_r1_20260919/terminal_receipt.json`：原 M4 PASS receipt；
+- `docs/endpoint_m4_review_results_20260919.md`：外部评价后的补充分析；
+- `docs/endpoint_m4_review_response_20260919.md`：评价逐项回应；
+- `reports/nns_vit_endpoint_m4_review_r2_20260919/terminal_receipt.json`：Review-R2 post-hoc sensitivity receipt；
+- `papers/nns_vit_endpoint/figure_manifest_m4.json` 与 `papers/nns_vit_endpoint/figure_manifest_m4_review_r2.json`：主结果和补充图。
 
 ---
 
@@ -1895,6 +2041,13 @@ M2 案例只占可视化的一部分，不再主导整套图。
 - late−early identity share；
 - late−early path cancellation。
 
+原 M4 按以上冻结 families 完成检验。外部评价后的 Review-R2 另外执行 post-hoc sensitivity families：
+
+- 每模型 18 项 saturation sensitivity（mean/CLS query × routing/Endpoint/JVP outcome × 三种 adjustment）；
+- 两模型 × 两类 residual 的 4 项 late−early spatial-TV sensitivity。
+
+这些补充检验独立校正并明确标记为 post-hoc，不回填或改变原 M4 family 的判定。
+
 未定义项不得从校正 family 中事后删除。按照冻结规则，可使用 \(p=1\) 占位并保留状态。
 
 ---
@@ -2140,7 +2293,7 @@ M1/M2 放在结构机制结果之后，而不是作为整篇论文的主要胜�
 
 ## 贡献四：ViT 机制观察与行为边界
 
-> 我们利用 Endpoint atlas 发现两个 ViT 的冻结 token-channel 样本均表现出层深相关的局部一阶输入依赖空间扩展。后续 M4 将分析 attention routing/value 和 residual identity/branch 的相对作用。有限替换实验进一步表明，Endpoint statistics 包含广泛但非普遍的行为信息，同时不能被直接等同为 reference-specific finite-intervention estimator。
+> 我们利用 Endpoint atlas 发现两个 ViT 的冻结 token-channel 样本均表现出层深相关的局部一阶输入依赖空间扩展。对冻结 ground-truth logit 的目标条件化分解进一步表明，late attention 的局部输入 Jacobian 更难由 Value-only 路径近似；attention residual 的 branch-relative path norm 与空间改变随深度增强，而 MLP residual 的 identity-relative path norm 增强。有限替换实验另行表明，Endpoint statistics 包含广泛但非普遍的行为信息，同时不能被直接等同为 reference-specific finite-intervention estimator。
 
 ---
 
@@ -2148,13 +2301,13 @@ M1/M2 放在结构机制结果之后，而不是作为整篇论文的主要胜�
 
 > 本文将神经网络扫描器（NNS）的输入坐标 learning-image 思想推广到视觉 Transformer。我们首先将原始 NNS 形式化为输入值初始化的局部 Jacobian 传播；对任意注册标量目标，所得 Endpoint 等于 normalized-input 坐标中的 Gradient × Input。本文的主要方法贡献不在该基础归因公式本身，而在于异构 ViT 内部目标的统一注册、attention 的 Q/K/V 与 routing/value 分解、residual identity/branch 记账，以及可独立审计的数值验证协议。  
 >   
-> 在 ViT-B/16 和 DeiT-S 上，我们执行 registry-complete 内部目标扫描，并通过结构闭合、负向控制、JVP/VJP、中心有限差分和原始 NNS 等价复现验证局部 Jacobian 实现。冻结的 100 图分层 token-channel audit 表明，在两个模型的抽样单元中，late blocks 相比 early blocks 具有更高的空间熵、更低的自身邻域质量和更大的 normalized input distance，即局部一阶输入依赖随层深发生空间扩展。后续 M4 将继续研究 attention routing/value 与 residual carry/branch 的相对作用。
+> 在 ViT-B/16 和 DeiT-S 上，我们执行 registry-complete 内部目标扫描，并通过结构闭合、负向控制、JVP/VJP、中心有限差分和原始 NNS 等价复现验证局部 Jacobian 实现。冻结的 100 图分层 token-channel audit 表明，在两个模型的抽样单元中，late blocks 相比 early blocks 具有更高的空间熵、更低的自身邻域质量和更大的 normalized input distance，即局部一阶输入依赖随层深发生空间扩展。对共享 400 图和冻结 ground-truth logit 的 M4 分解进一步显示，late attention 的 routing relative path-norm scale 与 Value-only Jacobian discrepancy 均高于 early attention；attention residual 的 late−early spatial change 为正，而 MLP residual 为负。
 >   
 > 行为标定实验显示，Endpoint mass 与有限成分替换效应之间存在广泛但非普遍的正相关；严格的预注册 all-family omnibus 标准未得到支持。在 reference-based 区域干预中，与实际 replacement displacement 匹配的 regional Taylor 表现更强，说明 Endpoint 的高分辨率输入表示不能直接解释为特定 reference 下的最优干预图。  
 >   
-> 这些结果将 NNS-ViT 定位为一种面向异构 ViT 内部标量目标的统一、输入坐标化且可结构审计的局部表示框架，并明确区分局部输入依赖、有限成分效应和空间干预选择三种不同能力。
+> 这些结果将 NNS-ViT 定位为一种面向异构 ViT 内部标量目标的统一、输入坐标化且可结构审计的局部表示框架，并明确区分目标条件化局部输入依赖、结构路径 norm、有限成分效应和空间干预选择。Routing/identity shares 不是可加贡献百分比，归一化 JVP discrepancy 也不是遗漏百分比。
 
-其中 M3 atlas 的方向已经按封存结果填写；attention/residual 的方向性结论仍须等待 M4 实际结果。
+其中 M3 atlas 与 M4 attention/residual 的方向均已按封存结果填写；M4 Review-R2 的分母、稳健性和空间分析为 post-hoc sensitivity，不改变原 M4 冻结检验。
 
 ---
 
@@ -2181,11 +2334,13 @@ M1/M2 放在结构机制结果之后，而不是作为整篇论文的主要胜�
 | 已完成 | M3-A 原始 NNS 等价与 ViT 算子验证 | PASS | 建立“忠实推广”的直接证据 | 命题、5,000 个数值案例、11 类算子表 |
 | 已完成 | M3-B 6,144-unit neuron atlas | PASS | 扩大真实神经元覆盖 | 冻结 token/channel 列表、1,228,800 个目标统计 |
 | 已完成 | M3-C atlas 分布分析及补充 R2 | PASS | 形成第一组 ViT 机制结果 | 12-block、CLS–patch、cancellation、FD 诊断 |
-| 1 | M4-A routing/value 与 frozen-attention | 待执行 | 形成 attention 机制结果 | 层/head 表、误差和 saturation 图 |
-| 2 | M4-B residual identity/branch | 待执行 | 形成 residual 机制结果 | share、cancellation、空间改变 |
-| 3 | M6 自动选择机制案例 | 待执行 | 支持机制解释 | atlas、attention、residual 主图 |
-| 4 | M5 方法定位与最小 reference 分析 | 待整理 | 完成讨论和相关工作 | 适用性矩阵、已有 reference 复用分析 |
-| 5 | 重构论文 | 进行中 | 以忠实性—统一性—可审计性—机制发现为主线 | 正文、附录、审计索引 |
+| 已完成 | M4-A routing/value 与 frozen-attention | PASS | 形成 attention 机制结果 | 层/head 表、误差、JVP 分母和 saturation 稳健性图 |
+| 已完成 | M4-B residual identity/branch | PASS | 形成 residual 机制结果 | share、cancellation、空间改变 |
+| 已完成 | M4-C signed/absolute 与 cancellation | PASS | 区分 map/path cancellation | 路径表、模型差异与解释边界 |
+| 已完成 | M4 Review-R2 | PASS_POST_HOC_SENSITIVITY | 收紧 estimand 并补充稳健性 | 分母诊断、partial rank、spatial TV、M3–M4 bridge |
+| 1 | M6 自动选择机制案例 | 待执行 | 支持机制解释 | atlas、attention、residual 主图 |
+| 2 | M5 方法定位与最小 reference 分析 | 待整理 | 完成讨论和相关工作 | 适用性矩阵、已有 reference 复用分析 |
+| 3 | 重构论文 | 进行中 | 以忠实性—统一性—可审计性—机制发现为主线 | 正文、附录、审计索引 |
 
 ---
 
@@ -2210,12 +2365,10 @@ M1/M2 放在结构机制结果之后，而不是作为整篇论文的主要胜�
 4. 不以改变 M1/M2 结论为目的；
 5. 具有明确的停止条件。
 
-M3-A 和 M3 neuron atlas 已完成。剩余最低完成集为：
+M3 与 M4 已完成。剩余最低完成集为：
 
 \[
 \boxed{
-\text{M4 attention/residual}
-+
 \text{M6 核心图}
 }
 \]
@@ -2240,7 +2393,7 @@ M3-A 和 M3 neuron atlas 已完成。剩余最低完成集为：
 
 ## 4. ViT 机制观察
 
-> 在 ViT-B/16 和 DeiT-S 的冻结 token-channel 样本中，Endpoint 所描述的局部一阶输入依赖随层深发生空间扩展：entropy 上升、own-token locality 下降、normalized distance 增加。CLS 单元的 Endpoint 分布比 patch 单元更分散，但差距随层深收窄；接近饱和的 signed cancellation 说明 absolute mass 与净一阶方向效应必须区分。Attention routing/value 和 residual carry/branch 的具体方向仍由 M4 决定。
+> 在 ViT-B/16 和 DeiT-S 的冻结 token-channel 样本中，Endpoint 所描述的局部一阶输入依赖随层深发生空间扩展：entropy 上升、own-token locality 下降、normalized distance 增加。对冻结 ground-truth logit 的目标条件化 M4 分解显示，late attention 的 routing relative path-norm scale 与 Value-only approximation discrepancy 均增加；mean-query saturation 与 routing scale/error 呈负相关，但 CLS-query 稳健性更弱。Attention residual 的 identity relative path-norm scale 随深度下降且 output–identity spatial TV 增加；MLP residual 的 identity relative path-norm scale 增加而 spatial TV 下降。MLP path cancellation 在两模型中呈显著相反趋势。
 
 ## 5. 行为相关性与边界
 
