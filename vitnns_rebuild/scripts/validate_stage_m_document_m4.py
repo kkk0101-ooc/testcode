@@ -19,10 +19,10 @@ def main():
     original_tests = json.loads((REPO / "reports/nns_vit_endpoint_m4_r1_20260919/m4_tests.json").read_text())["tests"]
     spatial_tests = json.loads((REPO / "reports/nns_vit_endpoint_m4_review_r2_20260919/residual_spatial_tests.json").read_text())["tests"]
     required = [
-        "M1、M2、M3 和 M4 已完成", "**M4. Attention 与 residual 结构机制分析** | 已完成",
+        "M1、M2、M3、M4 和 M5 已完成", "**M4. Attention 与 residual 结构机制分析** | 已完成",
         main["status"], review["status"], "86,400 个 image-block-head attention records",
         "19,200 个 image-block-residual records", "691,200 个 direction-head JVP records",
-        "14.9711", "Holm p 均为 0.0629", "M3 与 M4 已完成。剩余最低完成集",
+        "14.9711", "Holm p 均为 0.0629", "M3、M4 与 M5 已完成。剩余最低完成集",
         "MLP path cancellation 在两模型中呈显著相反趋势。", "状态回填说明",
     ]
     for token in required:
@@ -54,7 +54,8 @@ def main():
         require(quoted in text and (REPO / relative).exists(), "LINK:" + relative)
     report = {"status": "PASS", "requirements": len(required), "stale_phrases_rejected": len(stale),
               "original_test_rows_crosschecked": 12, "spatial_test_rows_crosschecked": 4,
-              "linked_artifacts": len(linked), "document_lines": len(text.splitlines())}
+              "linked_artifacts": len(linked), "document_lines": len(text.splitlines()),
+              "post_m5_status_accepted": True}
     print(json.dumps(report, ensure_ascii=False))
 
 

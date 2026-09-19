@@ -1,0 +1,345 @@
+{
+  "objective": "Execute Stage M M5: method semantics, reference properties, and minimal comparison",
+  "success_criteria": [
+    "three tasks in section 13.1",
+    "accurate reference-free wording",
+    "six reference-reuse reports",
+    "seven-row applicability matrix",
+    "output-level identity boundary",
+    "Path IG failed-gate handling",
+    "cost and cache conditions",
+    "versioned bilingual paper integration",
+    "stop before M6"
+  ],
+  "status": "PASS",
+  "requirement_count": 15,
+  "requirements": [
+    {
+      "requirement": "M4 and Review-R2 predecessor gates",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m5_r2_20260919/predecessor_validation.json",
+          "bytes": 1212,
+          "sha256": "311c4f98e6a8a85087989b06021dab6d52caa33c0a0a1a26832e2d61fca2d928"
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m4_r1_20260919/terminal_receipt.json",
+          "bytes": 504,
+          "sha256": "6ade8e65e9d36edc049e7af7b55643a125eb6d24425860f38a54c46a3b522ed4"
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m4_review_r2_20260919/terminal_receipt.json",
+          "bytes": 557,
+          "sha256": "8c670acf20f96d9b0db617ce5cc9a5b3c97771a9c1367a306699e0153af9a6da"
+        }
+      ],
+      "evidence": "M4 and Review-R2 terminal states plus 838/30-file full-hash manifests revalidated; historical stage-plan binding resolved from git object"
+    },
+    {
+      "requirement": "R1 failure preserved and R2 repair limited",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "docs/endpoint_m5_r2_recovery_20260919.md",
+          "bytes": 910,
+          "sha256": "1e8e00778e3e5ec4a05aea22c1af93f15b5ca72874fa03eeb7e70f1a156f07fb"
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m5_r2_20260919/freeze.json",
+          "bytes": 3318,
+          "sha256": "5b3323c7bbadc8d12b15ccf8361492210493587347e48c40096d572fa8bf59fb"
+        },
+        {
+          "path": "config/nns_vit_endpoint/endpoint_m5.json",
+          "bytes": 5667,
+          "sha256": "01d2c53871b6c6748198e8b727e8596bc6235fb6e5e85d689ba2d9805067cd78"
+        }
+      ],
+      "evidence": "R1 contains only predecessor/freeze receipts; Python 3.7 fmean incompatibility repaired with fsum/len; all scientific settings unchanged"
+    },
+    {
+      "requirement": "13.1 different method questions stated",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "docs/endpoint_m5_results_20260919.md",
+          "bytes": 7722,
+          "sha256": "b30cddfd9157663006cc8c963d9bc93d1faa045b952c9f87c2e76b44e8f0267d"
+        },
+        {
+          "path": "papers/nns_vit_endpoint/en/endpoint_m5_positioning.md",
+          "bytes": 3842,
+          "sha256": "66a9fdb6383664104c040556dc0e453b0672e8686f637535d62edf49f973aeb7"
+        },
+        {
+          "path": "papers/nns_vit_endpoint/zh/endpoint_m5_positioning.md",
+          "bytes": 3415,
+          "sha256": "cf6bedef67655a53446d7d8d52fa4e9ffe84985434cc22b80290936ef9caf351"
+        }
+      ],
+      "evidence": "Endpoint local dependence, Taylor replacement prediction, IG path attribution, and attention/relevance methods have explicit distinct estimands"
+    },
+    {
+      "requirement": "13.2 reference-free wording and coordinate origin",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "docs/endpoint_m5_results_20260919.md",
+          "bytes": 7722,
+          "sha256": "b30cddfd9157663006cc8c963d9bc93d1faa045b952c9f87c2e76b44e8f0267d"
+        },
+        {
+          "path": "papers/nns_vit_endpoint/en/full_draft_m5.md",
+          "bytes": 63596,
+          "sha256": "ec0bc3bacc131f5646e7366005f25da31afa31d67c927f005d84cbd9f68a791c"
+        },
+        {
+          "path": "papers/nns_vit_endpoint/zh/full_draft_m5.md",
+          "bytes": 56600,
+          "sha256": "3976bd86bca69d0e03571d3e9abf968ce34defe356c473db38f43dc1621a6fdf"
+        }
+      ],
+      "evidence": "External-reference independence and normalization-origin dependence stated with x=(r-mu)/sigma identity; logit Endpoint identified as Input x Gradient"
+    },
+    {
+      "requirement": "13.3 Endpoint scores invariant across two references",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m5_r2_20260919/reference_reuse_summary.json",
+          "bytes": 4297,
+          "sha256": "35b33eee1e2352392f0ade7ce64ec1296f610c6bd61c355828e90cd948f1f8e7"
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m5_r2_20260919/reference_reuse_image_values.csv",
+          "bytes": 156779,
+          "sha256": "dc31c82bf489ded10c9adbcc59981cf9c795ea79a7f2a3ce5b5e2312bfcffa41"
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m5_r2_20260919/independent_validation.json",
+          "bytes": 415,
+          "sha256": "30e63a4cc259340439eeb2e9d707bfad703001d7f0d572e797580dd7d49d48c5"
+        }
+      ],
+      "evidence": "163,200 component pairs checked; maximum m and a differences are exactly zero"
+    },
+    {
+      "requirement": "13.3 Taylor and finite-effect reference dependence",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m5_r2_20260919/reference_reuse_summary.json",
+          "bytes": 4297,
+          "sha256": "35b33eee1e2352392f0ade7ce64ec1296f610c6bd61c355828e90cd948f1f8e7"
+        },
+        {
+          "path": "docs/endpoint_m5_results_20260919.md",
+          "bytes": 7722,
+          "sha256": "b30cddfd9157663006cc8c963d9bc93d1faa045b952c9f87c2e76b44e8f0267d"
+        }
+      ],
+      "evidence": "All 163,200 Taylor/effect values changed; only 46/9,600 and 64/9,600 exact head rankings"
+    },
+    {
+      "requirement": "13.3 Endpoint behavioral association and Taylor advantage",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m5_r2_20260919/reference_reuse_summary.json",
+          "bytes": 4297,
+          "sha256": "35b33eee1e2352392f0ade7ce64ec1296f610c6bd61c355828e90cd948f1f8e7"
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m5_r2_20260919/m2_reuse_summary.csv",
+          "bytes": 2431,
+          "sha256": "68982a36d32268eefd3c039094f8979f7de2b8de258e6f1738eecc7eeb0b77f1"
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m5_r2_20260919/m2_reuse_receipt.json",
+          "bytes": 401,
+          "sha256": "fb9a1263ad8fb9a21f01efb1ac5c790708b17611f89ee6b3ca84ea4b563fb297"
+        }
+      ],
+      "evidence": "16 image-bootstrap summaries; Taylor higher association in four model-reference M1 combinations and median AUC in all 24 M2 reuse groups; no new tests"
+    },
+    {
+      "requirement": "13.3 computation and cache costs",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m5_r2_20260919/cost_and_information.json",
+          "bytes": 6012,
+          "sha256": "50831495d5ebc89dc6f00d85c7d96d65866adb787648cc1e540878f408b40665"
+        },
+        {
+          "path": "docs/endpoint_m5_results_20260919.md",
+          "bytes": 7722,
+          "sha256": "b30cddfd9157663006cc8c963d9bc93d1faa045b952c9f87c2e76b44e8f0267d"
+        }
+      ],
+      "evidence": "Operation requirements and M1/M2/EP2 package measurements reported; combined packages explicitly do not identify per-method runtime"
+    },
+    {
+      "requirement": "13.4 method applicability matrix",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m5_r2_20260919/method_applicability_matrix.json",
+          "bytes": 2621,
+          "sha256": "ff21242e20cd7c0758b52870f12b17abb0bda47b15abf86135a422aed4888bb4"
+        },
+        {
+          "path": "papers/nns_vit_endpoint/notes/endpoint_m5_evidence_matrix.md",
+          "bytes": 1276,
+          "sha256": "f628cdd1bc254dcee40d63479cc1e69b8abf96eafb539e9d179e6a8ae6b2215a"
+        }
+      ],
+      "evidence": "Seven unique closed-schema method rows cover all five required applicability columns"
+    },
+    {
+      "requirement": "13.5 output-comparison boundary",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "docs/endpoint_m5_results_20260919.md",
+          "bytes": 7722,
+          "sha256": "b30cddfd9157663006cc8c963d9bc93d1faa045b952c9f87c2e76b44e8f0267d"
+        },
+        {
+          "path": "papers/nns_vit_endpoint/en/endpoint_m5_positioning.md",
+          "bytes": 3842,
+          "sha256": "66a9fdb6383664104c040556dc0e453b0672e8686f637535d62edf49f973aeb7"
+        },
+        {
+          "path": "papers/nns_vit_endpoint/zh/endpoint_m5_positioning.md",
+          "bytes": 3415,
+          "sha256": "cf6bedef67655a53446d7d8d52fa4e9ffe84985434cc22b80290936ef9caf351"
+        }
+      ],
+      "evidence": "Endpoint logit equals normalized-input Input x Gradient; no duplicate algorithm comparison or output-localization superiority claim"
+    },
+    {
+      "requirement": "13.6 Path IG failed-gate handling",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m5_r2_20260919/cost_and_information.json",
+          "bytes": 6012,
+          "sha256": "50831495d5ebc89dc6f00d85c7d96d65866adb787648cc1e540878f408b40665"
+        },
+        {
+          "path": "reports/nns_vit_endpoint_ep2_r1_20260918/terminal_receipt.json",
+          "bytes": 505,
+          "sha256": "708aa27a955d12333cae5cb6ccb1079f980f98244ec18a11201a54393a37fe81"
+        },
+        {
+          "path": "reports/nns_vit_endpoint_ep2_r1_20260918/calibration_report.json",
+          "bytes": 938377,
+          "sha256": "b2a8e46a19b47f0a00d6503c3ff7094cc3981efd0a8b1014997c737059c66a00"
+        }
+      ],
+      "evidence": "61/64 gate retained; DeiT-S selects 512 while ViT-B records 41/64 and 40/64, so no cross-model release or retuning"
+    },
+    {
+      "requirement": "CPU-only reuse-only access boundary",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m5_r2_20260919/analysis_receipt.json",
+          "bytes": 353,
+          "sha256": "b324b6f6bdb37b9f8dbe8af8770a308860e8e22716ae28ceb944ae0a0b05bab5"
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m5_r2_20260919/independent_validation.json",
+          "bytes": 415,
+          "sha256": "30e63a4cc259340439eeb2e9d707bfad703001d7f0d572e797580dd7d49d48c5"
+        }
+      ],
+      "evidence": "No JPEG/model/checkpoint/Torch/timm/GPU access and zero new inferential tests"
+    },
+    {
+      "requirement": "Bilingual paper integration and writing audit",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m5_r2_20260919/document_validation.json",
+          "bytes": 177,
+          "sha256": "fe61d0c3d8c89842a5caf6f653808cc41952ae9efc310d5724e7763be4eacffe"
+        },
+        {
+          "path": "papers/nns_vit_endpoint/qc/endpoint_m5_writing_audit.md",
+          "bytes": 3079,
+          "sha256": "49a852f94501e21c06bb413f9c3871c997d27e61c49383edb0097f8f8bf4da30"
+        },
+        {
+          "path": "papers/nns_vit_endpoint/en/full_draft_m5.md",
+          "bytes": 63596,
+          "sha256": "ec0bc3bacc131f5646e7366005f25da31afa31d67c927f005d84cbd9f68a791c"
+        },
+        {
+          "path": "papers/nns_vit_endpoint/zh/full_draft_m5.md",
+          "bytes": 56600,
+          "sha256": "3976bd86bca69d0e03571d3e9abf968ce34defe356c473db38f43dc1621a6fdf"
+        }
+      ],
+      "evidence": "Five documents synchronized; defensive-writing score 2/10; claim-evidence-boundary pattern preserved"
+    },
+    {
+      "requirement": "Stage plan completion and scope stop",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "docs/阶段M_endpointnnsvit.md",
+          "bytes": 70761,
+          "sha256": "0af896861db65c9f25a79823d32e4091fe8c107386762375289ad3fe45d921d0"
+        },
+        {
+          "path": "docs/endpoint_m5_execution_20260919.md",
+          "bytes": 3830,
+          "sha256": "2106378fb883991273575f51d7875b18b5e4789cf084c35a7b4469061e1f6d5c"
+        }
+      ],
+      "evidence": "M5 marked complete with linked versioned artifacts; M6 remains pending and no six-reference, Path-IG tuning, region search, or output benchmark executed"
+    },
+    {
+      "requirement": "Independent validation and focused tests",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m5_r2_20260919/test_results.json",
+          "bytes": 1105,
+          "sha256": "d3babaa854487b388151d939284ad811b2b02091f42c139f66c17627d3572d26"
+        },
+        {
+          "path": "scripts/validate_endpoint_m5.py",
+          "bytes": 13729,
+          "sha256": "ae93efb597444b3a1f66ac1ffea7f34b683986935994b32afbf563314062da69"
+        },
+        {
+          "path": "scripts/validate_endpoint_m5_documents.py",
+          "bytes": 2900,
+          "sha256": "6bad1d097e74d9d57c3249a81f231ad2904598432634b9c18a4decb378ae60a6"
+        },
+        {
+          "path": "tests/test_endpoint_m5.py",
+          "bytes": 1940,
+          "sha256": "da00d8e98f1c42381c5bce1fb9923bf12f65105d7c5f8c84384fb4856f202afd"
+        }
+      ],
+      "evidence": "Independent standard-library recomputation passes all raw values and bootstrap summaries; document validator passes; 4 focused tests pass"
+    }
+  ],
+  "missing": [],
+  "incomplete": [],
+  "weakly_verified": [],
+  "uncovered": [],
+  "not_executed_by_design": [
+    "six-reference expansion",
+    "large output-localization leaderboard",
+    "new region or blur search",
+    "Path IG retuning",
+    "M6 mechanism cases"
+  ],
+  "audited_head": "24e26938bce7053c0fbaa6889c334a4e0bc9b3b5"
+}

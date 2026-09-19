@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "methods": [
+    {
+      "method": "Endpoint",
+      "primary_question": "Observed-input local dependence of a registered scalar target",
+      "internal_scalar_target": "yes",
+      "input_space_map": "yes",
+      "external_intervention_reference": "no",
+      "local_jacobian_structural_closure": "yes",
+      "finite_replacement_prediction": "empirical and limited"
+    },
+    {
+      "method": "Activation-space Taylor",
+      "primary_question": "First-order prediction of a specified activation replacement",
+      "internal_scalar_target": "yes",
+      "input_space_map": "constructible regional score",
+      "external_intervention_reference": "yes",
+      "local_jacobian_structural_closure": "not its primary contract",
+      "finite_replacement_prediction": "strongly matched"
+    },
+    {
+      "method": "Integrated Gradients",
+      "primary_question": "Baseline-to-input path attribution",
+      "internal_scalar_target": "yes",
+      "input_space_map": "yes",
+      "external_intervention_reference": "yes",
+      "local_jacobian_structural_closure": "extensible",
+      "finite_replacement_prediction": "baseline-difference attribution"
+    },
+    {
+      "method": "Attention rollout",
+      "primary_question": "Across-layer attention flow",
+      "internal_scalar_target": "usually no",
+      "input_space_map": "yes",
+      "external_intervention_reference": "no",
+      "local_jacobian_structural_closure": "no",
+      "finite_replacement_prediction": "not its primary contract"
+    },
+    {
+      "method": "Grad-CAM",
+      "primary_question": "Class-related coarse activation localization",
+      "internal_scalar_target": "partial",
+      "input_space_map": "yes",
+      "external_intervention_reference": "no",
+      "local_jacobian_structural_closure": "no",
+      "finite_replacement_prediction": "not its primary contract"
+    },
+    {
+      "method": "Chefer/AttnLRP",
+      "primary_question": "Transformer relevance propagation",
+      "internal_scalar_target": "partial",
+      "input_space_map": "yes",
+      "external_intervention_reference": "usually no",
+      "local_jacobian_structural_closure": "implementation-dependent",
+      "finite_replacement_prediction": "not unified"
+    },
+    {
+      "method": "Attention weights",
+      "primary_question": "Token-to-token attention allocation",
+      "internal_scalar_target": "attention object",
+      "input_space_map": "patch/token",
+      "external_intervention_reference": "no",
+      "local_jacobian_structural_closure": "no",
+      "finite_replacement_prediction": "not by weights alone"
+    }
+  ]
+}

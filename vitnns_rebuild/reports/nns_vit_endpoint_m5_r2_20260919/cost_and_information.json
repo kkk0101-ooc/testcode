@@ -1,0 +1,207 @@
+{
+  "status": "DESCRIPTIVE_PACKAGE_AND_OPERATION_COSTS_NOT_METHOD_RUNTIME_BENCHMARK",
+  "information_conditions": [
+    {
+      "method": "Endpoint",
+      "operations": "observed-input forward plus target backward/VJP",
+      "reference_state": "none external",
+      "cache": "clean activations and target cotangent as required by the registered cut"
+    },
+    {
+      "method": "Activation-space Taylor",
+      "operations": "clean target backward plus reference/counterfactual activation forward",
+      "reference_state": "required",
+      "cache": "clean cotangent and clean/reference activations"
+    },
+    {
+      "method": "Integrated Gradients",
+      "operations": "M path-node forward/backward evaluations",
+      "reference_state": "required",
+      "cache": "accumulated input-gradient integral; optional path batches"
+    },
+    {
+      "method": "Finite replacement",
+      "operations": "one counterfactual forward per candidate replacement",
+      "reference_state": "required",
+      "cache": "candidate logits/effects and selector scores"
+    }
+  ],
+  "observed_packages": {
+    "M1": {
+      "attempt_gpu_hours": 0.07897702794457372,
+      "acquisition_wall_seconds": 43.258856599917635,
+      "analysis_seconds": 64.49335851892829,
+      "new_conditions": 70656,
+      "combined_component_reference_conditions": 326400,
+      "local_bytes": 163254557
+    },
+    "M2": {
+      "gpu_hours": 5.981762161963335,
+      "acquisition_wall_seconds": 2799.4908993639983,
+      "tasks": 2400,
+      "candidates": 14803180,
+      "curves": 2332800,
+      "points": 8164800,
+      "local_bytes": 14437339710
+    },
+    "EP2_Path_IG_calibration": {
+      "gpu_hours_upper_observed": 0.28571028215448474,
+      "elapsed_seconds": 268.23972399393097,
+      "maximum_points": 512,
+      "deit_s16": {
+        "candidates": [
+          {
+            "M": 32,
+            "model_pass": false,
+            "targets": {
+              "frozen_clean_top1_logit": {
+                "finite_count": 64,
+                "pass_count": 0
+              },
+              "ground_truth_logit": {
+                "finite_count": 64,
+                "pass_count": 0
+              }
+            }
+          },
+          {
+            "M": 64,
+            "model_pass": false,
+            "targets": {
+              "frozen_clean_top1_logit": {
+                "finite_count": 64,
+                "pass_count": 7
+              },
+              "ground_truth_logit": {
+                "finite_count": 64,
+                "pass_count": 6
+              }
+            }
+          },
+          {
+            "M": 128,
+            "model_pass": false,
+            "targets": {
+              "frozen_clean_top1_logit": {
+                "finite_count": 64,
+                "pass_count": 20
+              },
+              "ground_truth_logit": {
+                "finite_count": 64,
+                "pass_count": 14
+              }
+            }
+          },
+          {
+            "M": 256,
+            "model_pass": false,
+            "targets": {
+              "frozen_clean_top1_logit": {
+                "finite_count": 64,
+                "pass_count": 47
+              },
+              "ground_truth_logit": {
+                "finite_count": 64,
+                "pass_count": 45
+              }
+            }
+          },
+          {
+            "M": 512,
+            "model_pass": true,
+            "targets": {
+              "frozen_clean_top1_logit": {
+                "finite_count": 64,
+                "pass_count": 62
+              },
+              "ground_truth_logit": {
+                "finite_count": 64,
+                "pass_count": 61
+              }
+            }
+          }
+        ],
+        "selected_M": 512,
+        "status": "PASS"
+      },
+      "vit_b16": {
+        "candidates": [
+          {
+            "M": 32,
+            "model_pass": false,
+            "targets": {
+              "frozen_clean_top1_logit": {
+                "finite_count": 64,
+                "pass_count": 0
+              },
+              "ground_truth_logit": {
+                "finite_count": 64,
+                "pass_count": 0
+              }
+            }
+          },
+          {
+            "M": 64,
+            "model_pass": false,
+            "targets": {
+              "frozen_clean_top1_logit": {
+                "finite_count": 64,
+                "pass_count": 0
+              },
+              "ground_truth_logit": {
+                "finite_count": 64,
+                "pass_count": 0
+              }
+            }
+          },
+          {
+            "M": 128,
+            "model_pass": false,
+            "targets": {
+              "frozen_clean_top1_logit": {
+                "finite_count": 64,
+                "pass_count": 1
+              },
+              "ground_truth_logit": {
+                "finite_count": 64,
+                "pass_count": 1
+              }
+            }
+          },
+          {
+            "M": 256,
+            "model_pass": false,
+            "targets": {
+              "frozen_clean_top1_logit": {
+                "finite_count": 64,
+                "pass_count": 7
+              },
+              "ground_truth_logit": {
+                "finite_count": 64,
+                "pass_count": 9
+              }
+            }
+          },
+          {
+            "M": 512,
+            "model_pass": false,
+            "targets": {
+              "frozen_clean_top1_logit": {
+                "finite_count": 64,
+                "pass_count": 40
+              },
+              "ground_truth_logit": {
+                "finite_count": 64,
+                "pass_count": 41
+              }
+            }
+          }
+        ],
+        "selected_M": null,
+        "status": "EP2_NUMERICAL_CALIBRATION_FAILED"
+      }
+    }
+  },
+  "runtime_claim": "NOT_IDENTIFIABLE_FROM_COMBINED_M1_M2_PACKAGES",
+  "reason": "The packages jointly execute multiple predictors, shared forwards, controls, random repetitions, and candidate interventions; they do not isolate comparable per-method runtimes."
+}

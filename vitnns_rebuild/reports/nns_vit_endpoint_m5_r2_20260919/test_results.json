@@ -1,0 +1,18 @@
+{
+  "status": "PASS",
+  "commands": [
+    {
+      "command": "CUDA_VISIBLE_DEVICES='' python3 scripts/validate_endpoint_m5.py",
+      "stdout": "{\"status\": \"PASS\", \"mode\": \"CPU_ONLY_STANDARD_LIBRARY\", \"m1_per_image_hashes\": 800, \"image_rows_recomputed\": 800, \"component_reference_pairs_checked\": 163200, \"head_block_groups_checked\": 9600, \"bootstrap_summaries_recomputed\": 16, \"m2_groups_recomputed\": 24, \"method_rows_checked\": 7, \"new_inferential_tests\": 0, \"r1_failure_chain\": \"PASS\", \"source_bindings\": \"PASS\", \"cpu_only\": true}"
+    },
+    {
+      "command": "CUDA_VISIBLE_DEVICES='' python3 scripts/validate_endpoint_m5_documents.py",
+      "stdout": "{\"status\": \"PASS\", \"documents\": 5, \"bilingual_sync\": true, \"method_rows\": 7, \"required_numeric_tokens\": 12, \"writing_audit\": \"PASS\", \"stage_plan_updated\": true}"
+    },
+    {
+      "command": "python3.10 -m pytest -q tests/test_endpoint_m5.py",
+      "stdout": "....                                                                     [100%]\n4 passed in 0.07s"
+    }
+  ],
+  "pytest_passed": 4
+}
