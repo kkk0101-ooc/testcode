@@ -2,7 +2,7 @@
 ## 目标对齐版
 
 > **当前进度：2026-09-19**  
-> 原确认性实验、M1、M2、M3、M4 和 M5 已完成；M3 补充分析 R2、M4 主分析、M4 外部评价修订 R2 和 M5 复用分析 R2 已封存。M6 为后续计划。
+> 原确认性实验及 M1–M6 已完成；M3 补充分析 R2、M4 主分析、M4 外部评价修订 R2、M5 复用分析 R2 和 M6 自动案例 atlas 已封存。
 > 本文档用于替换此前以 Endpoint–Taylor 性能比较为中心的后续方案。
 >
 > **状态回填说明：** M4 正式执行配置绑定的是本文档执行前版本的 SHA-256；本页现为封存后状态与结果总览。原 M4 根、terminal receipt 和 artifact manifest 保持不变，外部评价建议通过版本化 `M4-Review-R2` 补充根处理。
@@ -183,15 +183,15 @@ RQ5 用于标定 Endpoint 的含义，不再作为论文的中心竞争任务。
 | **M3. NNS 忠实性桥接与分层神经元审计** | 已完成 | 证明与原始 NNS 的等价关系并扩展 token-channel 覆盖 | 忠实性与统一性 |
 | **M4. Attention 与 residual 结构机制分析** | 已完成 | 使用结构化 Endpoint 分析 routing/value 和 carry/branch | 核心机制发现 |
 | **M5. 方法语义、reference 属性与最小比较** | 已完成 | 界定 Endpoint 与其他方法回答的问题 | 方法定位 |
-| **M6. 机制案例与可视化 atlas** | 待执行 | 展示自动选择的代表性机制案例 | 解释与呈现 |
+| **M6. 机制案例与可视化 atlas** | 已完成 | 展示自动选择的代表性机制案例 | 解释与呈现 |
 
-剩余模块为：
+阶段 M 的最低完成集为：
 
 \[
-\boxed{M6}
+\boxed{M1\text{--}M6\ \text{全部完成}}
 \]
 
-M1、M2、M3、M4、M5 已完成。M1、M2 不再扩展为大规模方法竞赛；M3 与 M4 的既有结果只允许通过版本化补充根扩展，不修改已封存根。
+M1、M2、M3、M4、M5、M6 已完成。M1、M2 不再扩展为大规模方法竞赛；M3 与 M4 的既有结果只允许通过版本化补充根扩展，不修改已封存根。
 
 ---
 
@@ -2010,6 +2010,26 @@ M2 案例只占可视化的一部分，不再主导整套图。
 
 ---
 
+## 14.4 M6 正式结果
+
+M6 按执行前冻结的规则完成 12 类案例选择，并签发 ENDPOINT_M6_PASS_EXECUTION_AND_AUDIT。选择阶段为 CPU-only，先对 1,402 个实际读取的封存 M2/M3/M4 数值文件逐项核验 artifact-manifest SHA-256，再封存 selection_manifest.json；原图和像素级 maps 均在选择封存后才读取或重算。没有根据图像观感再次筛选，也没有增加推断检验。
+
+极端案例来自完整候选集合的经验 5% 尾部，并按最小 image/component ID 处理并列。代表性模型差异案例按两模型共享图像的 late-minus-early entropy 差值最接近跨图中位数选择；M2 边界案例固定 DeiT-S、block 5、patch geometry 和 normalized-zero reference，仅按 Endpoint absolute 与 regional Taylor 排名差异选择，不读取 finite-effect outcome。
+
+最终交付 5 张主图及其 PNG/PDF 版本：
+
+1. neuron atlas：early-local、late-dispersed、CLS–patch 和 high-cancellation；
+2. ViT-B/16 与 DeiT-S 的代表性 block 0/11 对比；
+3. routing-dominant、value-dominant 和 high frozen-attention error heads；
+4. identity-dominant、branch-dominant 和 strong path-cancellation residuals；
+5. 一个 M2 Endpoint–Taylor 方法语义边界案例。
+
+只对已选 target 补算缺失的像素级 maps，共保存 43 个 raw arrays。32 项重算 summary 与封存记录一致；独立验证重新选择全部 12 类案例，复核 1,402 个源文件，并完成 9 项 raw-map 闭合检查，最大误差为 \(1.043\times10^{-7}\)。五张 PNG 均已逐图检查，无空白、裁切、错配或不可辨识面板。
+
+M6 图用于解释 M3/M4 的总体统计规律。图中 routing/identity share 仍是相对 path-norm scale，不是因果贡献百分比；所有图注使用 local input dependence 或 Endpoint dependence。正式根为 reports/nns_vit_endpoint_m6_r1_20260919，终态保持 next_authorization=STOP_AFTER_M6。
+
+---
+
 # 十五、统计分析原则
 
 ## 15.1 统计单位
@@ -2381,7 +2401,7 @@ M1/M2 放在结构机制结果之后，而不是作为整篇论文的主要胜�
 | 已完成 | M4-B residual identity/branch | PASS | 形成 residual 机制结果 | share、cancellation、空间改变 |
 | 已完成 | M4-C signed/absolute 与 cancellation | PASS | 区分 map/path cancellation | 路径表、模型差异与解释边界 |
 | 已完成 | M4 Review-R2 | PASS_POST_HOC_SENSITIVITY | 收紧 estimand 并补充稳健性 | 分母诊断、partial rank、spatial TV、M3–M4 bridge |
-| 1 | M6 自动选择机制案例 | 待执行 | 支持机制解释 | atlas、attention、residual 主图 |
+| 已完成 | M6 自动选择机制案例 | PASS | 支持机制解释 | 12 类案例、5 张 atlas/attention/residual/M2 主图 |
 | 已完成 | M5 方法定位与最小 reference 分析 | PASS | 完成讨论和相关工作 | 适用性矩阵、已有 reference 复用分析、成本边界 |
 | 2 | 重构论文 | 进行中 | 以忠实性—统一性—可审计性—机制发现为主线 | 正文、附录、审计索引 |
 
@@ -2408,11 +2428,11 @@ M1/M2 放在结构机制结果之后，而不是作为整篇论文的主要胜�
 4. 不以改变 M1/M2 结论为目的；
 5. 具有明确的停止条件。
 
-M3、M4 与 M5 已完成。剩余最低完成集为：
+M3、M4、M5 与 M6 已完成。阶段 M 最低完成集状态为：
 
 \[
 \boxed{
-\text{M6 核心图}
+\text{M6 核心图已完成}
 }
 \]
 

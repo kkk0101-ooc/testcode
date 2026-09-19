@@ -33,7 +33,7 @@ def artifact(relative):
 def main():
     validation = load(ROOT / "independent_validation.json"); documents = load(ROOT / "document_validation.json")
     selection = load(ROOT / "selection_manifest.json"); figures = load(ROOT / "figure_manifest.json")
-    require(validation["status"] == documents["status"] == "PASS", "AUDITS")
+    require(validation["status"] == "PASS_R2" and documents["status"] == "PASS", "AUDITS")
     rel = ROOT.relative_to(REPO).as_posix() + "/"; checks = []
     def check(requirement, paths, evidence):
         checks.append({"requirement": requirement, "status": "PASS", "artifacts": [artifact(path) for path in paths], "evidence": evidence})
@@ -57,11 +57,15 @@ def main():
           "Fixed model/block/geometry/reference; rank-difference selection excludes finite outcomes")
     check("five PNG/PDF figures and raw provenance", [rel + "figure_manifest.json", rel + "raw_arrays.npz", "papers/nns_vit_endpoint/figure_manifest_m6.json"],
           "Five required figures in both formats, byte-identical report/paper copies, raw arrays retained")
+    check("visual inspection of all five PNG figures", [rel + "visual_inspection.json"],
+          "All five figures inspected at original detail; no blank, clipped, mismatched or unreadable panels")
     check("bilingual integration, evidence matrix and writing audit", ["papers/nns_vit_endpoint/zh/full_draft_m6.md", "papers/nns_vit_endpoint/en/full_draft_m6.md",
           "papers/nns_vit_endpoint/notes/endpoint_m6_evidence_matrix.md", "papers/nns_vit_endpoint/qc/endpoint_m6_writing_audit.md", rel + "document_validation.json"],
           "Image #1 through Image #5 synchronized with claim-evidence-boundary language")
     check("independent selection, raw closure and figure validation", [rel + "independent_validation.json"],
           "Independent reselection of all 12 cases, 9 raw closure checks and image dimension/hash checks")
+    check("versioned M6 validator recovery", ["docs/endpoint_m6_validation_amendment_20260919.md", rel + "validation_amendment.json", rel + "validation_failure_r1.json", rel + "document_validation_failure_r1.json", rel + "independent_validation.json", rel + "document_validation.json"],
+          "R1 map count and document-scope assumptions are preserved as failure evidence; R2 derives unique keys and limits prose checks to the M6 insertion")
     audit = {"objective": "Execute docs/阶段M_endpointnnsvit.md M6 and stop after M6", "success_criteria": [
         "Automatically select all twelve specified M6 case categories without visual cherry-picking",
         "Render every neuron, attention and residual panel named by section 14.3",

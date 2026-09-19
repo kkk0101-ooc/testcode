@@ -1,0 +1,316 @@
+{
+  "objective": "Execute docs/阶段M_endpointnnsvit.md M6 and stop after M6",
+  "success_criteria": [
+    "Automatically select all twelve specified M6 case categories without visual cherry-picking",
+    "Render every neuron, attention and residual panel named by section 14.3",
+    "Preserve raw arrays, source hashes, M2 semantic boundary and claim-language constraints",
+    "Provide bilingual descriptions, independent validation and an immutable receipt"
+  ],
+  "status": "PASS",
+  "requirements": [
+    {
+      "requirement": "M5 predecessor and immutable M2/M3/M4 source bindings",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/freeze.json",
+          "sha256": "cac789cee9dc4cb9544832c7d9c97ae0e142d11c6b17de7dc46c02a854bfab63",
+          "bytes": 3526
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/source_validation.json",
+          "sha256": "4e43e5a35303d5747da96f51eb85ef4522db4bf49de989400d253bee4adef7d7",
+          "bytes": 496
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/source_access_manifest.json",
+          "sha256": "5ccd4bc5ef562d233ad1898fa5dc3afb7f1790272a0c71ccfaef755f814b0196",
+          "bytes": 352187
+        }
+      ],
+      "evidence": "All named receipts and manifests match frozen hashes; every accessed numeric source matches its sealed artifact manifest"
+    },
+    {
+      "requirement": "14.1 twelve required case categories",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/selection_manifest.json",
+          "sha256": "f315f3357bfe63048900b333c286990ecdf1ce05c7ee2b3e09cd8f42ed044985",
+          "bytes": 276627
+        }
+      ],
+      "evidence": "Case count is 12 and covers early/late/CLS-patch, three attention, three residual, cancellation, cross-model and M2 boundary categories"
+    },
+    {
+      "requirement": "14.2 frozen automatic selection",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "config/nns_vit_endpoint/endpoint_m6.json",
+          "sha256": "64da85433db5d1f883c58bad4006966bb64c388f1d90b9ffa119168277013b03",
+          "bytes": 5082
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/selection_manifest.json",
+          "sha256": "f315f3357bfe63048900b333c286990ecdf1ce05c7ee2b3e09cd8f42ed044985",
+          "bytes": 276627
+        },
+        {
+          "path": "src/vitnns/endpoint_m6.py",
+          "sha256": "2b1672b0cddcf99e455cb4737de117ce09620a22cb5ec09ea3a173c0d67a3156",
+          "bytes": 8288
+        }
+      ],
+      "evidence": "Inclusive 5 percent tails, median-nearest representative rules and fixed ID tie-breaks; manual visual reselection false"
+    },
+    {
+      "requirement": "selection occurs before JPEG and selected-map access",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/freeze.json",
+          "sha256": "cac789cee9dc4cb9544832c7d9c97ae0e142d11c6b17de7dc46c02a854bfab63",
+          "bytes": 3526
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/source_validation.json",
+          "sha256": "4e43e5a35303d5747da96f51eb85ef4522db4bf49de989400d253bee4adef7d7",
+          "bytes": 496
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/map_recompute_receipt.json",
+          "sha256": "a7983bf746140d8a46764f6aab91c3ceda9826dc608a95139b800c2eb1920ba7",
+          "bytes": 14320
+        }
+      ],
+      "evidence": "CPU-only numerical selection was sealed before selected images and VJP maps were obtained"
+    },
+    {
+      "requirement": "14.3 neuron atlas content",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/raw_arrays.npz",
+          "sha256": "f4a4c1c6ffb8fc0b136d32b5f35a59045eb53fe544119af40cc6563e3b94d0f4",
+          "bytes": 18933439
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/figures/m6_neuron_atlas.png",
+          "sha256": "9e0851101a87550afed550c00a230549d3b54626c12a412251cc273ee7943f74",
+          "bytes": 1780901
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/figure_manifest.json",
+          "sha256": "d8c4deada883e939c26bb258714ccdeaa1591ade4ae7b12fd540bacafbc3eba6",
+          "bytes": 5373
+        }
+      ],
+      "evidence": "Input, signed/absolute Endpoint, patch mass and all requested scalar metadata are present"
+    },
+    {
+      "requirement": "14.3 attention content",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/raw_arrays.npz",
+          "sha256": "f4a4c1c6ffb8fc0b136d32b5f35a59045eb53fe544119af40cc6563e3b94d0f4",
+          "bytes": 18933439
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/figures/m6_attention_cases.png",
+          "sha256": "a867025ed415e30df86448d989be6cc658aac3358896ef392a9ef6db48d53403",
+          "bytes": 1446429
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/map_recompute_receipt.json",
+          "sha256": "a7983bf746140d8a46764f6aab91c3ceda9826dc608a95139b800c2eb1920ba7",
+          "bytes": 14320
+        }
+      ],
+      "evidence": "Full/routing/Value/Q/K Endpoint, CLS-query attention, routing share, frozen-attention error and saturation"
+    },
+    {
+      "requirement": "14.3 residual content",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/raw_arrays.npz",
+          "sha256": "f4a4c1c6ffb8fc0b136d32b5f35a59045eb53fe544119af40cc6563e3b94d0f4",
+          "bytes": 18933439
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/figures/m6_residual_cases.png",
+          "sha256": "328a78a010d64fcfca76582a470b483a38fa1b1ce9cbf613e6218dd7a0d12ed1",
+          "bytes": 1253692
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/map_recompute_receipt.json",
+          "sha256": "a7983bf746140d8a46764f6aab91c3ceda9826dc608a95139b800c2eb1920ba7",
+          "bytes": 14320
+        }
+      ],
+      "evidence": "Output/identity/branch Endpoint, identity/branch share, path cancellation and output-identity spatial change"
+    },
+    {
+      "requirement": "ViT-B/16 versus DeiT-S representative layer difference",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/figures/m6_model_layer_comparison.png",
+          "sha256": "5d2244ae88fc90e06d9cfeaf8dceb87428d12e051946bb9e7c59d28945255838",
+          "bytes": 474975
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/selection_manifest.json",
+          "sha256": "f315f3357bfe63048900b333c286990ecdf1ce05c7ee2b3e09cd8f42ed044985",
+          "bytes": 276627
+        }
+      ],
+      "evidence": "Shared image nearest the model-difference median; within-image channels nearest their block medians"
+    },
+    {
+      "requirement": "one M2 Endpoint versus Taylor semantic boundary",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/figures/m6_m2_semantic_boundary.png",
+          "sha256": "2e20ed0782e2cd4e2a4d001ded851d346140cfb7be602420b89f2984d81edc16",
+          "bytes": 249452
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/selection_manifest.json",
+          "sha256": "f315f3357bfe63048900b333c286990ecdf1ce05c7ee2b3e09cd8f42ed044985",
+          "bytes": 276627
+        }
+      ],
+      "evidence": "Fixed model/block/geometry/reference; rank-difference selection excludes finite outcomes"
+    },
+    {
+      "requirement": "five PNG/PDF figures and raw provenance",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/figure_manifest.json",
+          "sha256": "d8c4deada883e939c26bb258714ccdeaa1591ade4ae7b12fd540bacafbc3eba6",
+          "bytes": 5373
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/raw_arrays.npz",
+          "sha256": "f4a4c1c6ffb8fc0b136d32b5f35a59045eb53fe544119af40cc6563e3b94d0f4",
+          "bytes": 18933439
+        },
+        {
+          "path": "papers/nns_vit_endpoint/figure_manifest_m6.json",
+          "sha256": "d8c4deada883e939c26bb258714ccdeaa1591ade4ae7b12fd540bacafbc3eba6",
+          "bytes": 5373
+        }
+      ],
+      "evidence": "Five required figures in both formats, byte-identical report/paper copies, raw arrays retained"
+    },
+    {
+      "requirement": "visual inspection of all five PNG figures",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/visual_inspection.json",
+          "sha256": "8f3cbddd3d0ce20c7da390fc8a5dbd7d90289e938820a6b548f7022f5c4a0574",
+          "bytes": 1273
+        }
+      ],
+      "evidence": "All five figures inspected at original detail; no blank, clipped, mismatched or unreadable panels"
+    },
+    {
+      "requirement": "bilingual integration, evidence matrix and writing audit",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "papers/nns_vit_endpoint/zh/full_draft_m6.md",
+          "sha256": "68679c518cd67df07fe1e6059b1f5485bf4d4f7674bd8b0f500bd42f76c74cba",
+          "bytes": 61517
+        },
+        {
+          "path": "papers/nns_vit_endpoint/en/full_draft_m6.md",
+          "sha256": "05ec5963abc56822fa4047a98053d490f08ea4ed492300854c372bb8d18a67b8",
+          "bytes": 68806
+        },
+        {
+          "path": "papers/nns_vit_endpoint/notes/endpoint_m6_evidence_matrix.md",
+          "sha256": "01705c056b6f1e0f35ded0bf1a44fda15d384b6536b28eaf457bd18b4c13418d",
+          "bytes": 938
+        },
+        {
+          "path": "papers/nns_vit_endpoint/qc/endpoint_m6_writing_audit.md",
+          "sha256": "329da623585da03c3d8e769a37c23d1b73be06f5ce8560457795397fda252a03",
+          "bytes": 973
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/document_validation.json",
+          "sha256": "8c61250e4223d450a3c5425648e2829622e5882c8a3ada9d3fa09fcdb951a0db",
+          "bytes": 167
+        }
+      ],
+      "evidence": "Image #1 through Image #5 synchronized with claim-evidence-boundary language"
+    },
+    {
+      "requirement": "independent selection, raw closure and figure validation",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/independent_validation.json",
+          "sha256": "8cf54eee393adf2dc82beb6b9e4aa74aee5c021373df02901ccd96d1473b366a",
+          "bytes": 454
+        }
+      ],
+      "evidence": "Independent reselection of all 12 cases, 9 raw closure checks and image dimension/hash checks"
+    },
+    {
+      "requirement": "versioned M6 validator recovery",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "docs/endpoint_m6_validation_amendment_20260919.md",
+          "sha256": "5883d4b03011e62b35692b396ef314cf6caf296a93425c7b58411a4ea7b66315",
+          "bytes": 1313
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/validation_amendment.json",
+          "sha256": "98c9daaf11c3480c061db59a422d2e80dbaabd55e84344ff59c0c2a8f93fc4ea",
+          "bytes": 1140
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/validation_failure_r1.json",
+          "sha256": "4f666083ae45a14dd67829c5191cf594f5000b8120023e3b59a7a3016d0cf4c3",
+          "bytes": 343
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/document_validation_failure_r1.json",
+          "sha256": "17a664f4d05268be45c9397702ce82e5957e2b2fa43514ab0f550553106a68d0",
+          "bytes": 318
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/independent_validation.json",
+          "sha256": "8cf54eee393adf2dc82beb6b9e4aa74aee5c021373df02901ccd96d1473b366a",
+          "bytes": 454
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m6_r1_20260919/document_validation.json",
+          "sha256": "8c61250e4223d450a3c5425648e2829622e5882c8a3ada9d3fa09fcdb951a0db",
+          "bytes": 167
+        }
+      ],
+      "evidence": "R1 map count and document-scope assumptions are preserved as failure evidence; R2 derives unique keys and limits prose checks to the M6 insertion"
+    }
+  ],
+  "requirement_count": 14,
+  "missing": [],
+  "incomplete": [],
+  "weakly_verified": [],
+  "outside_scope": [
+    "new inferential tests",
+    "full-cohort recomputation",
+    "manual aesthetic reselection",
+    "post-M6 paper work"
+  ],
+  "audited_head": "fa4eecdd395aa589fa6a75bd6280cf4076d7a341"
+}

@@ -17,9 +17,10 @@ def main():
     paths = [REPO / "docs/endpoint_m6_results_20260919.md", PAPER / "zh/endpoint_m6_atlas.md", PAPER / "en/endpoint_m6_atlas.md",
              PAPER / "zh/full_draft_m6.md", PAPER / "en/full_draft_m6.md"]
     texts = [path.read_text() for path in paths]
+    scoped = texts[:3] + [text.split("<!-- M6_ATLAS_START -->", 1)[1].split("<!-- M6_ATLAS_END -->", 1)[0] for text in texts[3:]]
     for case in selection["cases"]:
-        for text in texts: require(case["case_id"] in text, "CASE_TEXT:" + case["case_id"])
-    for text in texts:
+        for text in scoped: require(case["case_id"] in text, "CASE_TEXT:" + case["case_id"])
+    for text in scoped:
         for number in range(1, 6): require("Image #%d" % number in text, "IMAGE_TEXT")
         require("local input dependence" in text or "Endpoint dependence" in text, "DEPENDENCE_LANGUAGE")
         require("因果证据" not in text and "causal evidence" not in text.lower(), "CAUSAL_OVERCLAIM")

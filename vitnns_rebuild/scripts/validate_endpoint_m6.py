@@ -44,6 +44,10 @@ def selected_identity(case):
     return (identity(case["selected_boundary"]),)
 
 
+def m3_key(row):
+    return "m3__" + "__".join(map(str, (row["task_id"], row["block"], row["token"], row["channel"])))
+
+
 def main():
     require(not any(name in sys.modules for name in ("torch", "timm")), "CPU_ONLY_IMPORTS")
     spec = load(REPO / "config/nns_vit_endpoint/endpoint_m6.json"); selection = load(ROOT / "selection_manifest.json")
@@ -60,6 +64,7 @@ def main():
     require(recompute["status"] == "PASS" and recompute["selection_manifest_sha256"] == sha(ROOT / "selection_manifest.json"), "RECOMPUTE_RECEIPT")
     require(recompute["worker_identity"]["CUBLAS_WORKSPACE_CONFIG"] == ":4096:8" and recompute["worker_identity"]["deterministic_algorithms"]
             and not recompute["worker_identity"]["cuda_matmul_allow_tf32"] and not recompute["worker_identity"]["cudnn_allow_tf32"], "NUMERIC_IDENTITY")
+    expected_m3_keys = {m3_key(unit) for case in selection["cases"] for unit in case.get("selected_units", [])}
     with np.load(ROOT / "raw_arrays.npz") as raw:
         keys = set(raw.files); maximum = 0.0; closure_count = 0
         for case_id in ("m4_routing_dominant", "m4_value_dominant", "m4_high_frozen_attention_error"):
@@ -69,7 +74,7 @@ def main():
             identity, branch, output = (raw[case_id + "__" + name].astype(np.float64) for name in ("identity", "branch", "output"))
             maximum = max(maximum, float(np.max(np.abs(identity + branch - output)))); closure_count += 1
         require(maximum <= 1e-6, "RAW_MAP_CLOSURE")
-        require(sum(key.startswith("m3__") for key in keys) == 10, "M3_MAP_COUNT")
+        require({key for key in keys if key.startswith("m3__")} == expected_m3_keys, "M3_MAP_SET")
         require(sum(key.endswith("__attention_cls") for key in keys) == 3, "ATTENTION_MAP_COUNT")
         require(recompute["array_count"] == len(keys), "ARRAY_COUNT")
     figures = load(ROOT / "figure_manifest.json")
@@ -83,8 +88,10 @@ def main():
             if row["format"] == "png":
                 with Image.open(report) as image: require(image.width >= 1000 and image.height >= 300, "FIGURE_DIMENSION")
             figure_files += 1
-    validation = {"status": "PASS", "mode": "CPU_ONLY", "cuda_visible_devices": os.environ["CUDA_VISIBLE_DEVICES"],
+    validation = {"status": "PASS_R2", "mode": "CPU_ONLY", "cuda_visible_devices": os.environ["CUDA_VISIBLE_DEVICES"],
+                  "amendment": "docs/endpoint_m6_validation_amendment_20260919.md",
                   "independently_reselected_cases": 12, "accessed_source_files": len(recorded), "raw_array_count": recompute["array_count"],
+                  "unique_m3_map_keys": len(expected_m3_keys),
                   "recompute_summary_checks": recompute["recomputed_map_checks"], "raw_closure_checks": closure_count,
                   "maximum_raw_closure_error": maximum, "figures": 5, "figure_files": figure_files, "new_inferential_tests": 0}
     path = ROOT / "independent_validation.json"
