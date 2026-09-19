@@ -32,9 +32,18 @@ def main():
     require(not any(term in (zh + en + full_zh + full_en).lower() for term in banned), "OVERCLAIM")
     evidence = (PAPER / "notes/endpoint_m4_evidence_matrix.md").read_text()
     require(evidence.count("| PASS |") >= 6 and "| BOUNDARY |" in evidence, "EVIDENCE_MATRIX")
+    audit = (PAPER / "qc/endpoint_m4_writing_audit.md").read_text()
+    require("2/10" in audit and "Reviewer-facing prebuttals: 0" in audit and "Promotional adjectives: 0" in audit, "WRITING_AUDIT")
+    plan = (REPO / "docs/阶段M_endpointnnsvit.md").read_text()
+    require("# 九、M4：Attention 与 residual 结构机制分析" in plan
+            and json.loads((REPO / "config/nns_vit_endpoint/endpoint_m4.json").read_text())["next_authorization"] == "STOP_AFTER_M4", "PLAN_AND_SCOPE")
     report = {"status": "PASS", "documents": 5, "tests_crosschecked": len(tests),
-              "figures_described": 3, "scope_boundaries": 2, "bilingual_sync": True}
-    (ROOT / "document_validation.json").write_text(json.dumps(report, indent=2) + "\n")
+              "figures_described": 3, "scope_boundaries": 2, "bilingual_sync": True,
+              "writing_audit": "PASS", "frozen_stage_plan_preserved": True}
+    path = ROOT / "document_validation.json"
+    if path.exists() and json.loads(path.read_text()) != report:
+        path.unlink()
+    path.write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report))
 
 
