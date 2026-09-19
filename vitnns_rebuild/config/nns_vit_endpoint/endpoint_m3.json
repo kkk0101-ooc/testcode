@@ -1,0 +1,127 @@
+{
+  "stage": "ENDPOINT-M3",
+  "status": "frozen_before_formal_image_access",
+  "objective": "NNS fidelity bridge and stratified token-channel Endpoint audit",
+  "predecessor": {
+    "status": "ENDPOINT_M2_PASS_EXECUTION_AND_AUDIT",
+    "next_authorization": "STOP_AFTER_M2"
+  },
+  "models": {
+    "vit_b16": {"embedding_dim": 768, "blocks": 12},
+    "deit_s16": {"embedding_dim": 384, "blocks": 12}
+  },
+  "cohort": {
+    "source_images_per_model": 400,
+    "selected_images_per_model": 100,
+    "shared_between_models": true,
+    "selection": "lowest_sha256_namespace_sample_id_image_sha256",
+    "namespace": "ENDPOINT_M3_COHORT_20260919"
+  },
+  "targets": {
+    "blocks": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+    "tokens_per_block": 16,
+    "channels_per_block": 32,
+    "targets_per_model_image": 6144,
+    "token_selection": {
+      "cls": 0,
+      "patch_grid": 14,
+      "patch_strata_rows": 3,
+      "patch_strata_columns": 5,
+      "rule": "nearest_patch_to_each_stratum_geometric_center_row_major"
+    },
+    "channel_selection": {
+      "namespace": "ENDPOINT_M3_CHANNEL_20260919",
+      "rule": "32_lowest_sha256_namespace_model_block_channel"
+    }
+  },
+  "streamed_fields": [
+    "signed_sum", "absolute_mass", "l2_norm", "positive_mass",
+    "negative_mass", "zero_gradient", "cancellation",
+    "normalized_spatial_entropy", "patch_absolute_mass_196",
+    "patch_signed_sum_196", "numeric_status"
+  ],
+  "zero_mass_policy": "cancellation_entropy_locality_distance_are_NA_without_epsilon",
+  "validation_subset": {
+    "tokens_per_block": 2,
+    "channels_per_block": 4,
+    "targets_per_model_image": 96,
+    "tokens": "cls_and_first_frozen_patch",
+    "channels": "first_four_frozen_channels",
+    "directions": 3,
+    "direction_namespace": "ENDPOINT_M3_DIRECTION_20260919",
+    "finite_difference_epsilons_float32": [0.01, 0.003, 0.001, 0.0003],
+    "finite_difference_epsilons_float64": [0.001, 0.0003, 0.0001, 0.00003, 0.00001, 0.000003],
+    "finite_difference_atol_float32": 0.002,
+    "finite_difference_rtol_float32": 0.05,
+    "finite_difference_atol_float64": 0.0000001,
+    "finite_difference_rtol_float64": 0.0001,
+    "batched_scalar_atol": 0.00002,
+    "batched_scalar_rtol": 0.0002,
+    "float64_review_images_per_model": 2
+  },
+  "full_maps": {
+    "images_per_model": 10,
+    "blocks": [0, 5, 11],
+    "tokens": "cls_and_first_frozen_patch",
+    "channels": "first_frozen_channel",
+    "maps_per_selected_image": 6,
+    "dtype": "float32"
+  },
+  "equivalence": {
+    "models": ["fcn", "cnn", "cnn_maxpool", "residual_mlp", "residual_cnn"],
+    "random_inputs_per_model_dtype": 100,
+    "dtypes": ["float64", "float32"],
+    "minimum_targets_per_model": 4,
+    "float64": {"atol": 1e-10, "rtol": 1e-9},
+    "float32": {"atol": 2e-5, "rtol": 2e-4}
+  },
+  "operator_validation": {
+    "dtype": "float64",
+    "operators": ["layer_norm", "gelu", "softmax", "qk_scaled", "av", "head_concat", "output_projection", "residual_add", "mlp", "final_layer_norm", "classifier"],
+    "directions_per_operator": 8,
+    "epsilons": [0.01, 0.003, 0.001, 0.0003, 0.0001, 0.00003, 0.00001, 0.000003, 0.000001],
+    "jvp_atol": 1e-10,
+    "jvp_rtol": 1e-9,
+    "vjp_identity_atol": 1e-10,
+    "finite_difference_best_relative_error_max": 2e-6
+  },
+  "analysis": {
+    "phases": {"early": [0, 1, 2, 3], "middle": [4, 5, 6, 7], "late": [8, 9, 10, 11]},
+    "bootstrap_repetitions": 10000,
+    "bootstrap_namespace": "ENDPOINT_M3_BOOTSTRAP_20260919",
+    "confidence": 0.95,
+    "paired_test": "two_sided_exact_sign",
+    "sign_tie_tolerance": 1e-12,
+    "holm_family_per_model": ["late_minus_early_entropy", "late_minus_early_locality", "late_minus_early_distance", "late_minus_early_cancellation", "cls_minus_patch_entropy"],
+    "undefined_test_policy": "retain_with_p_equal_1",
+    "similarity_pairs_per_layer_group": 256,
+    "similarity_namespace": "ENDPOINT_M3_SIMILARITY_20260919",
+    "center_patch_rule": "chebyshev_distance_to_grid_center_le_3",
+    "edge_patch_rule": "distance_to_grid_border_le_2",
+    "within_image_unit_aggregation": "median"
+  },
+  "numeric": {
+    "production_dtype": "float32",
+    "summary_dtype": "float64",
+    "gradient_chunk_size": 16,
+    "CUBLAS_WORKSPACE_CONFIG": ":4096:8",
+    "tf32": false,
+    "autocast": false,
+    "deterministic": true
+  },
+  "runtime": {
+    "queue": "dynamic_atomic_sqlite",
+    "max_attempts": 1,
+    "gpus_max": 8,
+    "min_free_mib": 32768,
+    "max_utilization_percent": 10
+  },
+  "source_bindings": {
+    "docs/阶段M_endpointnnsvit.md": "c6706c46aa8c4e42e57616c21984071221af8ec3dd667fe59d0958c19e1b80a5",
+    "reports/nns_vit_endpoint_m2_r1_20260919/terminal_receipt.json": "5fc5cd5c3ac6eb341a526b6843d004de20737b891b2c417cab4e4f297d35567d",
+    "reports/nns_vit_endpoint_m2_r1_20260919/artifact_manifest.json": "572e5ce5e0a19362ac8bc44b2150ea4267339a30821958f2c1929534a3b366e1",
+    "reports/nns_vit_endpoint_m1_r1_20260918/task_manifest.json": "0aca0376c728b8b69701b4289ea36fdfdd61bc6ec39e5d37457a39b9e6328801"
+  },
+  "output_root": "reports/nns_vit_endpoint_m3_r1_20260919",
+  "next_authorization": "STOP_AFTER_M3"
+}
