@@ -307,7 +307,7 @@ Figures 19–20 比较同一输入上的 Endpoint、Grad-CAM、attention rollout
 
 ![Figure 20](../publication_r2_20260920/figures/png/fig_20_vit_b16_method_comparison.png)
 
-**Figure 20.** 同输入实际计算的 Endpoint、patch-max 显示变体、Grad-CAM、attention rollout 与 raw attention。Endpoint/Grad-CAM 使用同一 GT logit；后两种 attention 方法不依赖类别。所有图采用相同蓝底色系并独立归一化，只比较表示形态与粒度。
+**Figure 20.** 同输入实际计算的 Endpoint、patch-max 显示变体、Grad-CAM、attention rollout 与 raw attention。Endpoint/Grad-CAM 使用同一 GT logit；后两种 attention 方法不依赖类别。所有图采用相同蓝底色系并独立归一化，只比较表示形态与粒度。 Figure 20 的三例在计算比较方法前，已按预先封存的 Endpoint/输入细节可读性规则选定。
 
 Endpoint 保留像素尺度的局部项，Grad-CAM 和 attention 类方法提供较粗的区域分布。Patch-max 插值版本表明，聚合与插值本身就能显著改变学习图像的外观；它不改变基础定义。图中各方法有时突出不同区域，这反映目标与传播规则的差别。该比较用于说明表示粒度与对象，方法排序仍需要对应任务的定量评价。
 

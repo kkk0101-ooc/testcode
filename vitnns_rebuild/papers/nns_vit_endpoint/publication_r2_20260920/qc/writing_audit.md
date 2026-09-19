@@ -18,4 +18,6 @@ Highest-priority changes: rewrite front matter around interpretation; replace pr
 
 Necessary caveats: known Gradient × Input identity, coordinate-origin dependence, non-completeness, correct residual cotangent, local rather than finite causal meaning, sample selection, class-agnostic attention comparison, distinct display normalization, original family decisions, untested training and target controls.
 
+Figure 20 revision: the current examples were selected from pre-retained class Endpoint maps by a presealed readability rule before Grad-CAM or attention outputs were computed. The text describes them as presentation examples and does not infer population superiority.
+
 Repeated phrase audit: “we do not claim”, “we emphasize”, “it should be noted”, “to avoid misunderstanding”, and “taken together” are absent from both current main texts. The final validator checks bilingual equations, numerical table rows and section/figure numbering.

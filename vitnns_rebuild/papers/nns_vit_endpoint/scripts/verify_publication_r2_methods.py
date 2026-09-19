@@ -21,7 +21,9 @@ def main():
     for mid in ('deit_s16','vit_b16'):
         model,_=load_model(specs[mid+'__014'],torch.device('cpu'))
         if mid=='vit_b16':model.double()
-        for order in (4,14,15):
+        receipt=json.loads((ROOT/'evidence/compute_receipt.json').read_text())
+        orders=receipt['figure19_orders'] if mid=='deit_s16' else sorted({4,14,15,*receipt['figure20_orders']})
+        for order in orders:
             task=mid+f'__{order:03d}';spec=specs[task];d=np.load(ROOT/'assets'/f'{task}.npz');meta=json.loads((ROOT/'assets'/f'{task}.json').read_text());saved={};handles=[]
             def hook(k):
                 def fn(m,args,out):saved[k]=out
@@ -53,7 +55,7 @@ def main():
                     a=(x*g0)[0].detach().numpy();assert np.allclose(a,d[f'b{b}.energy.endpoint'],rtol=2e-5,atol=1e-8)
             for h in handles:h.remove()
             results.append(dict(task_id=task,maximum_absolute_errors=errors,layer_checks=[0,11] if order==14 else []));print(task,errors,flush=True)
-    report=dict(status='PASS',native_graph=True,comparison_tasks=6,layer_pair_checks=4,results=results)
+    report=dict(status='PASS',native_graph=True,comparison_tasks=len(results),layer_pair_checks=4,results=results)
     (ROOT/'qc/method_verification.json').write_text(json.dumps(report,indent=2)+chr(10))
 
 if __name__=='__main__':main()

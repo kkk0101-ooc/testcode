@@ -26,10 +26,13 @@ def main():
     torch.set_num_threads(4);torch.use_deterministic_algorithms(True)
     tasks=json.loads((REPO/'reports/nns_vit_endpoint_e4_intervention_r2_20260918/task_manifest.json').read_text())['tasks']
     specs={t['task_id']:t['payload'] for t in tasks};manifest=[]
+    selection=json.loads((ROOT/'evidence/figure20_selection.json').read_text())
+    assert selection['status']=='SEALED_BEFORE_COMPARISON_METHOD_COMPUTE' and not selection['comparison_methods_read']
     for model_id in ('deit_s16','vit_b16'):
         model,binding=load_model(specs[f'{model_id}__014'],torch.device('cpu'))
         if model_id=='vit_b16':model=model.double()
-        for order in (4,14,15):
+        orders=(4,14,15) if model_id=='deit_s16' else tuple(sorted({4,14,15,*selection['selected_orders']}))
+        for order in orders:
             taskid=f'{model_id}__{order:03d}';out=ROOT/'assets'/f'{taskid}.npz';meta=out.with_suffix('.json')
             if out.exists() and meta.exists():
                 r=json.loads(meta.read_text());assert sha(out)==r['array_sha256'];manifest.append(r);print('reuse',taskid,flush=True);continue
@@ -99,6 +102,6 @@ def main():
             write(meta,row);manifest.append(row);print('done',taskid,round(row['seconds'],2),rel,flush=True)
             del logits,score,observed,edges,result,x
         del model
-    write(ROOT/'evidence/compute_receipt.json',dict(status='PASS_DISPLAY_COMPUTATION',tasks=manifest,task_count=6,cpu_only=True,method_comparison='qualitative_same_input',torch_version=torch.__version__))
+    write(ROOT/'evidence/compute_receipt.json',dict(status='PASS_DISPLAY_COMPUTATION',tasks=manifest,task_count=len(manifest),figure19_orders=[4,14,15],figure20_orders=selection['selected_orders'],cpu_only=True,method_comparison='qualitative_same_input',torch_version=torch.__version__))
 
 if __name__=='__main__':main()

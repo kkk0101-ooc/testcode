@@ -110,7 +110,7 @@ DeiT-S 在 blocks 0、5、11 的全部六个 heads，对同一个 ground-truth l
 
 **Image #19 — DeiT-S/16: learning images and other visual explanations**
 
-同输入实际计算的 Endpoint、patch-max 显示变体、Grad-CAM、attention rollout 与 raw attention。Endpoint/Grad-CAM 使用同一 GT logit；后两种 attention 方法不依赖类别。所有图采用相同蓝底色系并独立归一化，只比较表示形态与粒度。
+同输入实际计算的 Endpoint、patch-max 显示变体、Grad-CAM、attention rollout 与 raw attention。Endpoint/Grad-CAM 使用同一 GT logit；后两种 attention 方法不依赖类别。所有图采用相同蓝底色系并独立归一化，只比较表示形态与粒度。三例为 Langur、Stethoscope、Offshore platform，对应重选协议的 orders 1/13/7。排序只读取 ViT-B Endpoint 与输入细节，未读取 Grad-CAM、rollout 或 raw attention。
 
 [打开图片](figures/png/fig_19_deit_s16_method_comparison.png)
 

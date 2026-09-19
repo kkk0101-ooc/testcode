@@ -23,6 +23,7 @@ CMAP=LinearSegmentedColormap.from_list('nns_blue',[(0,'#07077F'),(.2,'#0019C6'),
 plt.rcParams.update({'font.family':'DejaVu Sans','font.size':10,'axes.titlesize':11,'axes.labelsize':10,'text.color':INK,'axes.labelcolor':INK,'axes.edgecolor':'#C4CDD6','axes.spines.top':False,'axes.spines.right':False,'xtick.color':GRAY,'ytick.color':GRAY,'grid.color':'#E5ECF2','svg.fonttype':'none','svg.hashsalt':'endpoint-publication-r2','pdf.fonttype':42})
 FIGS=[];DISPLAYS=[];SOURCES={}
 NUMBERING={12:13,13:14,14:15,15:17,16:12,17:16}
+SAMPLE_LABELS={1:'Langur',4:'Mantis',7:'Offshore platform',13:'Stethoscope',14:'Sloth bear',15:'Little blue heron'}
 
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def bind(p):
@@ -87,7 +88,7 @@ def patchmax(raw):
     return np.array(Image.fromarray(p).resize((224,224),Image.Resampling.BILINEAR))
 
 def main():
-    receipt=load(ROOT/'evidence/compute_receipt.json');assert receipt['task_count']==6
+    receipt=load(ROOT/'evidence/compute_receipt.json');assert receipt['task_count']>=6
     data={};meta={}
     for r in receipt['tasks']:
         p=bind(ROOT/'assets'/f"{r['task_id']}.npz");assert sha(p)==r['array_sha256'];data[r['task_id']]=np.load(p);meta[r['task_id']]=r
@@ -237,13 +238,17 @@ def main():
         for ax,(metric,label,extra) in zip(axes,metrics):curves(ax,rr,metric,label,extra)
         finish(fig,n,slug,'完整 cohort 的图像级层深轨迹，阴影为 95% bootstrap 区间。空间分析每模型 100 图，attention/residual 每模型 400 图；推断沿用原冻结分析。','Image-level depth trajectories from the full cohorts, with 95% bootstrap intervals. Spatial analyses use 100 images per model and attention/residual analyses 400; inference follows the original analysis.','quantitative')
     # 19–20. Actual method comparison; original photo in every row.
+    comparison_orders={'deit_s16':receipt['figure19_orders'],'vit_b16':receipt['figure20_orders']}
     for n,model in [(19,'deit_s16'),(20,'vit_b16')]:
         fig,axes=plt.subplots(3,6,figsize=(15,8));fig.subplots_adjust(top=.88,bottom=.06,wspace=.035,hspace=.18)
         title(fig,('DeiT-S/16' if model=='deit_s16' else 'ViT-B/16')+': learning images and other visual explanations')
-        for i,order in enumerate((4,14,15)):
-            d=data[f'{model}__{order:03d}'];items=[('Original',d['input_rgb'],'photo'),('Endpoint',d['class_endpoint'],'learning'),('Endpoint\npatch-max display',patchmax(d['class_endpoint']),'score'),('Grad-CAM',d['gradcam'],'score'),('Attention rollout',d['rollout'],'score'),('Raw attention',d['raw_attention'],'score')]
+        for i,order in enumerate(comparison_orders[model]):
+            d=data[f'{model}__{order:03d}'];items=[(SAMPLE_LABELS[order]+('\nOriginal' if i==0 else ''),d['input_rgb'],'photo'),('Endpoint',d['class_endpoint'],'learning'),('Endpoint\npatch-max display',patchmax(d['class_endpoint']),'score'),('Grad-CAM',d['gradcam'],'score'),('Attention rollout',d['rollout'],'score'),('Raw attention',d['raw_attention'],'score')]
             for ax,(lab,v,kind) in zip(axes[i],items):show(ax,v,lab if i==0 else '',kind,source=f'{model}/{order}/{lab}',interpolation='bilinear' if kind=='score' else 'nearest')
-        finish(fig,n,model+'_method_comparison','同输入实际计算的 Endpoint、patch-max 显示变体、Grad-CAM、attention rollout 与 raw attention。Endpoint/Grad-CAM 使用同一 GT logit；后两种 attention 方法不依赖类别。所有图采用相同蓝底色系并独立归一化，只比较表示形态与粒度。','Actual same-input Endpoint, its patch-max display variant, Grad-CAM, attention rollout and raw attention. Endpoint/Grad-CAM use the same GT logit; attention methods are class-agnostic. A common blue palette and independent normalization compare spatial form and granularity, not quantitative superiority.')
+            axes[i,0].set_title(SAMPLE_LABELS[order]+('\nOriginal' if i==0 else ''),pad=7,fontsize=10)
+        selection_note=(' Figure 20 examples were selected by the presealed Endpoint/input-detail readability rule before comparison methods were computed.' if model=='vit_b16' else '')
+        selection_zh=(' Figure 20 的三例在计算比较方法前，已按预先封存的 Endpoint/输入细节可读性规则选定。' if model=='vit_b16' else '')
+        finish(fig,n,model+'_method_comparison','同输入实际计算的 Endpoint、patch-max 显示变体、Grad-CAM、attention rollout 与 raw attention。Endpoint/Grad-CAM 使用同一 GT logit；后两种 attention 方法不依赖类别。所有图采用相同蓝底色系并独立归一化，只比较表示形态与粒度。'+selection_zh,'Actual same-input Endpoint, its patch-max display variant, Grad-CAM, attention rollout and raw attention. Endpoint/Grad-CAM use the same GT logit; attention methods are class-agnostic. A common blue palette and independent normalization compare spatial form and granularity, not quantitative superiority.'+selection_note)
     # 21. Utility curves and absolute effect scale.
     e5=load(REPO/'reports/nns_vit_endpoint_e5_spatial_r1_20260918/formal_results/attempts/deit_s16__014/attempt-01.json')['result']
     stats=load(REPO/'reports/nns_vit_endpoint_paper_revision_v1_20260920/analysis.json')

@@ -41,6 +41,10 @@ def main():
     paper=ROOT.parent
     active=load(paper/'figure_manifest.json')
     check('active_binding',active['figure_count']==22 and active['source_revision']=='PUBLICATION-R2')
+    for source,bound in zip(f['figures'],active['figures']):
+        check('active_figure_number:'+str(source['number']),source['number']==bound['figure'])
+        for extension in ('png','pdf','svg'):
+            check('active_figure_hash:'+str(source['number'])+':'+extension,source['files'][extension]['sha256']==bound[extension]['sha256'])
     for lang,text in texts.items():
         expected=text.replace('](../figures/','](../publication_r2_20260920/figures/').replace('](../references.md)','](../publication_r2_20260920/references.md)').replace('](supplement.md)',f'](../publication_r2_20260920/{lang}/supplement.md)')
         check('current_entry_mirror:'+lang,(paper/lang/'full_draft.md').read_text()==expected)
@@ -50,7 +54,12 @@ def main():
             if target.startswith(('http','#')):continue
             q=(p.parent/target.split('#')[0]).resolve()
             check('portable_link:'+p.parent.name+':'+target,q.is_file() and ROOT.resolve() in q.parents)
-    receipt=load(ROOT/'evidence/compute_receipt.json');check('six_comparison_tasks',receipt['task_count']==6)
+    receipt=load(ROOT/'evidence/compute_receipt.json');check('comparison_tasks',receipt['task_count']>=6 and len(receipt['figure20_orders'])==3)
+    selection=load(ROOT/'evidence/figure20_selection.json')
+    check('figure20_presealed',selection['status']=='SEALED_BEFORE_COMPARISON_METHOD_COMPUTE' and not selection['comparison_methods_read'])
+    check('figure20_exclusions',selection['excluded_by_user']==[4,14,15] and not set(selection['selected_orders'])&{4,14,15})
+    check('figure20_binding',receipt['figure20_orders']==selection['selected_orders']==[1,13,7])
+    check('figure20_ranking',selection['selected_orders']==[r['order'] for r in selection['ranking'][:3]])
     catalog={}
     for row in receipt['tasks']:
         p=ROOT/'assets'/f"{row['task_id']}.npz";check('computed_hash:'+row['task_id'],sha(p)==row['array_sha256'])
@@ -86,11 +95,14 @@ def main():
     toy=load(ROOT/'evidence/concept_numeric_example.json');x=np.array(toy['x']);W=np.array(toy['W']);v=np.array(toy['v'])
     check('concept_numeric_identity',np.array_equal(x*(v@W),toy['endpoint']) and float(v@W@x)==toy['s'])
     methods=load(ROOT/'qc/method_verification.json')
-    check('native_method_recomputation',methods['status']=='PASS' and methods['comparison_tasks']==6 and methods['layer_pair_checks']==4)
+    check('native_method_recomputation',methods['status']=='PASS' and methods['comparison_tasks']==receipt['task_count'] and methods['layer_pair_checks']==4)
     qc=ROOT/'qc/visual_review.json';check('visual_review_exists',qc.is_file())
     if qc.exists():
         q=load(qc);check('visual_review_all',q['reviewed_figures']==list(range(1,23)))
         check('visual_review_current',q['png_hashes']=={str(r['number']):r['files']['png']['sha256'] for r in f['figures']})
+    inventory=load(ROOT/'artifact_inventory.json')
+    for record in inventory['files']:
+        check('inventory_hash:'+record['path'],sha(ROOT/record['path'])==record['sha256'])
     errors=[r for r in checks if not r['passed']]
     report=dict(status='PASS' if not errors else 'FAIL',check_count=len(checks),errors=errors,real_panels_recomputed=reconstructed,checks=checks)
     (ROOT/'qc/validation_report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+chr(10))

@@ -307,7 +307,7 @@ Figures 19–20 compare same-input Endpoint, Grad-CAM, attention rollout and raw
 
 ![Figure 20](../publication_r2_20260920/figures/png/fig_20_vit_b16_method_comparison.png)
 
-**Figure 20.** Actual same-input Endpoint, its patch-max display variant, Grad-CAM, attention rollout and raw attention. Endpoint/Grad-CAM use the same GT logit; attention methods are class-agnostic. A common blue palette and independent normalization compare spatial form and granularity, not quantitative superiority.
+**Figure 20.** Actual same-input Endpoint, its patch-max display variant, Grad-CAM, attention rollout and raw attention. Endpoint/Grad-CAM use the same GT logit; attention methods are class-agnostic. A common blue palette and independent normalization compare spatial form and granularity, not quantitative superiority. Figure 20 examples were selected by the presealed Endpoint/input-detail readability rule before comparison methods were computed.
 
 Endpoint retains pixel-scale local terms, whereas Grad-CAM and attention methods provide coarser regional distributions. The patch-max interpolation variant shows that aggregation and interpolation alone can substantially change the appearance of a learning image without changing its base definition. Methods sometimes emphasize different regions, reflecting differences in their targets and propagation rules. This comparison illustrates granularity and explanatory objects; ranking methods requires quantitative evaluation matched to the intended task.
 

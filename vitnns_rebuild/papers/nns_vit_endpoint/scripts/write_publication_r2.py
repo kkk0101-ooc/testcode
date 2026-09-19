@@ -399,6 +399,14 @@ def main():
     refs=(ROOT/'references.md').read_text()
     if 'Selvaraju' not in refs:refs+='\nSelvaraju, R. R., Cogswell, M., Das, A., Vedantam, R., Parikh, D., & Batra, D. (2017). Grad-CAM: Visual explanations from deep networks via gradient-based localization. Proceedings of ICCV, 618–626.\n'
     (ROOT/'references.md').write_text(refs)
+    root_relative=ROOT.relative_to(REPO).as_posix()
+    binding={'source_revision':'PUBLICATION-R2','figure_count':len(manifest['figures']),'package':root_relative,'figures':[]}
+    for figure in manifest['figures']:
+        row={'figure':figure['number'],'slug':figure['slug']}
+        for extension,record in figure['files'].items():
+            row[extension]={'path':root_relative+'/'+record['path'],'sha256':record['sha256']}
+        binding['figures'].append(row)
+    (PAPER/'figure_manifest.json').write_text(json.dumps(binding,ensure_ascii=False,indent=2)+chr(10))
     print('Wrote synchronized formal manuscripts with 22 figures and 7 main tables.')
 
 if __name__=='__main__':main()

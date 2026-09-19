@@ -14,6 +14,6 @@ figures/png、figures/pdf、figures/svg 保存正文图的三种格式。supplem
 
 本轮参考 Dou et al. (2023) 的概念解释顺序和蓝底图像组织方式。Figures 1–7 讲解学习图像与 ViT 分解；8–11 展示内部目标、逐层学习图像及实际前向特征；12–18 结合总体空间轨迹和路径示例；19–20 比较实际计算的 Endpoint、Grad-CAM、attention rollout 与 raw attention；21–22 说明有限干预与 signed/positive 显示的关系。
 
-对比使用相同输入与冻结模型；Endpoint/Grad-CAM 使用同一 GT logit，attention 方法为 class-agnostic。三个展示样本经过可读性选择，因此图片说明表示对象和空间形态，不用于宣称方法普遍优越。原群体统计与 C4a/C4b 判定保留在补充材料。
+对比使用相同输入与冻结模型；Endpoint/Grad-CAM 使用同一 GT logit，attention 方法为 class-agnostic。Figure 20 的狒狒、听诊器和海上钻井平台三例按预先封存的 Endpoint/输入细节可读性规则选定，比较方法未参与排序。图片说明表示对象和空间形态，不用于宣称方法普遍优越。原群体统计与 C4a/C4b 判定保留在补充材料。
 
 复现入口位于上级 scripts/：compute_publication_r2.py、render_publication_r2.py、write_publication_r2.py、verify_publication_r2_methods.py、validate_publication_r2.py。实际阅读和图件复制只需本目录。
