@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 import re
+import csv
 from run_endpoint_m2 import ROOT,REPO,load,sha,write
 
 def require(condition,code):
@@ -30,6 +31,20 @@ def main():
     require(len(figures)==3,'FIGURE_COUNT')
     for fig in figures:require(sha(REPO/fig['path'])==fig['sha256'],'FIGURE_SHA')
     require(report['primary_C4a']==report['primary_C4b']=='NOT_SUPPORTED','PRIMARY_STATUS')
+    tests=load(ROOT/'auc_tests.json')['tests']
+    for geometry,outcome,wins in [('patch','full',11),('patch','isolated',12),
+                                  ('legacy_grid','full',9),('legacy_grid','isolated',12)]:
+        part=[t for t in tests if t['geometry']==geometry and t['outcome']==outcome and t['baseline']=='regional_taylor']
+        require(sum(t['reject'] for t in part if t['direction']=='baseline_greater')==wins,'NARRATIVE_TAYLOR_COUNT')
+        require(sum(t['reject'] for t in part if t['direction']=='endpoint_greater')==0,'NARRATIVE_ENDPOINT_COUNT')
+    exception=next(t for t in tests if (t['model'],t['reference'],t['block'],t['geometry'],t['outcome'],t['baseline'],t['direction'])
+        ==('deit_s16','normalized_zero',5,'patch','full','regional_taylor','baseline_greater'))
+    require(format(exception['holm_p'],'.3f')=='0.528','NARRATIVE_EXCEPTION_P')
+    with (ROOT/'paired.csv').open() as f:
+        pair=next(r for r in csv.DictReader(f) if (r['model'],r['reference'],r['block'],r['geometry'],r['outcome'],r['metric'],r['baseline'])
+            ==('deit_s16','normalized_zero','5','patch','full','auc','regional_taylor'))
+    require(format(float(pair['median']),'.4f')=='-0.0424','NARRATIVE_EXCEPTION_DELTA')
+    require([format(v,'.4f') for v in json.loads(pair['ci95'])]==['-0.0614','-0.0142'],'NARRATIVE_EXCEPTION_CI')
     require(sha(ROOT/'task_validation.json')==report['task_validation_sha256'],'TASK_BINDING')
     require(sha(ROOT/'inference_validation.json')==report['inference_validation_sha256'],'INFERENCE_BINDING')
     require((paper/'qc/endpoint_m2_writing_audit.md').is_file(),'WRITING_AUDIT')

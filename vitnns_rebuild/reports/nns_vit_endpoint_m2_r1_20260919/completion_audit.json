@@ -1,0 +1,344 @@
+{
+  "objective": "Execute Stage M M2: cross-layer all-head spatial utility study and stop after M2",
+  "status": "PASS",
+  "requirement_count": 17,
+  "requirements": [
+    {
+      "requirement": "M1 predecessor fully verified",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/predecessor_validation.json",
+          "sha256": "0f7fa41f134804865c7b4839ba33f0d7c179b24632c634bc921f807e7c71cff1",
+          "bytes": 1250
+        }
+      ],
+      "evidence": "M1 seal:1631 files and17 requirements; all800 tasks and2688 tests recomputed before M2"
+    },
+    {
+      "requirement": "3.1/3.2 early middle late cross-layer scope",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/task_manifest.json",
+          "sha256": "0fb9a9e903a0603e28305a0a5028069b47914e91165b3afdfe39f9bac475f1eb",
+          "bytes": 4024830
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/task_validation.json",
+          "sha256": "a518267d32bf1b59d264820e730e7102bb058191cdcc0a536aae0c428b916d96",
+          "bytes": 660449
+        }
+      ],
+      "evidence": "Exact blocks2/5/10 x2 models x400 shared images; no exclusions"
+    },
+    {
+      "requirement": "3.3 all heads in each model",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/task_validation.json",
+          "sha256": "a518267d32bf1b59d264820e730e7102bb058191cdcc0a536aae0c428b916d96",
+          "bytes": 660449
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/additional_completion_validation.json",
+          "sha256": "50d271141a17d139b4d0b414f7122cf9b5401c9249b528e01418d088121e3f50",
+          "bytes": 223
+        }
+      ],
+      "evidence": "ViT12 heads;DeiT6 heads;21600 image-model-block-head conditions;all head identities checked"
+    },
+    {
+      "requirement": "3.4 normalized-zero and frozen blur",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/additional_completion_validation.json",
+          "sha256": "50d271141a17d139b4d0b414f7122cf9b5401c9249b528e01418d088121e3f50",
+          "bytes": 223
+        },
+        {
+          "path": "config/nns_vit_endpoint/endpoint_m2.json",
+          "sha256": "8ac4401742be3c0c2f7a4344a7bf16feb5585de9e761576d7b245c10bc04830b",
+          "bytes": 3510
+        }
+      ],
+      "evidence": "4800 reference tensor hashes equal E4;kernel31 sigma10;no effect-selected reference"
+    },
+    {
+      "requirement": "3.5 four patch budgets and existing geometry",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/task_validation.json",
+          "sha256": "a518267d32bf1b59d264820e730e7102bb058191cdcc0a536aae0c428b916d96",
+          "bytes": 660449
+        },
+        {
+          "path": "src/vitnns/endpoint_m2_regions.py",
+          "sha256": "2ed517e007bdc77fcebc8f15f80e2c3ae7f93ea8de54d990702de1042c9e9517",
+          "bytes": 2337
+        }
+      ],
+      "evidence": "Patch counts1/10/20/49;legacy4x4 grid counts1/2/4;all selections and actual areas recomputed"
+    },
+    {
+      "requirement": "3.6 eight methods on the same head",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/task_validation.json",
+          "sha256": "a518267d32bf1b59d264820e730e7102bb058191cdcc0a536aae0c428b916d96",
+          "bytes": 660449
+        },
+        {
+          "path": "src/vitnns/endpoint_m2_compute.py",
+          "sha256": "ecf28045dd76119c54c5a7b4453f1275e91de61ae54c84807f964f9c00a8c19f",
+          "bytes": 10471
+        }
+      ],
+      "evidence": "Endpoint absolute/signed,Taylor,gradient,displacement,random,center,attention;fixed20 random permutations"
+    },
+    {
+      "requirement": "3.6 genuine full-input regional effect plus isolated-head extension",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/task_validation.json",
+          "sha256": "a518267d32bf1b59d264820e730e7102bb058191cdcc0a536aae0c428b916d96",
+          "bytes": 660449
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/additional_completion_validation.json",
+          "sha256": "50d271141a17d139b4d0b414f7122cf9b5401c9249b528e01418d088121e3f50",
+          "bytes": 223
+        }
+      ],
+      "evidence": "Signed clean-minus-replacement and absolute effects reconstructed from finite logits;native-prefix parity controls on every head/ref/geometry"
+    },
+    {
+      "requirement": "3.6 median effect and random lift at every budget",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/summary.csv",
+          "sha256": "006335da016c51e5e9aab9efb9565df785b389799d7c926a630a24a1ffacda66",
+          "bytes": 555254
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/paired.csv",
+          "sha256": "e08b40fd0ab7a6a3ae20fddd335b92fad9d98cdb7711afc04110719f47bf9afb",
+          "bytes": 496990
+        }
+      ],
+      "evidence": "4096 summaries and3584 paired contrasts;baseline=random rows give per-budget andAUC lift"
+    },
+    {
+      "requirement": "3.6 candidate-set regret",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/task_validation.json",
+          "sha256": "a518267d32bf1b59d264820e730e7102bb058191cdcc0a536aae0c428b916d96",
+          "bytes": 660449
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/summary.csv",
+          "sha256": "006335da016c51e5e9aab9efb9565df785b389799d7c926a630a24a1ffacda66",
+          "bytes": 555254
+        }
+      ],
+      "evidence": "All singleton candidates and larger-budget method union verified;best evaluated candidate only"
+    },
+    {
+      "requirement": "3.6 block/head stratification and curves/AUC",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/head_summary.csv",
+          "sha256": "cddffed2e137a061f933bc97cb8e7d42b2b3000c2dbc5bd12e0e6ccc2fb25aff",
+          "bytes": 3658518
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/figure_manifest.json",
+          "sha256": "8e9e76feb79cf81bc66c6e1e4f10d86958ec95d6f53bf148f30d19639445ff22",
+          "bytes": 799
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/m2_full_effect_budget.png",
+          "sha256": "524c6ef6cc62db2232bb56394c7ee1edcf76c2ec4541680d9246e6197b269319",
+          "bytes": 933003
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/m2_isolated_effect_budget.png",
+          "sha256": "57ba8c5c4ebeac75bb037872c81a55a85720751af4a3f1658d51133347fa60c2",
+          "bytes": 880158
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/m2_head_contrasts.png",
+          "sha256": "5f8372277f9ec6c6f57257583742ade31989e2d54add79ee3505711da19900ce",
+          "bytes": 128777
+        }
+      ],
+      "evidence": "27648 head-summary rows;3 PNG/PDF figures;independent trapezoid AUC recomputation"
+    },
+    {
+      "requirement": "3.7 image unit paired inference and absolute outcomes",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/inference_validation.json",
+          "sha256": "d0f68c77501ce5c12d4c19b9af699e8171f9a068e8be247173077955c90e4b71",
+          "bytes": 143
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/additional_completion_validation.json",
+          "sha256": "50d271141a17d139b4d0b414f7122cf9b5401c9249b528e01418d088121e3f50",
+          "bytes": 223
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/auc_tests.json",
+          "sha256": "1839737120c1a583976f67c813227a5e6f8babce9cffda3a33ea39795242a9dc",
+          "bytes": 362394
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/image_values.json.gz",
+          "sha256": "093248c31aa7a49c6e03ea97be857a2871e6b5f12c24b440b9bc6fd3c10a51bb",
+          "bytes": 15701565
+        }
+      ],
+      "evidence": "Mean random repetitions then heads within image;400 images/group;10000 bootstrap;672 sign tests and independent Holm"
+    },
+    {
+      "requirement": "3.8 conclusions limited by layer/reference/outcome",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "docs/endpoint_m2_results_20260919.md",
+          "sha256": "bf118bc153fe7c87b151de46889c75c572c3ac7c0acb008a62635102c7ef695a",
+          "bytes": 9197
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/report_data.json",
+          "sha256": "466929110e91f184bd96afeaf4b2c63f067059145ec2411f80357ef4e8768929",
+          "bytes": 3998
+        }
+      ],
+      "evidence": "Both directional tests reported by model/reference/block;non-rejection not interpreted as equivalence"
+    },
+    {
+      "requirement": "11.5 and13 mandatory3 full M2 scope",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "docs/endpoint_m2_execution_20260919.md",
+          "sha256": "c6b71cbbd9aa5502e2cadf5918f13b6db4d39b7b595334998f057c4fd00b2c4b",
+          "bytes": 6220
+        },
+        {
+          "path": "docs/endpoint_m2_results_20260919.md",
+          "sha256": "bf118bc153fe7c87b151de46889c75c572c3ac7c0acb008a62635102c7ef695a",
+          "bytes": 9197
+        }
+      ],
+      "evidence": "blocks2/5/10 all heads bothreferences Endpoint/Taylor/random included;all eight methods delivered"
+    },
+    {
+      "requirement": "14 frozen config/image/head/reference/budget/statistics/tolerances",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "config/nns_vit_endpoint/endpoint_m2.json",
+          "sha256": "8ac4401742be3c0c2f7a4344a7bf16feb5585de9e761576d7b245c10bc04830b",
+          "bytes": 3510
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/freeze.json",
+          "sha256": "f2b5874e2c5d3b4f52deb4d560447e159f6813955cfd0452652ee8227cb13bce",
+          "bytes": 2174
+        },
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/startup.json",
+          "sha256": "1f979a4a75c4b400592adcd747c3ba0c683bcb8e4e4e051e1016cecc0aaa4d86",
+          "bytes": 2314
+        }
+      ],
+      "evidence": "Published producer9d52d5f56 before formal read;source/task SHA bindings rechecked;token/channel sampling belongs to M3"
+    },
+    {
+      "requirement": "Required primary-claim and coverage boundaries preserved",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "papers/nns_vit_endpoint/zh/endpoint_m2_supplement.md",
+          "sha256": "8db74fe178a3c16ad31426b04b1163ca0f91961470941605474ddd4b36ca4d89",
+          "bytes": 8017
+        },
+        {
+          "path": "papers/nns_vit_endpoint/en/endpoint_m2_supplement.md",
+          "sha256": "bc18abc355784c65ecf188a50ca806120b56538a4bb304f9b71837bd4cfeb22c",
+          "bytes": 8957
+        },
+        {
+          "path": "papers/nns_vit_endpoint/notes/endpoint_m2_evidence_matrix.md",
+          "sha256": "c3dfa3dc5aa50c1bd811531551581d6d436459f46515aca8b9d99cd20a3c96c4",
+          "bytes": 1078
+        }
+      ],
+      "evidence": "Supplementary study;11/12 broad but non-universal;original C4a/C4b NOT_SUPPORTED;M1 coverage table remains sealed"
+    },
+    {
+      "requirement": "Necessary scientific implementation tests",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/test_results.json",
+          "sha256": "902fe7e25b8968718967780f9b692afe10cdd74cfd5a0c98e7885c7a62b9253c",
+          "bytes": 263
+        },
+        {
+          "path": "tests/test_endpoint_m2.py",
+          "sha256": "924983ab70637d5f9e97329411b1d69d702faf9f8107da87e85f5de8e90ba699",
+          "bytes": 5289
+        }
+      ],
+      "evidence": "10 focused tests:geometry/random/AUC,three-block native suffix and finite difference,synthetic complete pipeline,statistics scope"
+    },
+    {
+      "requirement": "Report data/links/figures and academic writing",
+      "status": "PASS",
+      "artifacts": [
+        {
+          "path": "reports/nns_vit_endpoint_m2_r1_20260919/document_validation.json",
+          "sha256": "a8bfa8ca6a8a9d45c5832b6baa92b29bcdd7571eeff9979f0532b04fdbff8afa",
+          "bytes": 701
+        },
+        {
+          "path": "papers/nns_vit_endpoint/figure_manifest_m2.json",
+          "sha256": "55f1360bc864f7fe0baf569a5d5857578db6b9644e8216d18666c1e98b7b0e6e",
+          "bytes": 830
+        },
+        {
+          "path": "papers/nns_vit_endpoint/qc/endpoint_m2_writing_audit.md",
+          "sha256": "b625c6ee7dae7d7b04bfb900b10bbb3881ab5af41ef458423fbb982c74940451",
+          "bytes": 3864
+        }
+      ],
+      "evidence": "Bilingual numerical tables identical;all local links and figure hashes resolve;three figures visually inspected;numbered interpretations"
+    }
+  ],
+  "missing": [],
+  "unverified": [],
+  "optional_not_executed": [
+    "2x2 patch square/connected-region search",
+    "other blur strengths",
+    "mixed-effects model"
+  ],
+  "outside_scope": [
+    "M3 token/channel sampling",
+    "M4-M6",
+    "Path IG"
+  ],
+  "audited_head": "f488dcc2b43a60f538d363a42a4a885f2df33449"
+}

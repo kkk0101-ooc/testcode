@@ -11,6 +11,8 @@ def main():
 
 ## 1. 协议与定义
 
+完整输入效应中唯一未通过Taylor优势检验的是DeiT-S、normalized-zero、block 5：Endpoint−Taylor的图像级配对中位AUC差为−0.0424，95% CI为[−0.0614, −0.0142]，Holm p=0.528。该CI是逐比较区间，Holm校正覆盖全部672项检验，因此二者回答的显著性问题不同。隔离效应中Taylor在early/middle/late全部组合上均占优，说明旧RQ4的空间负结果延伸到本次三个层级的全head平均；逐head差异保留为描述性结果。
+
 本研究为原研究之后冻结的补充实验（supplementary frozen study）。原RQ3为11/12 family广泛但非普遍的支持，原C4a/C4b omnibus保持NOT_SUPPORTED。Endpoint基元为normalized-input Gradient × Input；head图来自局部Jacobian成分传播，结构闭合与有限区域效用分别评价。原registry覆盖表沿用已封存M1；registry-complete指注册集合完整。
 
 采用0-based编号，blocks 2/5/10对应early/middle/late；ViT-B/16每层12 heads，DeiT-S每层6 heads。reference为normalized-zero及raw-RGB blur（kernel31、sigma10）。主要预算是1、10、20、49个16×16 patch，对应面积0.51%、5.10%、10.20%、25%；原4×4网格的1/2/4格结果在完整表中单独报告。
@@ -35,6 +37,8 @@ def main():
 
 {tables['baselines']}
 
+原4×4网格的补充结果方向一致：Taylor在完整输入效应中通过9/12项、隔离效应中通过12/12项；Endpoint优势均为0/12。四patch预算与原网格的不同候选大小分别呈现，不合并为同一空间尺度。
+
 完整输入替换会同时改变多条模型路径，head隔离固定所选head之外的计算；regional Taylor使用的位移对应后者。跨层结论以每个model/reference/block的paired结果为准。高分辨率成分图的表达能力与有限区域选择效用需要分别评价。
 
 regret以实际评估候选集合最优为参照：单区域预算穷举全部196或16个候选，更大预算使用各方法与random的候选并集。该参照的范围是已评估候选，并非全部区域组合的全局最优。
@@ -44,6 +48,8 @@ regret以实际评估候选集合最优为参照：单区域预算穷举全部19
     en=f'''M2 evaluated all heads in blocks 2, 5, and 10 on 400 images per model, using two references, eight selection methods, and four patch budgets. Across the 12 model/reference/block comparisons for full-input effects, {full['endpoint_greater']} supported Endpoint-absolute superiority over regional Taylor and {full['baseline_greater']} supported Taylor superiority after the shared Holm correction. The corresponding counts for isolated-head effects were {isol['endpoint_greater']} and {isol['baseline_greater']}. The tables report each layer separately; a non-rejected directional test does not establish equivalence.
 
 ## 1. Protocol and definitions
+
+The only full-input contrast without supported Taylor superiority was DeiT-S with normalized zero at block 5: the paired median Endpoint-minus-Taylor AUC was −0.0424, with a 95% interval of [−0.0614, −0.0142] and Holm p=0.528. This is a per-comparison interval, whereas Holm covers all 672 tests, so their significance statements differ. Taylor outperformed Endpoint in isolated effects across every early/middle/late combination, extending the original spatial negative result to the all-head averages at the three evaluated layers. Individual-head differences remain descriptive.
 
 This supplementary frozen study was specified after the primary study. Original RQ3 showed broad but non-universal family-level support (11/12); original C4a/C4b omnibus decisions remain NOT_SUPPORTED. The base Endpoint is normalized-input Gradient × Input. Head maps propagate local Jacobian components, and structural closure and finite-region utility are evaluated separately. The sealed M1 registry coverage table remains applicable; registry-complete denotes completion of the registered set.
 
@@ -68,6 +74,8 @@ The primary outcome is the absolute logit change from full-input regional replac
 **Table M2-3. Directional test counts across the eight methods.** Each denominator is 12: two models × two references × three blocks. Counts include correlated conditions.
 
 {tables['baselines']}
+
+The supplementary 4×4-grid results had the same direction: Taylor superiority was supported in 9/12 full-input and 12/12 isolated contrasts, with 0/12 supporting Endpoint superiority in either outcome. The four patch budgets and the original grid are reported separately because their candidate regions have different sizes.
 
 Full-input replacement changes multiple model paths, whereas head isolation fixes the remaining computation at its clean values; regional Taylor uses the displacement associated with the latter. Layer conclusions follow the model/reference/block paired contrasts. A component map's spatial resolution and finite-region selection utility are distinct properties.
 
