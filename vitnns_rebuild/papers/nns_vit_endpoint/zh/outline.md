@@ -1,7 +1,8 @@
 # NNS-ViT Endpoint Scanner：论文大纲（R1）
 
 日期：2026-09-18。本文档把已完成的 ENDPOINT-E2–E6 证据组织成一篇独立论文，
-不覆盖此前 path-integrated NNS-ViT 主稿。论文图号暂时沿用封存图包的 Figure 1–28；
+不覆盖此前 path-integrated NNS-ViT 主稿。论文图号暂时沿用封存图包的 Figure 1–28、
+M3 补充 Figure 29–33 和独立细粒度展示包 Figure 34–40；
 投稿排版时可在不改图像内容、数值和结论的前提下重新编号。
 
 论文初稿：
@@ -11,6 +12,7 @@
 - 证据矩阵：`papers/nns_vit_endpoint/notes/endpoint_scanner_paper_evidence_matrix_r1.md`；
 - 防御性写作审计：`papers/nns_vit_endpoint/qc/endpoint_scanner_full_draft_r1_defensive_writing_audit.md`；
 - 图包：`reports/nns_vit_endpoint_unified_paper_figures_r2_20260918/`。
+- 细粒度蓝底展示图：`reports/nns_vit_endpoint_fine_grained_blue_figures_r1_20260919/`。
 
 ## 1. 题目与一句话主线
 

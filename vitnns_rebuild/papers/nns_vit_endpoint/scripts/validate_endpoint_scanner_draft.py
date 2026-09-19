@@ -183,6 +183,63 @@ for figure in supplement.get("figures", []):
         if path.is_file():
             check(f"m3_figure:{figure['paper_number']}:{path.suffix}:sha256", sha256(path) == record["sha256"], record["path"])
 
+fine_grained = load_json("papers/nns_vit_endpoint/figure_manifest_fine_grained_blue_r1.json")
+check("fine_grained_figures:count", fine_grained.get("figure_count") == 7)
+check(
+    "fine_grained_figures:numbers",
+    [item.get("paper_number") for item in fine_grained.get("figures", [])] == [34, 35, 36, 37, 38, 39, 40],
+)
+source_manifest = fine_grained.get("source_manifest", {})
+source_manifest_path = REPO / source_manifest.get("path", "")
+check(
+    "fine_grained_figures:source_manifest_exists",
+    source_manifest_path.is_file(),
+    source_manifest.get("path", ""),
+)
+if source_manifest_path.is_file():
+    check(
+        "fine_grained_figures:source_manifest_sha256",
+        sha256(source_manifest_path) == source_manifest.get("sha256"),
+        source_manifest.get("path", ""),
+    )
+for figure in fine_grained.get("figures", []):
+    for kind in ("png", "pdf", "svg", "signed_companion"):
+        record = figure[kind]
+        path = REPO / record["path"]
+        check(
+            f"fine_grained_figure:{figure['paper_number']}:{kind}:exists",
+            path.is_file(),
+            record["path"],
+        )
+        if path.is_file():
+            check(
+                f"fine_grained_figure:{figure['paper_number']}:{kind}:sha256",
+                sha256(path) == record["sha256"],
+                record["path"],
+            )
+supplemental_head_pages = fine_grained.get("supplemental_all_head_pages", [])
+check("fine_grained_figures:supplemental_head_page_count", len(supplemental_head_pages) == 24)
+check(
+    "fine_grained_figures:supplemental_models",
+    {item.get("model_id") for item in supplemental_head_pages} == {"deit_s16", "vit_b16"},
+)
+for record in supplemental_head_pages:
+    path = REPO / record["path"]
+    key = f"{record.get('model_id')}:{record.get('block')}"
+    check(f"fine_grained_supplement:{key}:exists", path.is_file(), record["path"])
+    if path.is_file():
+        check(
+            f"fine_grained_supplement:{key}:sha256",
+            sha256(path) == record["sha256"],
+            record["path"],
+        )
+for language, text in (("zh", zh), ("en", en)):
+    for number in (2, 12, 17, 24, 34, 35, 36, 37, 38, 39, 40):
+        check(
+            f"embedded_figure:{language}:{number}",
+            re.search(rf"!\[Figure {number}\]\([^\n]+\)", text) is not None,
+        )
+
 m3 = load_json("reports/nns_vit_endpoint_m3_r1_20260919/terminal_receipt.json")
 check("m3:terminal", m3["status"] == "ENDPOINT_M3_PASS_EXECUTION_AND_AUDIT")
 check("m3:target_count", m3["token_channel_targets"] == 1228800)
@@ -200,7 +257,7 @@ for path in (ZH, EN):
     figure_refs = [int(value) for value in re.findall(r"Figure(?:s)?\s+(\d+)", path.read_text(encoding="utf-8"))]
     check(
         f"figure_reference_range:{path.name}",
-        all(1 <= value <= 33 for value in figure_refs),
+        all(1 <= value <= 40 for value in figure_refs),
         str(sorted(set(figure_refs))),
     )
 
@@ -211,7 +268,11 @@ report = {
     "error_count": len(errors),
     "errors": errors,
     "source_revision": manifest.get("source_revision"),
-    "figure_count": manifest.get("figure_count") + len(supplement.get("figures", [])),
+    "figure_count": (
+        manifest.get("figure_count")
+        + len(supplement.get("figures", []))
+        + fine_grained.get("figure_count", 0)
+    ),
     "c4a_supported_families": sum(x["status"] == "SUPPORTED" for x in c4a),
     "c4b_supported_families": sum(x["status"] == "SUPPORTED" for x in c4b),
 }

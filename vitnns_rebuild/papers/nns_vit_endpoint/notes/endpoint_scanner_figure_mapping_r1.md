@@ -29,3 +29,21 @@ Source: `reports/nns_vit_endpoint_unified_paper_figures_r2_20260918`.
 
 Main-text and supplement placement is editorial. Figure numbers, source arrays, numerical labels,
 and conclusions are frozen by `papers/nns_vit_endpoint/figure_manifest.json`.
+
+## Fine-grained display addendum (Figures 34--40)
+
+Source: `reports/nns_vit_endpoint_fine_grained_blue_figures_r1_20260919`.
+
+| Paper role | Figure | Reason |
+|---|---:|---|
+| Registered-target reading view | 34 | Places the fixed input beside six real scalar-target Endpoint maps |
+| Structural-component reading view | 35 | Shows identity, head, routing, value, attention, MLP, and complete Endpoint at block 5 |
+| Spatial-ranking reading view | 36 | Places total G×I, raw gradient, and three registered head maps on one page |
+| Fig.13-style depth progression | 37 | Tracks one fixed channel-0 target from patch embedding through all blocks and final targets |
+| DeiT-S head-by-depth atlas | 38 | Compares all six heads at four frozen depths for one registered scalar type |
+| ViT-B head-by-depth atlas | 39 | Compares all twelve heads at four frozen depths for the same registered scalar type |
+| ViT-B module chain | 40 | Follows channel 0 through patch, Norm, attention, MLP, final CLS, and class logit targets |
+
+These blue-base panels use `max(L,0)` and per-panel P99 scaling for display only. They support
+fine-grained spatial reading but not cross-panel magnitude comparisons. Signed companions are
+retained in the source package, and all numerical claims remain bound to sealed raw arrays.

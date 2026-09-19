@@ -4,7 +4,8 @@
 - Affiliations: `[AFFILIATION REQUIRED]`
 - Corresponding author: `[CORRESPONDING AUTHOR REQUIRED]`
 
-> Draft R2, September 19, 2026. Figure numbers follow the sealed Endpoint packages (Figures 1–33).
+> Draft R2, September 19, 2026. Figure numbers follow the sealed Endpoint packages (Figures 1–33)
+> and the independent fine-grained display package (Figures 34–40).
 > They may be renumbered for submission according to
 > `papers/nns_vit_endpoint/zh/outline.md` without changing figure content, numerical
 > values, or conclusions.
@@ -195,6 +196,12 @@ Canonical Endpoint thus uses the model normalization mean as its origin when wri
 coordinates. Two-dimensional displays sum the original signed RGB tensor over channels. Absolute
 values, positive parts, and per-panel display scaling are not used for statistical inference.
 
+![Figure 2](../../../reports/nns_vit_endpoint_unified_paper_figures_r2_20260918/figures_png/figure_02_endpoint_cnn_path_method_identity.png)
+
+**Figure 2.** Method identity of the original NNS-CNN rule, ViT Endpoint, and Path IG. The
+diagram separates input seeds, the current-point Jacobian, and the path-averaged Jacobian; the
+Endpoint base quantity is $x\odot\nabla_xs(x)$ for the same scalar target.
+
 ### 3.2 Registered internal targets
 
 The scanner accepts any registered scalar target. The catalog includes token-channel units,
@@ -209,6 +216,25 @@ $$
 which corresponds to the activation-weighted filter aggregation in the original NNS. ViT-B/16
 has 457 registered targets per image and DeiT-S/16 has 385, both spanning all 12 blocks
 (Figures 7 and 11). Equal channel indices across models are not interpreted as semantic matches.
+
+![Figure 34](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r1_20260919/figures_png/figure_34_registered_target_learning_images.png)
+
+**Figure 34.** Six real registered targets for the fixed first DeiT-S/16 evaluation image. The
+blue-base main panels sum signed RGB channels and display $\max(L,0)$ with independent P99
+scaling. They support fine-grained spatial reading within a target, not absolute-magnitude
+comparisons across panels. The independent package retains complete signed companions, and
+numerical claims still use the raw arrays. Unlike Figure 29 of the path paper, each object here is
+a registered scalar with a direct $3\times224\times224$ Endpoint map, so it has no one-to-one
+$14\times14$ token-response row.
+
+![Figure 37](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r1_20260919/figures_png/figure_37_channel0_depth_progression.png)
+
+**Figure 37.** Following the cross-layer, row-aligned organization of Figure 13 in the original
+NNS paper, the figure fixes one DeiT-S/16 input and channel 0 across patch embedding, Blocks 0–11,
+final CLS, and the ground-truth class logit. The top row is the positive part of each 224×224
+Endpoint learning image. The bottom row is 14×14 absolute Endpoint mass pooled from the same raw
+map over native 16×16 input patches; it summarizes input dependence and is **not a forward feature
+map**.
 
 ### 3.3 ViT operators and attention differential paths
 
@@ -259,6 +285,35 @@ branch; identity plus either differential decomposition reconstructing the resid
 carry plus the MLP branch reconstructing the second residual total (Figures 10 and 15). A residual
 identity follows its actual input edge. Omitting a nonzero branch or adding a bypass twice must be
 rejected by closure validation.
+
+![Figure 35](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r1_20260919/figures_png/figure_35_block5_structural_learning_images.png)
+
+**Figure 35.** Fine-grained structural maps for the same image, ground-truth class target, and
+block 5. Identity, head, routing, value, attention, MLP, and complete Endpoint panels all come
+from the closure-validated raw component arrays used by Figure 17. The blue-base positive view is
+an additional reading layer and does not replace the signed scientific representation.
+
+![Figure 38](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r1_20260919/figures_png/figure_38_attention_head_depth_atlas.png)
+
+**Figure 38.** All six attention-head edge contributions to the same ground-truth class logit for
+the fixed DeiT-S/16 input at Blocks 0, 1, 5, and 11. Rows encode depth and columns encode head
+index. Every panel comes from the sealed E3 raw component arrays; no head was selected by visual appearance.
+Per-panel scaling supports spatial-shape comparison, not absolute cross-head or cross-layer
+magnitude comparison.
+
+![Figure 39](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r1_20260919/figures_png/figure_39_vit_b16_attention_head_depth_atlas.png)
+
+**Figure 39.** The symmetric ViT-B/16 view shows all twelve heads at four representative depths
+while keeping the same ground-truth class logit as the common downstream target.
+Complete pages for all 12 blocks × 12 heads are retained under `all_heads_vit_b16/`, giving the
+paper a compact main figure and an omission-free supplement.
+
+![Figure 40](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r1_20260919/figures_png/figure_40_vit_b16_module_chain.png)
+
+**Figure 40.** For a fixed ViT-B/16 input and channel 0, the real module chain includes patch
+embedding; Norm1, attention projection, Norm2, MLP fc1, GELU, and fc2 at Blocks 0, 5, and 11;
+final CLS; and the class logit. This follows the module-reading logic of NNSViT-IG Figures 28–34,
+but every panel here is a current-point Endpoint learning image for a registered scalar target.
 
 ### 3.5 Local correctness and finite activation replacement
 
@@ -420,7 +475,14 @@ retried task. The 457 targets per ViT-B/16 image and 385 targets per DeiT-S/16 i
 were retained for every image. Full raw atlases were stored for the first 16 evaluation IDs in
 both models, giving 32 atlases; neither the near-zero index nor the failure index contained an
 entry. Figure 12 shows the frozen first eight images in both models, and Figure 13 shows a
-multi-target atlas.
+multi-target atlas. Figure 34 reformats six registered targets from the fixed first image as a
+fine-grained blue-base reading view.
+
+![Figure 12](../../../reports/nns_vit_endpoint_unified_paper_figures_r2_20260918/figures_png/figure_12_frozen_first_eight_endpoint_gallery.png)
+
+**Figure 12.** Ground-truth and clean-top1 Endpoint maps for the frozen first eight evaluation
+images in ViT-B/16 and DeiT-S/16. Each row is display-scaled independently and supports spatial
+reading within that image only.
 
 Formal wall time was 1,752.71 s, and the conservative four-card upper bound was 1.9475 GPU-hours.
 Peak reserved GPU memory was 2.284 GB, peak CPU resident memory was 2.018 GB, and retained data
@@ -457,6 +519,12 @@ validator independently reconstructed 384 raw block arrays from the first 16 eva
 RQ2 is therefore supported for the registered cuts in these two standard timm ViTs: components
 reconstruct their attention-branch or residual-total object, and the checker detects common
 omission and double-counting errors.
+
+![Figure 17](../../../reports/nns_vit_endpoint_unified_paper_figures_r2_20260918/figures_png/figure_17_real_structural_component_maps.png)
+
+**Figure 17.** Signed block-5 structural components for the fixed first DeiT-S/16 image and the
+same class target. It retains the original positive and negative values; Figure 35 is the
+blue-base positive reading view of the same arrays.
 
 ### 5.3 Local differential implementation passed directional checks
 
@@ -533,6 +601,18 @@ spatial form, whereas the statistical comparisons use raw arrays and finite-inte
 RQ4 is therefore `NOT_SUPPORTED`: for the fixed heads, region pool, spatial budget, references,
 and effect metric, full-resolution component maps did not show joint information gain over the
 four mandatory baselines.
+
+![Figure 24](../../../reports/nns_vit_endpoint_unified_paper_figures_r2_20260918/figures_png/figure_24_real_block_5_component_and_baseline_maps.png)
+
+**Figure 24.** Signed total G×I, raw gradient, and three block-5 head-component maps used in the
+fixed RQ4 task, with independent display scaling per panel.
+
+![Figure 36](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r1_20260919/figures_png/figure_36_spatial_ranking_learning_images.png)
+
+**Figure 36.** A blue-base fine-grained reading view of the same raw arrays as Figure 24, with
+the fixed input on the same page. It helps inspect the spatial form of the ranking inputs but does
+not alter the `NOT_SUPPORTED` RQ4 result; behavioral comparisons still use the raw arrays, fixed
+region pool, and finite-intervention curves.
 
 **Table 5. Image-level paired-median C4b contrasts for RQ4.** Values are Endpoint minus the
 baseline. A family required all four contrasts to be at least +0.05.

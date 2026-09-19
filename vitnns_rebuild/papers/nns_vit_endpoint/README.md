@@ -15,7 +15,11 @@ directories with the path-integrated NNS-ViT paper.
 
 The frozen 28-figure binding is `figure_manifest.json`. The source package remains
 `reports/nns_vit_endpoint_unified_paper_figures_r2_20260918/`; figures are referenced rather than
-copied into this paper root.
+copied into this paper root. The independent Figure 34--40 fine-grained display binding is
+`figure_manifest_fine_grained_blue_r1.json`, sourced from
+`reports/nns_vit_endpoint_fine_grained_blue_figures_r1_20260919/`. Its blue-base positive panels
+are display-only spatial reading views; signed companions and sealed raw arrays remain the
+scientific reference.
 
 The paper-level RQ3 synthesis is
 `BROAD_BUT_NON_UNIVERSAL_FAMILY_LEVEL_SUPPORT`. The frozen 12-of-12 omnibus C4a field
