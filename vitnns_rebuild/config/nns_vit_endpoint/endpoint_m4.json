@@ -1,0 +1,107 @@
+{
+  "stage": "ENDPOINT-M4",
+  "status": "frozen_before_formal_image_access",
+  "objective": "Attention routing/value and residual identity/branch mechanism analysis",
+  "models": {
+    "vit_b16": {"heads": 12, "blocks": 12},
+    "deit_s16": {"heads": 6, "blocks": 12}
+  },
+  "cohort": {
+    "source": "ENDPOINT-M1 frozen task manifest",
+    "images_per_model": 400,
+    "shared_between_models": true,
+    "target": "frozen_ground_truth_logit"
+  },
+  "attention": {
+    "blocks": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+    "heads": "all",
+    "components": ["Q", "K", "routing", "value", "full"],
+    "metrics": [
+      "routing_share", "frozen_attention_endpoint_error",
+      "frozen_attention_absolute_error", "contracted_gradient_error",
+      "routing_value_path_cancellation", "routing_value_cosine",
+      "routing_map_cancellation", "value_map_cancellation",
+      "mean_query_saturation", "cls_query_saturation"
+    ],
+    "jvp_directions_per_image": 8,
+    "jvp_namespace": "ENDPOINT_M4_JVP_20260919",
+    "jvp_direction": "unit_norm_rademacher",
+    "attention_detach_validation_orders": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+  },
+  "residual": {
+    "types": ["attention", "mlp"],
+    "blocks": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+    "metrics": [
+      "identity_share", "branch_share", "path_cancellation",
+      "identity_branch_cosine", "output_identity_patch_tv",
+      "identity_map_cancellation", "branch_map_cancellation",
+      "output_map_cancellation"
+    ],
+    "patch_distribution": "sum_absolute_rgb_and_16x16_input_pixels_to_14x14",
+    "spatial_distance": "total_variation_between_normalized_patch_absolute_distributions",
+    "negative_control": "omit_each_nonzero_identity_or_carry_and_require_exact_closure_failure"
+  },
+  "zero_policy": "undefined_ratio_correlation_cosine_or_distribution_is_NA_without_epsilon",
+  "validation": {
+    "native_autodiff": true,
+    "explicit_qkv": true,
+    "attention_detach": true,
+    "forward_parity_atol": 0.000002,
+    "forward_parity_rtol": 0.000002,
+    "endpoint_closure_atol": 0.00001,
+    "endpoint_closure_rtol": 0.0001,
+    "endpoint_closure_acceptance": "elementwise_atol_plus_rtol_and_absolute_or_relative_summary",
+    "jvp_explicit_relative_tolerance": 0.0001
+  },
+  "statistics": {
+    "unit": "image",
+    "phases": {"early": [0, 1, 2, 3], "middle": [4, 5, 6, 7], "late": [8, 9, 10, 11]},
+    "within_image_attention_phase": "median_heads_within_block_then_median_blocks",
+    "within_image_saturation_relation": "spearman_across_heads_within_block_then_median_blocks",
+    "within_image_residual_phase": "median_blocks",
+    "bootstrap_repetitions": 10000,
+    "confidence": 0.95,
+    "paired_test": "two_sided_exact_sign",
+    "sign_tie_tolerance": 1e-12,
+    "attention_holm_family_per_model": [
+      "late_minus_early_routing_share",
+      "late_minus_early_frozen_attention_endpoint_error",
+      "saturation_routing_relation",
+      "saturation_error_relation"
+    ],
+    "residual_holm_family_per_model_and_type": [
+      "late_minus_early_identity_share",
+      "late_minus_early_path_cancellation"
+    ],
+    "undefined_test_policy": "retain_with_p_equal_1"
+  },
+  "numeric": {
+    "production_dtype": "float32",
+    "summary_dtype": "float64",
+    "vjp_chunk_size": 6,
+    "CUBLAS_WORKSPACE_CONFIG": ":4096:8",
+    "tf32": false,
+    "autocast": false,
+    "deterministic": true
+  },
+  "runtime": {
+    "queue": "dynamic_atomic_sqlite",
+    "max_attempts": 2,
+    "gpus_max": 8,
+    "min_free_mib": 32768,
+    "max_utilization_percent": 10,
+    "task_timeout_seconds": 1800,
+    "minimum_free_disk_gib": 50
+  },
+  "source_bindings": {
+    "docs/阶段M_endpointnnsvit.md": "e3ee91f034d20cfbd956d880b1a383c09c6e868364cda95648b7cbb8e21a82de",
+    "reports/nns_vit_endpoint_m3_r1_20260919/terminal_receipt.json": "205a21b0f06aef2cd0ca4c6786b7ac7e320a1c363e01a4f506081ccad1314b73",
+    "reports/nns_vit_endpoint_m3_r1_20260919/artifact_manifest.json": "21abd4aa70ca33ae2d7150e8d8e69d77151c94c9201a1e0e298bed0fb99d6ddb",
+    "reports/nns_vit_endpoint_e3_closure_r2_20260918/terminal_receipt.json": "675cf4c6bec7dd681497f57bbd31b638dece7a5dfe0abc2b99e921bdbfbfe8ac",
+    "reports/nns_vit_endpoint_e3_closure_r1_20260918/artifact_manifest.json": "7d90f2f5584e8e7da3c35615ba00aff99d70234d0da7b9316c1a79c5f452e7a4",
+    "reports/nns_vit_endpoint_m1_r1_20260918/terminal_receipt.json": "1c36dc2804240cd1150c3356664af7f98fcbaefa7aaa6fb28a1919e5ff306e72",
+    "reports/nns_vit_endpoint_m1_r1_20260918/task_manifest.json": "0aca0376c728b8b69701b4289ea36fdfdd61bc6ec39e5d37457a39b9e6328801"
+  },
+  "output_root": "reports/nns_vit_endpoint_m4_r1_20260919",
+  "next_authorization": "STOP_AFTER_M4"
+}
