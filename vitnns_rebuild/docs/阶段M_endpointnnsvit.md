@@ -2,7 +2,7 @@
 ## 目标对齐版
 
 > **当前进度：2026-09-19**  
-> 原确认性实验、M1 和 M2 已完成。M3–M6 为后续补充计划。  
+> 原确认性实验、M1、M2 和 M3 已完成；M3 补充分析 R2 已封存。M4–M6 为后续计划。
 > 本文档用于替换此前以 Endpoint–Taylor 性能比较为中心的后续方案。
 
 ---
@@ -178,18 +178,18 @@ RQ5 用于标定 Endpoint 的含义，不再作为论文的中心竞争任务。
 |---|---|---|---|
 | **M1. Endpoint 成分统计量的行为标定** | 已完成 | 测量 Endpoint mass 与有限成分效应的关系 | 行为相关性 |
 | **M2. Endpoint 图的干预解释边界** | 已完成 | 检验 Endpoint 图能否直接用于 reference-specific 区域干预 | 解释边界 |
-| **M3. NNS 忠实性桥接与分层神经元审计** | 待执行 | 证明与原始 NNS 的等价关系并扩展 token-channel 覆盖 | 忠实性与统一性 |
+| **M3. NNS 忠实性桥接与分层神经元审计** | 已完成 | 证明与原始 NNS 的等价关系并扩展 token-channel 覆盖 | 忠实性与统一性 |
 | **M4. Attention 与 residual 结构机制分析** | 待执行 | 使用结构化 Endpoint 分析 routing/value 和 carry/branch | 核心机制发现 |
 | **M5. 方法语义、reference 属性与最小比较** | 待整理，必要时补算 | 界定 Endpoint 与其他方法回答的问题 | 方法定位 |
 | **M6. 机制案例与可视化 atlas** | 待执行 | 展示自动选择的代表性机制案例 | 解释与呈现 |
 
-优先级为：
+剩余模块优先级为：
 
 \[
-\boxed{M3 > M4 > M6 > M5}
+\boxed{M4 > M6 > M5}
 \]
 
-M1、M2 已完成，不再扩展为大规模方法竞赛。
+M1、M2、M3 已完成。M1、M2 不再扩展为大规模方法竞赛；M3 的既有结果只允许通过版本化补充根扩展，不修改已封存根。
 
 ---
 
@@ -520,9 +520,31 @@ M2 不再扩展为更多 reference、更多区域形状或更多预算的胜负�
 
 # 五、M3：NNS 忠实性桥接与分层神经元审计
 
-M3 是后续最高优先级模块。
+M3 已于 2026-09-19 完成，执行与审计状态为：
 
-它同时承担两项任务：
+> `ENDPOINT_M3_PASS_EXECUTION_AND_AUDIT`
+
+科学状态为：
+
+> `M3_FIDELITY_AND_FROZEN_ATLAS_SUPPORTED`
+
+补充分析状态为：
+
+> `ENDPOINT_M3_SUP_R2_PASS`；`SUPPLEMENTARY_DESCRIPTIVE_NO_NEW_CONFIRMATORY_TESTS`
+
+结果入口：
+
+- `docs/endpoint_m3_results_20260919.md`；
+- `docs/endpoint_m3_supplement_r2_20260919.md`；
+- `papers/nns_vit_endpoint/zh/endpoint_m3_supplement_r2.md`；
+- `papers/nns_vit_endpoint/en/endpoint_m3_supplement_r2.md`。
+
+封存根：
+
+- `reports/nns_vit_endpoint_m3_r1_20260919/`；
+- `reports/nns_vit_endpoint_m3_sup_r2_20260919/`。
+
+它完成了两项任务：
 
 1. 正式证明 Endpoint 忠实继承原始 NNS；
 2. 扩大真正 token-channel 神经元的扫描覆盖。
@@ -533,7 +555,7 @@ M3 是后续最高优先级模块。
 
 ## 6.1 理论命题
 
-建议在正文或附录中加入：
+已在正文和补充材料中采用：
 
 > **命题 1：原始 NNS learning image 与 Endpoint 的等价性。**  
 > 对由仿射层、卷积、当前状态下可微的逐点激活以及具有唯一 winner 的 MaxPool 组成的网络，若原始 NNS 以输入值进行对角初始化，并以当前前向状态的局部传播系数递归传播 learning image，则任意标量目标 \(s(x)\) 的最终 learning image 等于
@@ -694,6 +716,30 @@ D_\epsilon(v)\approx J_{f,x}v.
 \]
 
 对多个 \(\epsilon\) 报告误差曲线，以避免只在单个步长上验证。
+
+---
+
+## 6.5 M3-A 实际结果
+
+原始 NNS 数值桥接按冻结设计完成：FCN、CNN、CNN + MaxPool、residual MLP、residual CNN 各使用 float32 和 float64、每种精度 100 个随机输入，共形成 5,000 个 target-level 数值比较。所有比较均满足对应精度合同。
+
+| 范围 | 数值比较数 | 中位 relative L2 | 99% 分位 | 最大值 |
+|---|---:|---:|---:|---:|
+| 全部 | 5,000 | 1.088e-16 | 1.602e-7 | 2.427e-7 |
+| float32 | 2,500 | 3.506e-8 | 1.782e-7 | 2.427e-7 |
+| float64 | 2,500 | 5.194e-17 | 2.984e-16 | 4.769e-16 |
+
+这 5,000 项是数值验证案例，不作为 5,000 个独立统计样本。结果支持：
+
+> 在原始 NNS 所覆盖的算子和 §6.2 的局部可微条件下，逐层 learning-image propagation 与 Endpoint 数值等价。Endpoint 对 LayerNorm、GELU 和 softmax attention 的处理是原始 NNS 思想的 Jacobian-form generalization。
+
+ViT 算子级验证覆盖 §6.4 所列 11 类算子，每类 8 个 float64 方向、共 88 个方向记录，并使用 9 个中心有限差分步长。全部通过：
+
+- 最大 analytic–autograd JVP 相对误差：3.431e-16；
+- 最大 JVP–VJP 对偶误差：2.344e-14；
+- 最坏的最佳步长有限差分相对误差：1.632e-10。
+
+该结果是 operator-level Jacobian / directional-derivative validation。系统级 hook、target registry 和结构 cut 的正确性仍由独立的闭合、forward parity 和负向控制证据覆盖。
 
 ---
 
@@ -875,6 +921,20 @@ M3 的目标是神经元覆盖和机制分析，不再默认执行额外的大�
 
 ---
 
+## 7.8 M3-B 实际执行与数值状态
+
+冻结范围按设计执行：两个模型共享 deterministic-hash 抽取的 100 张图像；每个模型覆盖全部 12 个 blocks；每层使用 1 个 CLS token、15 个固定空间分层 patch tokens 和 32 个独立 hash channels。每个 model-image 有 6,144 个标量目标，200 个 image-model tasks 共生成 1,228,800 个 token-channel Endpoint 记录；zero-gradient 数为 0。预冻结 20 个 image-model tasks 保存了 120 张 full-resolution raw float32 maps。
+
+覆盖率为 ViT-B/16 的 0.338% 和 DeiT-S 的 0.677%。这是冻结的分层 token-channel 审计，不覆盖全部 MLP hidden units、Q/K/V coordinates 或全部 token-channel 组合。
+
+数值子集对每个 model-image 检查 96 个目标、3 个固定 input directions 和多个 epsilon。19,200 个 batched-VJP 与 scalar-VJP 对照均通过。Float32 中心有限差分在 57,600 个 target-direction 条件中有 36 个未达到冻结容差，涉及 10 个任务，失败率为 0.0625%；原始 FAIL 保留。
+
+根据前瞻修正案，对全部 10 个受影响任务的完整 96-target × 3-direction 子集进行 float64 多步长复核，共 2,880 个条件，全部通过。最终数值状态为 PASS_FLOAT64_RECOVERY_WITH_RETAINED_FLOAT32_FAILURE。
+
+失败项均属于第一个冻结 patch token，集中在 blocks 7–11。其 float64 绝对 JVP 范围为 1.270e-4 至 5.933e-1，中位数为 2.251e-2，因此失败不只发生在近零导数目标。Float64 误差曲线随步长减小先下降，随后受舍入误差影响回升。由于验证对象是 post-block token-channel，现有证据不能把失败唯一归因到 LayerNorm、softmax 或其他单个上游算子。
+
+---
+
 # 八、M3-C：Neuron atlas 的层级与空间规律
 
 该部分是 Endpoint 用于分析 ViT 内部机制的第一条主线。
@@ -1038,9 +1098,9 @@ C(E)
 
 ---
 
-## 8.7 允许支持的机制结论
+## 8.7 机制结论边界
 
-如果结果支持，可以写：
+M3 结果支持：
 
 > 在抽样 token-channel 单元中，输入依赖随层深变得更分散，并且 patch neuron 对自身邻域的局部依赖减弱。
 
@@ -1057,9 +1117,75 @@ C(E)
 
 ---
 
+## 8.8 M3-C 实际结果
+
+### 图像级统计单位
+
+每张图先在指定 block 和冻结单元集合内取中位数，再以 100 张图像为统计单位计算总体中位数、10,000 次 bootstrap 95% CI、双侧精确符号检验和每模型 5 项 Holm 校正。100/100 表示每个模型的 100 张图像，其图像级 late−early 配对差均呈现同一注册方向；同图内的 token、channel 和 block 不作为独立样本。
+
+### 层深相关的空间扩展
+
+| 模型 | Late−Early entropy | Late−Early locality | Late−Early distance | 同方向图像数 |
+|---|---:|---:|---:|---:|
+| ViT-B/16 | +0.2201 | −0.3558 | +0.1312 | 100/100 |
+| DeiT-S | +0.2250 | −0.3424 | +0.1219 | 100/100 |
+
+三项指标均通过模型内 Holm 校正。Early/middle/late 的绝对中位水平为：
+
+| 模型 | 指标 | Early | Middle | Late |
+|---|---|---:|---:|---:|
+| ViT-B/16 | entropy | 0.6733 | 0.8645 | 0.8908 |
+| ViT-B/16 | locality | 0.4887 | 0.2199 | 0.1300 |
+| ViT-B/16 | distance | 0.1626 | 0.2565 | 0.2978 |
+| DeiT-S | entropy | 0.6593 | 0.8525 | 0.8783 |
+| DeiT-S | locality | 0.5139 | 0.2389 | 0.1761 |
+| DeiT-S | distance | 0.1531 | 0.2489 | 0.2748 |
+
+12-block 曲线显示，entropy 的主要增长发生在 early 和 middle blocks，在 blocks 8–10 附近接近饱和，末层不严格单调；locality 随深度持续下降，distance 持续增加至 block 11。因此正式结论为：
+
+> **在 ViT-B/16 和 DeiT-S 的冻结 token-channel 样本中，Endpoint 所描述的局部一阶输入依赖随层深发生空间扩展。**
+
+“由局部走向全局”仅作为非严格简称。现有指标不要求 late-layer map 达到均匀全图状态，也不建立全局语义或因果重要性。
+
+### CLS 与 patch 单元
+
+CLS–patch 采用 block-first 聚合：每张图、每个 block 内先分别对 32 个 CLS channels 和 15×32 个 patch-token channels 取中位数并作差，phase-level 图像值再对四个 block-level 差值取中位数。
+
+| 模型 | Early | Middle | Late | Block 0 | Block 11 |
+|---|---:|---:|---:|---:|---:|
+| ViT-B/16 | 0.3082 | 0.0592 | 0.0283 | 0.4752 | 0.0086 |
+| DeiT-S | 0.3084 | 0.0874 | 0.0406 | 0.4712 | 0.0238 |
+
+两个模型的每个 block 中，CLS-unit Endpoint absolute-mass entropy 均高于 patch-unit entropy，但差距随深度明显收窄。这是 CLS 输入依赖更分散的 construct-validity evidence，不是因果信息整合量。
+
+### Signed cancellation 与净比例
+
+除 cancellation ratio 外，补充报告 R_net = |sum_i E_i| / sum_i |E_i|。全部抽样单元的图像级中位 R_net 从 block 0 到 block 11：
+
+- ViT-B/16：0.00872 → 0.00144；
+- DeiT-S：0.00712 → 0.00132。
+
+对 120 张预冻结 raw maps 的多尺度分解进一步区分 RGB 通道内、RGB 聚合后的 patch 内和 signed patch totals 之间的抵消。嵌套生存率恒等式的最大误差为 6.94e-18。同一 24 个目标的 float64 重算与 float32 cancellation 指标最大绝对差为 1.84e-6。
+
+> Endpoint absolute mass 衡量局部一阶项的总幅值；它可以由大量方向相反的项构成，不等于净一阶方向效应。
+
+该边界与 M1 的中等行为相关性及 M2 中 regional Taylor 的优势相容，但补充 cancellation 分析本身是描述性证据。
+
+### M3 正式结论与交付
+
+M3 支持原始 NNS 与 Endpoint 的理论—数值桥梁，并在两个 ViT 的冻结抽样单元中支持层深相关的局部一阶输入依赖空间扩展。完整误差分布、11 类算子表、12-block CI、block-first CLS–patch、cancellation 分解和 finite-difference 曲线见：
+
+- docs/endpoint_m3_results_20260919.md；
+- docs/endpoint_m3_supplement_r2_20260919.md；
+- papers/nns_vit_endpoint/figure_manifest_m3_sup_r2.json；
+- reports/nns_vit_endpoint_m3_r1_20260919/terminal_receipt.json；
+- reports/nns_vit_endpoint_m3_sup_r2_20260919/terminal_receipt.json。
+
+---
+
 # 九、M4：Attention 与 residual 结构机制分析
 
-M4 是后续第二优先级模块，也是论文最可能形成新机制发现的部分。
+M4 是当前下一优先级模块，也是论文最可能形成新机制发现的部分。
 
 ---
 
@@ -1475,7 +1601,7 @@ C_k
 
 # 十三、M5：方法语义、reference 属性与最小比较
 
-M5 不再执行此前规划的六类 reference、大规模迁移矩阵和扩展空间排行榜，除非 M3/M4 完成后出现一个明确、不可由现有数据回答的新研究问题。
+M5 不再执行此前规划的六类 reference、大规模迁移矩阵和扩展空间排行榜，除非 M4 完成后出现一个明确、不可由现有数据回答的新研究问题。
 
 ---
 
@@ -2014,7 +2140,7 @@ M1/M2 放在结构机制结果之后，而不是作为整篇论文的主要胜�
 
 ## 贡献四：ViT 机制观察与行为边界
 
-> 我们利用 Endpoint atlas 分析 token-channel 输入依赖的层级和空间规律、attention routing/value 的分布以及 residual identity/branch 的保留和重写作用。有限替换实验进一步表明，Endpoint statistics 包含广泛但非普遍的行为信息，同时不能被直接等同为 reference-specific finite-intervention estimator。
+> 我们利用 Endpoint atlas 发现两个 ViT 的冻结 token-channel 样本均表现出层深相关的局部一阶输入依赖空间扩展。后续 M4 将分析 attention routing/value 和 residual identity/branch 的相对作用。有限替换实验进一步表明，Endpoint statistics 包含广泛但非普遍的行为信息，同时不能被直接等同为 reference-specific finite-intervention estimator。
 
 ---
 
@@ -2022,13 +2148,13 @@ M1/M2 放在结构机制结果之后，而不是作为整篇论文的主要胜�
 
 > 本文将神经网络扫描器（NNS）的输入坐标 learning-image 思想推广到视觉 Transformer。我们首先将原始 NNS 形式化为输入值初始化的局部 Jacobian 传播；对任意注册标量目标，所得 Endpoint 等于 normalized-input 坐标中的 Gradient × Input。本文的主要方法贡献不在该基础归因公式本身，而在于异构 ViT 内部目标的统一注册、attention 的 Q/K/V 与 routing/value 分解、residual identity/branch 记账，以及可独立审计的数值验证协议。  
 >   
-> 在 ViT-B/16 和 DeiT-S 上，我们执行 registry-complete 内部目标扫描，并通过结构闭合、负向控制、JVP/VJP、中心有限差分和原始 NNS 等价复现验证局部 Jacobian 实现。进一步的分层 token-channel Endpoint atlas 用于分析输入依赖随层深、token 类型和空间位置的变化；attention 和 residual 分解用于研究 routing/value 以及 carry/branch 对输入依赖的相对作用。  
+> 在 ViT-B/16 和 DeiT-S 上，我们执行 registry-complete 内部目标扫描，并通过结构闭合、负向控制、JVP/VJP、中心有限差分和原始 NNS 等价复现验证局部 Jacobian 实现。冻结的 100 图分层 token-channel audit 表明，在两个模型的抽样单元中，late blocks 相比 early blocks 具有更高的空间熵、更低的自身邻域质量和更大的 normalized input distance，即局部一阶输入依赖随层深发生空间扩展。后续 M4 将继续研究 attention routing/value 与 residual carry/branch 的相对作用。
 >   
 > 行为标定实验显示，Endpoint mass 与有限成分替换效应之间存在广泛但非普遍的正相关；严格的预注册 all-family omnibus 标准未得到支持。在 reference-based 区域干预中，与实际 replacement displacement 匹配的 regional Taylor 表现更强，说明 Endpoint 的高分辨率输入表示不能直接解释为特定 reference 下的最优干预图。  
 >   
 > 这些结果将 NNS-ViT 定位为一种面向异构 ViT 内部标量目标的统一、输入坐标化且可结构审计的局部表示框架，并明确区分局部输入依赖、有限成分效应和空间干预选择三种不同能力。
 
-其中关于 atlas 和机制发现的句子应在 M3/M4 完成后按实际结果替换，不能提前写入方向性结论。
+其中 M3 atlas 的方向已经按封存结果填写；attention/residual 的方向性结论仍须等待 M4 实际结果。
 
 ---
 
@@ -2050,17 +2176,16 @@ M1/M2 放在结构机制结果之后，而不是作为整篇论文的主要胜�
 
 # 二十一、后续执行顺序
 
-| 顺序 | 工作 | 目的 | 必要交付 |
-|---|---|---|---|
-| 1 | M3-A 原始 NNS 等价证明和数值复现 | 建立“忠实推广”的直接证据 | 命题、证明、FCN/CNN/ResNet 数值表 |
-| 2 | ViT 算子级 Jacobian 单元测试 | 提高独立数值可信度 | LayerNorm/GELU/softmax/attention 测试 |
-| 3 | M3-B 生成 6,144-unit neuron atlas | 扩大真实神经元覆盖 | 冻结 token/channel 列表、逐目标统计 |
-| 4 | M3-C atlas 分布分析 | 形成第一组 ViT 机制结果 | 深度、token、位置、模型比较 |
-| 5 | M4-A routing/value 与 frozen-attention | 形成 attention 机制结果 | 层/head 表、误差和 saturation 图 |
-| 6 | M4-B residual identity/branch | 形成 residual 机制结果 | share、cancellation、空间改变 |
-| 7 | M6 自动选择机制案例 | 支持机制解释 | atlas、attention、residual 主图 |
-| 8 | M5 方法定位与最小 reference 分析 | 完成讨论和相关工作 | 适用性矩阵、已有 reference 复用分析 |
-| 9 | 重构论文 | 以忠实性—统一性—可审计性—机制发现为主线 | 正文、附录、审计索引 |
+| 顺序 | 工作 | 状态 | 目的 | 必要交付 |
+|---|---|---|---|---|
+| 已完成 | M3-A 原始 NNS 等价与 ViT 算子验证 | PASS | 建立“忠实推广”的直接证据 | 命题、5,000 个数值案例、11 类算子表 |
+| 已完成 | M3-B 6,144-unit neuron atlas | PASS | 扩大真实神经元覆盖 | 冻结 token/channel 列表、1,228,800 个目标统计 |
+| 已完成 | M3-C atlas 分布分析及补充 R2 | PASS | 形成第一组 ViT 机制结果 | 12-block、CLS–patch、cancellation、FD 诊断 |
+| 1 | M4-A routing/value 与 frozen-attention | 待执行 | 形成 attention 机制结果 | 层/head 表、误差和 saturation 图 |
+| 2 | M4-B residual identity/branch | 待执行 | 形成 residual 机制结果 | share、cancellation、空间改变 |
+| 3 | M6 自动选择机制案例 | 待执行 | 支持机制解释 | atlas、attention、residual 主图 |
+| 4 | M5 方法定位与最小 reference 分析 | 待整理 | 完成讨论和相关工作 | 适用性矩阵、已有 reference 复用分析 |
+| 5 | 重构论文 | 进行中 | 以忠实性—统一性—可审计性—机制发现为主线 | 正文、附录、审计索引 |
 
 ---
 
@@ -2085,14 +2210,10 @@ M1/M2 放在结构机制结果之后，而不是作为整篇论文的主要胜�
 4. 不以改变 M1/M2 结论为目的；
 5. 具有明确的停止条件。
 
-如果资源有限，最低完成集为：
+M3-A 和 M3 neuron atlas 已完成。剩余最低完成集为：
 
 \[
 \boxed{
-\text{M3-A 等价桥接}
-+
-\text{M3 neuron atlas}
-+
 \text{M4 attention/residual}
 +
 \text{M6 核心图}
@@ -2119,7 +2240,7 @@ M1/M2 放在结构机制结果之后，而不是作为整篇论文的主要胜�
 
 ## 4. ViT 机制观察
 
-> Endpoint atlas 用于描述 token-channel 输入依赖的层级与空间分布，并量化 attention routing/value 和 residual carry/branch 的相对作用。具体方向必须依据 M3/M4 的实际结果填写。
+> 在 ViT-B/16 和 DeiT-S 的冻结 token-channel 样本中，Endpoint 所描述的局部一阶输入依赖随层深发生空间扩展：entropy 上升、own-token locality 下降、normalized distance 增加。CLS 单元的 Endpoint 分布比 patch 单元更分散，但差距随层深收窄；接近饱和的 signed cancellation 说明 absolute mass 与净一阶方向效应必须区分。Attention routing/value 和 residual carry/branch 的具体方向仍由 M4 决定。
 
 ## 5. 行为相关性与边界
 
