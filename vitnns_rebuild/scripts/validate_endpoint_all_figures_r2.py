@@ -68,9 +68,9 @@ def main() -> int:
     qc = verify_signed(ROOT / "manual_visual_qc.json", errors)
 
     if manifest.get("revision") != "ENDPOINT-ALL-FIGURES-R2": errors.append("wrong revision")
-    if manifest.get("black_bear_binding") != {"sample_id": "ILSVRC2012_val_00005415.JPEG", "selection_order": 14, "class_id": 297, "wnid": "n02134418"}: errors.append("black-bear binding mismatch")
+    if manifest.get("display_sample_binding") != {"sample_id": "ILSVRC2012_val_00005415.JPEG", "selection_order": 14, "class_id": 297, "wnid": "n02134418", "class_name": "sloth bear, Melursus ursinus"}: errors.append("display-sample binding mismatch")
     if display.get("sample_id") != "ILSVRC2012_val_00005415.JPEG" or display.get("class_id") != 297: errors.append("display receipt sample mismatch")
-    if array_receipt.get("sample_id") != "ILSVRC2012_val_00005415.JPEG" or array_receipt.get("class_id") != 297: errors.append("array receipt sample mismatch")
+    if array_receipt.get("sample_id") != "ILSVRC2012_val_00005415.JPEG" or array_receipt.get("class_id") != 297 or array_receipt.get("wnid") != "n02134418": errors.append("array receipt sample mismatch")
 
     rows = manifest.get("main_figures", [])
     if [row.get("number") for row in rows] != list(range(1, 41)): errors.append("main figure numbering is not exactly 1-40")
@@ -130,7 +130,7 @@ def main() -> int:
         "status": "PASS" if not errors else "FAIL", "sealed": bool(args.seal and not errors),
         "main_figures": len(rows), "main_exports": sum(len(row.get("outputs", [])) for row in rows),
         "supplement_records": len(manifest.get("supplemental_records", [])), "display_panel_records": len(display.get("panels", [])),
-        "checks": ["canonical digests", "Figure 1-40 coverage", "PNG/PDF/SVG organization", "source hashes", "R1 predecessor binding", "black-bear binding", "signed companions", "all-head coverage", "PNG decode and minimum dimensions", "manual visual QC gate"],
+        "checks": ["canonical digests", "Figure 1-40 coverage", "PNG/PDF/SVG organization", "source hashes", "R1 predecessor binding", "sloth-bear class binding", "signed companions", "all-head coverage", "PNG decode and minimum dimensions", "manual visual QC gate"],
         "errors": errors,
     }
     write_json(ROOT / "validation_report.json", signed(report))

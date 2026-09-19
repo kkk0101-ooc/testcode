@@ -4,7 +4,7 @@
 
 ## Image #1: Endpoint Scanner method overview
 
-Replaces the process-heavy overview with one real input, one scalar target, the endpoint formula, and the black-bear ground-truth class-logit map.
+Replaces the process-heavy overview with one real input, one scalar target, the endpoint formula, and the requested sloth-bear ground-truth class-logit map.
 
 边界：Blue-base maps are display-normalized shape views; raw arrays and signed companions, not display pixels, define scientific values.
 
@@ -90,21 +90,21 @@ Uses directly labeled horizontal composition bars; counts and model differences 
 
 ![Figure 11](figures_png/figure_11_registered_target_atlas_design.png)
 
-## Image #12: Black-bear class-logit maps across models
+## Image #12: Sloth-bear class-logit maps across models
 
-Uses the fixed black-bear display sample for both models and the ground-truth class logit in the R10 blue-base positive view.
-
-边界：Blue-base maps are display-normalized shape views; raw arrays and signed companions, not display pixels, define scientific values.
-
-![Figure 12](figures_png/figure_12_black_bear_class_logit_maps_across_models.png)
-
-## Image #13: Black-bear multi-target atlas
-
-Uses the same black-bear input and six preregistered targets, with blue-base positive main panels and a signed supplement.
+Uses the fixed sloth-bear display sample for both models and the ground-truth class logit in the R10 blue-base positive view.
 
 边界：Blue-base maps are display-normalized shape views; raw arrays and signed companions, not display pixels, define scientific values.
 
-![Figure 13](figures_png/figure_13_black_bear_multi_target_atlas.png)
+![Figure 12](figures_png/figure_12_sloth_bear_class_logit_maps_across_models.png)
+
+## Image #13: Sloth-bear multi-target atlas
+
+Uses the same sloth-bear input and six preregistered targets, with blue-base positive main panels and a signed supplement.
+
+边界：Blue-base maps are display-normalized shape views; raw arrays and signed companions, not display pixels, define scientific values.
+
+![Figure 13](figures_png/figure_13_sloth_bear_multi_target_atlas.png)
 
 ## Image #14: Scan scale, latency, and resources
 
@@ -130,13 +130,13 @@ Uses three evidence cards and a tolerance utilization bar instead of incomparabl
 
 ![Figure 16](figures_png/figure_16_formal_closure_and_negative_controls.png)
 
-## Image #17: Black-bear structural component maps
+## Image #17: Sloth-bear structural component maps
 
-Uses black-bear block-5 raw component arrays in the blue-base positive reading view; signed maps remain supplemental.
+Uses sloth-bear block-5 raw component arrays in the blue-base positive reading view; signed maps remain supplemental.
 
 边界：Blue-base maps are display-normalized shape views; raw arrays and signed companions, not display pixels, define scientific values.
 
-![Figure 17](figures_png/figure_17_black_bear_structural_component_maps.png)
+![Figure 17](figures_png/figure_17_sloth_bear_structural_component_maps.png)
 
 ## Image #18: Condition-scaled analytic JVP checks
 
@@ -186,17 +186,17 @@ Inherited byte-for-byte from a verified source package and reorganized under the
 
 ![Figure 23](figures_png/figure_23_spatial_intervention_protocol.png)
 
-## Image #24: Black-bear block-5 maps for spatial ranking
+## Image #24: Sloth-bear block-5 maps for spatial ranking
 
-Uses black-bear spatial-ranking arrays and a consistent blue-base positive reading view; signed maps remain supplemental.
+Uses sloth-bear spatial-ranking arrays and a consistent blue-base positive reading view; signed maps remain supplemental.
 
 边界：Blue-base maps are display-normalized shape views; raw arrays and signed companions, not display pixels, define scientific values.
 
-![Figure 24](figures_png/figure_24_black_bear_block_5_maps_for_spatial_ranking.png)
+![Figure 24](figures_png/figure_24_sloth_bear_block_5_maps_for_spatial_ranking.png)
 
 ## Image #25: One-image spatial effect curves
 
-Uses the black-bear task and a clean emphasis hierarchy for the single-image regional intervention curves.
+Uses the sloth-bear task and a clean emphasis hierarchy for the single-image regional intervention curves.
 
 边界：The figure summarizes existing evidence and does not introduce a new cohort, test, or scientific decision.
 

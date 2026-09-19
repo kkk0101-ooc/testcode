@@ -4,7 +4,7 @@
 
 ## Figure 1
 
-Endpoint Scanner method overview。Replaces the process-heavy overview with one real input, one scalar target, the endpoint formula, and the black-bear ground-truth class-logit map.
+Endpoint Scanner method overview。Replaces the process-heavy overview with one real input, one scalar target, the endpoint formula, and the requested sloth-bear ground-truth class-logit map.
 
 ## Figure 2
 
@@ -48,11 +48,11 @@ Registered target atlas design。Uses directly labeled horizontal composition ba
 
 ## Figure 12
 
-Black-bear class-logit maps across models。Uses the fixed black-bear display sample for both models and the ground-truth class logit in the R10 blue-base positive view.
+Sloth-bear class-logit maps across models。Uses the fixed sloth-bear display sample for both models and the ground-truth class logit in the R10 blue-base positive view.
 
 ## Figure 13
 
-Black-bear multi-target atlas。Uses the same black-bear input and six preregistered targets, with blue-base positive main panels and a signed supplement.
+Sloth-bear multi-target atlas。Uses the same sloth-bear input and six preregistered targets, with blue-base positive main panels and a signed supplement.
 
 ## Figure 14
 
@@ -68,7 +68,7 @@ Formal closure and negative controls。Uses three evidence cards and a tolerance
 
 ## Figure 17
 
-Black-bear structural component maps。Uses black-bear block-5 raw component arrays in the blue-base positive reading view; signed maps remain supplemental.
+Sloth-bear structural component maps。Uses sloth-bear block-5 raw component arrays in the blue-base positive reading view; signed maps remain supplemental.
 
 ## Figure 18
 
@@ -96,11 +96,11 @@ Spatial intervention protocol。Inherited byte-for-byte from a verified source p
 
 ## Figure 24
 
-Black-bear block-5 maps for spatial ranking。Uses black-bear spatial-ranking arrays and a consistent blue-base positive reading view; signed maps remain supplemental.
+Sloth-bear block-5 maps for spatial ranking。Uses sloth-bear spatial-ranking arrays and a consistent blue-base positive reading view; signed maps remain supplemental.
 
 ## Figure 25
 
-One-image spatial effect curves。Uses the black-bear task and a clean emphasis hierarchy for the single-image regional intervention curves.
+One-image spatial effect curves。Uses the sloth-bear task and a clean emphasis hierarchy for the single-image regional intervention curves.
 
 ## Figure 26
 

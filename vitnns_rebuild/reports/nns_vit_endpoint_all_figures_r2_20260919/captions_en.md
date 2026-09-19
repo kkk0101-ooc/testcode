@@ -48,11 +48,11 @@ Registered target atlas design. The figure summarizes existing evidence and does
 
 ## Figure 12
 
-Black-bear class-logit maps across models. Blue-base maps are display-normalized shape views; raw arrays and signed companions, not display pixels, define scientific values.
+Sloth-bear class-logit maps across models. Blue-base maps are display-normalized shape views; raw arrays and signed companions, not display pixels, define scientific values.
 
 ## Figure 13
 
-Black-bear multi-target atlas. Blue-base maps are display-normalized shape views; raw arrays and signed companions, not display pixels, define scientific values.
+Sloth-bear multi-target atlas. Blue-base maps are display-normalized shape views; raw arrays and signed companions, not display pixels, define scientific values.
 
 ## Figure 14
 
@@ -68,7 +68,7 @@ Formal closure and negative controls. The figure summarizes existing evidence an
 
 ## Figure 17
 
-Black-bear structural component maps. Blue-base maps are display-normalized shape views; raw arrays and signed companions, not display pixels, define scientific values.
+Sloth-bear structural component maps. Blue-base maps are display-normalized shape views; raw arrays and signed companions, not display pixels, define scientific values.
 
 ## Figure 18
 
@@ -96,7 +96,7 @@ Spatial intervention protocol. The figure summarizes existing evidence and does 
 
 ## Figure 24
 
-Black-bear block-5 maps for spatial ranking. Blue-base maps are display-normalized shape views; raw arrays and signed companions, not display pixels, define scientific values.
+Sloth-bear block-5 maps for spatial ranking. Blue-base maps are display-normalized shape views; raw arrays and signed companions, not display pixels, define scientific values.
 
 ## Figure 25
 

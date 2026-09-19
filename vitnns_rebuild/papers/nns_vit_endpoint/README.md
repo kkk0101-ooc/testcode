@@ -24,7 +24,9 @@ scientific reference.
 For browsing or packaging, use the organized review package
 `reports/nns_vit_endpoint_all_figures_r2_20260919/`. It keeps Figures 1--40 under separate
 PNG/PDF/SVG directories, moves signed companions and all-layer/all-head pages into
-`supplement/`, and provides the black-bear blue-base revisions plus source/display receipts.
+`supplement/`, and provides the requested bear-sample blue-base revisions plus source/display
+receipts. The sealed class is ImageNet 297 / `n02134418` (sloth bear), so the paper-facing
+labels use that exact class name.
 The earlier flat `reports/nns_vit_endpoint_all_figures_r1_20260919/` package remains archived
 unchanged.
 

@@ -155,7 +155,7 @@ def load_palette() -> LinearSegmentedColormap:
 
 
 def display_photo() -> np.ndarray:
-    register(SOURCE_IMAGE, "black_bear_display_JPEG")
+    register(SOURCE_IMAGE, "sloth_bear_display_JPEG")
     with Image.open(SOURCE_IMAGE) as source:
         require(source.format == "JPEG", "DISPLAY_SOURCE_NOT_JPEG")
         rgb = source.convert("RGB")
@@ -171,13 +171,13 @@ def display_photo() -> np.ndarray:
 
 
 def load_e2(model_id: str) -> tuple[dict[str, Any], np.ndarray, dict[str, int]]:
-    result = read_json(E2_ATTEMPTS[model_id], f"sealed_E2_{model_id}_black_bear")["result"]
+    result = read_json(E2_ATTEMPTS[model_id], f"sealed_E2_{model_id}_sloth_bear")["result"]
     require(result["sample_id"] == SOURCE_IMAGE.name, f"E2_SAMPLE_MISMATCH:{model_id}")
     require(result["ground_truth_class_id"] == 297, f"E2_CLASS_MISMATCH:{model_id}")
     require(result["wnid"] == "n02134418", f"E2_WNID_MISMATCH:{model_id}")
     record = next(item for item in result["artifacts"] if item["kind"] == "full_raw_atlas")
     path = REPO / record["path"]
-    register(path, f"sealed_E2_{model_id}_black_bear_full_atlas")
+    register(path, f"sealed_E2_{model_id}_sloth_bear_full_atlas")
     require(sha256(path) == record["sha256"], f"E2_ATLAS_HASH_MISMATCH:{model_id}")
     array = np.load(path, mmap_mode="r")
     index = {row["target_id"]: i for i, row in enumerate(result["summaries"])}
@@ -185,25 +185,25 @@ def load_e2(model_id: str) -> tuple[dict[str, Any], np.ndarray, dict[str, int]]:
 
 
 def load_e3_block5() -> tuple[dict[str, Any], np.ndarray, dict[str, int]]:
-    result = read_json(E3_ATTEMPT, "sealed_E3_black_bear_block_components")["result"]
+    result = read_json(E3_ATTEMPT, "sealed_E3_sloth_bear_block_components")["result"]
     require(result["sample_id"] == SOURCE_IMAGE.name, "E3_SAMPLE_MISMATCH")
     record = next(
         item for item in result["artifacts"]
         if item.get("kind") == "raw_component_and_reconstruction_maps" and int(item["block"]) == 5
     )
     path = REPO / record["path"]
-    register(path, "sealed_E3_black_bear_block5_components")
+    register(path, "sealed_E3_sloth_bear_block5_components")
     require(sha256(path) == record["sha256"], "E3_BLOCK5_HASH_MISMATCH")
     array = np.load(path, mmap_mode="r")
     return result, array, {name: i for i, name in enumerate(record["component_order"])}
 
 
 def load_e5_maps() -> tuple[dict[str, Any], dict[str, np.ndarray]]:
-    result = read_json(E5_ATTEMPT, "sealed_E5_black_bear_spatial_maps")["result"]
+    result = read_json(E5_ATTEMPT, "sealed_E5_sloth_bear_spatial_maps")["result"]
     require(result["sample_id"] == SOURCE_IMAGE.name, "E5_SAMPLE_MISMATCH")
     record = result["raw_maps_record"]
     path = REPO / record["path"]
-    register(path, "sealed_E5_black_bear_raw_maps")
+    register(path, "sealed_E5_sloth_bear_raw_maps")
     require(sha256(path) == record["sha256"], "E5_MAP_HASH_MISMATCH")
     archive = np.load(path)
     return result, {name: np.asarray(archive[name]) for name in archive.files}
@@ -418,7 +418,7 @@ def render_figure_01(photo: np.ndarray, class_map: np.ndarray, cmap: LinearSegme
                  "One scalar target in the real model → one input-coordinate learning image")
     grid = fig.add_gridspec(1, 3, left=0.045, right=0.97, bottom=0.18, top=0.82, width_ratios=[1.0, 1.4, 1.1], wspace=0.23)
     ax_photo = fig.add_subplot(grid[0, 0]); ax_photo.imshow(photo); ax_photo.axis("off")
-    ax_photo.set_title("Real input · black bear", fontsize=12, weight="bold", color=INK, pad=10)
+    ax_photo.set_title("Real input · sloth bear", fontsize=12, weight="bold", color=INK, pad=10)
     ax_method = fig.add_subplot(grid[0, 1]); ax_method.set_xlim(0, 1); ax_method.set_ylim(0, 1); ax_method.axis("off")
     card(ax_method, (0.04, 0.61), 0.92, 0.25, "1 · Choose a scalar response",
          "Ground-truth class logit\ny = 297 · n02134418", BLUE, body_size=11)
@@ -607,7 +607,7 @@ def render_figure_11() -> plt.Figure:
     return fig
 
 
-def render_black_bear_gallery(number: int, title: str, subtitle: str, photo: np.ndarray,
+def render_sloth_bear_gallery(number: int, title: str, subtitle: str, photo: np.ndarray,
                               panels: list[tuple[str, np.ndarray, str]], cmap: LinearSegmentedColormap,
                               columns: int) -> tuple[plt.Figure, plt.Figure]:
     count = len(panels); rows = int(np.ceil(count / columns))
@@ -615,7 +615,7 @@ def render_black_bear_gallery(number: int, title: str, subtitle: str, photo: np.
     grid = fig.add_gridspec(rows, columns + 1, left=0.035, right=0.975, bottom=0.12, top=0.78, width_ratios=[0.82] + [1] * columns, wspace=0.12, hspace=0.28)
     sgrid = signed_fig.add_gridspec(rows, columns + 1, left=0.035, right=0.975, bottom=0.12, top=0.78, width_ratios=[0.82] + [1] * columns, wspace=0.12, hspace=0.28)
     for target_fig, target_grid in ((fig, grid), (signed_fig, sgrid)):
-        photo_ax = target_fig.add_subplot(target_grid[:, 0]); photo_ax.imshow(photo); photo_ax.axis("off"); photo_ax.set_title("Black bear input", fontsize=11, weight="bold", color=INK)
+        photo_ax = target_fig.add_subplot(target_grid[:, 0]); photo_ax.imshow(photo); photo_ax.axis("off"); photo_ax.set_title("Sloth bear input", fontsize=11, weight="bold", color=INK)
     for index, (label, raw, target) in enumerate(panels):
         row, column = divmod(index, columns)
         heat_panel(fig.add_subplot(grid[row, column + 1]), raw, label, cmap, figure=number, target=target, signed_axis=signed_fig.add_subplot(sgrid[row, column + 1]))
@@ -701,7 +701,7 @@ def render_figure_22() -> plt.Figure:
 
 
 def render_figure_25() -> plt.Figure:
-    task = read_json(E5_ATTEMPT, "sealed_E5_black_bear_spatial_curves")["result"]
+    task = read_json(E5_ATTEMPT, "sealed_E5_sloth_bear_spatial_curves")["result"]
     require(task["sample_id"] == SOURCE_IMAGE.name, "E5_CURVE_SAMPLE_MISMATCH")
     areas = np.asarray(task["actual_area_fractions"], dtype=float)
     reference = task["references"]["normalized_zero"]
@@ -715,7 +715,7 @@ def render_figure_25() -> plt.Figure:
         "total_gxi": (GREEN, "Total G×I", "^"), "raw_gradient": (PURPLE, "Raw gradient", "D"),
         "random_regions": (MUTED, "Random regions", "x"),
     }
-    fig, ax = plt.subplots(figsize=(12.4, 6.8)); figure_title(fig, "A single-image spatial intervention trace", "Black-bear task · normalized-zero reference · mean absolute isolated-head effect across three registered heads")
+    fig, ax = plt.subplots(figsize=(12.4, 6.8)); figure_title(fig, "A single-image spatial intervention trace", "Sloth-bear task · normalized-zero reference · mean absolute isolated-head effect across three registered heads")
     for key, (color, label, marker) in styles.items():
         values = np.asarray(series[key], dtype=float); ax.plot(100 * areas, values, marker=marker, ms=7, lw=2.3 if key in {"endpoint_component", "regional_taylor"} else 1.5, color=color, label=label, alpha=1 if key in {"endpoint_component", "regional_taylor"} else .82)
     ax.set_xlabel("replaced input area (%)"); ax.set_ylabel("mean absolute isolated-head effect"); ax.set_xticks(100 * areas, ["0", "6.25", "12.5", "25"]); clean_axis(ax, grid="y")
@@ -888,13 +888,13 @@ TITLES = {
     5: "Attention Q/K/V differential paths", 6: "Residual edge accounting",
     7: "Unit, sum, and energy targets", 8: "State, seed, and input coordinates",
     9: "LayerNorm and GELU Jacobians", 10: "Structured edge cuts",
-    11: "Registered target atlas design", 12: "Black-bear class-logit maps across models",
-    13: "Black-bear multi-target atlas", 14: "Scan scale, latency, and resources",
+    11: "Registered target atlas design", 12: "Sloth-bear class-logit maps across models",
+    13: "Sloth-bear multi-target atlas", 14: "Scan scale, latency, and resources",
     15: "Structural closure contracts", 16: "Formal closure and negative controls",
-    17: "Black-bear structural component maps", 18: "Condition-scaled analytic JVP checks",
+    17: "Sloth-bear structural component maps", 18: "Condition-scaled analytic JVP checks",
     19: "Matched finite activation replacement", 20: "C4a family estimates and intervals",
     21: "RQ3 threshold zoom and boundary exception", 22: "Endpoint and registered secondary predictors",
-    23: "Spatial intervention protocol", 24: "Black-bear block-5 maps for spatial ranking",
+    23: "Spatial intervention protocol", 24: "Sloth-bear block-5 maps for spatial ranking",
     25: "One-image spatial effect curves", 26: "C4b mandatory-baseline contrasts",
     27: "RQ4 family summary", 28: "Identity–Correctness–Utility conclusion",
     29: "M3 block trajectories", 30: "M3 CLS-minus-patch entropy by block",
@@ -920,7 +920,7 @@ M3_STEMS = {29: "m3_sup_block_trajectories", 30: "m3_sup_cls_patch_by_block", 31
 BLUE_SLUGS = {34: "registered_target_learning_images", 35: "block5_structural_learning_images", 36: "spatial_ranking_learning_images", 37: "channel0_depth_progression", 38: "attention_head_depth_atlas", 39: "vit_b16_attention_head_depth_atlas", 40: "vit_b16_module_chain"}
 
 REDESIGN_NOTES = {
-    1: "Replaces the process-heavy overview with one real input, one scalar target, the endpoint formula, and the black-bear ground-truth class-logit map.",
+    1: "Replaces the process-heavy overview with one real input, one scalar target, the endpoint formula, and the requested sloth-bear ground-truth class-logit map.",
     2: "Separates Original NNS-CNN, ViT Endpoint, and Path IG by rule, evaluated state, and scientific question.",
     3: "Keeps the target fixed and shows exactly where endpoint and path maps diverge after nonlinear attention.",
     4: "Shows the current ReLU gate and unique MaxPool winner without an overloaded derivation page.",
@@ -931,17 +931,17 @@ REDESIGN_NOTES = {
     9: "Pairs the LayerNorm Jacobian with the GELU derivative and removes unrelated analytic clutter.",
     10: "Reduces structured cuts to one graph, one component formula, and one closure condition.",
     11: "Uses directly labeled horizontal composition bars; counts and model differences are readable without legend hunting.",
-    12: "Uses the fixed black-bear display sample for both models and the ground-truth class logit in the R10 blue-base positive view.",
-    13: "Uses the same black-bear input and six preregistered targets, with blue-base positive main panels and a signed supplement.",
+    12: "Uses the fixed sloth-bear display sample for both models and the ground-truth class logit in the R10 blue-base positive view.",
+    13: "Uses the same sloth-bear input and six preregistered targets, with blue-base positive main panels and a signed supplement.",
     14: "Recasts counts and latency as two labeled dot-range panels with the total workload in the subtitle.",
     16: "Uses three evidence cards and a tolerance utilization bar instead of incomparable raw-height bars.",
-    17: "Uses black-bear block-5 raw component arrays in the blue-base positive reading view; signed maps remain supplemental.",
+    17: "Uses sloth-bear block-5 raw component arrays in the blue-base positive reading view; signed maps remain supplemental.",
     18: "Summarizes all analytic JVP checks with coverage, pass count, and worst threshold utilization instead of an unreadable scatter cloud.",
     20: "Shortens family labels, groups rows, shades the registered support region, and labels estimates directly.",
     21: "Shows the 11-of-12 decision and the 0.000435 threshold miss without a redundant count bar.",
     22: "Retains the full predictor matrix while outlining the registered Endpoint column and clarifying that the remaining predictors are descriptive.",
-    24: "Uses black-bear spatial-ranking arrays and a consistent blue-base positive reading view; signed maps remain supplemental.",
-    25: "Uses the black-bear task and a clean emphasis hierarchy for the single-image regional intervention curves.",
+    24: "Uses sloth-bear spatial-ranking arrays and a consistent blue-base positive reading view; signed maps remain supplemental.",
+    25: "Uses the sloth-bear task and a clean emphasis hierarchy for the single-image regional intervention curves.",
     26: "Shortens all sixteen contrast labels, groups the four study families, and marks zero and the registered +0.05 region separately.",
     27: "Keeps the exact paired-difference matrix but highlights the regional-Taylor column that dominates all four families.",
     29: "Replots the four depth metrics with a common model palette, consistent intervals, and aligned block axes.",
@@ -1025,13 +1025,13 @@ def build_docs() -> None:
 This is the organized successor to `nns_vit_endpoint_all_figures_r1_20260919`. The archived R1 root is unchanged.
 
 - `figures_png/`, `figures_pdf/`, `figures_svg/`: Figure 1–40 only.
-- `supplement/signed/`: signed companions for the black-bear blue-base main views.
+- `supplement/signed/`: signed companions for the sloth-bear blue-base main views.
 - `supplement/all_heads/`: full block-by-head pages, separated by model.
 - `supplement/m2/`, `m3/`, `m4/`, `m4_review/`, `m6/`: supplemental families.
 - `real_outputs/`: individual positive display panels used by redesigned real-map figures.
 - `source_arrays/`: exact display arrays extracted from sealed sources plus their receipt.
 
-The fixed presentation sample is `ILSVRC2012_val_00005415.JPEG` (selection order 14, class 297, `n02134418`, black bear). Main real-map panels use the R10 blue-base rule `max(L,0)` with per-panel P99 scaling. Signed companions preserve the complete spatial sign pattern.
+The fixed presentation sample is `ILSVRC2012_val_00005415.JPEG` (selection order 14, class 297, `n02134418`, sloth bear / `Melursus ursinus`). Main real-map panels use the R10 blue-base rule `max(L,0)` with per-panel P99 scaling. Signed companions preserve the complete spatial sign pattern.
 
 No model forward, checkpoint load, bootstrap, hypothesis test, or decision recomputation is performed.
 
@@ -1055,7 +1055,7 @@ def build_source_arrays(e2_deit: np.ndarray, deit_index: dict[str, int], e2_vit:
         arrays[f"e3_b5_{component}"] = np.asarray(e3[e3_index[component]])
     for name in ("total_gxi", "raw_gradient", "head_0", "head_3", "head_5"):
         arrays[f"e5_b5_{name}"] = np.asarray(e5[name])
-    path = ROOT / "source_arrays/black_bear_display_arrays.npz"; path.parent.mkdir(parents=True, exist_ok=True); np.savez_compressed(path, **arrays)
+    path = ROOT / "source_arrays/sloth_bear_display_arrays.npz"; path.parent.mkdir(parents=True, exist_ok=True); np.savez_compressed(path, **arrays)
     receipt = {
         "sample_id": SOURCE_IMAGE.name, "selection_order": 14, "class_id": 297, "wnid": "n02134418",
         "archive": {"path": path.relative_to(ROOT).as_posix(), "bytes": path.stat().st_size, "sha256": sha256(path)},
@@ -1089,8 +1089,8 @@ def main() -> None:
     }
     for number in range(1, 12): save_figure(renderers[number](), number, SLUGS[number], TITLES[number], "method" if number <= 10 else "study_design")
 
-    fig12, signed12 = render_black_bear_gallery(12, TITLES[12], "Same input · same ground-truth class · two trained ViT variants", photo, [("DeiT-S/16 · class logit", deit_atlas[deit_index["class.gt"]], "deit_s16.class.gt"), ("ViT-B/16 · class logit", vit_atlas[vit_index["class.gt"]], "vit_b16.class.gt")], cmap, 2)
-    save_figure(fig12, 12, SLUGS[12], TITLES[12], "real_map_result"); save_signed_companion(signed12, 12, SLUGS[12], "black_bear_cross_model_class_logit")
+    fig12, signed12 = render_sloth_bear_gallery(12, TITLES[12], "Same input · same ground-truth class · two trained ViT variants", photo, [("DeiT-S/16 · class logit", deit_atlas[deit_index["class.gt"]], "deit_s16.class.gt"), ("ViT-B/16 · class logit", vit_atlas[vit_index["class.gt"]], "vit_b16.class.gt")], cmap, 2)
+    save_figure(fig12, 12, SLUGS[12], TITLES[12], "real_map_result"); save_signed_companion(signed12, 12, SLUGS[12], "sloth_bear_cross_model_class_logit")
     target_panels = [
         ("B0 patch sum · c0", deit_atlas[deit_index["b0.patch_channel_sum.c0"]], "b0.patch_channel_sum.c0"),
         ("B0 patch energy · c0", deit_atlas[deit_index["b0.patch_channel_energy.c0"]], "b0.patch_channel_energy.c0"),
@@ -1099,22 +1099,22 @@ def main() -> None:
         ("B11 head 5 · CLS c0", deit_atlas[deit_index["b11.head5.cls.c0"]], "b11.head5.cls.c0"),
         ("Ground-truth class logit", deit_atlas[deit_index["class.gt"]], "class.gt"),
     ]
-    fig13, signed13 = render_black_bear_gallery(13, TITLES[13], "DeiT-S/16 · six preregistered scalar targets · class 297", photo, target_panels, cmap, 3)
-    save_figure(fig13, 13, SLUGS[13], TITLES[13], "real_map_result"); save_signed_companion(signed13, 13, SLUGS[13], "black_bear_registered_targets")
+    fig13, signed13 = render_sloth_bear_gallery(13, TITLES[13], "DeiT-S/16 · six preregistered scalar targets · class 297", photo, target_panels, cmap, 3)
+    save_figure(fig13, 13, SLUGS[13], TITLES[13], "real_map_result"); save_signed_companion(signed13, 13, SLUGS[13], "sloth_bear_registered_targets")
     save_figure(renderers[14](), 14, SLUGS[14], TITLES[14], "resource_summary")
     copy_main_figure(15, SLUGS[15], TITLES[15], "method_contract", BASE_STEMS[15])
     save_figure(renderers[16](), 16, SLUGS[16], TITLES[16], "correctness_result")
     component_panels = [(label, e3_array[e3_index[key]], f"b5.{key}") for label, key in (("Identity", "identity"), ("Head 0", "head_0"), ("Routing", "routing"), ("Value", "value"), ("Attention", "attention"), ("MLP", "mlp"), ("Complete Endpoint", "L_F"))]
-    fig17, signed17 = render_black_bear_gallery(17, TITLES[17], "DeiT-S/16 · block 5 · same ground-truth class target · closure-validated arrays", photo, component_panels, cmap, 4)
-    save_figure(fig17, 17, SLUGS[17], TITLES[17], "real_map_result"); save_signed_companion(signed17, 17, SLUGS[17], "black_bear_structural_components")
+    fig17, signed17 = render_sloth_bear_gallery(17, TITLES[17], "DeiT-S/16 · block 5 · same ground-truth class target · closure-validated arrays", photo, component_panels, cmap, 4)
+    save_figure(fig17, 17, SLUGS[17], TITLES[17], "real_map_result"); save_signed_companion(signed17, 17, SLUGS[17], "sloth_bear_structural_components")
     save_figure(renderers[18](), 18, SLUGS[18], TITLES[18], "correctness_result")
     copy_main_figure(19, SLUGS[19], TITLES[19], "utility_method", BASE_STEMS[19])
     for number in (20, 21): save_figure(renderers[number](), number, SLUGS[number], TITLES[number], "RQ3_result")
     save_figure(renderers[22](), 22, SLUGS[22], TITLES[22], "utility_result")
     copy_main_figure(23, SLUGS[23], TITLES[23], "utility_method", BASE_STEMS[23])
     spatial_panels = [(label, e5_maps[key], key) for label, key in (("Total G×I", "total_gxi"), ("Raw gradient", "raw_gradient"), ("Head 0", "head_0"), ("Head 3", "head_3"), ("Head 5", "head_5"))]
-    fig24, signed24 = render_black_bear_gallery(24, TITLES[24], "DeiT-S/16 · block 5 · maps used by the registered regional-ranking protocol", photo, spatial_panels, cmap, 3)
-    save_figure(fig24, 24, SLUGS[24], TITLES[24], "real_map_result"); save_signed_companion(signed24, 24, SLUGS[24], "black_bear_spatial_ranking_maps")
+    fig24, signed24 = render_sloth_bear_gallery(24, TITLES[24], "DeiT-S/16 · block 5 · maps used by the registered regional-ranking protocol", photo, spatial_panels, cmap, 3)
+    save_figure(fig24, 24, SLUGS[24], TITLES[24], "real_map_result"); save_signed_companion(signed24, 24, SLUGS[24], "sloth_bear_spatial_ranking_maps")
     for number in (25, 26, 27): save_figure(renderers[number](), number, SLUGS[number], TITLES[number], "utility_result")
     copy_main_figure(28, SLUGS[28], TITLES[28], "utility_result", BASE_STEMS[28])
     for number in (29, 30, 31, 32, 33): save_figure(renderers[number](), number, SLUGS[number], TITLES[number], "supplementary_result" if number != 32 else "numerical_identity_result")
@@ -1134,7 +1134,7 @@ def main() -> None:
         "schema_version": 2, "revision": "ENDPOINT-ALL-FIGURES-R2", "status": "RENDERED_PENDING_MANUAL_VISUAL_QC",
         "organized_directory": True, "main_figure_count": len(MAIN_RECORDS), "main_export_count": sum(len(row["outputs"]) for row in MAIN_RECORDS),
         "main_figures": sorted(MAIN_RECORDS, key=lambda row: row["number"]), "supplemental_records": SUPPLEMENT_RECORDS,
-        "black_bear_binding": {"sample_id": SOURCE_IMAGE.name, "selection_order": 14, "class_id": 297, "wnid": "n02134418"},
+        "display_sample_binding": {"sample_id": SOURCE_IMAGE.name, "selection_order": 14, "class_id": 297, "wnid": "n02134418", "class_name": "sloth bear, Melursus ursinus"},
         "redesigned_figures": sorted(REDESIGN_NOTES), "R1_preserved": True, "new_scientific_inference": False,
     }
     write_json(ROOT / "manifest.json", signed(manifest_base))
