@@ -1,105 +1,238 @@
-# NNS-ViT 补充实验完整方案
+# NNS-ViT 后续实验与论文重构方案  
+## 目标对齐版
 
-> **当前进度（2026-09-19）：M1、M2 已完成；M3–M6 为后续计划。**
-
-[M2 结果](endpoint_m2_results_20260919.md)显示，在 patch 预算下，Taylor 对完整输入区域替换通过 11/12 项方向性优势检验，对单 head 隔离效应通过 12/12 项；Endpoint 的对应优势均为 0/12。完整输入效应的例外为 DeiT-S、normalized-zero、block 5，未通过校正检验不表示两者等效。
-
-后续补充实验围绕 Endpoint 的设计目标展开：reference 未指定时的统一复用与成分筛选、attention/residual 的结构诊断、神经元输入依赖的分布。性能、成本和机制优势均由实验检验。本次更新的是方案，以下新增实验尚未执行。
-
-五类实验直接归入现有模块：reference 稳定性与复用见 §7.5，reference-free 成分筛选见 §7.6，frozen-attention 诊断见 §7.1–7.2，residual 记账见 §7.3–7.4，neuron-atlas 分布见 §4.8。执行顺序与记录方式见第十四节。
-
-**M3 采用冻结的分层 token-channel 抽样：**
-
-
-- 比仅扫描 CLS channel 的方案 A 更能覆盖空间 patch token；
-- 比 MLP 专项方案 C 更贴近当前 Endpoint Scanner 的主要对象；
-- 目标数量和计算规模相对可控；
-- 可以明确表述为“分层神经元审计”，增强与原始 NNS 的联系；
-- 能够与现有 RQ3、RQ4 和注册覆盖率分析自然结合。
-
-但必须明确：这些实验是在原冻结协议之后增加的，应统一标记为：
-
-> **补充性冻结实验（supplementary frozen study）**
-
-或：
-
-> **探索性扩展（exploratory extension）**
-
-这些新增实验不能被事后并入原确认性分析，也不能改变原预注册 omnibus 的 `NOT_SUPPORTED` 结论。
+> **当前进度：2026-09-19**  
+> 原确认性实验、M1 和 M2 已完成。M3–M6 为后续补充计划。  
+> 本文档用于替换此前以 Endpoint–Taylor 性能比较为中心的后续方案。
 
 ---
 
-# 一、补充实验的整体结构
+# 零、研究目标与总体定位
 
-建议将新增实验组织为六个模块：
+## 0.1 核心研究目标
 
-| 模块 | 主要目的 | 优先级 |
-|---|---|---:|
-| **M1. RQ3 强基线与分层分析** | 判断 Endpoint 是否具有额外的成分排序价值 | 必做 |
-| **M2. RQ4 跨层、全 head 扩展** | 检验空间负结果是否跨层成立 | 必做 |
-| **M3. 分层 token-channel 神经元审计与分布分析** | 说明覆盖范围，研究输入依赖随层深和位置的变化 | 必做 |
-| **M4. Transformer 解释方法比较** | 界定不同方法回答的问题 | 推荐 |
-| **M5. Reference 复用、成分筛选与结构诊断** | 评价 reference-free 使用场景及 routing/residual 机制 | 本轮新增重点 |
-| **M6. 失败案例与机制可视化** | 提升机制解释和论文可读性 | 推荐 |
+本项目的核心目标是：
 
-除以上六个实验模块外，还必须同步完成两项论文层面的修改：
+> **证明 Endpoint 能够忠实地把原始 NNS 的输入坐标 learning-image 思想推广到视觉 Transformer，能够以统一接口扫描异构内部标量目标，能够对 attention 和 residual 等结构执行可验证的局部 Jacobian 分解，并能够利用所得 Endpoint atlas 观察和分析 ViT 的内部机制。**
 
-1. 重写 RQ3 的统计结论；
-2. 增加注册目标覆盖率表。
+该目标包含四个依次递进的层次：
 
----
+1. **忠实性**  
+   Endpoint 是否确实继承了原始 NNS 的输入值初始化和沿当前计算图传播的数学思想？
 
-# 二、M1：RQ3 强基线与分层分析
+2. **统一性**  
+   Endpoint 是否能够用同一输入坐标表示扫描 token-channel、attention head、Q/K/V 路径、residual branch、模块聚合目标和类别输出？
 
-## 2.1 研究目的
+3. **可审计性**  
+   Attention 和 residual 的结构成分是否能够精确重构相应目标的 Endpoint map？实现是否通过独立数值验证？
 
-建议将原 RQ3 拆分成两个更清楚的问题。
+4. **分析能力**  
+   Endpoint atlas 是否能够揭示 ViT 内部输入依赖随层深、token 类型、attention routing/value 和 residual identity/branch 变化的规律？
 
-### RQ3a：绝对关联
+行为实验用于回答：
 
-> Endpoint mass 是否与同成分有限替换效应之间存在稳定的正向排序关联？
+> Endpoint 图和 Endpoint 统计量与有限干预行为有什么关系，其解释边界在哪里？
 
-这是现有实验已经主要回答的问题。
-
-### RQ3b：增量价值
-
-> Endpoint mass 是否比简单尺度指标和 reference-matched 一阶近似更适合预测有限替换效应？
-
-这是当前论文缺少的关键比较。
-
-仅仅证明 Endpoint 与有限替换效应存在正相关还不够。还需要判断这种关联是否优于：
-
-- 激活大小；
-- 梯度大小；
-- reference displacement；
-- activation-space Taylor；
-- 随机排序。
+行为预测不是整个方法成立的必要条件，也不再以“Endpoint 必须优于 Taylor”为研究目标。
 
 ---
 
-## 2.2 统一成分与有限效应定义
+## 0.2 论文不再追求的主张
 
-对注册成分 \(z_k(x)\)，定义 reference replacement 后的有限效应：
+本文不以证明以下命题为主要目标：
+
+- Endpoint 在所有归因任务中优于现有方法；
+- Endpoint 比 regional Taylor 更适合具体 reference 下的有限替换；
+- Endpoint 图可以直接解释为因果效应图；
+- Endpoint absolute mass 是模型“知识量”；
+- 当前注册目标代表全部 ViT 神经元；
+- 结构闭合自动意味着有限干预预测能力；
+- 高分辨率输入图自动意味着更强的区域选择能力。
+
+基础 Endpoint：
+
+\[
+E_s(x)=x\odot\nabla_xs(x)
+\]
+
+最可靠的解释是：
+
+> 当前输入点上，注册标量目标 \(s\) 关于 normalized-input 坐标缩放方向的局部一阶依赖。
+
+Attention 和 residual 分解最可靠的解释是：
+
+> 当前计算图上的局部 Jacobian 记账。
+
+它们不是一般的函数值分配，也不是唯一的因果分解。
+
+---
+
+## 0.3 M1 和 M2 的重新定位
+
+M1 和 M2 已经完成，不删除、不弱化，也不追加实验试图使 Endpoint“胜出”。
+
+它们在新论文结构中的定位调整如下。
+
+### M1：Endpoint 成分统计量的行为标定
+
+M1 回答：
+
+> Endpoint mass 与有限成分替换效应之间存在多大关联？该关联相对于简单尺度指标和 reference-matched Taylor 处于什么位置？
+
+M1 不再被表述为“证明 Endpoint 优于其他 predictor”。
+
+### M2：Endpoint 图的干预解释边界
+
+M2 回答：
+
+> Endpoint 的高分辨率输入图能否直接被解释为特定 reference 下的有限干预区域图？
+
+现有结果给出的答案是：
+
+> 一般不能；regional Taylor 与具体 replacement displacement 更匹配。
+
+M2 是 Endpoint 语义边界的实验验证，而不是整篇 Endpoint 方法的胜负判决。
+
+---
+
+# 一、证据链与研究问题
+
+论文的整体证据链重构为五个研究问题。
+
+## RQ1：原始 NNS 忠实性
+
+> 原始 NNS 的 learning-image propagation 是否可以形式化为输入值初始化的局部 Jacobian 传播？Endpoint 是否在原始 NNS 适用网络上与逐层 learning-image propagation 数值等价？
+
+需要同时提供：
+
+- 理论命题；
+- 按层证明；
+- 原始兼容网络上的直接数值复现；
+- ViT 新算子的 Jacobian 单元测试。
+
+---
+
+## RQ2：统一内部目标扫描
+
+> Endpoint 是否能够用同一个数学接口扫描 ViT 中异构的内部标量目标？
+
+主要证据包括：
+
+- 冻结 registry；
+- registry-complete execution；
+- 目标类型覆盖；
+- M3 分层 token-channel 神经元审计；
+- 明确的覆盖率和非覆盖范围。
+
+---
+
+## RQ3：结构分解与数值可审计性
+
+> Attention 的 Q/K/V、routing/value 以及 residual 的 identity/branch 分解，是否能够重构注册对象的 Endpoint map？
+
+主要证据包括：
+
+- 正向闭合；
+- 负向控制；
+- JVP/VJP；
+- 中心有限差分；
+- forward parity；
+- 算子级测试；
+- 容差合同。
+
+---
+
+## RQ4：Endpoint 揭示了哪些 ViT 内部机制？
+
+> 利用 Endpoint atlas，能够观察到哪些跨层、跨 token 和跨结构路径的输入依赖规律？
+
+重点分析：
+
+1. token-channel 输入依赖是否随层深由局部趋向分散；
+2. CLS 和 patch neuron 的输入依赖是否不同；
+3. attention routing/value 的局部输入依赖如何随层和 head 变化；
+4. frozen-attention approximation 在哪些 heads 中遗漏较多 routing dependence；
+5. residual block 是主要保留还是重写已有输入依赖；
+6. identity 与 branch 是否发生显著抵消。
+
+这些问题构成后续实验的主要科学发现来源。
+
+---
+
+## RQ5：Endpoint 的行为相关性和解释边界是什么？
+
+该问题由已完成的 M1 和 M2 主要回答：
+
+- Endpoint mass 与有限成分效应存在广泛但非普遍的正相关；
+- 原预注册 all-family omnibus 为 `NOT_SUPPORTED`；
+- reference-matched Taylor 通常更适合具体 finite replacement；
+- Endpoint 图不应直接等同于 reference-specific intervention map。
+
+RQ5 用于标定 Endpoint 的含义，不再作为论文的中心竞争任务。
+
+---
+
+# 二、实验模块总览
+
+| 模块 | 状态 | 主要目的 | 论文角色 |
+|---|---|---|---|
+| **M1. Endpoint 成分统计量的行为标定** | 已完成 | 测量 Endpoint mass 与有限成分效应的关系 | 行为相关性 |
+| **M2. Endpoint 图的干预解释边界** | 已完成 | 检验 Endpoint 图能否直接用于 reference-specific 区域干预 | 解释边界 |
+| **M3. NNS 忠实性桥接与分层神经元审计** | 待执行 | 证明与原始 NNS 的等价关系并扩展 token-channel 覆盖 | 忠实性与统一性 |
+| **M4. Attention 与 residual 结构机制分析** | 待执行 | 使用结构化 Endpoint 分析 routing/value 和 carry/branch | 核心机制发现 |
+| **M5. 方法语义、reference 属性与最小比较** | 待整理，必要时补算 | 界定 Endpoint 与其他方法回答的问题 | 方法定位 |
+| **M6. 机制案例与可视化 atlas** | 待执行 | 展示自动选择的代表性机制案例 | 解释与呈现 |
+
+优先级为：
+
+\[
+\boxed{M3 > M4 > M6 > M5}
+\]
+
+M1、M2 已完成，不再扩展为大规模方法竞赛。
+
+---
+
+# 三、M1：Endpoint 成分统计量的行为标定
+
+## 3.1 研究问题
+
+M1 回答两个问题。
+
+### M1a：绝对行为关联
+
+> Endpoint mass 是否与同成分有限 activation replacement effect 存在稳定正相关？
+
+### M1b：相对位置
+
+> Endpoint mass 相对于 activation norm、gradient norm、activation × gradient、displacement norm、random 和 activation-space Taylor，提供了怎样的成分排序信息？
+
+M1b 的目的不是要求 Endpoint 全面获胜，而是确定：
+
+- Endpoint 是否只是在重复简单尺度；
+- Endpoint 在哪些 family 中提供额外信息；
+- reference 信息为 Taylor 带来多大优势；
+- Endpoint 的使用边界在哪里。
+
+---
+
+## 3.2 数学定义
+
+对注册成分 \(z_k(x)\)，reference replacement effect 定义为：
 
 \[
 e_k^{\mathrm{ref}}
 =
-F(x)
--
-F\bigl(x;z_k\leftarrow z_k^{\mathrm{ref}}\bigr).
+F(x)-F\bigl(x;z_k\leftarrow z_k^{\mathrm{ref}}\bigr).
 \]
 
-如果主要研究的是有限效应大小，则定义：
+主要评价其绝对大小：
 
 \[
-y_k^{\mathrm{ref}}
-=
-\left|e_k^{\mathrm{ref}}\right|.
+y_k^{\mathrm{ref}}=|e_k^{\mathrm{ref}}|.
 \]
 
-如果还需要研究效应方向，可以在补充材料中单独报告 signed effect，但不要将 signed effect 和 absolute effect 混合到同一个主要统计量中。
-
-Endpoint 成分图定义为：
+Endpoint 成分图为：
 
 \[
 E_{k,i}
@@ -111,768 +244,444 @@ x_i
 \right\rangle.
 \]
 
-主要 Endpoint predictor 沿用绝对质量：
+主要 Endpoint statistic 为：
 
 \[
 m_k^{\mathrm{Endpoint}}
 =
-\sum_i |E_{k,i}|.
+\sum_i|E_{k,i}|.
 \]
 
-为了减少输入维度或区域数量造成的尺度影响，可以同时报告平均绝对质量：
+比较方法包括：
 
 \[
-\bar m_k^{\mathrm{Endpoint}}
-=
-\frac{1}{D_x}
-\sum_i |E_{k,i}|,
+m_k^{\mathrm{act}}=\|z_k\|_2,
 \]
-
-其中 \(D_x\) 为输入坐标数量。
-
----
-
-## 2.3 必须加入的 predictor baselines
-
-所有 predictor 必须针对同一个成分集合、同一目标函数和同一 reference 进行比较。
-
-### 1. Activation norm
 
 \[
-m_k^{\mathrm{act}}
-=
-\|z_k(x)\|_2.
+m_k^{\mathrm{grad}}=\|\nabla_{z_k}F\|_2,
 \]
-
-该基线回答：
-
-> 激活更大的成分是否自然具有更大的有限替换效应？
-
----
-
-### 2. Gradient norm
-
-\[
-m_k^{\mathrm{grad}}
-=
-\|\nabla_{z_k}F(x)\|_2.
-\]
-
-该基线回答：
-
-> 仅使用局部敏感度，是否已经足以排序成分？
-
----
-
-### 3. Activation × Gradient
 
 \[
 m_k^{\mathrm{actgrad}}
 =
-\left|
-\left\langle
-\nabla_{z_k}F(x),
-z_k(x)
-\right\rangle
-\right|.
+|\langle\nabla_{z_k}F,z_k\rangle|,
 \]
-
-这是成分空间中最接近 Gradient × Activation 的基线。
-
----
-
-### 4. Reference displacement norm
 
 \[
 m_k^{\mathrm{disp,ref}}
 =
-\|z_k(x)-z_k^{\mathrm{ref}}\|_2.
+\|z_k-z_k^{\mathrm{ref}}\|_2,
 \]
-
-该基线回答：
-
-> 有限效应是否主要由 replacement 位移大小决定？
-
----
-
-### 5. Attribution patching / activation-space Taylor
 
 \[
 m_k^{\mathrm{Taylor,ref}}
 =
-\left|
-\left\langle
-\nabla_{z_k}F(x),
-z_k(x)-z_k^{\mathrm{ref}}
-\right\rangle
-\right|.
+|\langle\nabla_{z_k}F,z_k-z_k^{\mathrm{ref}}\rangle|.
 \]
 
-这是最重要的强基线，因为它与实际 finite replacement 的位移方向直接匹配。
-
-如果它明显优于 Endpoint，论文应如实总结：
-
-> Endpoint 提供 reference-free 的成分级排序信号，但 reference-matched activation-space Taylor 更适合预测具体 reference 下的有限替换效应。
-
 ---
 
-### 6. Random baseline
+## 3.3 已完成范围
 
-对每张图、每个 component family 生成固定种子的随机排序。
+M1 已于 2026-09-18 完成。
 
-建议：
+结果入口：
 
-- 每个 comparison set 至少执行 1,000 次 permutation；
-- 报告随机 Spearman 分布；
-- 报告 top-\(K\) 指标相对随机排序的提升；
-- 固定随机种子并写入配置文件。
+- `endpoint_m1_results_20260918.md`
 
----
+封存根：
 
-## 2.4 评价指标
+- `reports/nns_vit_endpoint_m1_r1_20260918/`
 
-不建议继续只使用 Spearman。需要同时加入更贴近实际筛选任务的决策型指标。
+状态：
 
-### 2.4.1 主排序指标：图像内 Spearman
+- 执行与审计：`ENDPOINT_M1_PASS_EXECUTION_AND_AUDIT`
+- 科学状态：`SUPPLEMENTARY_COMPONENT_DEPENDENT_UTILITY`
 
-对每张图、每个 family 和每种 predictor，计算：
-
-\[
-\rho_{i,f,m}
-=
-\operatorname{Spearman}
-\left(
-m_{i,f,m,k},
-|e_{i,f,k}|
-\right),
-\]
-
-其中：
-
-- \(i\) 表示图像；
-- \(f\) 表示 component family；
-- \(m\) 表示 predictor；
-- \(k\) 表示该 family 中的成分。
-
-图像应作为最终统计单位。
-
----
-
-### 2.4.2 Top-\(K\) effect capture
-
-定义：
-
-\[
-\mathrm{Capture@K}
-=
-\frac{
-\sum_{k\in\operatorname{TopK}(m)}
-|e_k|
-}{
-\sum_{k\in\operatorname{TopK}(|e|)}
-|e_k|
-}.
-\]
-
-该指标回答：
-
-> 根据 predictor 选出的前 \(K\) 个成分，能够捕获理论最优前 \(K\) 个成分的多少真实有限效应？
-
----
-
-### 2.4.3 Top-1 regret
-
-定义：
-
-\[
-\mathrm{Regret@1}
-=
-\max_k |e_k|
--
-\left|
-e_{\arg\max_km_k}
-\right|.
-\]
-
-数值越低越好。
-
-该指标直接回答：
-
-> 使用某个 predictor 选择一个成分进行干预，与选择真实最有效成分相比损失多少？
-
----
-
-### 2.4.4 其他推荐指标
-
-如果版面允许，可以继续报告：
-
-- top-1 hit rate；
-- top-3 hit rate；
-- NDCG；
-- pairwise ranking accuracy；
-- top-\(K\) intervention curve；
-- predictor 分位数与真实效应分位数的 calibration curve。
-
----
-
-## 2.5 RQ3 分层分析
-
-### A. Block 内 head ranking
-
-在每个 block 内，对该 block 中的所有 heads 进行排序：
-
-- ViT-B/16：每个 block 12 个 heads；
-- DeiT-S：每个 block 6 个 heads。
-
-该分析最接近实际使用问题：
-
-> 在同一层中，Endpoint 能否找出有限替换效应最大的 head？
-
----
-
-### B. 跨 block ranking
-
-将所有 block 中同类成分合并排序。
-
-但跨 block 结果必须与 block 内结果分开报告，因为跨 block 相关性可能主要来源于：
-
-- 层间激活尺度差异；
-- 梯度尺度差异；
-- residual stream 范数差异；
-- 深层和浅层的系统性效应差异。
-
-不能用跨 block 的高相关替代同层内部的成分辨别能力。
-
----
-
-### C. Early / middle / late 分层
-
-建议固定为：
-
-- early：blocks 0–3；
-- middle：blocks 4–7；
-- late：blocks 8–11。
-
-全文必须统一使用 0-based 或 1-based 编号。
-
----
-
-### D. 模型分层
-
-分别报告：
+执行范围：
 
 - ViT-B/16；
 - DeiT-S；
-- pooled descriptive result。
-
-合并结果只能作为描述性补充，不能代替模型级结果。
-
----
-
-### E. Component family 分层
-
-至少分别报告：
-
-- head；
-- routing；
-- value；
-- Q；
-- K；
-- V；
-- residual identity；
-- residual branch。
-
-如果某个 comparison set 中只有两个或三个成分，例如某个 head 内只有 Q/K/V 三项，则 Spearman 的取值过于离散。此时建议使用：
-
-- pairwise ranking accuracy；
-- top-1 accuracy；
-- 跨 heads 汇总后的 ranking；
-- mixed-effects rank model。
-
-不要把仅由三个元素计算的 Spearman 当作高精度连续统计量。
+- 共享 400 张 evaluation 图像；
+- blocks 0–11；
+- normalized-zero 和 blur-rgb；
+- frozen ground-truth logit；
+- head、routing、value、Q、K、V、residual identity、residual branch；
+- 800 个 image-model 任务；
+- 326,400 个 component-reference 条件。
 
 ---
 
-## 2.6 RQ3 统计分析
+## 3.4 M1 主要结果
 
-主统计单位必须是图像，而不是将所有成分视为独立样本。
+### 3.4.1 同层 head ranking
 
-推荐步骤：
+| Model | Reference | Endpoint \(\rho\) | Taylor \(\rho\) | Endpoint Capture@1 | Taylor Capture@1 | Endpoint Capture@3 | Taylor Capture@3 |
+|---|---|---:|---:|---:|---:|---:|---:|
+| ViT-B/16 | normalized-zero | 0.2815 | 0.6742 | 0.5174 | 0.8038 | 0.6149 | 0.8567 |
+| ViT-B/16 | blur-rgb | 0.2727 | 0.6856 | 0.5075 | 0.8203 | 0.6185 | 0.8659 |
+| DeiT-S | normalized-zero | 0.1952 | 0.6095 | 0.5609 | 0.8028 | 0.7122 | 0.8894 |
+| DeiT-S | blur-rgb | 0.1476 | 0.6238 | 0.5506 | 0.8426 | 0.7105 | 0.8970 |
 
-1. 每张图分别计算 predictor 与有限效应之间的评价指标；
-2. 对图像级指标计算中位数；
-3. 使用 image-level bootstrap 给出 95% CI；
-4. Endpoint 与 baseline 进行图像级配对比较；
-5. 对配对差值使用符号检验或 Wilcoxon signed-rank test；
-6. 对 family × baseline 的多重比较使用 Holm 校正。
+四个 model/reference 组合中的 Endpoint Spearman 均显著大于 0 和 0.10。
 
-Endpoint 相对某一 baseline 的配对差值定义为：
+因此可以确认：
 
-\[
-d_i
-=
-\rho_i^{\mathrm{Endpoint}}
--
-\rho_i^{\mathrm{baseline}}.
-\]
+> Endpoint mass 对同层 head 的有限替换效应包含稳定但有限的排序信息。
 
-需要分别回答两个统计问题。
-
-### 绝对性能
-
-如果只检验方向：
-
-\[
-H_0:
-\operatorname{median}(\rho)\le 0.
-\]
-
-如果要检验实际效应门槛 0.10：
-
-\[
-H_0:
-\operatorname{median}(\rho)\le 0.10.
-\]
-
-不能用“显著大于 0”代替“显著超过 0.10”。
-
-### 相对性能
-
-\[
-H_0:
-\operatorname{median}
-\left(
-\rho^{\mathrm{Endpoint}}
--
-\rho^{\mathrm{baseline}}
-\right)
-\le 0.
-\]
-
-如果 Endpoint 不如 attribution patching，应如实报告，而不是将其视为实验失败。
+但效应量明显低于 reference-matched Taylor。
 
 ---
 
-# 三、M2：RQ4 跨层、全 head 扩展
+### 3.4.2 基线比较
 
-## 3.1 研究目的
+Endpoint 相对各 predictor 的 Spearman 优势计数如下：
 
-当前 RQ4 只覆盖 block 5 的少数 heads，结论范围偏窄。
+| Baseline | 有效检验数 | Endpoint 优势获支持 | 未获支持 |
+|---|---:|---:|---:|
+| activation norm | 180 | 71 | 109 |
+| gradient norm | 180 | 72 | 108 |
+| activation × gradient | 180 | 25 | 155 |
+| displacement norm | 180 | 50 | 130 |
+| Taylor | 180 | 12 | 168 |
+| random | 180 | 122 | 58 |
 
-扩展后的研究问题是：
+另有 156 项小集合 Spearman 因离散度不足被标记为 undefined，不属于采集失败。
 
-> Endpoint 在空间区域选择上的负结果，是 block 5 的局部现象，还是跨层、跨 head 的稳定现象？
+结论是：
 
----
-
-## 3.2 推荐 blocks
-
-选择：
-
-- block 2；
-- block 5；
-- block 10。
-
-分别代表：
-
-- early；
-- middle；
-- late。
-
-如果使用 1-based 编号，应明确对应为第 3、6、11 个 block。
+> Endpoint 相对 random 和部分简单尺度基线具有 component-dependent 的增量信息，但没有整体优于 reference-matched Taylor。
 
 ---
 
-## 3.3 推荐 heads
+### 3.4.3 Residual identity 例外
 
-优先使用三个 block 中的全部 heads：
+Residual identity family 中，Endpoint-minus-Taylor Spearman 在四个 model/reference 组合中均为正并通过统一 Holm 校正，但 Capture@1 中位差均为 0。
 
-### ViT-B/16
+因此只能写：
 
-\[
-3\times12=36
-\]
+> Residual identity 是 Endpoint 在排序相关性上的一个稳定正向例外。
 
-个 heads。
+不能写：
 
-### DeiT-S
-
-\[
-3\times6=18
-\]
-
-个 heads。
-
-如果计算资源不足，可以每层冻结抽取 6 个 heads，但必须：
-
-- 在查看结果之前冻结；
-- 使用固定随机种子或 hash；
-- 不根据 attention pattern、激活或现有结果挑选。
+> Endpoint 在 residual identity 中普遍提供更强的 Top-1 决策能力。
 
 ---
 
-## 3.4 References
+## 3.5 M1 正式结论
 
-保留现有两种 reference：
+原 C4a all-family omnibus 保持：
 
+> `NOT_SUPPORTED`
+
+正式表述为：
+
+> 严格的预注册 all-family omnibus 标准未得到支持，因为 12 个 family 中有 1 个未达到预注册的 0.10 点估计门槛。其余 11 个 family 满足 family-level 条件，说明 Endpoint mass 与有限成分效应之间存在广泛但非普遍的正相关。
+
+M1 在新论文中的作用是：
+
+> 为 Endpoint 的行为相关性提供量化标定，而不是证明其为最佳有限效应 predictor。
+
+---
+
+# 四、M2：Endpoint 图的干预解释边界
+
+## 4.1 研究问题
+
+M2 回答：
+
+> Endpoint 的输入空间图能否被直接解释为特定 reference 下的有限区域干预图？
+
+该问题不同于：
+
+> Endpoint 是否是一个正确的局部 Jacobian 表示？
+
+即使 Endpoint 数学和实现均正确，也不必然适合预测特定有限 replacement。
+
+---
+
+## 4.2 已完成范围
+
+M2 已于 2026-09-19 完成。
+
+结果入口：
+
+- `endpoint_m2_results_20260919.md`
+
+封存根：
+
+- `reports/nns_vit_endpoint_m2_r1_20260919/`
+
+状态：
+
+- 执行与审计：`ENDPOINT_M2_PASS_EXECUTION_AND_AUDIT`
+- 科学状态：`SUPPLEMENTARY_LAYER_REFERENCE_OUTCOME_SPECIFIC`
+
+执行范围：
+
+- ViT-B/16 和 DeiT-S；
+- 共享 400 张 evaluation 图像；
+- blocks 2、5、10；
+- 全部 heads；
+- normalized-zero 和 blur-rgb；
+- patch 预算 1、10、20、49；
+- 完整输入区域替换；
+- 单 head 隔离替换；
+- 2,332,800 条曲线；
+- 8,164,800 个有限预算点。
+
+---
+
+## 4.3 M2 主要结果
+
+### 完整输入区域替换
+
+- Taylor 对 Endpoint 显著占优：11/12；
+- Endpoint 对 Taylor 显著占优：0/12；
+- 未通过校正：1/12。
+
+未通过项为：
+
+- DeiT-S；
 - normalized-zero；
-- blur。
+- block 5。
 
-如果 blur 存在多个强度，应：
+该项的差值方向仍偏向 Taylor，但未通过 Holm 校正，不能称为等效。
 
-- 冻结一个主要 blur 强度进入主分析；
-- 其他 blur 强度放入敏感性分析；
-- 不根据最终效果选择最优强度。
+### 单 head 隔离替换
 
----
-
-## 3.5 空间预算
-
-建议至少使用以下预算：
-
-- 1 patch；
-- 5%；
-- 10%；
-- 25%。
-
-M2 已执行的主要几何为 14×14 个 16×16 patch，预算为 1、10、20、49 个 patch。原 E5 几何是 4×4 个 56×56 区域的网格，并非 4×4 像素区域；该几何以 1、2、4 个区域作为次要比较。
-
-可以比较：
-
-1. 单 patch；
-2. 2×2 patch square；
-3. 现有固定像素区域；
-4. 固定面积的 top-scoring region；
-5. 连通区域与非连通 top-\(K\) patch 集合。
+- Taylor 对 Endpoint 显著占优：12/12；
+- Endpoint 对 Taylor 显著占优：0/12。
 
 ---
 
-## 3.6 RQ4 方法比较
+## 4.4 M2 的机制解释
 
-对同一个内部成分，至少比较：
-
-1. Endpoint absolute mass；
-2. Endpoint signed score；
-3. regional Taylor；
-4. gradient-only；
-5. activation displacement；
-6. random region；
-7. center region；
-8. attention-weight region，仅用于 attention 对象。
-
-主要 outcome 为真实有限区域 replacement effect：
+Regional Taylor 使用：
 
 \[
-\Delta F(R)
+T_k^{\mathrm{ref}}
 =
-F(x)
--
-F\bigl(
-x;
-\text{region }R
-\leftarrow
-R^{\mathrm{ref}}
-\bigr).
+\left\langle
+\nabla_{z_k}F,
+z_k(x)-z_k^{\mathrm{ref}}
+\right\rangle,
 \]
 
-建议报告：
+它直接使用实际 reference replacement 所定义的 activation displacement。
 
-- 每个空间预算下的中位有限效应；
-- 相对随机区域的提升；
-- 相对候选集合中最优区域的 regret；
-- block/head 分层结果；
-- effect–budget curve；
-- effect–budget curve 的 AUC。
-
----
-
-## 3.7 RQ4 统计分析
-
-以图像为主要统计单位，同时保留 block/head 的层级结构。
-
-可以使用：
-
-- 图像级 bootstrap；
-- block-stratified bootstrap；
-- 配对符号检验；
-- Wilcoxon signed-rank test；
-- mixed-effects model 作为补充。
-
-例如，比较 Endpoint 与 regional Taylor：
+Endpoint 使用：
 
 \[
-d_i
+E_{k,i}
 =
-\Delta F_i(R_{\mathrm{Endpoint}})
--
-\Delta F_i(R_{\mathrm{Taylor}}).
+x_i
+\left\langle
+\nabla_{z_k}F,
+\frac{\partial z_k}{\partial x_i}
+\right\rangle,
 \]
 
-如果分析 absolute intervention effect，则必须在所有方法中统一使用绝对值。
+其方向来自 normalized-input 坐标缩放，不等于一般的 reference displacement。
 
----
-
-## 3.8 RQ4 结论边界
-
-如果扩展后 Endpoint 仍然不优于 regional Taylor，可以写：
-
-> Endpoint 的高分辨率输入图不会自动转化为更强的有限区域选择能力；与实际干预位移匹配的 activation-space Taylor 在 early、middle 和 late attention heads 上表现得更稳定。
-
-如果负结果只在 middle 或 late block 中成立，则必须收缩结论，不能推广到所有层。
-
----
-
-# 四、M3：冻结的分层 token-channel 神经元审计
-
-M3 用于回应两个核心问题：
-
-1. 当前 registry 是否真正覆盖 ViT 神经元？
-2. 该工作与原始 NNS 的“神经元扫描”有多强的联系？
-
----
-
-## 4.1 目标目录
-
-对两个模型的全部 12 个 blocks，每层选择：
-
-- 16 个 tokens；
-- 32 个 channels。
-
-每个模型、每张图像的目标总数为：
+通常：
 
 \[
-12\times16\times32=6,144.
+J_{z_k,x}x
+\neq
+z_k(x)-z_k(x^{\mathrm{ref}}).
 \]
 
-目标定义为：
+因此，M2 结果支持：
+
+> reference displacement matching 对有限替换预测非常重要。
+
+它不否定 Endpoint 的以下价值：
+
+- 统一内部目标输入表示；
+- reference-independent registry scan；
+- 局部 Jacobian 精确记账；
+- attention/residual 结构闭合；
+- 内部目标 atlas；
+- ViT 机制分析。
+
+---
+
+## 4.5 M2 正式结论
+
+M2 在论文中应写成：
+
+> Endpoint 的高分辨率输入表示不应被未经验证地解释为特定 reference 下的最优有限干预区域图。在本实验设置中，与实际 replacement displacement 匹配的 regional Taylor 更适合该任务。
+
+M2 不再扩展为更多 reference、更多区域形状或更多预算的胜负搜索。除非新的研究问题与 Endpoint 的核心定位直接相关，否则停止继续扩大 Endpoint–Taylor 排行榜。
+
+---
+
+# 五、M3：NNS 忠实性桥接与分层神经元审计
+
+M3 是后续最高优先级模块。
+
+它同时承担两项任务：
+
+1. 正式证明 Endpoint 忠实继承原始 NNS；
+2. 扩大真正 token-channel 神经元的扫描覆盖。
+
+---
+
+# 六、M3-A：原始 NNS 与 Endpoint 的理论及数值等价
+
+## 6.1 理论命题
+
+建议在正文或附录中加入：
+
+> **命题 1：原始 NNS learning image 与 Endpoint 的等价性。**  
+> 对由仿射层、卷积、当前状态下可微的逐点激活以及具有唯一 winner 的 MaxPool 组成的网络，若原始 NNS 以输入值进行对角初始化，并以当前前向状态的局部传播系数递归传播 learning image，则任意标量目标 \(s(x)\) 的最终 learning image 等于
+> \[
+> \mathcal L(s;x)
+> =
+> \nabla_xs(x)^\top\operatorname{diag}(x),
+> \]
+> 即向量形式下：
+> \[
+> E_s(x)=x\odot\nabla_xs(x).
+> \]
+
+统一定义：
 
 \[
-s_{b,t,c}(x)
+\mathcal L(u;x)
 =
-h_{b,t,c}(x).
+J_{u,x}(x)\operatorname{diag}(x).
 \]
 
-对应 Endpoint 为：
+若 \(v=f(u_1,\ldots,u_r)\)，则：
 
 \[
-E_{b,t,c}(x)
+\mathcal L(v;x)
 =
-x\odot\nabla_xh_{b,t,c}(x).
+\sum_{a=1}^{r}
+J_{f,u_a}(x)\mathcal L(u_a;x).
 \]
 
-这些目标是真正的 token-channel 标量单元，比现有 registry 中的模块聚合目标更接近传统意义上的神经元。
-
----
-
-## 4.2 Token 分层方式
-
-每层选择 16 个 tokens：
-
-- 1 个 CLS token；
-- 15 个 patch tokens。
-
-15 个 patch tokens 不应人工挑选，而应使用冻结的空间分层规则。
-
-推荐方法：
-
-1. 将 14×14 patch grid 划分为 15 个近似等面积空间 strata；
-2. 在每个 stratum 中选择一个固定 patch；
-3. 可以选择距离 stratum 中心最近的 patch；
-4. 所有图像使用相同 patch 位置；
-5. 规则必须在查看 Endpoint 结果前冻结。
-
-这样可以覆盖：
-
-- 中心与边缘；
-- 左侧与右侧；
-- 上部与下部；
-- 多种空间位置。
-
-如果不同模型使用不同输入分辨率，应根据归一化空间坐标匹配，而不是简单复制绝对 token index。
-
----
-
-## 4.3 Channel 抽样方式
-
-channel 没有自然空间顺序，因此建议：
-
-- 每层独立抽取 32 个 channels；
-- 使用固定随机种子或公开 hash；
-- 所有图像使用相同 channel 列表；
-- 两个模型分别生成冻结的 channel 列表；
-- 将列表和生成脚本一起发布。
-
-不得根据以下信息选择 channels：
-
-- activation 大小；
-- class selectivity；
-- Endpoint 图是否清晰；
-- 与 finite effect 的相关性；
-- 现有 RQ3 表现。
-
-否则会引入事后选择偏差。
-
----
-
-## 4.4 图像规模
-
-### 理想版本
-
-在共享的 400 张图像上运行全部 6,144 个目标。
-
-### 预算版本
-
-如果计算成本过高，可以在原 400 张图像中冻结抽取 100 张。
-
-建议使用 image ID hash，例如：
-
-1. 对 image ID 计算固定 hash；
-2. 按 hash 排序；
-3. 选择前 100 张；
-4. 在任何新增实验运行前冻结。
-
-选择过程必须与以下因素无关：
-
-- 模型是否预测正确；
-- 类别；
--置信度；
-- attribution 结果；
-- 干预效果。
-
-论文中可以称为：
-
-> a deterministic 100-image neuron-audit subset of the frozen 400-image corpus.
-
----
-
-## 4.5 计算与存储策略
-
-不建议为 6,144 个目标、所有图像保存全分辨率 Endpoint map。
-
-建议流式计算并保存以下汇总统计量：
-
-- signed sum；
-- absolute mass；
-- L1 norm；
-- L2 norm；
-- positive mass；
-- negative mass；
-- cancellation ratio；
-- spatial entropy；
-- patch-level downsample map；
-- 数值检查状态；
-- 少量预冻结案例的完整 map。
-
-Cancellation ratio 可定义为：
+由链式法则：
 
 \[
-C(E)
+\mathcal L(v;x)
 =
-1-
-\frac{
-\left|\sum_iE_i\right|
-}{
-\sum_i|E_i|
-}.
+J_{v,x}(x)\operatorname{diag}(x).
 \]
 
-其含义是：
-
-- 接近 0：正负贡献抵消较弱；
-- 接近 1：局部正负贡献抵消较强。
-
-空间熵可以在 patch-level absolute mass 上计算：
-
-\[
-p_j
-=
-\frac{
-\sum_{i\in\text{patch }j}|E_i|
-}{
-\sum_i|E_i|
-},
-\]
-
-\[
-H(E)
-=
--\sum_jp_j\log p_j.
-\]
-
-上述比例和熵在总 absolute mass 大于 0 时定义，采用 \(0\log0=0\)。总质量为零时记录 NA 并单独统计发生率；不通过给分母加 epsilon 将零图解释为低熵或低抵消图。RGB 通道保留至取绝对值之后，再汇总 patch mass。
+对标量目标 \(s\) 即得 Endpoint。
 
 ---
 
-## 4.6 M3 报告内容
+## 6.2 理论条件
 
-### A. Endpoint 生成成功率
+命题必须明确以下条件：
+
+1. 输入坐标是模型实际接收的 normalized input；
+2. 偏置不作为图像输入坐标；
+3. ReLU 在零点处采用框架定义的次梯度；
+4. MaxPool 不存在并列 winner，或使用框架实际 winner；
+5. 等价的是局部输入依赖图，不是函数值 completeness；
+6. CLS token、position embedding 和模型偏置不作为图像输入坐标归因；
+7. 对平滑 ViT 算子使用其当前点真实 Jacobian。
+
+---
+
+## 6.3 原始兼容网络数值复现
+
+实现两套彼此独立的计算：
+
+### 方法 A：原始 NNS 式逐层传播
+
+显式传播 learning image：
+
+- Linear；
+- ReLU；
+- Conv；
+- MaxPool；
+- residual add。
+
+### 方法 B：自动微分 Endpoint
+
+\[
+E_s(x)=x\odot\nabla_xs(x).
+\]
+
+测试网络至少包括：
+
+1. 小型 FCN；
+2. 小型 CNN；
+3. CNN + MaxPool；
+4. 小型 residual MLP；
+5. 小型 residual CNN。
+
+每个模型使用：
+
+- 至少 100 个随机输入；
+- 多个隐藏层标量目标；
+- 多个输出目标；
+- float64 主验证；
+- float32 框架一致性验证。
 
 报告：
 
-- 成功生成目标比例；
-- NaN 比例；
-- Inf 比例；
-- zero-gradient 比例；
-- 数值验证通过率；
-- 失败目标的层级和类型分布。
-
----
-
-### B. 分层分布
-
-分别报告：
-
-- CLS vs patch token；
-- early/middle/late；
-- ViT-B/16 vs DeiT-S；
-- 不同空间 strata；
-- 不同 channels；
-- 正确分类 vs 错误分类，可作为探索性分析。
-
-主要指标包括：
-
-- absolute mass；
-- signed sum；
-- cancellation ratio；
-- spatial entropy；
-- positive/negative balance；
-- map sparsity；
-- 层间尺度变化。
-
----
-
-### C. 数值验证子集
-
-不需要对全部 6,144 个目标执行昂贵的有限差分。
-
-建议每层冻结：
-
-- 2 个 tokens；
-- 4 个 channels。
-
-总计：
-
 \[
-12\times2\times4=96
+\epsilon_{\mathrm{rel}}
+=
+\frac{
+\|E_{\mathrm{NNS}}-E_{\mathrm{AD}}\|_2
+}{
+\|E_{\mathrm{AD}}\|_2+\epsilon
+},
 \]
 
-个目标/模型/图像。
+以及容差合同：
 
-对该子集执行：
+\[
+\max_i
+\frac{
+|E_{\mathrm{NNS},i}-E_{\mathrm{AD},i}|
+}{
+\mathrm{atol}+\mathrm{rtol}|E_{\mathrm{AD},i}|
+}.
+\]
 
-1. autodiff Endpoint；
-2. VJP/JVP 一致性；
-3. 中心有限差分方向检查；
-4. 多个 \(\epsilon\)；
-5. float64 小批量复核。
+该实验是“忠实推广 NNS”最直接的证据，优先级高于新增任何 attribution leaderboard。
 
-中心有限差分定义为：
+---
+
+## 6.4 ViT 算子级 Jacobian 测试
+
+分别为以下算子建立小型 float64 单元测试：
+
+- LayerNorm；
+- GELU；
+- softmax；
+- \(QK^\top/\sqrt{d_h}\)；
+- \(AV\)；
+- head concatenation；
+- output projection；
+- residual add；
+- MLP；
+- final LayerNorm；
+- classifier。
+
+每项至少比较：
+
+1. 显式或解析 Jacobian；
+2. autograd VJP/JVP；
+3. 中心有限差分。
+
+中心有限差分：
 
 \[
 D_\epsilon(v)
 =
 \frac{
-s(x+\epsilon v)-s(x-\epsilon v)
+f(x+\epsilon v)-f(x-\epsilon v)
 }{
 2\epsilon
 }.
@@ -881,152 +690,89 @@ s(x+\epsilon v)-s(x-\epsilon v)
 比较：
 
 \[
-D_\epsilon(v)
-\approx
-\nabla_xs(x)^\top v.
+D_\epsilon(v)\approx J_{f,x}v.
 \]
 
-建议使用多个随机方向 \(v\)，并报告误差随 \(\epsilon\) 的变化曲线。
+对多个 \(\epsilon\) 报告误差曲线，以避免只在单个步长上验证。
 
 ---
 
-### D. 可选的神经元有限干预子集
+# 七、M3-B：冻结的分层 token-channel 神经元审计
 
-如果资源允许，可以再冻结一个行为验证子集，每层选择：
+## 7.1 目标目录
 
-- 4 个 tokens；
-- 8 个 channels。
+对两个模型的全部 12 个 blocks，每层选择：
 
-总数为：
+- 16 个 tokens；
+- 32 个 channels。
+
+每个模型、每张图像共：
 
 \[
-12\times4\times8=384
+12\times16\times32=6,144
 \]
 
-个目标/模型/图像。
+个 token-channel 标量目标。
 
-对这些 token-channel 单元执行 activation replacement，检验：
-
-- neuron-level Endpoint mass；
-- activation norm；
-- gradient norm；
-- activation × gradient；
-- attribution patching；
-
-与实际有限效应之间的关系。
-
-如果资源不足，可以不执行这一部分，因为 M1 已承担主要行为验证。M3 的核心任务是建立：
-
-- 更广泛的神经元覆盖；
-- 原始 NNS 联系；
-- 数值稳定性；
-- 层级与空间分布。
-
----
-
-## 4.7 M3 允许支持的主张
-
-完成 M3 后，可以声称：
-
-> 我们在两个模型中对冻结的、层级与空间分层的 6,144 个 token-channel 单元进行了神经元级 Endpoint 审计。
-
-不能声称：
-
-> 我们扫描了全部 ViT 神经元。
-
-也不能声称：
-
-> 这些目标在统计上代表所有 ViT 内部单元。
-
-更准确的限定是：
-
-> 该审计扩展了 token-channel 神经元在层级、空间位置和 channel 维度上的覆盖，但不包括全部 MLP hidden units、全部 Q/K/V coordinates 或全部 token-channel 组合。
-
----
-
-## 4.8 Neuron-atlas 分布实验：输入依赖是否由局部变为全局
-
-这一实验直接使用 M3 的 6,144 个 token-channel 目标及同一次生产的统计量。默认采用原 400 图中按固定规则抽取的 100 图，两模型使用相同图像；若采用 400 图，应在运行前确定。样本规模不能根据初步结果调整。
-
-### 4.8.1 分布指标
-
-对每个目标 \(h_{b,t,c}\)，令 \(a_j=\sum_{i\in P_j}|E_{b,t,c,i}|\)、\(p_j=a_j/\sum_ja_j\)。主要记录 normalized spatial entropy 和 signed cancellation：
+目标为：
 
 \[
-H_{norm}(E)=-\frac{\sum_{j=1}^{196}p_j\log p_j}{\log196},
-\qquad
-C(E)=1-\frac{|\sum_iE_i|}{\sum_i|E_i|}.
+s_{b,t,c}(x)=h_{b,t,c}(x).
 \]
 
-同时保存 196 维 patch absolute mass 与 patch signed sum；两者分别用于空间分布和带符号图相似性，前者不能由后者取绝对值恢复。零质量和零梯度单列发生率。
-
-### 4.8.2 局部性与依赖距离
-
-熵升高只说明质量更分散。为了检验“局部到全局”，对 patch token \(t\) 增加相对其自身位置的局部质量和平均距离：
+Endpoint 为：
 
 \[
-L_t=\sum_{j:\|coord(j)-coord(t)\|_\infty\le1}p_j,
-\qquad
-D_t=\sum_jp_j\frac{\|coord(j)-coord(t)\|_2}{13\sqrt2}.
+E_{b,t,c}(x)
+=
+x\odot\nabla_xh_{b,t,c}(x).
 \]
 
-报告 \(L_t\)、\(D_t\) 及它们减去均匀 patch 分布对应值后的差异，校正边缘邻域较小、几何距离不同的影响。CLS 无自身 patch 位置，只报告熵、抵消和空间图，不计算 own-token locality。
+---
 
-### 4.8.3 分层比较与神经元相似性
+## 7.2 图像规模
 
-主要比较包括：
+默认使用：
 
-- early/middle/late 的 entropy、local mass、distance 和 cancellation；
-- CLS 与 patch neuron 的差异；
-- 中心 token 与边缘 token 的差异；
-- ViT-B/16 与 DeiT-S 在相同图像上的差异；
-- 同 token 不同 channel、不同 token 的 Endpoint 图相似性随深度的变化。
+> 原 400 张图像中按 deterministic hash 冻结抽取的 100 张图像。
 
-中心定义为行列都在 4–9 的 patch，边缘定义为距边界不超过 1 格的 patch，其余位置进入全部 patch 汇总。先在每图每层平均抽样 channels，再平均指定 token 集合，最后跨图像推断。不同模型的 channel ID 不作为同一神经元配对。
+两个模型使用相同图像列表。
 
-相似性使用 patch absolute distribution 的 cosine 和 patch signed vector 的 cosine，分别报告。每层从 same-token/different-channel 与 different-token 两组各固定抽取 256 个 unit pairs，规则与 seed 在计算前确定；聚类如需展示，仅作为描述性补充。
-
-entropy 上升、own-token local mass 下降及距离增加共同支持所抽样单元的依赖趋于分散；仅凭几张清晰的图不能确认该层级规律。保留 §4.6 的数值验证与覆盖率说明。
+如果资源允许扩大到 400 张，必须在第一次生产运行前决定，不能根据前 100 张结果调整样本规模。
 
 ---
 
-# 五、注册覆盖率表
+## 7.3 Token 选择
 
-建议在论文中增加两个独立表格。
+每层选择：
 
----
+- 1 个 CLS token；
+- 15 个 patch tokens。
 
-## 5.1 原始 registry 覆盖表
+15 个 patch tokens 使用固定空间分层：
 
-| 对象类型 | 全部候选对象定义 | 模型内候选总数 | 每图注册数 | 覆盖策略 | 是否单神经元 |
-|---|---|---:|---:|---|---|
-| post-block token-channel | \(B\times T\times D\) | 按模型计算 | 192 | 固定 token × channel 锚点 | 是 |
-| patch sum/energy | 按注册聚合定义 | 按模型计算 | 96 | 固定聚合目标 | 否 |
-| attention-head coordinate | 按 head 输出标量定义 | 按模型计算 | 144/72 | 固定 head 坐标 | 是或局部聚合 |
-| module patch aggregate | 按模块定义 | 按模型计算 | 18 | 固定模块聚合 | 否 |
-| patch embedding aggregate | 按注册定义 | 按模型计算 | 4 | 固定聚合 | 否 |
-| final CLS coordinate | \(D\) | 768/384 | 1 | 固定 channel | 是 |
-| ground-truth logit | 类别数 | 1,000 | 1 | 样本依赖 | 输出 |
-| clean-top1 logit | 类别数 | 1,000 | 1 | 样本依赖 | 输出 |
+1. 将 14×14 patch grid 划为 15 个近似等面积 strata；
+2. 每个 stratum 选择一个固定 patch；
+3. 使用距离 stratum 几何中心最近的 patch；
+4. 全部图像使用相同位置；
+5. 列表和生成脚本公开。
 
-需要在正文中明确：
-
-> “Complete scan”仅表示所有预注册 registry entries 均被执行且没有缺失，不表示所有 ViT 标量单元均被扫描。
-
-如果 ground-truth 与 clean-top1 在正确分类样本上相同，还应区分：
-
-- registry entry 数量；
-- unique scalar function 数量；
-- unique Endpoint map 数量。
+不得根据 Endpoint 图质量挑选 token。
 
 ---
 
-## 5.2 补充神经元审计覆盖表
+## 7.4 Channel 选择
 
-| 模型 | Blocks | 每层 token | 每层 channel | 每图目标数 | 图像数 | 覆盖类型 |
-|---|---:|---:|---:|---:|---:|---|
-| ViT-B/16 | 12 | 16 | 32 | 6,144 | 100 或 400 | 分层 token-channel |
-| DeiT-S | 12 | 16 | 32 | 6,144 | 100 或 400 | 分层 token-channel |
+每层独立选择 32 个 channels：
+
+- 固定公开 seed 或 hash；
+- 所有图像使用相同列表；
+- 两模型分别生成；
+- 不根据 activation、class selectivity、M1/M2 或图像质量挑选。
+
+---
+
+## 7.5 覆盖率
 
 ViT-B/16 的全部 post-block token-channel 数量为：
 
@@ -1036,14 +782,14 @@ ViT-B/16 的全部 post-block token-channel 数量为：
 1,815,552.
 \]
 
-补充审计覆盖比例为：
+抽样覆盖比例：
 
 \[
 \frac{6,144}{1,815,552}
 \approx0.338\%.
 \]
 
-如果 DeiT-S 使用 197 tokens 和 384 hidden dimensions，则全部 post-block token-channel 数量为：
+DeiT-S 的全部 post-block token-channel 数量为：
 
 \[
 12\times197\times384
@@ -1051,148 +797,285 @@ ViT-B/16 的全部 post-block token-channel 数量为：
 907,776.
 \]
 
-覆盖比例为：
+抽样覆盖比例：
 
 \[
 \frac{6,144}{907,776}
 \approx0.677\%.
 \]
 
-这些比例应直接报告，以避免给读者造成“覆盖了全部神经元”的印象。
+因此只能声称：
+
+> 对冻结的、层级与空间分层的 6,144 个 token-channel 单元进行了神经元级 Endpoint 审计。
+
+不能声称扫描了全部 ViT 神经元。
 
 ---
 
-# 六、M4：与 Transformer 解释方法比较
+## 7.6 流式保存内容
 
-不同解释方法回答的问题不同，不建议将所有方法强行放入同一个排行榜。
+不保存全部 full-resolution maps。对每个目标流式保存：
 
-应根据任务类型分组比较。
+- signed sum；
+- absolute mass；
+- L2 norm；
+- positive mass；
+- negative mass；
+- zero-gradient 状态；
+- cancellation ratio；
+- normalized spatial entropy；
+- 196 维 patch absolute mass；
+- 196 维 patch signed sum；
+- 数值验证状态。
 
----
+对少量预冻结目标保存完整图。
 
-## 6.1 成分级有限效应排序
-
-适合比较：
-
-- Endpoint mass；
-- activation norm；
-- gradient norm；
-- activation × gradient；
-- reference displacement norm；
-- attribution patching / Taylor；
-- random。
-
-评价问题是：
-
-> 哪个 head、routing/value 或 residual component 的有限 replacement effect 更大？
-
-这部分由 M1 完成。
-
----
-
-## 6.2 输出级空间解释
-
-对 ground-truth logit 或 clean-top1 logit，可以比较：
-
-- Endpoint logit map；
-- Input × Gradient；
-- Integrated Gradients；
-- attention rollout；
-- Transformer Grad-CAM；
-- Chefer relevance；
-- AttnLRP。
-
-评价方式可以包括：
-
-- pixel/patch deletion；
-- reference replacement；
-- insertion/deletion curve；
-- top-region effect；
-- pointing game；
-- object localization，如果数据具有标注。
-
-必须明确：
+若：
 
 \[
-\text{Endpoint logit map}
+\sum_i|E_i|=0,
+\]
+
+则以下指标记录为 NA：
+
+- cancellation；
+- entropy；
+- locality；
+- distance。
+
+不得通过加入 \(\epsilon\) 将零图解释为低熵或低抵消图。
+
+---
+
+## 7.7 数值验证子集
+
+每层冻结：
+
+- 2 个 tokens；
+- 4 个 channels。
+
+共：
+
+\[
+12\times2\times4=96
+\]
+
+个目标/模型/图像。
+
+验证：
+
+- Endpoint 与 autograd；
+- JVP/VJP；
+- 中心有限差分；
+- 多个随机方向；
+- 多个 \(\epsilon\)；
+- float64 小批量复核。
+
+M3 的目标是神经元覆盖和机制分析，不再默认执行额外的大规模 neuron replacement。若未来需要，只能作为独立研究问题另行冻结。
+
+---
+
+# 八、M3-C：Neuron atlas 的层级与空间规律
+
+该部分是 Endpoint 用于分析 ViT 内部机制的第一条主线。
+
+## 8.1 空间分布
+
+对 patch-level absolute mass：
+
+\[
+a_j
 =
-x\odot\nabla_xF
-\]
-
-在基础公式上就是 normalized-input 坐标中的 Input × Gradient。
-
-因此 Endpoint 与 Input × Gradient 不能被写成两个完全独立的方法。可以比较的是不同坐标原点：
-
-### Normalized-coordinate Endpoint
-
-\[
-x\odot\nabla_xF.
-\]
-
-### Raw-RGB Input × Gradient
-
-\[
-r\odot\nabla_rF.
-\]
-
-### Mean-centered raw-RGB 形式
-
-\[
-(r-\mu)\odot\nabla_rF.
-\]
-
-其中：
-
-\[
-x_i\frac{\partial F}{\partial x_i}
+\sum_{i\in P_j}|E_i|,
+\qquad
+p_j
 =
-(r_i-\mu_i)\frac{\partial F}{\partial r_i}.
+\frac{a_j}{\sum_ja_j}.
 \]
 
----
+Normalized entropy：
 
-## 6.3 内部成分空间解释
+\[
+H_{\mathrm{norm}}(E)
+=
+-\frac{
+\sum_{j=1}^{196}p_j\log p_j
+}{
+\log196
+}.
+\]
 
-对特定 head、routing/value 或 residual branch，可以比较：
+其含义为：
 
-- Endpoint component map；
-- regional Taylor；
-- gradient-only map；
-- attention weights；
-- internal-target IG，如果实现可用。
-
-Attention rollout、Chefer 等输出级方法不一定能够自然对应某个内部成分的有限 replacement，因此不应强行放入成分级比较。
-
----
-
-## 6.4 方法适用性矩阵
-
-建议增加：
-
-| 方法 | 输出空间图 | 内部标量目标 | 成分排序 | Reference-matched | Completeness |
-|---|---:|---:|---:|---:|---:|
-| Endpoint | 是 | 是 | 是 | 否 | 一般否 |
-| Integrated Gradients | 是 | 是 | 可扩展 | 是 | baseline difference |
-| Attribution patching | 否或间接 | 是 | 是 | 是 | 局部一阶 |
-| Attention rollout | 是 | 否 | 否 | 否 | 否 |
-| Chefer/AttnLRP | 是 | 部分 | 部分 | 否 | 依实现而定 |
-| Grad-CAM | 是 | 部分 | 否 | 否 | 否 |
-
-该表可以帮助读者理解：
-
-> 不同方法并非都在回答同一个解释问题。
+- 接近 0：输入依赖集中；
+- 接近 1：输入依赖分散。
 
 ---
 
-# 七、M5：Reference 复用、成分筛选与结构诊断
+## 8.2 Own-token locality
 
-M5 包括两条共享数据的分析线：§7.1–7.4 使用 attention/residual 分解研究结构，§7.5–7.6 共用“成分 × reference”有限效应表研究复用与筛选。结果可以呈现性能—成本权衡，也可以表明某项增量未获支持。
+对 patch token \(t\)：
+
+\[
+L_t
+=
+\sum_{j:
+\|\operatorname{coord}(j)-\operatorname{coord}(t)\|_\infty\le1
+}
+p_j.
+\]
+
+同时报告相对于均匀分布基线的差值，以修正边缘 token 邻域较小的问题。
+
+CLS token 没有自身 patch 位置，不计算 own-token locality。
 
 ---
 
-## 7.1 True softmax Jacobian vs frozen attention
+## 8.3 输入依赖距离
 
-完整 attention differential 为：
+对 patch token \(t\)：
+
+\[
+D_t
+=
+\sum_j
+p_j
+\frac{
+\|\operatorname{coord}(j)-\operatorname{coord}(t)\|_2
+}{
+13\sqrt2
+}.
+\]
+
+距离越大，说明输入依赖质量平均分布得越远。
+
+---
+
+## 8.4 Signed cancellation
+
+\[
+C(E)
+=
+1-
+\frac{
+|\sum_iE_i|
+}{
+\sum_i|E_i|
+}.
+\]
+
+该指标衡量同一 Endpoint map 内正负项抵消，不等同于 residual 路径之间的抵消。
+
+---
+
+## 8.5 主要比较
+
+### 层深趋势
+
+比较：
+
+- early：blocks 0–3；
+- middle：blocks 4–7；
+- late：blocks 8–11。
+
+主要指标：
+
+- entropy；
+- own-token locality；
+- distance；
+- signed cancellation。
+
+只有当以下方向共同出现时，才支持“由局部趋向全局”：
+
+- entropy 上升；
+- own-token locality 下降；
+- distance 上升。
+
+仅凭 entropy 上升不能单独确认全局化。
+
+### Token 类型
+
+比较：
+
+- CLS neuron；
+- patch neuron。
+
+### 空间位置
+
+比较：
+
+- 中心 patch；
+- 边缘 patch；
+- 全部 patch。
+
+### 模型
+
+分别报告：
+
+- ViT-B/16；
+- DeiT-S。
+
+不同模型的 channel ID 不视为对应神经元。
+
+---
+
+## 8.6 神经元图相似性
+
+分别使用：
+
+1. patch absolute distribution cosine；
+2. patch signed vector cosine。
+
+比较：
+
+- same token / different channel；
+- different token；
+- early / middle / late。
+
+每层每组冻结抽取 256 对 unit pairs。
+
+聚类和二维嵌入仅作为描述性可视化，不作为主要统计证据。
+
+---
+
+## 8.7 允许支持的机制结论
+
+如果结果支持，可以写：
+
+> 在抽样 token-channel 单元中，输入依赖随层深变得更分散，并且 patch neuron 对自身邻域的局部依赖减弱。
+
+必须包含限定：
+
+- 抽样单元；
+- 所测试模型；
+- 所用 Endpoint 定义；
+- 局部一阶输入依赖。
+
+不能写成：
+
+> ViT 神经元普遍从局部特征学习到全局语义。
+
+---
+
+# 九、M4：Attention 与 residual 结构机制分析
+
+M4 是后续第二优先级模块，也是论文最可能形成新机制发现的部分。
+
+---
+
+# 十、M4-A：Attention routing/value 与 frozen-attention 诊断
+
+## 10.1 完整 differential
+
+单 head attention：
+
+\[
+O=AV,
+\qquad
+A=\operatorname{softmax}(QK^\top/\sqrt{d_h}).
+\]
+
+局部微分：
 
 \[
 \mathrm dO
@@ -1202,120 +1085,238 @@ M5 包括两条共享数据的分析线：§7.1–7.4 使用 attention/residual 
 A(\mathrm dV).
 \]
 
-Frozen-attention approximation 为：
+进一步分解为：
 
 \[
 \mathrm dO
-\approx
-A(\mathrm dV).
+=
+\underbrace{
+\frac{\partial A}{\partial Q}\mathrm dQ\,V
+}_{Q}
++
+\underbrace{
+\frac{\partial A}{\partial K}\mathrm dK\,V
+}_{K}
++
+\underbrace{
+A\,\mathrm dV
+}_{V}.
 \]
 
-对应的 Jacobian 作用为：
-
-\[
-J_{O,x}v=(J_{A,x}v)V+A(J_{V,x}v),
-\qquad
-J_{O,x}^{FA}v=A(J_{V,x}v).
-\]
-
-每次只在被测 block/head 将 clean attention 概率固定，保留相同前向数值，并切断该位置对 Q/K 的反向传播；其余层、heads 和 residual 正常计算。固定完整模型的 clean cotangent \(g_h=\nabla_{O_h}F\)，得到：
-
-\[
-E_h^{full}=E_h^{routing}+E_h^{value},
-\qquad E_h^{FA}=E_h^{value}.
-\]
-
-这衡量一个位置的 frozen-attention 近似，不与全网络同时冻结 attention 混为一项。覆盖两模型、400 图、全部 12 层与全部 heads。
-
-主要报告各 head 的 omitted routing mass、绝对误差、相对误差及完整分解闭合残差：
-
-\[
-R_h^{routing}=
-\frac{\|E_h^{routing}\|_1}
-{\|E_h^{routing}\|_1+\|E_h^{value}\|_1},
-\qquad
-\eta_h^E=\frac{\|E_h^{full}-E_h^{FA}\|_2}{\|E_h^{full}\|_2}.
-\]
-
-分支份额 \(R_h^{routing}\) 在 [0,1]；routing 与 value 抵消时，相对误差可超过 1。分母为零时记录 NA 并报告绝对误差。同时计算未乘输入 \(x\) 的 contracted-gradient 误差，避免小输入坐标掩盖导数差异。
-
-用 native autodiff、显式 Q/K/V 分解和 attention detach 实现交叉检查，验证 forward parity、完整闭合以及 \(E^{full}-E^{FA}=E^{routing}\)。完整 Jacobian 的作用另用每图固定 8 个单位范数 Rademacher 方向做 JVP 检查：
-
-\[
-\eta_h^{JVP}=
-\sqrt{\frac{\sum_v\|(J_{O_h,x}-J_{O_h,x}^{FA})v\|_2^2}
-{\sum_v\|J_{O_h,x}v\|_2^2}}.
-\]
-
-该值是抽样方向上的误差，Endpoint map 则是特定 cotangent 下的输入坐标表示。报告逐层、逐 head 和 early/middle/late 差异；按跨图中位误差列出最不适合 frozen attention 的 heads，附 bootstrap 排名频率。
-
-完整分解的闭合残差用于检查实现，省略 routing 后的残差用于测量近似误差。经验发现应回答遗漏在哪些层和 heads 更大，而不把代数等式本身写成机制发现。
-
----
-
-## 7.2 Routing vs value
-
-完整分解为：
+因此：
 
 \[
 E^{\mathrm{attn}}
 =
 E^Q+E^K+E^V
 =
-E^{\mathrm{routing}}
-+
-E^{\mathrm{value}},
+E^{\mathrm{routing}}+E^{\mathrm{value}},
 \]
 
 其中：
 
 \[
-E^{\mathrm{routing}}
-=
-E^Q+E^K.
+E^{\mathrm{routing}}=E^Q+E^K.
 \]
-
-沿用 §7.1 的分解，报告 routing/value mass、Q/K cancellation、early/middle/late 变化及两模型差异。E3 已有整体 routing/value 汇总可复用；逐 head 结果必须使用该 head 的 cotangent，不能将整体比例平均分配给 heads。
-
-Attention saturation 定义为平均 query-row normalized entropy 的补数：
-
-\[
-s_h=1-\frac1{197}\sum_q
-\frac{-\sum_{j=1}^{197}A_{h,qj}\log A_{h,qj}}{\log197},
-\qquad 0\log0=0.
-\]
-
-同时保存 CLS query 的 saturation。每图每层在 heads 内比较 \(s_h\) 与 routing share、\(\eta_h^E\) 的关系，再按图像汇总，避免将共同的层深趋势当作 head 内关系。
-
-Saturation 与误差关系采用双向检验。尖锐的 softmax 可缩小 routing Jacobian，其实际误差还受 Q/K/V 和 downstream cotangent 影响，方向由结果确定。若某些 heads 的 routing mass 和独立 JVP 误差持续较大，可报告 frozen attention 在这些位置遗漏较多局部输入依赖；有限替换效用仍使用对应干预结果评价。
 
 ---
 
-## 7.3 Residual identity
+## 10.2 Frozen-attention approximation
 
-对于：
+Frozen-attention approximation 为：
+
+\[
+\mathrm dO\approx A\,\mathrm dV.
+\]
+
+在 Endpoint 记账中：
+
+\[
+E_h^{\mathrm{FA}}=E_h^{\mathrm{value}},
+\]
+
+\[
+E_h^{\mathrm{full}}-E_h^{\mathrm{FA}}
+=
+E_h^{\mathrm{routing}}.
+\]
+
+该代数等式用于实现验证，不作为经验发现。
+
+经验问题是：
+
+> routing 项在不同层和不同 head 中实际有多大？
+
+---
+
+## 10.3 执行范围
+
+覆盖：
+
+- 两模型；
+- 共享 400 图；
+- 12 层；
+- 全部 heads；
+- frozen ground-truth logit。
+
+已有 E3/M1 记录可以复用；缺失逐 head 数据时只补算必要内容。
+
+---
+
+## 10.4 主要指标
+
+Routing share：
+
+\[
+R_h^{\mathrm{routing}}
+=
+\frac{
+\|E_h^{\mathrm{routing}}\|_1
+}{
+\|E_h^{\mathrm{routing}}\|_1+
+\|E_h^{\mathrm{value}}\|_1
+}.
+\]
+
+Frozen-attention Endpoint error：
+
+\[
+\eta_h^E
+=
+\frac{
+\|E_h^{\mathrm{full}}-E_h^{\mathrm{FA}}\|_2
+}{
+\|E_h^{\mathrm{full}}\|_2
+}.
+\]
+
+若分母为 0，记录 NA 并单独报告 absolute error。
+
+同时计算未乘输入 \(x\) 的 contracted-gradient error，防止小输入坐标掩盖导数差异。
+
+---
+
+## 10.5 独立验证
+
+使用：
+
+- native autodiff；
+- 显式 Q/K/V 分解；
+- attention detach；
+- forward parity；
+- Endpoint closure；
+- 随机方向 JVP。
+
+JVP 抽样误差：
+
+\[
+\eta_h^{\mathrm{JVP}}
+=
+\sqrt{
+\frac{
+\sum_v
+\|
+(J_{O_h,x}-J_{O_h,x}^{\mathrm{FA}})v
+\|_2^2
+}{
+\sum_v
+\|
+J_{O_h,x}v
+\|_2^2
+}
+}.
+\]
+
+每图固定 8 个单位范数 Rademacher 方向。
+
+---
+
+## 10.6 Attention saturation
+
+定义平均 query-row normalized entropy 的补数：
+
+\[
+s_h
+=
+1-
+\frac1{197}
+\sum_q
+\frac{
+-\sum_jA_{h,qj}\log A_{h,qj}
+}{
+\log197
+}.
+\]
+
+同时报告 CLS query saturation。
+
+在每图每层 heads 内计算：
+
+- \(s_h\) 与 routing share 的相关；
+- \(s_h\) 与 frozen-attention error 的相关。
+
+先做层内比较，再跨图像汇总，避免把共同层深趋势误认为 head 内关系。
+
+不预设相关方向。Softmax 更尖锐并不必然意味着 routing error 更大。
+
+---
+
+## 10.7 允许支持的结论
+
+可以写：
+
+> 某些层或 heads 的局部输入依赖中，routing 项占比较高，因此只保留 value path 的 frozen-attention approximation 会遗漏较多局部输入依赖。
+
+不能写：
+
+> routing share 较高的 head 在因果上更重要。
+
+除非有独立干预证据支持。
+
+---
+
+# 十一、M4-B：Residual identity/branch 记账
+
+## 11.1 数学分解
+
+对：
 
 \[
 y=u+f(u),
 \]
 
-局部 Jacobian 为：
+有：
 
 \[
-J_{y,u}
+J_{y,u}=I+J_{f,u}.
+\]
+
+固定 residual 输出的 clean cotangent：
+
+\[
+g_y=\nabla_yF.
+\]
+
+Identity Endpoint：
+
+\[
+E^{\mathrm{identity}}
 =
-I+J_{f,u}.
+x\odot
+J_{u,x}^{\mathsf T}g_y.
 \]
 
-对模型输入 \(x\)，固定 residual 输出的 clean cotangent \(g_y=\nabla_yF\)，两条路径为：
+Branch Endpoint：
 
 \[
-E^{identity}=x\odot J_{u,x}^{\mathsf T}g_y,
-\qquad
-E^{branch}=x\odot J_{u,x}^{\mathsf T}J_{f,u}^{\mathsf T}g_y.
+E^{\mathrm{branch}}
+=
+x\odot
+J_{u,x}^{\mathsf T}
+J_{f,u}^{\mathsf T}g_y.
 \]
 
-Identity 使用 \(g_y\)，不能使用已经包含 branch 的 \(\nabla_uF\)。对应 Endpoint 闭合为：
+闭合：
 
 \[
 E^{\mathrm{output}}
@@ -1325,43 +1326,117 @@ E^{\mathrm{identity}}
 E^{\mathrm{branch}}.
 \]
 
-分别对 attention residual 的 identity/attention 和 MLP residual 的 carry/MLP 进行分析。模型函数保持原样，检查完整闭合，并以省略非零 identity 的记账结果作为负向控制。
-
-定义 identity/branch 的 absolute mass 份额与跨路径抵消：
-
-\[
-R^{identity}=
-\frac{\|E^{identity}\|_1}{\|E^{identity}\|_1+\|E^{branch}\|_1},
-\qquad R^{branch}=1-R^{identity},
-\]
-
-\[
-C^{path}=1-
-\frac{\|E^{identity}+E^{branch}\|_1}
-{\|E^{identity}\|_1+\|E^{branch}\|_1}.
-\]
-
-报告每层质量份额、signed sum、正负质量和 cancellation，比较 early/middle/late、两模型以及 attention/MLP residual。用 identity 与 branch 的 cosine 检查方向关系，用 output 与 identity 的 patch absolute distribution 差异检查空间依赖是否改变。
-
-由此检验：深层局部输入依赖是否更多经 carry 传播；branch 质量大时是否被 identity 抵消；哪些层主要放大既有依赖，哪些层改变其空间分布。各层 cut 都在分解同一个目标的输入依赖，不能将不同层 branch mass 相加视为总贡献，也不能把局部质量份额解释为删层后的性能保持率。
+Identity 必须使用 \(g_y\)，不能错误使用已经包含 branch 作用的 \(\nabla_uF\)。
 
 ---
 
-## 7.4 Signed vs absolute mass
+## 11.2 分析对象
+
+分别分析：
+
+1. attention residual：
+   - identity；
+   - attention branch。
+
+2. MLP residual：
+   - carry；
+   - MLP branch。
+
+覆盖：
+
+- 两模型；
+- 400 图；
+- 全部 12 层。
+
+---
+
+## 11.3 主要指标
+
+Identity share：
+
+\[
+R^{\mathrm{identity}}
+=
+\frac{
+\|E^{\mathrm{identity}}\|_1
+}{
+\|E^{\mathrm{identity}}\|_1+
+\|E^{\mathrm{branch}}\|_1
+}.
+\]
+
+Branch share：
+
+\[
+R^{\mathrm{branch}}
+=
+1-R^{\mathrm{identity}}.
+\]
+
+跨路径抵消：
+
+\[
+C^{\mathrm{path}}
+=
+1-
+\frac{
+\|E^{\mathrm{identity}}+E^{\mathrm{branch}}\|_1
+}{
+\|E^{\mathrm{identity}}\|_1+
+\|E^{\mathrm{branch}}\|_1
+}.
+\]
+
+方向关系：
+
+\[
+\cos
+\left(
+E^{\mathrm{identity}},
+E^{\mathrm{branch}}
+\right).
+\]
+
+空间改变可使用 output 与 identity 的 patch absolute distribution distance。
+
+---
+
+## 11.4 主要问题
+
+M4-B 检验：
+
+1. 深层 Endpoint 是否更多经 identity carry 传播；
+2. attention 和 MLP residual 是否具有不同的 identity/branch 比例；
+3. branch mass 较大时是否被 identity 抵消；
+4. 哪些层主要保留已有空间依赖；
+5. 哪些层显著改变 Endpoint 的空间分布；
+6. ViT-B/16 与 DeiT-S 是否表现出不同模式。
+
+---
+
+## 11.5 负向控制
+
+故意省略非零 identity 项，确认闭合明显失败。
+
+负向控制用于证明：
+
+> residual identity 不是可忽略的实现细节。
+
+不能把省略 identity 的错误分解作为替代模型的性能实验。
+
+---
+
+# 十二、M4-C：Signed、absolute 与 cancellation
 
 比较：
-
-### Signed aggregate
 
 \[
 m_k^{\mathrm{signed}}
 =
 \left|
 \sum_iE_{k,i}
-\right|.
+\right|,
 \]
-
-### Absolute mass
 
 \[
 m_k^{\mathrm{absolute}}
@@ -1369,7 +1444,7 @@ m_k^{\mathrm{absolute}}
 \sum_i|E_{k,i}|.
 \]
 
-同时报告 cancellation ratio：
+单图内部 signed cancellation：
 
 \[
 C_k
@@ -1382,573 +1457,686 @@ C_k
 }.
 \]
 
-总质量为零时记 NA。这里的 signed cancellation 衡量单张 map 内的正负抵消，§7.3 的 path cancellation 衡量同一输入坐标上的跨路径抵消，两者分别报告。
+必须区分：
 
-检验以下问题：
+- **map cancellation**：同一图内部正负项抵消；
+- **path cancellation**：identity 与 branch 或 routing 与 value 在相同输入坐标上的抵消。
 
-- cancellation 高时 absolute mass 是否高估有限效应；
-- 未取绝对值的 signed sum 是否更适合预测效应方向；\(|\sum_iE_i|\) 本身不包含方向信息；
-- absolute mass 是否更适合预测效应大小；
-- routing 和 value 是否具有不同的 cancellation 模式。
+分析：
 
----
+- routing 与 value 的 cancellation 差异；
+- identity 与 branch 的 cancellation；
+- cancellation 随层深的变化；
+- absolute mass 较大但 signed aggregate 较小的情况。
 
-## 7.5 Reference 稳定性与复用实验
-
-### 7.5.1 问题与共同设置
-
-问题是：在 reference 未指定或需要多次更换时，一个固定排名能提供怎样的效用与成本？Endpoint 的排名不随干预 reference 变化是定义属性，实验需要测量这种复用的实际效果。
-
-主分析沿用共享 400 图、两模型、ground-truth logit，比较全部 12 层内的全部 heads；不将跨层尺度差异混入层内排名。Clean-top1 logit 可另作次要 target 分析。对 head \(k\)，使用同一 projection 输入 slice 的激活 \(z_k\) 和 clean 梯度 \(g_k=\nabla_{z_k}F\)。
-
-Reference-free 指生成排名不需要指定干预 reference。Endpoint 仍依赖坐标原点：若 \(x=(r-\mu)/\sigma\)，则 \(x\odot\nabla_xF=(r-\mu)\odot\nabla_rF\)。这不表示它对预处理变化保持不变。
-
-### 7.5.2 六类 reference
-
-| Reference | 定义 | 需要记录的参数 |
-|---|---|---|
-| normalized-zero | 归一化输入为 0，原始 RGB 等于预处理均值 \(\mu\) | 模型预处理均值与标准差 |
-| blur | 原始 RGB Gaussian blur 后归一化 | 沿用 M2：kernel 31、sigma 10 及同一边界处理 |
-| dataset mean | 独立 calibration 图像集的经验 RGB 三通道均值，广播至全图 | 数据来源、图像列表、变换与实际均值 |
-| black | 原始 RGB 为 0，归一化后为 \(-\mu/\sigma\) | 与 normalized-zero 分开 |
-| noise | 原始 RGB 为 \(\operatorname{clip}(0.5+0.2\epsilon,0,1)\)，\(\epsilon\sim N(0,1)\) | 每图固定 3 次采样，记录 seed 与生成器 |
-| another image | 独立 donor 图像经相同评估变换后归一化 | 每图固定 3 个不同 donor，记录配对 |
-
-Calibration 与 donor 共用一个独立的 1,000 图集合，优先从 ImageNet training split 按固定随机种子抽取，排除评估图像；不用类别、预测或效应挑 donor。实际可用来源须在计算前确定。Dataset mean 是该集合经过固定评估变换后的经验均值，不用常见预处理常量代填。若其最终参考张量与 normalized-zero 相同，则作为同一 reference 的别名，在平均中只计一次。
-
-六类 reference 等权；noise 与 donor 的重复先在类内平均。最低表现指这组预定 reference 中的最低表现，不代表对任意 reference 的保证。
-
-### 7.5.3 效应表与比较方法
-
-对 reference \(r\) 的实例 \(j\)，计算同成分替换效应：
-
-\[
-e_{k,r,j}=F(x)-F(x;z_k\leftarrow z_k(x_{r,j}^{ref})),
-\qquad
-y_{k,r}=\frac1{J_r}\sum_j|e_{k,r,j}|.
-\]
-
-其余 heads 与 residual bypass 保持 clean。先对每实例取绝对值，再平均，保留 signed effect 供分析。
-
-| 方法 | 分数/策略 | 所需 reference 信息 |
-|---|---|---|
-| Endpoint | \(\lVert x\odot J_{z_k,x}^{\mathsf T}g_k\rVert_1\) | 无 |
-| Activation norm | \(\lVert z_k\rVert_2\) | 无 |
-| Gradient norm | \(\lVert g_k\rVert_2\) | 无 |
-| Activation × gradient | \(\lvert g_k^{\mathsf T}z_k\rvert\) | 无外部输入 reference |
-| Attention weight | \(\sum_{t=1}^{196}A_{k,CLS,t}=1-A_{k,CLS,CLS}\) | 无，限 head 集合 |
-| Random | 固定 1,000 个随机排列，逐次评价后平均 | 无，排列跨 reference 复用 |
-| Reference-specific Taylor | \(t_{k,r}=J_r^{-1}\sum_j\lvert g_k^{\mathsf T}(z_k-z_k^{ref_{r,j}})\rvert\) | 当前 reference |
-| Anchor Taylor | 用 normalized-zero 生成排名，在所有 reference 上复用 | 一个固定 reference |
-| Multi-reference Taylor | 每类 Taylor 分数先转 percentile rank，再跨类平均 | 全部 reference |
-| Leave-one-reference-out Taylor | 平均其余类的 Taylor percentile rank，在留出类评价，轮换全部类 | 除测试类以外的 reference |
-
-Attention 所有 query 行的总和恒定，不能直接用作 head 分数；上述 CLS-to-patch mass 另报离散度与 ties。所有方法使用同一候选集合，top-K 同分按 component ID，Spearman 使用 average ranks。Taylor 的 percentile rank 定义为 \((rank_{ascending}-1)/(H-1)\)，\(H\) 为该层 head 数，ties 使用 average ranks。
-
-### 7.5.4 性能与排名稳定性
-
-主预算 \(K=3\)，\(K=1\) 为补充。每图每层每 reference 计算 §2.4 的 Capture@K、Spearman 和 Regret@1，设 \(U_{b,r,m}=\operatorname{Capture@3}(m;y_r)\)。主要报告：
-
-\[
-U^{ref}_{r,m}=\frac1{12}\sum_bU_{b,r,m},\quad
-U^{avg}_m=\frac1{12}\sum_b\frac1R\sum_rU_{b,r,m},\quad
-U^{worst}_m=\frac1{12}\sum_b\min_rU_{b,r,m}.
-\]
-
-归一化 capture 为主，原始 logit 效应同时报告，避免高效应尺度的 reference 单独主导平均。列出最差 reference 的发生频次。
-
-跨 reference 排名稳定性为：
-
-\[
-S_m=\frac{2}{R(R-1)}\sum_{r<s}
-\operatorname{Spearman}(m_{\cdot,r},m_{\cdot,s}).
-\]
-
-另报 Top-3 overlap \(|\operatorname{Top3}(m_r)\cap\operatorname{Top3}(m_s)|/3\)。Endpoint 与其他固定排名的 overlap 为 1，非恒定分数的 Spearman 为 1；这验证复用一致性，不等于筛选有效。Constant ranks 的 Spearman 记 NA。
-
-增加 Taylor 迁移矩阵：在 reference \(r\) 上生成排名，在 \(s\) 上计算 capture；对角线是 reference-specific 性能。实际有限效应排名 \(y_r,y_s\) 的稳定性也要报告，以区分“方法排名变化”和“任务的重要成分本身变化”。
-
-### 7.5.5 每增加一个 reference 的成本
-
-分别记录第一次生成排名的成本和复用时的增量：
-
-\[
-C_m(R)=C_m^{initial}+\sum_{r=1}^R\Delta C_{m,r}.
-\]
-
-Endpoint 首次获取各 head VJP 的时间、显存和缓存全部计入。Taylor 复用 clean 激活与梯度，新增 reference 通常只需 reference forward、位移及点积，不能按每次重做 clean backward 计费。固定 reference 的跨图缓存和批处理同样计入。
-
-报告独立运行总成本与共享 clean cache 后的边际成本，包括 forward/VJP 次数、同步计时、GPU-hours、峰值显存及缓存大小。有限效应评价作为所有方法共享的评估成本单列。固定排名的 reference 增量重算次数为 0，读取缓存仍计实际成本。成本曲线实际出现交叉时才报告交叉点。
-
-### 7.5.6 与 M2 对齐的空间复用补充
-
-空间复用沿用 blocks 2/5/10、全部 heads、1/10/20/49 patch 预算及 M2 方法定义，扩展到上述 reference。完整输入效应和单 head 隔离效应分别报告 reference-specific、平均和最差 AUC，附各类原始效应尺度。
-
-区域 Taylor 仍使用区域替换后指定 head 的有限激活位移。在 reference \(r\) 生成的选区迁移至 \(s\) 时，应实际计算该选区在 \(s\) 上的效应。此项为固定设置下的描述性复用分析，不追加区域形状或 blur 强度搜索。
-
-## 7.6 Reference-free 成分筛选
-
-### 7.6.1 两阶段使用场景
-
-第一阶段只使用 clean 输入、模型、目标和候选集合，保存 Endpoint、activation norm、gradient norm、activation×gradient、attention weight、random 的分数与 Top-1/Top-3 列表。第二阶段指定 §7.5 的 reference，使用同一张效应表评价，候选列表不再调整。
-
-Taylor 参加第二阶段比较，并按 reference-specific、anchor、multi-reference、leave-one-reference-out 标注信息条件。第一阶段的筛选代码不读取 reference 激活和有限效应；研究者已经看到 M1/M2 的结果，这属于明确披露的补充实验，不重新声称原研究盲法。
-
-### 7.6.2 跨 reference 效应与覆盖率
-
-定义平均跨 reference 重要性与 reference-robust 重要性：
-
-\[
-\bar y_k=\frac1R\sum_ry_{k,r},
-\qquad
-y_k^{robust}=\min_ry_{k,r}.
-\]
-
-这里 robust 表示每类 reference 下都有较大的绝对效应。\(\max_ry_{k,r}\) 则表示至少在一类下效应大，是另一种问题。
-
-主要指标为：
-
-\[
-\operatorname{MeanCapture@3}=\operatorname{Capture@3}(m;\bar y),
-\qquad
-\operatorname{RobustCapture@3}=\operatorname{Capture@3}(m;y^{robust}),
-\]
-
-\[
-\operatorname{MultiRefCoverage@3}=
-\frac1R\sum_r\frac{|\operatorname{Top3}(m)\cap\operatorname{Top3}(y_r)|}{3}.
-\]
-
-先在每图每层计算，再平均 12 层。MeanCapture 是“平均效应上的 capture”，不同于 §7.5 的“各 reference capture 的平均”；RobustCapture 是“逐成分最小效应上的 capture”，不同于固定集合的最差表现。
-
-用 \(q_{k,r}=y_{k,r}/\sum_ky_{k,r}\) 替换原始效应再计算平均/最小值，作为效应尺度敏感性分析。所有零分母返回 NA 并报告发生率。
-
-Endpoint 的筛选增量由它相对五种 clean-only 基线的配对差值判断。Taylor 在已知 reference 时更准、固定表示便于统一复用，是可检验的权衡；Endpoint 是否比其他固定表示更有用，必须由这些比较回答。
-
-## 7.7 新增实验的统计与报告
-
-图像是统计单位，不能把同图的 heads、references、tokens 或 channels 当成独立样本。重复实例、heads/层或 token/channel 按各节规则先在图像内聚合，两模型差异按相同 image ID 配对。
-
-使用中位数、10,000 次图像 bootstrap、95% CI；主要配对差值用双侧精确符号检验和 Holm 校正，零差值单列，不计入正负样本数。Reference 平均/最差指标须保留该图全部规定 reference；缺少某类时不能用剩余类替代。
-
-主检验按以下模块分别构成 Holm family，并报告完整比较数；模型分别检验，不另合并一个 omnibus：
-
-| 分析 | 主要比较 | 其余报告 |
-|---|---|---|
-| Reference 复用 | Endpoint−reference-specific Taylor：各 reference、平均、最差 Capture@3 | Anchor/多 reference/留一法、稳定性、成本、空间 AUC |
-| 成分筛选 | Endpoint−五种 clean-only 基线：MeanCapture、RobustCapture、MultiRefCoverage | K=1、尺度敏感性、Taylor 信息条件对照 |
-| Routing 诊断 | routing share 的 late−early；head 内 saturation/error 相关系数相对 0 | 逐层/head、JVP 误差与排序频率 |
-| Residual 诊断 | 两 residual 类型的 identity share、path cancellation 的 late−early | 模型间差异、cosine 与空间分布 |
-| Neuron atlas | patch entropy/local mass/distance/cancellation 的 late−early；CLS−patch entropy | 中心/边缘、模型差异、相似性/聚类 |
-
-六类 reference 均不同的情况下，上述五个 family 分别包含 16、30、4、8、10 项双侧检验，均包含两个模型。若 reference 去重，第一组按 \(2(R+2)\) 重新确定；实际列表在新增结果计算前固定。未执行或无定义的项不从校正范围删除，使用 p=1 占位并保留对应状态。
-
-Routing share 每层先平均 heads，再分别平均 early/late 的四层；saturation/error 的 head 内相关系数先算每图每层，再平均层。Residual 的两类 cut 分开计算；neuron 指标按 §4.8 的 channel/token 权重聚合，CLS−patch entropy 在全部层平均后比较。
-
-有效成对图像少于原 cohort 的 90% 时该比较记为指标不足；缺失任务或数值错误须与合法的零质量分开记录。图像内聚合也要求至少 90% 的规定单元指标有效，并报告分母；reference 平均/最差仍要求全部规定 reference 有定义。未通过校正检验表示对应增量未获支持，不表示等效。CI 是逐比较区间。
-
-复用已见结果的分析标为 post-hoc reanalysis，新增数据的分析规则在计算前确定。原 C4a/C4b 仍为 NOT_SUPPORTED。结构分解的闭合和排名不变属于方法性质，层/head/神经元分布才是经验发现；标准 autodiff 同样可实现这些诊断，论文贡献聚焦统一表示、诊断流程和实际观测。
+行为相关性可以复用 M1，不再建立新一轮大规模 predictor 竞赛。
 
 ---
 
-# 八、M6：失败案例与机制可视化
+# 十三、M5：方法语义、reference 属性与最小比较
 
-失败案例不能由研究者人工挑选，应使用预先冻结的自动规则。
-
----
-
-## 8.1 案例类别
-
-建议至少展示以下类型：
-
-1. Endpoint 和 Taylor 都成功；
-2. Endpoint 成功、Taylor 失败；
-3. Endpoint 失败、Taylor 成功；
-4. Endpoint 和 Taylor 都失败；
-5. attention saturation 较高；
-6. Q/K routing 与 V 强抵消；
-7. signed cancellation 高但 absolute mass 大；
-8. M2 中 Endpoint 选择错误区域；
-9. early 与 late block 对比；
-10. CLS neuron 与 patch neuron 对比。
+M5 不再执行此前规划的六类 reference、大规模迁移矩阵和扩展空间排行榜，除非 M3/M4 完成后出现一个明确、不可由现有数据回答的新研究问题。
 
 ---
 
-## 8.2 冻结选择规则
+## 13.1 M5 的主要任务
+
+M5 主要完成三件事：
+
+1. 明确 Endpoint 与其他方法回答的问题不同；
+2. 使用已有 normalized-zero 和 blur 结果说明 reference-specific 行为；
+3. 记录成本和信息条件，但不以此预设 Endpoint 的优势。
+
+---
+
+## 13.2 Reference-free 的准确表述
+
+Endpoint 在给定：
+
+- 输入坐标；
+- 模型；
+- 目标；
+- 预处理；
+
+后唯一确定，不需要额外干预 reference。
+
+但 Endpoint 不是绝对“无基线”的。若：
+
+\[
+x=\frac{r-\mu}{\sigma},
+\]
+
+则：
+
+\[
+x_i\frac{\partial F}{\partial x_i}
+=
+(r_i-\mu_i)\frac{\partial F}{\partial r_i}.
+\]
+
+因此 Endpoint 的坐标原点对应 \(r=\mu\)。
+
+推荐表述：
+
+> Endpoint is independent of an externally chosen intervention reference, while remaining tied to the model’s input coordinate system and its normalization origin.
+
+不要写：
+
+> Endpoint 完全无 baseline 或对预处理不变。
+
+---
+
+## 13.3 已有两种 reference 的最小分析
+
+使用 M1 和 M2 已有的：
+
+- normalized-zero；
+- blur-rgb。
+
+报告：
+
+1. Endpoint 分数在两个 reference 下不变，这是定义属性；
+2. Taylor 分数随 reference 改变；
+3. 两种 reference 下实际有限效应排名是否改变；
+4. Endpoint 在两种 reference 下的平均行为关联；
+5. Taylor 的 reference-specific 优势；
+6. 计算和缓存成本。
+
+该分析用于说明信息条件，不用于证明 Endpoint 优越。
+
+---
+
+## 13.4 方法适用性矩阵
+
+| 方法 | 内部标量目标 | 输入空间图 | 需要干预 reference | 局部 Jacobian 结构闭合 | 具体 finite replacement 预测 |
+|---|---:|---:|---:|---:|---:|
+| Endpoint | 是 | 是 | 否 | 是 | 有限、需实证 |
+| Activation-space Taylor | 是 | 可构造区域分数 | 是 | 非主要目标 | 强匹配 |
+| Integrated Gradients | 是 | 是 | 是 | 可扩展 | baseline-difference |
+| Attention rollout | 通常否 | 是 | 否 | 否 | 非主要目标 |
+| Grad-CAM | 部分 | 是 | 否 | 否 | 非主要目标 |
+| Chefer/AttnLRP | 部分 | 是 | 通常否 | 依实现 | 非统一 |
+| Attention weights | attention 对象 | patch/token | 否 | 否 | 不能单独视为效应 |
+
+---
+
+## 13.5 输出级方法比较的边界
+
+Endpoint logit map：
+
+\[
+x\odot\nabla_xF
+\]
+
+就是 normalized-input 坐标中的 Input × Gradient。
+
+因此不能把 Endpoint logit 和 Input × Gradient 当作两种独立算法比较。
+
+可以讨论：
+
+\[
+x\odot\nabla_xF,
+\]
+
+\[
+r\odot\nabla_rF,
+\]
+
+\[
+(r-\mu)\odot\nabla_rF
+\]
+
+的坐标原点差异。
+
+Attention rollout、Grad-CAM、Chefer 和 AttnLRP 主要用于功能与语义比较。除非论文声称 Endpoint 在输出定位任务中更优，否则不需要建立大规模统一排行榜。
+
+---
+
+## 13.6 Path IG
+
+Path IG 若未通过预注册校准门，则：
+
+- 不进入确认性跨模型比较；
+- 报告 completeness residual；
+- 报告积分点数量曲线；
+- 报告数值失败原因；
+- 放入附录。
+
+不再投入大量资源调整积分方法，除非 IG 是审稿所必需的基线。
+
+---
+
+# 十四、M6：机制案例与可视化 atlas
+
+M6 的目标是将 M3 和 M4 的统计规律可视化，而不是围绕 Endpoint–Taylor 胜负挑选案例。
+
+---
+
+## 14.1 主要案例类别
+
+优先展示：
+
+1. early patch neuron 的局部 Endpoint；
+2. late patch neuron 的分散 Endpoint；
+3. CLS neuron 与 patch neuron 对比；
+4. routing-dominant attention head；
+5. value-dominant attention head；
+6. frozen-attention error 较高的 head；
+7. identity-dominant residual layer；
+8. branch-dominant residual layer；
+9. identity/branch 强抵消案例；
+10. signed cancellation 较高的 neuron；
+11. ViT-B/16 与 DeiT-S 的代表性层级差异；
+12. M2 中 Endpoint 与 Taylor 语义不同的一个边界案例。
+
+M2 案例只占可视化的一部分，不再主导整套图。
+
+---
+
+## 14.2 自动选择规则
+
+案例必须按照预先冻结的指标选择。
 
 例如：
 
-### Endpoint 成功案例
+- routing-dominant：跨图 routing share 位于最高 5%；
+- value-dominant：routing share 位于最低 5%；
+- high frozen-attention error：\(\eta_h^E\) 位于最高 5%；
+- identity-dominant：identity share 位于最高 5%；
+- strong path cancellation：\(C^{\mathrm{path}}\) 位于最高 5%；
+- local neuron：own-token locality 位于最高 5%；
+- dispersed neuron：normalized entropy 位于最高 5%。
 
-Endpoint Spearman 位于全部图像的最高 5%。
-
-### Endpoint 失败案例
-
-Endpoint Spearman 位于最低 5%。
-
-### Taylor 明显反超案例
-
-\[
-\rho_{\mathrm{Taylor}}
--
-\rho_{\mathrm{Endpoint}}
-\]
-
-位于最高 5%。
-
-### 高抵消案例
-
-Cancellation ratio 位于最高 5%。
-
-在满足条件的候选集合中，可以使用：
+在候选集合中使用：
 
 - 最小 image ID；
-- 最小 hash；
-- 固定随机种子抽取。
+- 最小 component ID；
+- 或固定 hash。
 
-不能根据图片视觉效果再手工选择。
+不得根据图是否“好看”再次人工筛选。
 
 ---
 
-## 8.3 每个案例展示内容
+## 14.3 可视化内容
 
-建议包括：
+### Neuron atlas 案例
 
-- 原始图像；
-- Endpoint signed map；
-- Endpoint absolute map；
-- regional Taylor map；
+- 原图；
+- signed Endpoint；
+- absolute Endpoint；
+- patch mass；
+- entropy；
+- locality；
+- distance；
+- cancellation；
+- block/token/channel。
+
+### Attention 案例
+
+- full Endpoint；
+- routing Endpoint；
+- value Endpoint；
+- Q/K/V；
 - attention map；
-- predictor 选中的区域；
-- 实际最优区域；
-- 实际有限效应；
-- predictor ranking；
-- block/head/target/reference；
-- cancellation ratio；
-- attention entropy 或 saturation；
-- Endpoint 与 Taylor 的排序指标。
+- routing share；
+- frozen-attention error；
+- saturation。
+
+### Residual 案例
+
+- output Endpoint；
+- identity Endpoint；
+- branch Endpoint；
+- identity/branch share；
+- path cancellation；
+- output–identity spatial change。
+
+所有图注必须使用“local input dependence”或“Endpoint dependence”，避免直接称为“神经元学到的概念”或“因果证据”。
 
 ---
 
-# 九、原始 RQ3 统计结论必须重写
+# 十五、统计分析原则
 
-无论新增实验结果如何，原始确认性分析的结论都必须保持：
+## 15.1 统计单位
 
-> 严格的预注册 all-family omnibus 标准未得到支持，因为 12 个 family 中有 1 个未达到预注册的 0.10 点估计门槛。其余 11 个 family 满足全部 family-level 条件，未通过的 family 仍表现出显著正相关。因此，结果支持广泛但非普遍的成分级关联，而不支持无例外的全 family 结论。
+图像是主要统计单位。
 
-摘要中不建议再写：
+不得将同一图像中的：
 
-> RQ3 整体支持。
+- heads；
+- tokens；
+- channels；
+- layers；
+- references；
+- budgets
 
-建议写：
+直接视为独立样本。
 
-> RQ3 在 family level 上表现出广泛但非普遍的支持，而预注册的 all-family omnibus 标准未得到支持。
-
-英文可以写成：
-
-> RQ3 showed broad but non-universal support at the family level, while the preregistered all-family omnibus criterion was not supported.
-
-对于点估计 0.099565 与阈值 0.10 的关系，不要过度强调“只差 0.000435”。应写：
-
-> 该点估计接近预注册门槛，但其置信区间同时覆盖门槛上下，因此不能确认该 family 达到预设的实际效应水平。
+先按照各模块规定在图像内聚合，再进行跨图像推断。
 
 ---
 
-# 十、根据新增实验结果调整结论
+## 15.2 报告内容
 
-## 10.1 如果 Endpoint 优于简单基线，但不如 Taylor
+主要报告：
 
-可以写：
+- 中位数；
+- image-level 10,000 次 bootstrap 95% CI；
+- 图像级配对差值；
+- 双侧符号检验；
+- Holm 校正；
+- 有效图像数；
+- NA 和 zero-gradient 数量。
 
-> Endpoint mass 在部分 component families 中优于 activation norm、gradient norm 和 displacement-only baselines，表明其包含超出单纯尺度信息的成分级排序信号。然而，reference-matched attribution patching 通常更准确地预测具体有限替换效应。
+机制分析应优先报告：
 
----
+- 效应大小；
+- 分布；
+- 置信区间；
+- 跨层趋势。
 
-## 10.2 如果 Endpoint 与简单基线相当
-
-可以写：
-
-> Endpoint 的主要价值不在于成为最优的有限效应 predictor，而在于为不同 ViT 内部目标提供统一、输入坐标化且可进行结构闭合审计的表示。
-
----
-
-## 10.3 如果 Endpoint 明显优于 Taylor
-
-即使出现这种结果，也要进一步检查：
-
-- reference 是否实现正确；
-- Taylor 梯度点是否一致；
-- replacement 位移是否定义正确；
-- component tensor 是否匹配；
-- 是否存在 layer normalization 或 downstream nonlinearities 导致高阶效应；
-- comparison set 是否受跨层尺度驱动。
-
-不能仅凭结果反常就直接宣称 Endpoint 更适合有限 replacement。
+不能只报告 \(p\) 值。
 
 ---
 
-## 10.4 M2 完成后的结论
+## 15.3 Holm families
 
-M2 已观察到 Taylor 的优势，具体计数与范围见本文开头及 M2 结果报告。高分辨率 Endpoint 图并未自动转化为更优的有限区域选择。后续研究按 §7.5–7.6 检验统一复用与候选筛选，按 §7.1–7.4 和 §4.8 研究结构与 neuron 分布。
+建议将主要检验划分为独立 family。
+
+### M3 atlas family
+
+每个模型分别检验：
+
+- late−early entropy；
+- late−early locality；
+- late−early distance；
+- late−early cancellation；
+- CLS−patch entropy。
+
+### M4 attention family
+
+每个模型分别检验：
+
+- late−early routing share；
+- late−early frozen-attention error；
+- saturation–routing relation；
+- saturation–error relation。
+
+### M4 residual family
+
+每个模型和 residual 类型分别检验：
+
+- late−early identity share；
+- late−early path cancellation。
+
+未定义项不得从校正 family 中事后删除。按照冻结规则，可使用 \(p=1\) 占位并保留状态。
 
 ---
 
-# 十一、推荐的论文实验章节结构
+## 15.4 方向性措辞
 
-## 5.1 Experimental protocol and frozen registry
+如果未通过显著性检验：
 
-包括：
+- 写“未获支持”；
+- 不写“没有差异”；
+- 不写“等效”。
 
-- 模型；
-- 数据；
-- 原始目标目录；
-- 原确认性协议；
-- 补充冻结协议；
-- confirmatory 与 exploratory 的边界。
+若需要声称等效，必须预先定义等效界值并执行等效性检验。
 
 ---
 
-## 5.2 Registry execution and numerical correctness
+# 十六、注册覆盖率与术语
 
-包括：
+## 16.1 原始 registry
 
-- 扫描完成率；
-- Endpoint identity；
-- attention/residual 闭合；
-- JVP/VJP；
-- 中心有限差分；
-- 负向控制；
-- 数值容差合同。
+原 registry 包含：
+
+- token-channel；
+- patch sum/energy；
+- attention-head coordinates；
+- module patch aggregates；
+- patch embedding aggregates；
+- final CLS coordinate；
+- ground-truth logit；
+- clean-top1 logit。
+
+论文必须区分：
+
+- registry entries；
+- unique scalar functions；
+- unique Endpoint maps。
+
+当预测正确时，ground-truth logit 和 clean-top1 logit 可能是同一标量函数。
 
 ---
 
-## 5.3 Actual registry coverage
+## 16.2 “Complete scan”的定义
 
-包括：
+只允许写：
 
-- 原始 registry 覆盖表；
-- 每类目标的候选总体；
-- 每图注册数量；
+> registry-complete scan
+
+其含义是：
+
+> 所有冻结 registry entries 均成功执行，没有目录项缺失。
+
+不能写：
+
+> complete ViT neuron scan
+
+因为当前实验不是对全部 ViT 神经元的穷举扫描。
+
+---
+
+## 16.3 “Neuron”的使用
+
+仅以下对象可以较自然地称为单元或 neuron：
+
+- token-channel scalar；
+- final CLS coordinate；
+- 明确定义的 attention head output coordinate。
+
+以下对象应称为聚合目标：
+
+- patch sum；
+- energy；
+- module aggregate；
+- logit；
+- 多坐标组合。
+
+论文主称呼建议使用：
+
+> registered scalar endpoint
+
+而不是统一称为 neuron。
+
+---
+
+# 十七、论文实验章节重构
+
+## 5.1 From original NNS to ViT Endpoint
+
+内容包括：
+
+- 原始 NNS propagation；
+- Jacobian 形式化；
+- 等价性命题；
+- ReLU/MaxPool 条件；
+- normalized-input 坐标；
+- bias、CLS 和 position embedding 的非归因范围。
+
+---
+
+## 5.2 Unified registry and scan protocol
+
+内容包括：
+
+- 异构内部目标；
+- registry 计数；
+- unique target 说明；
+- registry-complete 定义；
 - 覆盖率；
-- registry-complete 的定义；
-- 与全部 ViT 神经元的区别。
+- confirmatory 与 supplementary 边界。
 
 ---
 
-## 5.4 RQ3: Component-level finite-effect prediction
+## 5.3 Numerical and structural correctness
 
-包括：
+内容包括：
 
-- 原始 family 结果；
-- omnibus `NOT_SUPPORTED`；
-- M1 强基线；
-- block 内 ranking；
-- 跨 block ranking；
-- early/middle/late；
-- 模型差异；
-- top-\(K\) 指标；
-- calibration 和 regret。
-
----
-
-## 5.5 RQ4: Spatial finite-intervention selection
-
-包括：
-
-- blocks 2/5/10；
-- 全部 heads；
-- 多空间预算；
-- 两种 references；
-- Endpoint；
-- regional Taylor；
-- random；
-- gradient；
-- effect–budget curve。
+- 原始 NNS 数值等价；
+- ViT 算子单元测试；
+- attention Q/K/V 闭合；
+- routing/value 闭合；
+- residual identity/branch 闭合；
+- JVP/VJP；
+- 有限差分；
+- 负向控制。
 
 ---
 
-## 5.6 Stratified token-channel neuron audit
+## 5.4 Stratified token-channel Endpoint atlas
 
-包括：
+内容包括：
 
 - M3 的 6,144 个目标；
-- token 选择规则；
-- channel 选择规则；
-- 图像子集规则；
-- 数值验证；
-- 层级和空间分布；
-- entropy、own-token locality、依赖距离与 cancellation 的深度变化；
-- CLS/patch、中心/边缘、两模型及 neuron 相似性；
-- 可选神经元 replacement。
+- token/channel 抽样；
+- 成功率；
+- entropy；
+- locality；
+- distance；
+- cancellation；
+- CLS/patch；
+- early/middle/late；
+- 模型差异；
+- neuron map similarity。
 
 ---
 
-## 5.7 Comparison with Transformer explanation methods
+## 5.5 Attention mechanism through Endpoint decomposition
 
-包括：
+内容包括：
+
+- Q/K/V；
+- routing/value；
+- routing share；
+- frozen-attention omission；
+- JVP error；
+- saturation relation；
+- 代表性 heads。
+
+---
+
+## 5.6 Residual preservation and rewriting of input dependence
+
+内容包括：
+
+- attention residual；
+- MLP residual；
+- identity/branch；
+- mass share；
+- path cancellation；
+- spatial distribution change；
+- early/middle/late。
+
+---
+
+## 5.7 Behavioral calibration and interpretation boundary
+
+内容包括：
+
+- M1；
+- 11/12 family；
+- omnibus `NOT_SUPPORTED`；
+- 强基线；
+- Taylor 优势；
+- residual identity 例外；
+- M2；
+- 11/12 和 12/12；
+- Endpoint 图不等于 reference-specific intervention map。
+
+M1/M2 放在结构机制结果之后，而不是作为整篇论文的主要胜负实验。
+
+---
+
+## 5.8 Relation to existing explanation methods
+
+内容包括：
 
 - 方法适用性矩阵；
-- 成分级比较；
-- 输出级空间比较；
-- 内部对象空间比较；
-- Path IG 或 IG 校准情况。
+- Endpoint 与 Input × Gradient 的数学身份；
+- Taylor 的 reference matching；
+- IG；
+- attention rollout；
+- Grad-CAM；
+- Chefer/AttnLRP；
+- 方法回答问题的差异。
 
 ---
 
-## 5.8 Ablations and failure analysis
+## 5.9 Limitations
 
-包括：
+明确包括：
 
-- frozen attention；
-- routing/value；
-- residual identity；
-- signed/absolute；
-- target/reference；
-- 多 reference 的平均/最差效用、排名稳定性与实际复用成本；
-- reference 未指定时的成分筛选和高效应成分覆盖率；
-- 自动冻结的失败案例。
-
----
-
-# 十二、Path IG 的补充处理
-
-如果 ViT-B/16 在最多 512 个积分点下仍未通过 Path IG 校准门，应补充报告：
-
-1. completeness residual 随积分点数量的曲线；
-2. midpoint 与 trapezoid；
-3. Gauss–Legendre；
-4. float32 与 float64；
-5. adaptive quadrature；
-6. 不同 baseline；
-7. 失败图像数量；
-8. 最大和中位 residual；
-9. DeiT-S 是否通过；
-10. 哪些模型阶段导致数值变化较大。
-
-如果仍然失败，应明确：
-
-> Path IG 未进入确认性跨模型比较，因为它未满足预注册数值校准标准。
-
-但可以将其作为探索性结果报告，不能完全省略失败细节。
+- 基础公式是 Gradient × Input；
+- 只归因图像输入坐标；
+- 不包含 bias、CLS、position embedding 的独立贡献；
+- 不具备一般函数值 completeness；
+- 当前 neuron atlas 是分层抽样；
+- 结构分解是局部 differential decomposition；
+- finite intervention 结果依赖 reference；
+- 只测试两个 ImageNet ViT；
+- 机制规律不能直接推广到所有 Transformer。
 
 ---
 
-# 十三、补充实验的最低可行版本
+# 十八、论文贡献重写
 
-M1、M2 已完成，保留其结果。后续优先完成 M3、M5 新增实验及对应报告；以下列表用于核对覆盖范围。
+建议将贡献写为以下四点。
 
-## 必做 1：M1 强基线
+## 贡献一：原始 NNS 的 Jacobian 形式化与 ViT 推广
 
-加入：
-
-- activation norm；
-- gradient norm；
-- activation × gradient；
-- displacement norm；
-- attribution patching；
-- random。
+> 我们将原始 NNS 的输入值初始化和当前状态传播形式化为局部 Jacobian learning-image propagation，并证明其对标量目标等于 normalized-input 坐标中的 Gradient × Input。该形式进一步推广到 LayerNorm、GELU、softmax attention 和 residual connection。
 
 ---
 
-## 必做 2：M1 分层分析
+## 贡献二：统一的异构内部目标扫描
 
-至少报告：
-
-- block 内 head ranking；
-- early/middle/late；
-- 两个模型分开；
-- Spearman；
-- Capture@K；
-- Regret@1。
+> 我们构建统一的 ViT registered scalar endpoint 接口，覆盖 token-channel、attention head、Q/K/V、routing/value、residual branch、模块聚合目标和类别输出，并通过分层 token-channel 审计扩大与原始 NNS 神经元扫描范式的联系。
 
 ---
 
-## 必做 3：M2 跨层扩展
+## 贡献三：可验证的结构化 Jacobian 记账
 
-至少执行：
-
-- blocks 2、5、10；
-- 每层全部 heads；
-- normalized-zero 和 blur；
-- Endpoint vs regional Taylor vs random。
+> 我们提出 attention 和 residual 的 differential cuts，并通过正向闭合、负向控制、JVP/VJP、有限差分和原始 NNS 数值等价实验验证实现正确性。
 
 ---
 
-## 必做 4：M3 神经元审计
+## 贡献四：ViT 机制观察与行为边界
 
-资源充足时：
-
-- 400 张图；
-- 每图 6,144 个目标。
-
-资源有限时：
-
-- 冻结 100 张图；
-- 每图 6,144 个目标；
-- 流式保存汇总统计量；
-- 对嵌套的 96 个目标执行独立数值验证。
+> 我们利用 Endpoint atlas 分析 token-channel 输入依赖的层级和空间规律、attention routing/value 的分布以及 residual identity/branch 的保留和重写作用。有限替换实验进一步表明，Endpoint statistics 包含广泛但非普遍的行为信息，同时不能被直接等同为 reference-specific finite-intervention estimator。
 
 ---
 
-## 必做 5：报告和定位修正
+# 十九、摘要建议稿
 
-必须完成：
+> 本文将神经网络扫描器（NNS）的输入坐标 learning-image 思想推广到视觉 Transformer。我们首先将原始 NNS 形式化为输入值初始化的局部 Jacobian 传播；对任意注册标量目标，所得 Endpoint 等于 normalized-input 坐标中的 Gradient × Input。本文的主要方法贡献不在该基础归因公式本身，而在于异构 ViT 内部目标的统一注册、attention 的 Q/K/V 与 routing/value 分解、residual identity/branch 记账，以及可独立审计的数值验证协议。  
+>   
+> 在 ViT-B/16 和 DeiT-S 上，我们执行 registry-complete 内部目标扫描，并通过结构闭合、负向控制、JVP/VJP、中心有限差分和原始 NNS 等价复现验证局部 Jacobian 实现。进一步的分层 token-channel Endpoint atlas 用于分析输入依赖随层深、token 类型和空间位置的变化；attention 和 residual 分解用于研究 routing/value 以及 carry/branch 对输入依赖的相对作用。  
+>   
+> 行为标定实验显示，Endpoint mass 与有限成分替换效应之间存在广泛但非普遍的正相关；严格的预注册 all-family omnibus 标准未得到支持。在 reference-based 区域干预中，与实际 replacement displacement 匹配的 regional Taylor 表现更强，说明 Endpoint 的高分辨率输入表示不能直接解释为特定 reference 下的最优干预图。  
+>   
+> 这些结果将 NNS-ViT 定位为一种面向异构 ViT 内部标量目标的统一、输入坐标化且可结构审计的局部表示框架，并明确区分局部输入依赖、有限成分效应和空间干预选择三种不同能力。
 
-- omnibus 保持 `NOT_SUPPORTED`；
-- 明确 11/12 family 满足 family-level 条件；
-- 使用“广泛但非普遍”；
-- 增加 coverage table；
-- “complete”仅指 registry-complete；
-- 不再声称扫描了全部 ViT 神经元；
-- 明确 Endpoint 是 normalized-input Gradient × Input；
-- 明确结构分解是局部 Jacobian 分解，而不是函数值因果分解。
-
-## 新增重点：M5 复用、筛选与结构诊断
-
-- Reference-specific、across-reference average、worst-reference performance；
-- 固定排名与 Taylor 的迁移稳定性、额外计算成本；
-- 平均重要性、reference-robust importance、multi-reference top-coverage；
-- Frozen-attention 遗漏的 routing、闭合残差与 saturation 关系；
-- Attention/MLP residual 的 identity/branch 份额和 signed/path cancellation。
+其中关于 atlas 和机制发现的句子应在 M3/M4 完成后按实际结果替换，不能提前写入方向性结论。
 
 ---
 
-# 十四、后续执行顺序与必要记录
+# 二十、推荐标题
 
-本文件是阶段 M 的统一方案入口。实验参数与实际结果在对应章节更新；实现需要的配置复用已有结构，避免为同一事项重复建立协议、附录和审计文件。历史实验保留原配置与结果，复现时使用对应 Git 提交中的当时版本。
+首选：
 
-| 顺序 | 工作 | 数据复用与交付 |
-|---|---|---|
-| 1 | 汇总 E3/M1 已有结构数据，开展 M5 routing/residual 分析 | 复用可重算的记录；缺少逐 head 分解或图形统计时补算所需内容，交付层/head 诊断表 |
-| 2 | 按 M3 生成分层 neuron atlas，并完成 §4.8 分布分析 | 同一次生产保存数值验证、patch 图与汇总，不为分布分析重跑 atlas |
-| 3 | 确定 reference 来源及参数，先保存 clean-only 筛选结果，再计算新增 reference 效应 | M5 §7.5–7.6 共用效应表，继承 M1 中定义一致的 normalized-zero/blur 数据 |
-| 4 | 完成 reference 复用、筛选比较与成本测量 | 输出各 reference/平均/最差效用、三种筛选指标、迁移矩阵和成本曲线 |
-| 5 | 按 §7.5.6 完成空间复用补充，再整合 M6 图示与论文解释 | 复用 M2 可用记录，补足新 reference/迁移选区；保留完整输入与隔离效应的区别 |
+> **NNS-ViT Endpoint Scanner：视觉 Transformer 内部目标的统一输入坐标表示、结构分解与机制分析**
 
-这是一份后续执行计划，本次文档更新不表示这些实验已经运行。每次实际执行按指定模块推进。
+备选：
 
-运行前记录影响科学解释的设置即可：
+> **从 NNS 到视觉 Transformer：内部标量目标的 Endpoint 图谱与可审计 Jacobian 分解**
 
-- 图像、token/channel 与 donor 的实际列表，模型、目标与层/head 范围；
-- reference 的坐标、数据来源、变换、噪声参数及 seed；
-- 方法、预算、指标、聚合顺序、NA 规则、统计比较与数值容差；
-- 已有结果的复用范围，以及实际计算的新增部分。
+英文可考虑：
 
-运行后记录每项完成数、异常/NA 数、实际计算成本和主要结果，并保留能重算图表的逐图数据。可视化保存 PNG/PDF，配简短编号说明：reference 迁移与成本、成分覆盖率、routing 误差、residual 记账、neuron 层级分布。来源身份、模型权重和必要数据校验沿用现有机制，不为每条叙述重复生成哈希或单独收据。
+> **NNS-ViT: Auditable Endpoint Maps and Structured Jacobian Decomposition for Internal Targets in Vision Transformers**
 
 ---
 
-# 十五、论文结论的组织方式
+# 二十一、后续执行顺序
 
-目前已获得的行为证据是：Endpoint 对有限成分效应具有广泛但非普遍的排序关联；在 M2 的空间区域替换比较中，reference-matched Taylor 表现更好。原 C4a/C4b 的 NOT_SUPPORTED 结论保持。
+| 顺序 | 工作 | 目的 | 必要交付 |
+|---|---|---|---|
+| 1 | M3-A 原始 NNS 等价证明和数值复现 | 建立“忠实推广”的直接证据 | 命题、证明、FCN/CNN/ResNet 数值表 |
+| 2 | ViT 算子级 Jacobian 单元测试 | 提高独立数值可信度 | LayerNorm/GELU/softmax/attention 测试 |
+| 3 | M3-B 生成 6,144-unit neuron atlas | 扩大真实神经元覆盖 | 冻结 token/channel 列表、逐目标统计 |
+| 4 | M3-C atlas 分布分析 | 形成第一组 ViT 机制结果 | 深度、token、位置、模型比较 |
+| 5 | M4-A routing/value 与 frozen-attention | 形成 attention 机制结果 | 层/head 表、误差和 saturation 图 |
+| 6 | M4-B residual identity/branch | 形成 residual 机制结果 | share、cancellation、空间改变 |
+| 7 | M6 自动选择机制案例 | 支持机制解释 | atlas、attention、residual 主图 |
+| 8 | M5 方法定位与最小 reference 分析 | 完成讨论和相关工作 | 适用性矩阵、已有 reference 复用分析 |
+| 9 | 重构论文 | 以忠实性—统一性—可审计性—机制发现为主线 | 正文、附录、审计索引 |
 
-后续论文围绕以下证据链组织：
+---
 
-1. **表示与数值正确性**：Endpoint 提供注册标量目标的输入坐标表示，attention/residual 的局部导数分解通过独立检查。
-2. **Reference 复用与筛选效用**：比较已知 reference 的预测精度、统一排名的平均/最差效用以及实测成本，判断 Endpoint 相对其他 clean-only 方法是否增加信息。
-3. **ViT 结构发现**：用 routing omission、residual carry/branch 份额和抵消描述具体层/head 的输入依赖。
-4. **Neuron-atlas 分布**：用熵、局部质量、距离和带符号抵消检验抽样神经元的层级与空间规律。
+# 二十二、停止规则与资源控制
 
-各项待完成实验的结论随结果填写。若统一复用没有带来效用或成本增益，或神经元分布没有呈现预期深度趋势，就报告该项未获支持；结构闭合正确也不能代替这些经验检验。
+以下实验不再作为当前论文必做项：
 
-论文定位为：对 ViT 内部注册标量目标进行统一输入坐标归因、结构化局部 Jacobian 记账与行为评价，并由具体实验界定适用场景。
+- 六类 reference 的大规模扩展；
+- 更多 Endpoint–Taylor 区域胜负实验；
+- 新区域形状搜索；
+- 新 blur 强度搜索；
+- 追加实验直到 Endpoint 在某条件下胜出；
+- 全量百万级 ViT 神经元 atlas；
+- 大规模输出定位 benchmark；
+- 为改善结果而事后选择 token、channel、head 或图像。
+
+只有在满足以下条件时才新增实验：
+
+1. 直接回答 RQ1–RQ4；
+2. 现有数据不能回答；
+3. 运行前冻结设置；
+4. 不以改变 M1/M2 结论为目的；
+5. 具有明确的停止条件。
+
+如果资源有限，最低完成集为：
+
+\[
+\boxed{
+\text{M3-A 等价桥接}
++
+\text{M3 neuron atlas}
++
+\text{M4 attention/residual}
++
+\text{M6 核心图}
+}
+\]
+
+---
+
+# 二十三、最终论文结论框架
+
+论文最终结论应按照以下顺序组织。
+
+## 1. 忠实推广
+
+> Endpoint 在原始 NNS 兼容网络上与逐层 learning-image propagation 数值等价，并将相同的局部 Jacobian 思想推广到 ViT 的平滑和输入依赖算子。
+
+## 2. 统一扫描
+
+> Endpoint 为多类 ViT registered scalar targets 提供统一输入坐标表示；当前实验是 registry-complete 和分层 neuron audit，而不是全神经元穷举。
+
+## 3. 可审计结构分解
+
+> Attention 的 Q/K/V、routing/value 和 residual identity/branch 能够在当前计算图的局部 Jacobian 层面闭合，并通过独立数值检查。
+
+## 4. ViT 机制观察
+
+> Endpoint atlas 用于描述 token-channel 输入依赖的层级与空间分布，并量化 attention routing/value 和 residual carry/branch 的相对作用。具体方向必须依据 M3/M4 的实际结果填写。
+
+## 5. 行为相关性与边界
+
+> Endpoint mass 与有限成分效应存在广泛但非普遍的关联；原 all-family omnibus 保持 `NOT_SUPPORTED`。对于特定 reference 下的有限区域干预，regional Taylor 更匹配实际位移，Endpoint 不应被直接解释为最优 intervention map。
+
+---
+
+# 二十四、最终定位
+
+本文最终定位为：
+
+> **NNS-ViT 是对原始 NNS 输入坐标 learning-image 思想的局部 Jacobian 推广。它面向视觉 Transformer 的异构内部标量目标，提供统一 Endpoint 表示、可闭合的 attention/residual 结构记账以及用于分析内部输入依赖规律的 atlas。有限干预实验用于标定该表示的行为相关性和解释边界，而不是将 Endpoint 包装为普遍优于现有方法的干预预测器。**
+
+最简洁的中心论点是：
+
+> **Endpoint is an auditable internal-target representation, not a universal intervention estimator.**
+
+对应中文：
+
+> **Endpoint 的主要价值是统一、可审计地表示 ViT 内部目标的局部输入依赖，而不是成为所有有限干预任务中的通用最优预测器。**
