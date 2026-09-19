@@ -21,9 +21,12 @@ copied into this paper root. The independent Figure 34--40 fine-grained display 
 are display-only spatial reading views; signed companions and sealed raw arrays remain the
 scientific reference.
 
-For browsing or packaging, the flat PNG collection is
-`reports/nns_vit_endpoint_all_figures_r1_20260919/`. It contains current Figures 1--40, signed
-companions, all-layer/all-head pages, and the M2/M3/M4/M6 supplementary figures.
+For browsing or packaging, use the organized review package
+`reports/nns_vit_endpoint_all_figures_r2_20260919/`. It keeps Figures 1--40 under separate
+PNG/PDF/SVG directories, moves signed companions and all-layer/all-head pages into
+`supplement/`, and provides the black-bear blue-base revisions plus source/display receipts.
+The earlier flat `reports/nns_vit_endpoint_all_figures_r1_20260919/` package remains archived
+unchanged.
 
 The paper-level RQ3 synthesis is
 `BROAD_BUT_NON_UNIVERSAL_FAMILY_LEVEL_SUPPORT`. The frozen 12-of-12 omnibus C4a field
