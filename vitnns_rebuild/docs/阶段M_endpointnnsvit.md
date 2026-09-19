@@ -2,7 +2,7 @@
 ## 目标对齐版
 
 > **当前进度：2026-09-19**  
-> 原确认性实验、M1、M2、M3 和 M4 已完成；M3 补充分析 R2、M4 主分析和 M4 外部评价修订 R2 已封存。M5–M6 为后续计划。
+> 原确认性实验、M1、M2、M3、M4 和 M5 已完成；M3 补充分析 R2、M4 主分析、M4 外部评价修订 R2 和 M5 复用分析 R2 已封存。M6 为后续计划。
 > 本文档用于替换此前以 Endpoint–Taylor 性能比较为中心的后续方案。
 >
 > **状态回填说明：** M4 正式执行配置绑定的是本文档执行前版本的 SHA-256；本页现为封存后状态与结果总览。原 M4 根、terminal receipt 和 artifact manifest 保持不变，外部评价建议通过版本化 `M4-Review-R2` 补充根处理。
@@ -182,16 +182,16 @@ RQ5 用于标定 Endpoint 的含义，不再作为论文的中心竞争任务。
 | **M2. Endpoint 图的干预解释边界** | 已完成 | 检验 Endpoint 图能否直接用于 reference-specific 区域干预 | 解释边界 |
 | **M3. NNS 忠实性桥接与分层神经元审计** | 已完成 | 证明与原始 NNS 的等价关系并扩展 token-channel 覆盖 | 忠实性与统一性 |
 | **M4. Attention 与 residual 结构机制分析** | 已完成 | 使用结构化 Endpoint 分析 routing/value 和 carry/branch | 核心机制发现 |
-| **M5. 方法语义、reference 属性与最小比较** | 待整理，必要时补算 | 界定 Endpoint 与其他方法回答的问题 | 方法定位 |
+| **M5. 方法语义、reference 属性与最小比较** | 已完成 | 界定 Endpoint 与其他方法回答的问题 | 方法定位 |
 | **M6. 机制案例与可视化 atlas** | 待执行 | 展示自动选择的代表性机制案例 | 解释与呈现 |
 
-剩余模块优先级为：
+剩余模块为：
 
 \[
-\boxed{M6 > M5}
+\boxed{M6}
 \]
 
-M1、M2、M3、M4 已完成。M1、M2 不再扩展为大规模方法竞赛；M3 与 M4 的既有结果只允许通过版本化补充根扩展，不修改已封存根。
+M1、M2、M3、M4、M5 已完成。M1、M2 不再扩展为大规模方法竞赛；M3 与 M4 的既有结果只允许通过版本化补充根扩展，不修改已封存根。
 
 ---
 
@@ -1747,7 +1747,9 @@ M3 entropy 与 Full–Value TV 的 12-block model-median trajectory Spearman 为
 
 # 十三、M5：方法语义、reference 属性与最小比较
 
-M5 不再执行此前规划的六类 reference、大规模迁移矩阵和扩展空间排行榜，除非 M4 完成后出现一个明确、不可由现有数据回答的新研究问题。
+M5 已完成，正式状态为 `ENDPOINT_M5_PASS_EXECUTION_AND_AUDIT`。M5 采用 CPU-only、reuse-only 协议，从 M1 的 800 个逐图记录与 M2 的封存 image-level arrays 重算最小 reference 结果；没有读取 JPEG、加载模型/checkpoint、使用 GPU 或新增检验 family。R1 因系统 Python 3.7 缺少 `statistics.fmean` 在第一次逐图汇总时停止，R2 只将均值实现替换为 `math.fsum(values) / len(values)`，R1 根保持原样。
+
+M5 没有执行此前规划的六类 reference、大规模迁移矩阵和扩展空间排行榜。
 
 ---
 
@@ -1816,6 +1818,10 @@ x_i\frac{\partial F}{\partial x_i}
 
 该分析用于说明信息条件，不用于证明 Endpoint 优越。
 
+实际复算覆盖 163,200 个 component-reference 配对和 9,600 个 image-block head 排名。Endpoint absolute mass `m` 与 signed sum `a` 在 normalized-zero 和 blur-rgb 间逐项完全相同，最大绝对差均为 0；Taylor magnitude 与实际 absolute finite effect 在全部 163,200 项上均发生变化。Taylor 和有限效应的跨 reference 排名分别只有 46/9,600 与 64/9,600 项完全相同。
+
+每图先对 12 个 block 的全 head Spearman 取均值，再对 400 图取中位数。ViT-B/16 的 Taylor/有限效应跨 reference 一致性为 0.3782/0.3759，DeiT-S 为 0.3000/0.3071。Endpoint 在 zero/blur 下的行为关联为 ViT-B 0.2815/0.2727、DeiT-S 0.1952/0.1476；Taylor 对应为 0.6742/0.6856 与 0.6095/0.6238。M2 的 24 个 patch-geometry 复用组中，regional Taylor 中位 AUC 全部高于 Endpoint；原 M2 判定保持完整输入 11/12、隔离 head 12/12 的 Taylor 优势，不由 M5 重签新检验。
+
 ---
 
 ## 13.4 方法适用性矩阵
@@ -1875,6 +1881,17 @@ Path IG 若未通过预注册校准门，则：
 - 放入附录。
 
 不再投入大量资源调整积分方法，除非 IG 是审稿所必需的基线。
+
+EP2-R1 已给出该边界：预注册门要求每模型每 target 至少 61/64 图通过；DeiT-S 在 512 点为 61/64 与 62/64，ViT-B 只有 41/64 与 40/64。因此 M5 不发布跨模型 Endpoint–Path fidelity、stability 或 cost-quality 结论。
+
+M5 正式交付为：
+
+- `docs/endpoint_m5_results_20260919.md`：方法定位、reference 复用结果与成本边界；
+- `reports/nns_vit_endpoint_m5_r2_20260919/terminal_receipt.json`：M5 PASS receipt；
+- `reports/nns_vit_endpoint_m5_r2_20260919/reference_reuse_summary.json`：800 个 image-model 汇总的来源复算；
+- `reports/nns_vit_endpoint_m5_r2_20260919/method_applicability_matrix.json`：七方法适用性矩阵；
+- `papers/nns_vit_endpoint/en/endpoint_m5_positioning.md` 与 `papers/nns_vit_endpoint/zh/endpoint_m5_positioning.md`：双语论文定位稿；
+- `papers/nns_vit_endpoint/en/full_draft_m5.md` 与 `papers/nns_vit_endpoint/zh/full_draft_m5.md`：保留 M4 封存稿的版本化整合稿。
 
 ---
 
@@ -2339,8 +2356,8 @@ M1/M2 放在结构机制结果之后，而不是作为整篇论文的主要胜�
 | 已完成 | M4-C signed/absolute 与 cancellation | PASS | 区分 map/path cancellation | 路径表、模型差异与解释边界 |
 | 已完成 | M4 Review-R2 | PASS_POST_HOC_SENSITIVITY | 收紧 estimand 并补充稳健性 | 分母诊断、partial rank、spatial TV、M3–M4 bridge |
 | 1 | M6 自动选择机制案例 | 待执行 | 支持机制解释 | atlas、attention、residual 主图 |
-| 2 | M5 方法定位与最小 reference 分析 | 待整理 | 完成讨论和相关工作 | 适用性矩阵、已有 reference 复用分析 |
-| 3 | 重构论文 | 进行中 | 以忠实性—统一性—可审计性—机制发现为主线 | 正文、附录、审计索引 |
+| 已完成 | M5 方法定位与最小 reference 分析 | PASS | 完成讨论和相关工作 | 适用性矩阵、已有 reference 复用分析、成本边界 |
+| 2 | 重构论文 | 进行中 | 以忠实性—统一性—可审计性—机制发现为主线 | 正文、附录、审计索引 |
 
 ---
 
@@ -2365,7 +2382,7 @@ M1/M2 放在结构机制结果之后，而不是作为整篇论文的主要胜�
 4. 不以改变 M1/M2 结论为目的；
 5. 具有明确的停止条件。
 
-M3 与 M4 已完成。剩余最低完成集为：
+M3、M4 与 M5 已完成。剩余最低完成集为：
 
 \[
 \boxed{
