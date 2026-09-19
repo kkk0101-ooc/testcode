@@ -1,0 +1,20 @@
+{
+  "stage": "ENDPOINT-M3-SUP-R2",
+  "status": "supplementary_descriptive_recovery",
+  "objective": "Correct phase-level CLS-patch aggregation and complete the requested M3 supplementary analysis in a fresh root",
+  "supersedes": "reports/nns_vit_endpoint_m3_sup_r1_20260919",
+  "aggregation": {
+    "block": "within each image and block, median CLS channels minus median patch-token channels",
+    "phase": "within each image, median of block-level paired differences",
+    "inference_unit": "image",
+    "bootstrap_repetitions": 10000
+  },
+  "source_bindings": {
+    "reports/nns_vit_endpoint_m3_r1_20260919/terminal_receipt.json": "205a21b0f06aef2cd0ca4c6786b7ac7e320a1c363e01a4f506081ccad1314b73",
+    "reports/nns_vit_endpoint_m3_r1_20260919/artifact_manifest.json": "21abd4aa70ca33ae2d7150e8d8e69d77151c94c9201a1e0e298bed0fb99d6ddb",
+    "reports/nns_vit_endpoint_m3_sup_r1_20260919/superseded_receipt.json": "c51d2db80d6bba92a28b76f5177babc411f28ce3368514062ba2fb1578ab7097"
+  },
+  "source_gate": "scripts/seal_endpoint_m3.py --verify",
+  "output_root": "reports/nns_vit_endpoint_m3_sup_r2_20260919",
+  "next_authorization": "STOP_AFTER_M3_SUP_R2"
+}

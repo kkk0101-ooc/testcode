@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Prepare and execute the CPU-only M3-SUP-R1 descriptive supplement."""
-import argparse,csv,hashlib,json,math,os,sys,time
+"""Prepare and execute the CPU-only M3-SUP-R2 descriptive supplement."""
+import argparse,csv,hashlib,json,math,os,subprocess,sys,time
 os.environ["CUDA_VISIBLE_DEVICES"]="";os.environ["OPENBLAS_NUM_THREADS"]="1"
 from pathlib import Path
 import numpy as np
 REPO=Path(__file__).resolve().parents[1];sys.path.insert(0,str(REPO/"src"))
 from vitnns.endpoint_m3_statistics import bootstrap_median
-SPEC=REPO/"config/nns_vit_endpoint/endpoint_m3_supplement_r1.json";SOURCE=REPO/"reports/nns_vit_endpoint_m3_r1_20260919";ROOT=REPO/"reports/nns_vit_endpoint_m3_sup_r1_20260919"
+SPEC=REPO/"config/nns_vit_endpoint/endpoint_m3_supplement_r2.json";SOURCE=REPO/"reports/nns_vit_endpoint_m3_r1_20260919";ROOT=REPO/"reports/nns_vit_endpoint_m3_sup_r2_20260919"
 def load(p):return json.loads(p.read_text())
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
+def git(*args):return subprocess.check_output(["git",*args],cwd=REPO,text=True).strip()
 def write(p,v):p.parent.mkdir(parents=True,exist_ok=True);p.write_text(json.dumps(v,indent=2,allow_nan=False)+"\n")
 def dump_csv(path,rows):
  with path.open("w",newline="") as f:
@@ -20,14 +21,17 @@ def prepare():
  if ROOT.exists():raise ValueError("FRESH_ROOT_REQUIRED")
  for path,expected in spec["source_bindings"].items():
   if sha(REPO/path)!=expected:raise ValueError("SOURCE_DRIFT:"+path)
+ subprocess.run([sys.executable,"scripts/seal_endpoint_m3.py","--verify"],cwd=REPO,check=True,env=dict(os.environ,CUDA_VISIBLE_DEVICES="",OPENBLAS_NUM_THREADS="1"))
  terminal=load(SOURCE/"terminal_receipt.json");assert terminal["status"]=="ENDPOINT_M3_PASS_EXECUTION_AND_AUDIT" and terminal["next_authorization"]=="STOP_AFTER_M3"
+ head=git("rev-parse","HEAD");branch=git("symbolic-ref","--short","HEAD");remote=git("ls-remote","origin","refs/heads/"+branch).split()[0]
+ if head!=remote:raise ValueError("PUBLISHED_PRODUCER_REQUIRED")
  ROOT.mkdir();write(ROOT/"source_validation.json",{"status":"PASS","source_terminal":terminal["status"],"source_bindings":spec["source_bindings"],"source_root_immutable":True})
- sources=[SPEC,Path(__file__),REPO/"docs/endpoint_m3_supplement_protocol_20260919.md",
+ sources=[SPEC,Path(__file__),REPO/"docs/endpoint_m3_supplement_protocol_20260919.md",REPO/"docs/endpoint_m3_supplement_r2_amendment_20260919.md",
           REPO/"scripts/run_endpoint_m3_supplement_gpu.py",
           REPO/"scripts/run_endpoint_m3_supplement_diagnostics.py",
           REPO/"src/vitnns/endpoint_m3_supplement.py",
           REPO/"tests/test_endpoint_m3_supplement.py"]
- write(ROOT/"freeze.json",{"status":"FROZEN","time_ns":time.time_ns(),"sources":{p.relative_to(REPO).as_posix():sha(p) for p in sources},"source_terminal_sha256":sha(SOURCE/"terminal_receipt.json")});print("M3_SUP_PREPARED")
+ write(ROOT/"freeze.json",{"status":"FROZEN","time_ns":time.time_ns(),"producer_commit":head,"remote_commit":remote,"sources":{p.relative_to(REPO).as_posix():sha(p) for p in sources},"source_terminal_sha256":sha(SOURCE/"terminal_receipt.json")});print("M3_SUP_PREPARED")
 def execute():
  spec=load(SPEC);freeze=load(ROOT/"freeze.json")
  for p,s in freeze["sources"].items():
@@ -57,8 +61,11 @@ def execute():
   for b in range(12):
    for metric,array in arrays.items():
     valid=(block==b)&np.isfinite(array);image_rows.append({"model_id":result["model_id"],"sample_id":result["sample_id"],"block":b,"metric":metric,"valid_units":int(valid.sum()),"median":float(np.median(array[valid]))})
-  for stratum,blocks in strata.items():
-   scope=np.isin(block,list(blocks));cls=entropy[scope&(token==0)&np.isfinite(entropy)];patch=entropy[scope&(token>0)&np.isfinite(entropy)];cls_patch.append({"model_id":result["model_id"],"sample_id":result["sample_id"],"stratum":stratum,"cls_units":len(cls),"patch_units":len(patch),"cls_median_entropy":float(np.median(cls)),"patch_median_entropy":float(np.median(patch)),"paired_difference":float(np.median(cls)-np.median(patch))})
+  per_block=[]
+  for b in range(12):
+   cls=entropy[(block==b)&(token==0)&np.isfinite(entropy)];patch=entropy[(block==b)&(token>0)&np.isfinite(entropy)];per_block.append({"block":b,"cls":float(np.median(cls)),"patch":float(np.median(patch)),"difference":float(np.median(cls)-np.median(patch)),"cls_units":len(cls),"patch_units":len(patch)})
+  for stratum,blocks0 in strata.items():
+   part=[x for x in per_block if x["block"] in blocks0];cls_patch.append({"model_id":result["model_id"],"sample_id":result["sample_id"],"stratum":stratum,"blocks":len(part),"cls_units_per_block":part[0]["cls_units"],"patch_units_per_block":part[0]["patch_units"],"cls_median_entropy":float(np.median([x["cls"] for x in part])),"patch_median_entropy":float(np.median([x["patch"] for x in part])),"paired_difference":float(np.median([x["difference"] for x in part]))})
  dump_csv(ROOT/"block_image_values.csv",image_rows);dump_csv(ROOT/"cls_patch_image_values.csv",cls_patch)
  block_summary=[]
  for key in sorted({(r["model_id"],r["block"],r["metric"]) for r in image_rows}):
@@ -67,6 +74,6 @@ def execute():
  for key in sorted({(r["model_id"],r["stratum"]) for r in cls_patch}):
   part=[r for r in cls_patch if (r["model_id"],r["stratum"])==key];values=[r["paired_difference"] for r in part];cls_summary.append({"model":key[0],"stratum":key[1],"images":len(values),"median_difference":float(np.median(values)),"ci95":bootstrap_median(values,"M3SUP|cls_patch|"+"|".join(key),10000),"positive":sum(v>1e-12 for v in values),"negative":sum(v< -1e-12 for v in values),"ties":sum(abs(v)<=1e-12 for v in values)})
  dump_csv(ROOT/"block_summary.csv",block_summary);dump_csv(ROOT/"cls_patch_summary.csv",cls_summary)
- write(ROOT/"analysis_receipt.json",{"status":"PASS","m3a_error_rows":len(rows),"operator_rows":len(operators),"block_image_rows":len(image_rows),"block_summary_rows":len(block_summary),"cls_patch_image_rows":len(cls_patch),"cls_patch_summary_rows":len(cls_summary),"new_confirmatory_tests":0});print(json.dumps(load(ROOT/"analysis_receipt.json")))
+ write(ROOT/"analysis_receipt.json",{"status":"PASS","m3a_error_rows":len(rows),"operator_rows":len(operators),"block_image_rows":len(image_rows),"block_summary_rows":len(block_summary),"cls_patch_image_rows":len(cls_patch),"cls_patch_summary_rows":len(cls_summary),"cls_patch_aggregation":"block_level_paired_difference_then_within_image_phase_median","new_confirmatory_tests":0});print(json.dumps(load(ROOT/"analysis_receipt.json")))
 if __name__=="__main__":
  p=argparse.ArgumentParser();p.add_argument("--prepare",action="store_true");p.add_argument("--execute",action="store_true");a=p.parse_args();prepare() if a.prepare else execute() if a.execute else p.error("choose one")

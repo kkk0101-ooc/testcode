@@ -8,7 +8,7 @@ import numpy as np,torch
 REPO=Path(__file__).resolve().parents[1];sys.path.insert(0,str(REPO/"src"));sys.path.insert(0,str(REPO/"scripts"))
 from run_endpoint_e4_intervention_worker import load_model,load_inputs
 from vitnns.endpoint_m3_supplement import cancellation_metrics
-SOURCE=REPO/"reports/nns_vit_endpoint_m3_r1_20260919";ROOT=REPO/"reports/nns_vit_endpoint_m3_sup_r1_20260919"
+SOURCE=REPO/"reports/nns_vit_endpoint_m3_r1_20260919";ROOT=REPO/"reports/nns_vit_endpoint_m3_sup_r2_20260919"
 def load(p):return json.loads(p.read_text())
 def main():
  p=argparse.ArgumentParser();p.add_argument("--device",default="cuda:0");a=p.parse_args();device=torch.device(a.device);torch.use_deterministic_algorithms(True);torch.backends.cuda.matmul.allow_tf32=False;torch.backends.cudnn.allow_tf32=False;tasks=load(SOURCE/"task_manifest.json")["tasks"];selected=[]

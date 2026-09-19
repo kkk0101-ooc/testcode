@@ -7,7 +7,7 @@ import numpy as np
 REPO=Path(__file__).resolve().parents[1];sys.path.insert(0,str(REPO/"src"))
 from vitnns.endpoint_m3_statistics import bootstrap_median
 from vitnns.endpoint_m3_supplement import cancellation_metrics,tolerance_ratio
-SOURCE=REPO/"reports/nns_vit_endpoint_m3_r1_20260919";ROOT=REPO/"reports/nns_vit_endpoint_m3_sup_r1_20260919"
+SOURCE=REPO/"reports/nns_vit_endpoint_m3_r1_20260919";ROOT=REPO/"reports/nns_vit_endpoint_m3_sup_r2_20260919"
 def load(p):return json.loads(p.read_text())
 def dump(path,rows):
  with path.open("w",newline="") as f:w=csv.DictWriter(f,fieldnames=list(rows[0]));w.writeheader();w.writerows({k:json.dumps(v,separators=(",",":")) if isinstance(v,(list,dict)) else v for k,v in r.items()} for r in rows)
