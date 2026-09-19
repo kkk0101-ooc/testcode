@@ -4,7 +4,7 @@
 - 单位：`[AFFILIATION REQUIRED]`
 - 通讯作者：`[CORRESPONDING AUTHOR REQUIRED]`
 
-> 初稿 R1，2026-09-18。正文图号沿用封存 Endpoint 图包 Figure 1–28；投稿排版可按
+> 初稿 R2，2026-09-19。正文图号沿用封存 Endpoint 图包 Figure 1–33；投稿排版可按
 > `papers/nns_vit_endpoint/zh/outline.md` 的建议重新编号。
 
 ## 摘要
@@ -20,14 +20,19 @@ $L_s^{\mathrm{Endpoint}}(x)=x\odot\nabla_xs(x)$，并以完整计算边切面把
 干预中的经验效用。我们在共享的 400 张 ImageNet evaluation 图像上评价 ViT-B/16 和
 DeiT-S/16。注册扫描完成 800/800 个图像—模型任务和 336,800 个有限目标值；结构验证
 通过 76,800 个正向闭合检查，拒绝 28,800 个遗漏或重复记账负例，并通过 6,144 个
-condition-scaled analytic JVP 检查。对于匹配 activation replacement，12 个预注册
+condition-scaled analytic JVP 检查。直接 fidelity bridge 又在五类兼容网络上完成原始
+逐层 NNS propagation 与 Endpoint 的 5,000 个 target-level 数值比较，全部满足对应精度
+合同。冻结的 100 图分层审计为每个 model-image 计算 6,144 个 post-block token-channel
+单元；两个模型均表现出层深相关的局部一阶输入依赖空间扩展，即 late blocks 相比 early
+blocks 具有更高 entropy、更低自身邻域 locality 和更大的 normalized distance。对于匹配
+activation replacement，12 个预注册
 family 中有 11 个达到全部 family-level 条件。RQ3 呈现广泛但非普遍的成分级关联，
 预注册 all-family omnibus 为 `NOT_SUPPORTED`。未通过 family 的相关仍显著为正，
 但其置信区间跨越 0.10，不能确认达到预设实际效应水平。在
 空间定向干预中，0/4 family 同时优于 total G×I、raw gradient、regional Taylor 和
-随机区域；regional Taylor 在四个 family 中均取得更高的中位效果。结果表明，Endpoint
-结构成分可以预测成分级有限效应，但这种能力不自动意味着其像素分布是更优的局部区域
-选择器。
+随机区域；regional Taylor 在四个 family 中均取得更高的中位效果。Endpoint 因而形成
+一个经数值验证的内部目标表示，其抽样 token-channel map 随深度发生空间扩展；成分级
+有限效应关联与 reference-specific 局部区域选择仍是两种不同能力。
 
 关键词：Vision Transformer；神经网络解释；Gradient × Input；结构分解；activation
 replacement；attention head
@@ -56,7 +61,8 @@ LayerNorm、GELU、输入依赖的 softmax attention、两处 residual add 以�
 对象，因此需要明确其真实 Jacobian、结构切面和目标身份。本文沿用 NNS 的终点传播思想，
 但不把 $x\odot\nabla_xs(x)$ 重新命名为新的基础归因公式。
 
-我们提出 NNS-ViT Endpoint Scanner，并围绕四个研究问题进行评价（Figure 1）：
+我们提出 NNS-ViT Endpoint Scanner，并围绕四个原始效用问题进行评价（Figure 1），另以
+直接 NNS fidelity bridge 和分层 token-channel 机制审计补充证据链：
 
 1. **RQ1：注册扫描。** 能否在两个冻结 ViT 上完整、有限且可审计地扫描统一登记的
    内部标量和输出目标？
@@ -67,14 +73,15 @@ LayerNorm、GELU、输入依赖的 softmax attention、两处 residual add 以�
 4. **RQ4：空间效用。** 完整输入分辨 component map 能否在固定区域池和预算下，比总
    G×I、raw gradient、regional Taylor 和随机区域更好地定位有限效应？
 
-本文的贡献有五点。第一，我们把 NNS 的终点原则形式化为真实 ViT Jacobian，并明确
+本文的贡献有六点。第一，我们把 NNS 的终点原则形式化为真实 ViT Jacobian，并明确
 normalized-input 坐标原点以及 LayerNorm、GELU、softmax attention、MLP 和 residual 的
 传播作用。第二，我们建立两个 ViT 的注册目标目录和可审计扫描流程，在同一 400 图 cohort
 上完成 336,800 个目标评价。第三，我们定义完整 edge cuts，把 head、attention differential
 paths 和两处 residual 分支映回同一输入坐标并重构注册对象。第四，我们用闭合负例、解析
 JVP、匹配 activation replacement 和空间定向干预分别评价 correctness 与 utility。第五，
-我们给出两类互补的经验结论：成分级有限效应关联呈现广泛但非普遍的 family-level 支持，而完整
-输入分辨空间排序没有超过强局部 Taylor 基线。
+我们直接比较原始逐层 NNS propagation 与 Endpoint，并以 autograd 和方向有限差分验证
+11 类 ViT 算子 Jacobian。第六，我们在两个模型的冻结 token-channel 样本中观察到层深
+相关的空间扩展，并由行为实验分别界定成分级与 reference-specific 空间效用。
 
 ## 2. 相关工作
 
@@ -140,6 +147,12 @@ $$
 $$
 \boxed{L_s^{\mathrm{Endpoint}}(x)=x\odot\nabla_xs(x)}.
 $$
+
+当输入值用于对角初始化、bias 不作为图像输入坐标、ReLU 零点使用框架次梯度、MaxPool
+遵循当前前向 winner（并列时遵循框架规则）时，该身份恢复原始 NNS learning-image 规则。
+等价对象是局部输入依赖，而非函数值分解。CLS token、position embedding 和模型 bias 不
+单独分配图像坐标贡献。LayerNorm、GELU 和 softmax attention 是超出原始 NNS 算子集合的
+Jacobian-form generalization。
 
 Figure 2 区分原始 NNS-CNN、ViT Endpoint 与 Path IG 的 seed 和 Jacobian。Endpoint
 不包含 reference forward，也不具备一般的 baseline-difference completeness。输入坐标是
@@ -264,6 +277,20 @@ $$
 absolute isolated-effect trapezoidal AUC，并除以 0.25。所有方法共享候选区域池、面积预算和
 有限效应定义。
 
+### 3.7 分层 token-channel 审计
+
+M3 通过 metadata-only hash 规则冻结 100 张共享图像。每个 block 选择 CLS token、15 个
+固定空间分层 patch tokens 和 32 个独立 hash channels，因此每个 model-image 有
+$12\times16\times32=6{,}144$ 个 post-block 标量单元，覆盖 ViT-B/16 post-block
+token-channel 坐标的 0.338% 和 DeiT-S 的 0.677%。每个 Endpoint 流式化为 signed/absolute
+mass、positive/negative mass、L2 norm、196 维 patch signed/absolute 向量、normalized
+entropy、own-token locality、normalized input distance 和 signed cancellation。Zero-mass
+map 的未定义比率记为 NA，不加入 epsilon。
+
+统计前先在每张图、每个 block 内跨冻结单元聚合。CLS-patch 对比在每张图、每个 block
+内分别聚合 32 个 CLS channels 和 $15\times32$ 个 patch-token channels，再计算配对差；
+phase 汇总对四个 block-level 配对差取中位数。所有推断的统计单位均为图像。
+
 ## 4. 实验设计
 
 ### 4.1 模型、数据与预处理
@@ -334,6 +361,13 @@ family 至少需要 360 张共同有效图，符号检验至少需要 300 个非
 必须失败的遗漏/重复负例。统计验证器不导入 Torch、timm 或 PIL，而是从封存的逐任务
 结果重算逐图量、bootstrap、sign tests、Holm 调整和 family decisions。论文图包由 CPU-only
 renderer 从封存数字和原始展示数组生成；显示归一化图不用于数值推断。
+
+M3 还在 FCN、CNN、CNN-MaxPool、residual-MLP 和 residual-CNN 上比较显式逐层 NNS
+propagation 与 autograd Endpoint，每种网络和精度使用 100 个输入。所得 5,000 个 target
+comparisons 是数值验证案例，不作为独立统计样本。11 类 ViT 算子各接受 8 个 float64
+方向检查，同时比较解析 Jacobian-vector product、autograd JVP/VJP 对偶和 9 个中心有限
+差分步长。Atlas 报告图像级中位数和 10,000 次 bootstrap 区间；每模型 5 个冻结检验使用
+双侧精确符号检验和模型内 Holm family。
 
 ## 5. 结果
 
@@ -488,6 +522,43 @@ Spearman记为NA。pooled先合并同图像两模型，仅为描述性补充。�
 与复算来源见docs/endpoint_m1_results_20260918.md及M1结果根。原C4a保持NOT_SUPPORTED。
 <!-- M1_SUPPLEMENT_END -->
 
+### 5.7 M3：NNS 忠实性与层深相关空间扩展
+
+显式逐层 NNS propagation 与 Endpoint 的 5,000 个 target comparisons 全部满足对应精度
+合同。总体 relative-L2 的中位数、99% 分位和最大值分别为
+$1.088\times10^{-16}$、$1.602\times10^{-7}$ 和 $2.427\times10^{-7}$；float64 最大值为
+$4.769\times10^{-16}$，float32 99% 分位为 $1.782\times10^{-7}$。88 个算子—方向记录
+全部通过；最大 analytic-autograd JVP 误差、JVP-VJP 对偶误差和最坏最优步长有限差分误差
+分别为 $3.431\times10^{-16}$、$2.344\times10^{-14}$ 和
+$1.632\times10^{-10}$（Figure 32）。
+
+200 个 image-model tasks 产生 1,228,800 个冻结 token-channel Endpoint 记录。两个模型的
+全部图像级 late-minus-early 对比都呈现注册方向：ViT-B/16 与 DeiT-S 的 entropy 分别增加
+0.2201/0.2250，locality 分别下降 0.3558/0.3424，normalized distance 分别增加
+0.1312/0.1219。每个对比在 100/100 张图上的方向相同，并通过各自模型的 5 项 Holm
+family。完整轨迹显示 entropy 的主要增长发生在 early/middle blocks，而 locality 持续下降、
+distance 一直增加至 block 11（Figure 29）。该结果支持冻结抽样单元中**局部一阶输入依赖
+的空间扩展**，不要求 map 达到均匀全图状态，也不等价于获得全局语义。
+
+两个模型的每个 block 中，CLS-unit entropy 都高于 patch-unit entropy（Figure 30）。
+Block-level 配对差从 block 0 的 0.4752/0.4712 收窄至 block 11 的 0.0086/0.0238。采用
+block-first 聚合后，ViT-B/16 的 early/middle/late 图像级差值为 0.3082/0.0592/0.0283，
+DeiT-S 为 0.3084/0.0874/0.0406。这些描述性数值恢复了 CLS 输入依赖更分散的已知架构
+属性，但 entropy 不是因果信息整合量。
+
+由于 signed cancellation 接近饱和，我们同时报告
+$R_{\mathrm{net}}=|\sum_iE_i|/\sum_i|E_i|$。从 block 0 到 block 11，全部抽样单元的
+图像级 $R_{\mathrm{net}}$ 中位数在 ViT-B/16 中从 0.00872 降至 0.00144，在 DeiT-S
+中从 0.00712 降至 0.00132。120 张 raw map 子集进一步区分 RGB 通道内、RGB 聚合后
+patch 内和 signed patch totals 之间的抵消（Figure 31）；嵌套生存率恒等式误差低于
+$6.94\times10^{-18}$。同一 24 个 map 的 float64 重算使任一 cancellation 指标最多变化
+$1.84\times10^{-6}$。Absolute mass 因而衡量局部一阶项的总幅值，而不是净方向效应。
+
+冻结 float32 方向检查在 57,600 项中保留 36 项失败（0.0625%），均来自 blocks 7-11 的
+第一个抽样 patch token。Float32 误差随所测步长减小而增大；同一坐标的 float64 曲线先
+下降后因舍入误差回升（Figure 33），36 个 float64 对照全部通过。由于目标是 post-block
+token-channel，现有证据不能把这些失败唯一归因到 LayerNorm、softmax 或其他单个上游算子。
+
 ## 6. 讨论
 
 ### 6.1 Identity、Correctness 与 Utility 是三种不同结论
@@ -526,17 +597,32 @@ ViT-B/16 normalized-zero routing/value family 的点估计为 0.099565，95% CI
 干预信息。解释方法的评价应与使用目的对应：若任务是筛选结构成分，RQ3 的结果更直接；
 若任务是选择局部区域，RQ4 表明 regional activation-space 信息不可忽略。
 
+### 6.5 空间扩展与 signed cancellation
+
+M3 增加了一种不同于有限干预预测的机制用途。Entropy、locality 与 distance 共同表明，
+抽样 post-block 单元随层深依赖更广、更远的输入区域。12-block 曲线将主要转变定位在
+early/middle 深度，而不是暗示二元的“局部到全局”跳变。同时，较小的
+$R_{\mathrm{net}}$ 表明这些广泛分布的 map 包含方向相反的一阶项。这有助于解释：
+Endpoint absolute mass 在 M1 中保留成分排序信息，却在 M2 的有限空间 replacement 中
+不如 reference-matched Taylor 对实际位移敏感。
+
 ## 7. 局限
 
 本研究覆盖两个 ImageNet 分类 ViT、一个共享的 400 图 evaluation cohort 和冻结的标准
 timm 实现；结论不直接覆盖层级式 Transformer、检测/分割任务、自监督模型或其他数据域。
+M3 atlas 每个 model-image 覆盖 6,144 个冻结 post-block token-channel 坐标，即
+ViT-B/16 候选总体的 0.338% 和 DeiT-S 的 0.677%；不穷举全部 token-channel 组合、MLP
+hidden units 或 Q/K/V coordinates。层深结果描述局部一阶图像坐标依赖，本身不建立全局
+语义表示或因果重要性。
 Canonical Endpoint 依赖输入坐标原点，并且一般不满足相对 baseline 的 completeness。
 RQ4 固定在 block 5、每模型三个 heads、4×4 区域池、最高 25% 面积、两种 reference 和
 raw-logit isolated-effect AUC；其他空间尺度或干预对象可能形成不同排序。
 
 预注册 Path IG 校准在 ViT-B/16 上未达到 61/64 的数值覆盖门，因此本文没有跨模型
 Endpoint–Path fidelity、stability 或成本—质量比较。该数值失败不影响 Endpoint-only 的
-身份、闭合和干预结果，但限制了方法间结论。最后，论文中的颜色图按面板进行显示缩放，
+身份、闭合、atlas 和干预结果，但限制了方法间结论。M3 保留的 36 个 float32 有限差分
+失败通过冻结的 float64 recovery，因此数值状态是
+`PASS_FLOAT64_RECOVERY_WITH_RETAINED_FLOAT32_FAILURE`，而非无条件 PASS。最后，论文中的颜色图按面板进行显示缩放，
 只用于比较空间形态；跨图数值结论均来自原始 signed tensors、component summaries 和
 有限干预记录。
 
@@ -545,6 +631,8 @@ Endpoint–Path fidelity、stability 或成本—质量比较。该数值失败�
 NNS-ViT Endpoint Scanner 把原始 NNS 的终点传播原则适配到 Vision Transformer，为
 注册内部目标提供统一的输入坐标图，并通过完整 edge cuts 对 attention 与 residual 结构进行
 可核对分解。两个模型和 400 张图的实验支持其注册扫描完整性、结构闭合与局部微分正确性。
+另一个 100 图分层审计直接连接原始 NNS propagation 与 Endpoint，并在两个模型的抽样
+token-channel 中显示一致的层深相关空间扩展。
 匹配 activation replacement 进一步表明，Endpoint 成分质量在 12 个 family 中有 11 个
 满足全部 family-level 条件，支持广泛但非普遍的关联；all-family omnibus 保持
 `NOT_SUPPORTED`。空间定向
@@ -553,8 +641,8 @@ NNS-ViT Endpoint Scanner 把原始 NNS 的终点传播原则适配到 Vision Tra
 
 ## 数据、代码与可复现材料
 
-代码、冻结协议、目标注册表、逐阶段验证报告、统计 release 和 28 张论文图位于本项目
-仓库。提交版本的匿名链接、许可证、归档 DOI 与数据访问说明为
+代码、冻结协议、目标注册表、逐阶段验证报告、统计 release 和新增的 5 张 M3 补充图位于
+本项目仓库。提交版本的匿名链接、许可证、归档 DOI 与数据访问说明为
 `[REPOSITORY AND ARCHIVE REQUIRED]`。
 
 ## 参考文献

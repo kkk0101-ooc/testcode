@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the bilingual Endpoint Scanner R1 draft against sealed evidence."""
+"""Validate the bilingual Endpoint Scanner R2 draft against sealed evidence."""
 
 import hashlib
 import json
@@ -12,7 +12,7 @@ PAPER = Path(__file__).resolve().parents[1]
 REPO = Path(__file__).resolve().parents[3]
 ZH = PAPER / "zh/full_draft.md"
 EN = PAPER / "en/full_draft.md"
-OUT = PAPER / "qc/endpoint_scanner_draft_validation_report_m1.json"
+OUT = PAPER / "qc/endpoint_scanner_draft_validation_report_m3.json"
 
 
 def load_json(relative: str):
@@ -172,6 +172,25 @@ for figure in manifest.get("figures", []):
                 record["path"],
             )
 
+supplement = load_json("papers/nns_vit_endpoint/figure_manifest_m3_sup_r2.json")
+check("m3_figures:stage", supplement.get("stage") == "ENDPOINT-M3-SUP-R2")
+check("m3_figures:count", len(supplement.get("figures", [])) == 5)
+check("m3_figures:numbers", [x.get("paper_number") for x in supplement.get("figures", [])] == list(range(29, 34)))
+for figure in supplement.get("figures", []):
+    for record in figure.get("paper_files", []):
+        path = REPO / record["path"]
+        check(f"m3_figure:{figure['paper_number']}:{path.suffix}:exists", path.is_file(), record["path"])
+        if path.is_file():
+            check(f"m3_figure:{figure['paper_number']}:{path.suffix}:sha256", sha256(path) == record["sha256"], record["path"])
+
+m3 = load_json("reports/nns_vit_endpoint_m3_r1_20260919/terminal_receipt.json")
+check("m3:terminal", m3["status"] == "ENDPOINT_M3_PASS_EXECUTION_AND_AUDIT")
+check("m3:target_count", m3["token_channel_targets"] == 1228800)
+for language, text in (("zh", zh), ("en", en)):
+    for value in ("1,228,800", "0.338%", "0.677%", "0.0625%", "0.2201", "0.2250"):
+        check(f"m3_headline:{language}:{value}", value in text)
+    check(f"m3_broadening:{language}", "空间扩展" in text if language == "zh" else "spatial broadening" in text)
+
 for path in (ZH, EN):
     data = path.read_bytes()
     check(
@@ -181,7 +200,7 @@ for path in (ZH, EN):
     figure_refs = [int(value) for value in re.findall(r"Figure(?:s)?\s+(\d+)", path.read_text(encoding="utf-8"))]
     check(
         f"figure_reference_range:{path.name}",
-        all(1 <= value <= 28 for value in figure_refs),
+        all(1 <= value <= 33 for value in figure_refs),
         str(sorted(set(figure_refs))),
     )
 
@@ -192,7 +211,7 @@ report = {
     "error_count": len(errors),
     "errors": errors,
     "source_revision": manifest.get("source_revision"),
-    "figure_count": manifest.get("figure_count"),
+    "figure_count": manifest.get("figure_count") + len(supplement.get("figures", [])),
     "c4a_supported_families": sum(x["status"] == "SUPPORTED" for x in c4a),
     "c4b_supported_families": sum(x["status"] == "SUPPORTED" for x in c4b),
 }

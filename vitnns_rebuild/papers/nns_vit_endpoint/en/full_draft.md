@@ -4,7 +4,7 @@
 - Affiliations: `[AFFILIATION REQUIRED]`
 - Corresponding author: `[CORRESPONDING AUTHOR REQUIRED]`
 
-> Draft R1, September 18, 2026. Figure numbers follow the sealed Endpoint package (Figures 1–28).
+> Draft R2, September 19, 2026. Figure numbers follow the sealed Endpoint packages (Figures 1–33).
 > They may be renumbered for submission according to
 > `papers/nns_vit_endpoint/zh/outline.md` without changing figure content, numerical
 > values, or conclusions.
@@ -25,15 +25,22 @@ components under finite interventions. We evaluated ViT-B/16 and DeiT-S/16 on a 
 400 ImageNet evaluation images. Registered scanning completed 800/800 image-model tasks and
 336,800 finite target evaluations. Structural tests passed 76,800 positive closure checks,
 rejected 28,800 omission or double-counting controls, and passed 6,144 condition-scaled analytic
-JVP checks. Under matched activation replacement, 11 of 12 preregistered families met the
+JVP checks. A direct fidelity bridge produced 5,000 target-level numerical comparisons between
+explicit layerwise NNS propagation and Endpoint across five compatible network families; all met
+their precision-specific contracts. In a frozen 100-image stratified audit, each model-image
+contributed 6,144 post-block token-channel units. Both models showed depth-related spatial
+broadening of local first-order input dependence: late blocks had higher spatial entropy, lower
+own-token locality, and greater normalized input distance than early blocks. Under matched
+activation replacement, 11 of 12 preregistered families met the
 family-level criteria. RQ3 showed broad but non-universal support at the family level, while
 the preregistered all-family omnibus criterion was not supported (`NOT_SUPPORTED`). The
 remaining family retained a significant positive association, but its confidence interval
 spanned the 0.10 practical-effect threshold. In spatially targeted
 interventions, none of four families simultaneously outperformed total G×I, raw gradient,
 regional Taylor, and random regions; regional Taylor attained a higher median effect in every
-family. Endpoint components can thus predict component-level finite effects, but that property
-does not automatically make their pixel distributions better local-region selectors.
+family. Endpoint therefore provides a numerically validated internal-target representation whose
+sampled token-channel maps broaden spatially with depth. Component-level finite-effect
+association and reference-specific local-region selection remain distinct capabilities.
 
 Keywords: Vision Transformer; neural-network interpretation; Gradient × Input; structural
 decomposition; activation replacement; attention head
@@ -69,7 +76,8 @@ and multiple token- and branch-level objects. Their treatment requires explicit 
 structural cuts, and target identities. We retain the endpoint-propagation view of NNS but do not
 present $x\odot\nabla_xs(x)$ as a new base attribution formula.
 
-We develop the NNS-ViT Endpoint Scanner and evaluate four research questions (Figure 1):
+We develop the NNS-ViT Endpoint Scanner and evaluate four original utility questions (Figure 1),
+supplemented by a direct NNS-fidelity bridge and a stratified token-channel mechanism audit:
 
 1. **RQ1: registered scanning.** Can a common registry of internal scalars and output targets be
    scanned completely, finitely, and auditably in two frozen ViTs?
@@ -81,17 +89,18 @@ We develop the NNS-ViT Endpoint Scanner and evaluate four research questions (Fi
    component map localize finite effects better than total G×I, raw gradient, regional Taylor,
    and random regions?
 
-This work makes five contributions. First, it formalizes the NNS endpoint principle through the
+This work makes six contributions. First, it formalizes the NNS endpoint principle through the
 actual ViT Jacobian and specifies the roles of the normalized-input origin, LayerNorm, GELU,
 softmax attention, MLPs, and residual connections. Second, it constructs registered target
 catalogs for two ViTs and completes 336,800 target evaluations on a shared 400-image cohort.
 Third, it defines complete edge cuts that map heads, attention differential paths, and both
 residual branches into a common input coordinate system and reconstruct their registered objects.
 Fourth, it evaluates correctness and utility separately using closure controls, analytic JVPs,
-matched activation replacement, and spatially targeted intervention. Fifth, it reports two
-complementary empirical outcomes: component-level finite-effect association has broad but non-universal
-family-level support, whereas full-resolution spatial ranking does not outperform a strong
-local Taylor baseline.
+matched activation replacement, and spatially targeted intervention. Fifth, it directly compares
+original layerwise NNS propagation with Endpoint and validates eleven ViT operator Jacobians
+against autograd and directional finite differences. Sixth, it shows depth-related spatial
+broadening in a frozen token-channel sample from both models, while the behavioral studies
+separately delimit component-level and reference-specific spatial utility.
 
 ## 2. Related Work
 
@@ -164,6 +173,13 @@ Recursive application of the chain rule to a scalar target $s(x)$ gives
 $$
 \boxed{L_s^{\mathrm{Endpoint}}(x)=x\odot\nabla_xs(x)}.
 $$
+
+This identity recovers the original NNS learning-image rule when input values initialize the
+diagonal, biases are excluded from image coordinates, ReLU uses the framework subgradient at
+zero, and MaxPool follows the realized framework winner, including its tie rule. It is an identity
+of local input dependence rather than a decomposition of the function value. CLS tokens, position
+embeddings, and model biases receive no separate image-coordinate allocation. LayerNorm, GELU,
+and softmax attention are Jacobian-form generalizations beyond the original NNS operator set.
 
 Figure 2 separates the seeds and Jacobians used by the original NNS-CNN rule, ViT Endpoint, and
 Path IG. Endpoint has no reference forward and does not generally satisfy baseline-difference
@@ -295,6 +311,21 @@ three heads within an image. We then compute the trapezoidal area under the abso
 curve from 0% to 25% area and divide by 0.25. All methods share the candidate pool, spatial
 budget, and finite-effect definition.
 
+### 3.7 Stratified token-channel audit
+
+M3 freezes 100 shared images by a metadata-only hash rule. At every block it samples the CLS
+token, 15 fixed spatially stratified patch tokens, and 32 independently hashed channels, yielding
+$12\times16\times32=6{,}144$ post-block scalar units per model-image. This covers 0.338% of
+ViT-B/16 and 0.677% of DeiT-S post-block token-channel coordinates. Each Endpoint is reduced to
+signed and absolute mass, positive and negative mass, L2 norm, 196-patch signed and absolute
+vectors, normalized entropy, own-token locality, normalized input distance, and signed
+cancellation. Zero-mass maps propagate NA rather than epsilon-regularized ratios.
+
+Units are reduced within each image and block before image-level bootstrap or paired sign tests.
+CLS-patch contrasts separately reduce 32 CLS channels and $15\times32$ patch-token channels
+within each image and block; phase summaries then take the median of four block-level paired
+differences. The image is the inferential unit throughout.
+
 ## 4. Experimental Design
 
 ### 4.1 Models, data, and preprocessing
@@ -370,6 +401,14 @@ must fail. The statistical validator imports neither Torch, timm, nor PIL; it re
 quantities, bootstrap intervals, sign tests, Holm adjustments, and family decisions from sealed
 task records. A CPU-only renderer creates the paper figure package from sealed numerical records
 and display arrays. Display-normalized images are not inputs to statistical inference.
+
+M3 also compares explicit layerwise NNS propagation with autograd Endpoint on FCN, CNN,
+CNN-MaxPool, residual-MLP, and residual-CNN graphs using 100 inputs per precision and network.
+The resulting 5,000 target comparisons are numerical validation cases rather than independent
+statistical samples. Eleven ViT operators receive eight float64 directional checks each, using
+analytic Jacobian-vector products, autograd JVP/VJP duality, and nine central-difference steps.
+The atlas reports image-level medians and 10,000-replicate bootstrap intervals. Its five frozen
+tests per model use two-sided exact sign tests and a model-specific Holm family.
 
 ## 5. Results
 
@@ -538,6 +577,48 @@ stratified tables, CIs, random-relative gains and source recomputation are in
 docs/endpoint_m1_results_20260918.md and the M1 result root. Original C4a remains NOT_SUPPORTED.
 <!-- M1_SUPPLEMENT_END -->
 
+### 5.7 M3: NNS fidelity and depth-related spatial broadening
+
+Explicit layerwise NNS propagation and Endpoint met their precision-specific contracts in all
+5,000 target comparisons. The overall relative-L2 median, 99th percentile, and maximum were
+$1.088\times10^{-16}$, $1.602\times10^{-7}$, and $2.427\times10^{-7}$. Float64 had a
+maximum of $4.769\times10^{-16}$; float32 had a 99th percentile of $1.782\times10^{-7}$.
+All 88 operator-direction records passed. Maximum analytic-autograd JVP error was
+$3.431\times10^{-16}$, maximum JVP-VJP duality error was $2.344\times10^{-14}$, and the
+largest best-step finite-difference error was $1.632\times10^{-10}$ (Figure 32).
+
+The 200 image-model tasks produced 1,228,800 frozen token-channel Endpoint records. At the image
+level, every model-specific late-minus-early contrast had the registered direction: entropy
+increased by 0.2201/0.2250, locality decreased by 0.3558/0.3424, and normalized distance increased
+by 0.1312/0.1219 for ViT-B/16 and DeiT-S. Each contrast had the same sign in 100/100 images and
+passed its five-test model-specific Holm family. The complete trajectories show that most entropy
+growth occurs through early and middle blocks, whereas locality continues to fall and distance
+continues to rise through block 11 (Figure 29). This supports **spatial broadening of local input
+dependence** in the frozen unit sample, rather than a uniform whole-image state or global-semantic
+claim.
+
+CLS-unit entropy exceeded patch-unit entropy at every block in both models (Figure 30). The paired
+block-level gap narrowed from 0.4752/0.4712 at block 0 to 0.0086/0.0238 at block 11. With
+block-first aggregation, the early/middle/late image-level gaps were 0.3082/0.0592/0.0283 for
+ViT-B/16 and 0.3084/0.0874/0.0406 for DeiT-S. These descriptive values recover the expected
+broader CLS input dependence without treating entropy as causal information integration.
+
+Signed cancellation was near saturation, so we additionally report
+$R_{\mathrm{net}}=|\sum_iE_i|/\sum_i|E_i|$. Across all sampled units, image-level median
+$R_{\mathrm{net}}$ fell from 0.00872 to 0.00144 in ViT-B/16 and from 0.00712 to 0.00132 in
+DeiT-S between blocks 0 and 11. A 120-map raw subset separates cancellation within RGB channels,
+within patches after RGB aggregation, and across signed patch totals (Figure 31). The nested
+survival identity held to $6.94\times10^{-18}$. Recomputing the same 24 maps in float64 changed
+any cancellation metric by at most $1.84\times10^{-6}$. Absolute mass therefore measures total
+local first-order magnitude, not net directional effect.
+
+The frozen float32 directional check retained 36 failures among 57,600 conditions (0.0625%), all
+from the first sampled patch token in blocks 7-11. Float32 error increased as the tested step
+decreased, whereas the same coordinates in float64 showed an error decrease followed by
+round-off increase (Figure 33). All 36 float64 counterparts passed. The post-block targets do not
+identify a unique upstream operator, so the audit records a precision-sensitive finite-difference
+failure rather than assigning it to LayerNorm, softmax, or another operator.
+
 ## 6. Discussion
 
 ### 6.1 Identity, correctness, and utility are different conclusions
@@ -583,11 +664,26 @@ granularity, not the amount of additional intervention-relevant information. Eva
 match the intended use. RQ3 directly informs structural-component screening, whereas RQ4 shows
 that regional activation-space information cannot be ignored when selecting local regions.
 
+### 6.5 Spatial broadening and signed cancellation
+
+M3 adds a mechanism-level use distinct from finite-intervention prediction. Entropy, locality,
+and distance jointly show that sampled post-block units depend on progressively broader and more
+distant input regions. The twelve-block curves locate most of the transition in early and middle
+depth rather than implying a binary local-to-global switch. At the same time, small
+$R_{\mathrm{net}}$ values show that these broad maps contain opposing signed terms. This helps
+explain why absolute Endpoint mass can retain component-ranking information in M1 while remaining
+less aligned than reference-matched Taylor with the finite spatial replacements in M2.
+
 ## 7. Limitations
 
 This study covers two ImageNet classification ViTs, one shared 400-image evaluation cohort, and
 frozen standard timm implementations. The results do not directly extend to hierarchical
 Transformers, detection or segmentation tasks, self-supervised models, or other data domains.
+The M3 atlas covers 6,144 frozen post-block token-channel coordinates per model-image: 0.338% of
+the ViT-B/16 and 0.677% of the DeiT-S candidate populations. It does not enumerate all
+token-channel combinations, MLP hidden units, or Q/K/V coordinates. Its depth findings concern
+local first-order image-coordinate dependence and do not by themselves establish global semantic
+representations or causal importance.
 Canonical Endpoint depends on the input-coordinate origin and does not generally satisfy
 baseline-difference completeness. RQ4 is restricted to block 5, three heads per model, a 4×4 region
 pool, a maximum area of 25%, two references, and raw-logit isolated-effect AUC; other spatial
@@ -596,7 +692,9 @@ scales or intervention objects may yield different rankings.
 Preregistered Path-IG calibration did not reach the 61/64 numerical-coverage gate for ViT-B/16.
 Consequently, this paper contains no formal cross-model Endpoint-versus-Path fidelity, stability,
 or cost-quality comparison. That numerical failure does not change the Endpoint-only identity,
-closure, or intervention results, but it limits method-comparison claims. Finally, color images in
+closure, atlas, or intervention results, but it limits method-comparison claims. The 36 retained
+float32 finite-difference failures passed the frozen float64 recovery, so the numerical state is
+`PASS_FLOAT64_RECOVERY_WITH_RETAINED_FLOAT32_FAILURE` rather than unconditional PASS. Finally, color images in
 the paper use per-panel display scaling and support spatial-form comparisons only. Quantitative
 cross-image claims use raw signed tensors, component summaries, and finite-intervention records.
 
@@ -605,7 +703,10 @@ cross-image claims use raw signed tensors, component summaries, and finite-inter
 NNS-ViT Endpoint Scanner adapts the endpoint-propagation principle of NNS to Vision Transformers,
 associates registered internal targets with a common input-coordinate map, and uses complete edge
 cuts to reconcile attention and residual structure. Experiments on two models and 400 images
-support registry-complete scanning, structural closure, and local differential correctness. Under matched
+support registry-complete scanning, structural closure, and local differential correctness. A
+separate 100-image stratified audit directly links original NNS propagation to Endpoint and shows
+consistent depth-related spatial broadening of sampled token-channel input dependence in both
+models. Under matched
 activation replacement, Endpoint component mass met every confirmatory condition in 11 of 12
 families, supporting broad but non-universal association; the all-family omnibus remains
 `NOT_SUPPORTED`. Spatially
@@ -616,7 +717,7 @@ selection should therefore be treated as distinct uses requiring distinct valida
 ## Data, code, and reproducibility materials
 
 Code, frozen protocols, target registries, stage-level validation reports, the statistical release,
-and 28 paper figures are maintained in the project repository. The anonymized submission link,
+and 33 paper figures are maintained in the project repository. The anonymized submission link,
 license, archival DOI, and data-access statement remain `[REPOSITORY AND ARCHIVE REQUIRED]`.
 
 ## References

@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+"""Completion checklist and immutable seal for M3-SUP-R2."""
+import hashlib,json,subprocess,sys,time
+from pathlib import Path
+REPO=Path(__file__).resolve().parents[1];ROOT=REPO/"reports/nns_vit_endpoint_m3_sup_r2_20260919"
+def load(p):return json.loads(p.read_text())
+def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
+def require(x,c):
+ if not x:raise ValueError(c)
+def artifact(path):
+ p=REPO/path;require(p.is_file(),"MISSING:"+path);return {"path":path,"bytes":p.stat().st_size,"sha256":sha(p)}
+def main():
+ for name in ("source_validation.json","analysis_receipt.json","diagnostic_receipt.json","independent_validation.json","document_validation.json","visual_inspection.json"):
+  require(load(ROOT/name)["status"]=="PASS","AUDIT:"+name)
+ rel=ROOT.relative_to(REPO).as_posix()+"/";checks=[]
+ def check(number,requirement,paths,evidence,status="PASS"):checks.append({"evaluation_item":number,"requirement":requirement,"status":status,"artifacts":[artifact(p) for p in paths],"evidence":evidence})
+ check(1,"Original NNS equivalence with explicit conditions and error distributions",[rel+"m3a_error_distribution.csv","papers/nns_vit_endpoint/en/endpoint_m3_supplement_r2.md","papers/nns_vit_endpoint/zh/endpoint_m3_supplement_r2.md"],"5 graph families,2 precisions,5000 numerical cases;median,90th,99th,max and tolerance ratios;Jacobian-form generalization wording")
+ check(2,"Operator-level directional validation without system-wide overclaim",[rel+"operator_validation_table.csv","papers/nns_vit_endpoint/en/endpoint_m3_supplement_r2.md"],"11 operators x8 float64 directions;analytic JVP,AD JVP/VJP,9-step FD,max contract ratio;separate end-to-end evidence named")
+ check(3,"Spatial broadening claim with absolute levels, CIs and twelve-block curves",[rel+"block_image_values.csv",rel+"block_summary.csv",rel+"m3_sup_block_trajectories.png","papers/nns_vit_endpoint/en/full_draft.md","papers/nns_vit_endpoint/zh/full_draft.md"],"entropy/locality/distance and R_net across blocks0-11;image-level 10000-bootstrap CIs;spatial broadening terminology")
+ check(4,"Precise 100-of-100 definition and image-first aggregation",["docs/endpoint_m3_supplement_r2_20260919.md",rel+"block_image_values.csv","papers/nns_vit_endpoint/en/full_draft.md"],"unit median within image/block then image inference;registered late-early direction appears in100/100 images per model")
+ check(5,"CLS-patch imbalance handled by block-first paired aggregation",["docs/endpoint_m3_supplement_r2_amendment_20260919.md",rel+"cls_patch_image_values.csv",rel+"cls_patch_summary.csv",rel+"m3_sup_cls_patch_by_block.png"],"32 CLS channels and15x32 patch units separately reduced within image/block;phase median over block differences;descriptive construct validity")
+ check(6,"Cancellation interpreted at multiple scales with float64 stability",[rel+"cancellation_map_values.csv",rel+"cancellation_summary.csv",rel+"cancellation_float64_review.json",rel+"m3_sup_cancellation_scales.png"],"A/B/P/N nested decomposition,R_net,120 raw maps,24 float64 controls,zero maps remain NA")
+ check(7,"Float32 failures retained and diagnosed by epsilon curves",[rel+"finite_difference_diagnostics.csv",rel+"m3_sup_fd_diagnostics.png","docs/endpoint_m3_numeric_recovery_amendment_20260919.md"],"36/57600 conditions,10 tasks,all36 float64 counterparts;block/token distribution and analytic magnitude reported;operator attribution not identifiable")
+ check(8,"Target counts and coverage claims remain exact",["papers/nns_vit_endpoint/en/full_draft.md","papers/nns_vit_endpoint/zh/full_draft.md","papers/nns_vit_endpoint/notes/endpoint_m3_supplement_evidence_matrix_r2.md"],"6144 units/model/image,100 images,2 models,1228800 records;0.338/0.677 percent;uncovered MLP/QKV/full combinations named")
+ check(9,"Recommended formal conclusion adopted without causal or semantic inflation",["papers/nns_vit_endpoint/en/full_draft.md","papers/nns_vit_endpoint/zh/full_draft.md","papers/nns_vit_endpoint/qc/endpoint_m3_supplement_r2_writing_audit.md"],"spatial broadening of local input dependence;CLS construct validity;absolute mass separated from net effect")
+ check(10,"M3 integrated into paper while preserving prior M1/M2 decisions",[rel+"document_validation.json","papers/nns_vit_endpoint/qc/endpoint_scanner_draft_validation_report_m3.json",rel+"figure_manifest.json","papers/nns_vit_endpoint/figure_manifest_m3_sup_r2.json"],"bilingual full drafts validated with33 figures;C4a remains11/12 and omnibus NOT_SUPPORTED;C4b remains0/4")
+ check(11,"R1 aggregation error preserved and corrected prospectively",["reports/nns_vit_endpoint_m3_sup_r1_20260919/superseded_receipt.json","docs/endpoint_m3_supplement_r2_amendment_20260919.md",rel+"analysis_receipt.json"],"R1 never sealed;R2 uses block-level paired difference then within-image phase median")
+ check(12,"Independent source-level recomputation and figure inspection",[rel+"independent_validation.json",rel+"visual_inspection.json"],"all source records/tables/curves recomputed;five PNG figures visually checked")
+ audit={"objective":"Supplement M3 according to the ten-part evaluation without changing the sealed M3 root or entering M4","status":"PASS","requirement_count":len(checks),"requirements":checks,"missing":[],"incomplete":[],"weakly_verified":[],"new_confirmatory_tests":0,"source_m3_unchanged":True,"next_authorization":"STOP_AFTER_M3_SUP_R2","audited_head":subprocess.check_output(["git","rev-parse","HEAD"],cwd=REPO,text=True).strip()};(ROOT/"completion_audit.json").write_text(json.dumps(audit,indent=2)+"\n")
+ files=[]
+ for p in sorted(ROOT.rglob("*")):
+  if p.is_file() and p.name not in {"artifact_manifest.json","terminal_receipt.json"}:files.append({"path":p.relative_to(ROOT).as_posix(),"bytes":p.stat().st_size,"sha256":sha(p)})
+ (ROOT/"artifact_manifest.json").write_text(json.dumps({"file_count":len(files),"files":files},indent=2)+"\n");receipt={"status":"ENDPOINT_M3_SUP_R2_PASS","scientific_status":"SUPPLEMENTARY_DESCRIPTIVE_NO_NEW_CONFIRMATORY_TESTS","source_m3_status":"ENDPOINT_M3_PASS_EXECUTION_AND_AUDIT","recommendation_items_completed":10,"figures":5,"float64_cancellation_targets":24,"float32_failures_retained":36,"completion_audit_sha256":sha(ROOT/"completion_audit.json"),"artifact_manifest_sha256":sha(ROOT/"artifact_manifest.json"),"next_authorization":"STOP_AFTER_M3_SUP_R2","sealed_time_ns":time.time_ns()};(ROOT/"terminal_receipt.json").write_text(json.dumps(receipt,indent=2)+"\n");print(json.dumps({"status":receipt["status"],"requirements":len(checks),"files":len(files)}))
+def verify():
+ t=load(ROOT/"terminal_receipt.json");require(t["status"]=="ENDPOINT_M3_SUP_R2_PASS" and t["next_authorization"]=="STOP_AFTER_M3_SUP_R2","TERMINAL");require(sha(ROOT/"completion_audit.json")==t["completion_audit_sha256"] and sha(ROOT/"artifact_manifest.json")==t["artifact_manifest_sha256"],"ROOT_HASHES");m=load(ROOT/"artifact_manifest.json");expected={x["path"] for x in m["files"]}|{"artifact_manifest.json","terminal_receipt.json"};actual={p.relative_to(ROOT).as_posix() for p in ROOT.rglob("*") if p.is_file()};require(expected==actual,"FILE_SET")
+ for x in m["files"]:require((ROOT/x["path"]).stat().st_size==x["bytes"] and sha(ROOT/x["path"])==x["sha256"],"ARTIFACT:"+x["path"])
+ audit=load(ROOT/"completion_audit.json");require(audit["status"]=="PASS" and not audit["missing"] and not audit["incomplete"] and not audit["weakly_verified"],"COMPLETION");print(json.dumps({"status":t["status"],"files":m["file_count"],"requirements":audit["requirement_count"],"hashes":"PASS"}))
+if __name__=="__main__":verify() if "--verify" in sys.argv else main()
