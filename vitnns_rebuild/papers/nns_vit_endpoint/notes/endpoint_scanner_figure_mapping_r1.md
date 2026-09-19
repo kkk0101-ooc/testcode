@@ -32,7 +32,10 @@ and conclusions are frozen by `papers/nns_vit_endpoint/figure_manifest.json`.
 
 ## Fine-grained display addendum (Figures 34--40)
 
-Source: `reports/nns_vit_endpoint_fine_grained_blue_figures_r1_20260919`.
+Source: `reports/nns_vit_endpoint_fine_grained_blue_figures_r2_20260919`. The display-only
+representative is selection order 14 (`ILSVRC2012_val_00005415.JPEG`), chosen from the already
+retained first 16 full atlases for a clearer object contour and more readable Endpoint structure.
+This presentation choice does not change any formal statistical sample or result.
 
 | Paper role | Figure | Reason |
 |---|---:|---|

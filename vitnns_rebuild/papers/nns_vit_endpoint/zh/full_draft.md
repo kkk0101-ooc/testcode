@@ -187,16 +187,18 @@ $$
 DeiT-S/16 每图注册 385 个目标；两者均覆盖全部 12 个 blocks（Figure 7、11）。不同
 模型中编号相同的 channel 不解释为语义相同。
 
-![Figure 34](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r1_20260919/figures_png/figure_34_registered_target_learning_images.png)
+![Figure 34](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r2_20260919/figures_png/figure_34_registered_target_learning_images.png)
 
-**Figure 34.** 固定第一张 DeiT-S/16 evaluation 图像的六个真实注册目标。蓝底主图将
+**Figure 34.** 展示样本 ILSVRC2012_val_00005415.JPEG 的六个真实注册目标。该样本来自
+预先保留的前 16 张 E2 full-atlas 图像，因主体轮廓和 Endpoint 空间结构较清晰而用于展示，
+不改变正式统计。蓝底主图将
 signed RGB 通道求和后显示 $\max(L,0)$，各面板独立使用 P99 缩放，因此只用于阅读
 同一目标内部的细粒度空间形态，不能比较不同面板的绝对强度。完整 signed companion
 保留在独立图包中；数值结论仍使用原始 arrays。与 path 论文的 Figure 29 不同，这里的
 对象是单个注册标量的直接 $3\times224\times224$ Endpoint map，不存在与其一一配对的
 $14\times14$ token-response 下排。
 
-![Figure 37](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r1_20260919/figures_png/figure_37_channel0_depth_progression.png)
+![Figure 37](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r2_20260919/figures_png/figure_37_channel0_depth_progression.png)
 
 **Figure 37.** 参考原始 NNS 论文 Figure 13 的“横向跨层、上下对应”组织方式，固定
 DeiT-S/16 的同一输入和 channel 0，依次展示 patch embedding、Block 0–11、final CLS 和
@@ -252,14 +254,14 @@ paths 重构 residual total；carry 加 MLP branch 重构第二个 residual tota
 Residual identity 必须按其真实输入边记账；遗漏一条非零 branch 或重复加入 bypass 都应被
 闭合验证拒绝。
 
-![Figure 35](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r1_20260919/figures_png/figure_35_block5_structural_learning_images.png)
+![Figure 35](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r2_20260919/figures_png/figure_35_block5_structural_learning_images.png)
 
 **Figure 35.** 同一图像、同一 ground-truth 类别目标与同一 block 5 的细粒度结构图。
-Identity、head、routing、value、attention、MLP 和完整 Endpoint 全部来自 Figure 17 所用、
-且通过闭合验证的 raw component arrays；蓝底正部只是额外阅读视图，不改变 Figure 17 的
-signed 科学口径。
+Identity、head、routing、value、attention、MLP 和完整 Endpoint 使用与 Figure 17 相同的
+结构切面，但改为展示样本 order 14 的已封存、通过闭合验证的 raw component arrays；
+蓝底正部只是额外阅读视图，不改变 signed 科学口径。
 
-![Figure 38](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r1_20260919/figures_png/figure_38_attention_head_depth_atlas.png)
+![Figure 38](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r2_20260919/figures_png/figure_38_attention_head_depth_atlas.png)
 
 **Figure 38.** 固定 DeiT-S/16 输入，在 Block 0、1、5、11 展示全部六个 attention
 head edges 对同一个 ground-truth class logit 的 Endpoint contribution map。行表示深度、列
@@ -267,14 +269,14 @@ head edges 对同一个 ground-truth class logit 的 Endpoint contribution map�
 逐面板缩放只允许比较
 空间形态，不能直接比较跨 head 或跨层的绝对强度。
 
-![Figure 39](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r1_20260919/figures_png/figure_39_vit_b16_attention_head_depth_atlas.png)
+![Figure 39](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r2_20260919/figures_png/figure_39_vit_b16_attention_head_depth_atlas.png)
 
 **Figure 39.** ViT-B/16 的对称版本，在四个代表深度展示全部十二个 heads，并保持相同
 ground-truth class logit 作为共同下游目标。完整的
 12 blocks × 12 heads 分层页保留在图包的 `all_heads_vit_b16/`，因此论文既有紧凑主图，
 也有不省略 head 的补充材料。
 
-![Figure 40](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r1_20260919/figures_png/figure_40_vit_b16_module_chain.png)
+![Figure 40](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r2_20260919/figures_png/figure_40_vit_b16_module_chain.png)
 
 **Figure 40.** 对固定 ViT-B/16 输入和 channel 0，沿真实模块链展示 patch embedding、
 Block 0/5/11 的 Norm1、attention projection、Norm2、MLP fc1、GELU、fc2，再到 final CLS
@@ -431,7 +433,7 @@ ViT-B/16 每图的 457 个目标和 DeiT-S/16 每图的 385 个目标形成 336,
 target evaluations。所有图像保留 ground-truth 与 clean-top1 raw signed RGB class maps，
 前 16 个 evaluation ID × 两模型保留 32 份 full raw atlas；未出现 near-zero 或失败索引。
 固定前 8 张图在两个模型上的结果见 Figure 12，多目标 atlas 示例见 Figure 13；Figure 34
-把固定第一张图的六个注册目标重新排成可读的蓝底细粒度视图。
+把预先保留的 evaluation order 14 的六个注册目标重新排成可读的蓝底细粒度视图。
 
 ![Figure 12](../../../reports/nns_vit_endpoint_unified_paper_figures_r2_20260918/figures_png/figure_12_frozen_first_eight_endpoint_gallery.png)
 
@@ -553,10 +555,11 @@ Regional Taylor 在全部四个 family 中得到更高的中位效果。Endpoint
 **Figure 24.** RQ4 固定任务使用的 signed total G×I、raw gradient 与三个 block-5 head
 component map；各面板独立显示缩放。
 
-![Figure 36](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r1_20260919/figures_png/figure_36_spatial_ranking_learning_images.png)
+![Figure 36](../../../reports/nns_vit_endpoint_fine_grained_blue_figures_r2_20260919/figures_png/figure_36_spatial_ranking_learning_images.png)
 
-**Figure 36.** Figure 24 同一批 raw arrays 的蓝底细粒度阅读视图，并把固定输入放在
-同一页。该图帮助查看排序输入的空间差异，但不改变 RQ4 的 `NOT_SUPPORTED` 结论；行为
+**Figure 36.** 使用与 Figure 24 相同的 RQ4 map 定义，但改为展示样本 order 14 的蓝底
+细粒度阅读视图，并把输入放在同一页。该图帮助查看排序输入的空间差异，但不改变 RQ4 的
+`NOT_SUPPORTED` 结论；行为
 比较仍由 raw arrays、固定区域池和有限干预曲线决定。
 
 **Table 5. RQ4 的 C4b 图像级配对中位差。** 数值为 Endpoint 减 baseline；每个 family

@@ -1,0 +1,29 @@
+# 图注
+
+## Figure 34
+
+固定展示样本 ILSVRC2012_val_00005415.JPEG 的六个注册标量目标。该样本来自预先保留的前 16 张 E2 full-atlas 图像，因主体轮廓和 Endpoint 空间结构较清晰而用于展示，不改变正式统计。蓝底主图只显示正部并逐面板 P99 缩放。
+
+## Figure 35
+
+同一图像、同一 ground-truth 类别目标、同一 block 5 的 identity、head、routing、value、attention、MLP 与完整 Endpoint。各图直接来自通过闭合验证的 raw component arrays。
+
+## Figure 36
+
+RQ4 固定任务使用的 total G×I、raw gradient 与三个注册 head component map。图只解释排序输入的细粒度空间形态，行为结论仍由有限干预曲线决定。
+
+## Figure 37
+
+参考 NNS 论文 Figure 13 的跨层结构，展示固定 DeiT-S/16 输入从 patch embedding、Block 0–11 到 final CLS 与类别 logit 的 Endpoint learning image。下排是由同一 raw Endpoint map 在原生 16×16 input patches 内汇总得到的 14×14 absolute mass，不是 forward feature map。
+
+## Figure 38
+
+固定 DeiT-S/16 输入在 Block 0、1、5、11 的全部六个 attention heads。每格是相应 head edge 对同一个 ground-truth class logit 的 224×224 Endpoint contribution map；行比较深度、列比较 head index，显示尺度逐面板独立。
+
+## Figure 39
+
+固定 ViT-B/16 输入在 Block 0、1、5、11 的全部十二个 attention heads。每格解释同一个 ground-truth class logit，因此可在共同目标下比较各 head 的空间形态；完整 12-block × 12-head 页面保留在 all_heads_vit_b16/。
+
+## Figure 40
+
+固定 ViT-B/16 输入和 channel 0，展示 patch embedding、Block 0/5/11 的 Norm1、attention projection、Norm2、MLP fc1、GELU、fc2，以及 final CLS 和类别 logit。它对应 NNSViT-IG Figure 28–34 的模块链阅读方式，但使用 Endpoint 标量目标。

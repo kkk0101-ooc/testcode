@@ -183,7 +183,7 @@ for figure in supplement.get("figures", []):
         if path.is_file():
             check(f"m3_figure:{figure['paper_number']}:{path.suffix}:sha256", sha256(path) == record["sha256"], record["path"])
 
-fine_grained = load_json("papers/nns_vit_endpoint/figure_manifest_fine_grained_blue_r1.json")
+fine_grained = load_json("papers/nns_vit_endpoint/figure_manifest_fine_grained_blue_r2.json")
 check("fine_grained_figures:count", fine_grained.get("figure_count") == 7)
 check(
     "fine_grained_figures:numbers",

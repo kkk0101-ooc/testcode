@@ -27,30 +27,30 @@ from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
 from PIL import Image
 
-matplotlib.rcParams["svg.hashsalt"] = "endpoint-fine-grained-blue-r1"
+matplotlib.rcParams["svg.hashsalt"] = "endpoint-fine-grained-blue-r2"
 
 
 REPO = Path(__file__).resolve().parents[1]
-ROOT = REPO / "reports/nns_vit_endpoint_fine_grained_blue_figures_r1_20260919"
-PAPER_MANIFEST = REPO / "papers/nns_vit_endpoint/figure_manifest_fine_grained_blue_r1.json"
+ROOT = REPO / "reports/nns_vit_endpoint_fine_grained_blue_figures_r2_20260919"
+PAPER_MANIFEST = REPO / "papers/nns_vit_endpoint/figure_manifest_fine_grained_blue_r2.json"
 E2_ATTEMPTS = {
     model_id: REPO / (
         "reports/nns_vit_endpoint_e2_atlas_r1_20260918/formal_results/attempts/"
-        f"{model_id}__000/attempt-01.json"
+        f"{model_id}__014/attempt-01.json"
     )
     for model_id in ("deit_s16", "vit_b16")
 }
 E3_ATTEMPT = REPO / (
     "reports/nns_vit_endpoint_e3_closure_r1_20260918/formal_results/attempts/"
-    "deit_s16__000/attempt-01.json"
+    "deit_s16__014/attempt-01.json"
 )
 E5_ATTEMPT = REPO / (
     "reports/nns_vit_endpoint_e5_spatial_r1_20260918/formal_results/attempts/"
-    "deit_s16__000/attempt-01.json"
+    "deit_s16__014/attempt-01.json"
 )
 SOURCE_IMAGE = REPO / (
     "assets/data/nns_vit_endpoint_e2_evaluation_20260918/"
-    "ILSVRC2012_val_00024828.JPEG"
+    "ILSVRC2012_val_00005415.JPEG"
 )
 PALETTE_CONFIG = REPO / "config/nns_vit_unified_paper_figures_r4.json"
 
@@ -161,7 +161,7 @@ def load_e2_atlas(model_id: str) -> tuple[dict[str, Any], np.ndarray, dict[str, 
 def load_e3_head_maps(model_id: str) -> tuple[dict[str, Any], dict[str, np.ndarray]]:
     attempt_path = REPO / (
         "reports/nns_vit_endpoint_e3_closure_r1_20260918/formal_results/attempts/"
-        f"{model_id}__000/attempt-01.json"
+        f"{model_id}__014/attempt-01.json"
     )
     result = load_json(attempt_path, f"sealed_E3_{model_id}_fixed_first_task")["result"]
     require(result["model_id"] == model_id, f"E3_MODEL_ID_MISMATCH:{model_id}")
@@ -636,7 +636,7 @@ def render_all_head_supplements(
             fontsize=18, weight="bold", y=0.965, color=INK,
         )
         figure.text(
-            0.57, 0.885, f"Same ground-truth class target · fixed first evaluation image · all {head_count} heads",
+            0.57, 0.885, f"Same ground-truth class target · display sample 014 · all {head_count} heads",
             ha="center", fontsize=10, color=MUTED,
         )
         figure.text(
@@ -762,7 +762,7 @@ def load_sources() -> tuple[
 
 def build_docs() -> None:
     captions_zh = {
-        34: "固定第一张 DeiT-S/16 evaluation 图像的六个注册标量目标。蓝底主图只显示正部，逐面板 P99 缩放；它是空间阅读视图，不用于跨目标比较强度。",
+        34: "固定展示样本 ILSVRC2012_val_00005415.JPEG 的六个注册标量目标。该样本来自预先保留的前 16 张 E2 full-atlas 图像，因主体轮廓和 Endpoint 空间结构较清晰而用于展示，不改变正式统计。蓝底主图只显示正部并逐面板 P99 缩放。",
         35: "同一图像、同一 ground-truth 类别目标、同一 block 5 的 identity、head、routing、value、attention、MLP 与完整 Endpoint。各图直接来自通过闭合验证的 raw component arrays。",
         36: "RQ4 固定任务使用的 total G×I、raw gradient 与三个注册 head component map。图只解释排序输入的细粒度空间形态，行为结论仍由有限干预曲线决定。",
         37: "参考 NNS 论文 Figure 13 的跨层结构，展示固定 DeiT-S/16 输入从 patch embedding、Block 0–11 到 final CLS 与类别 logit 的 Endpoint learning image。下排是由同一 raw Endpoint map 在原生 16×16 input patches 内汇总得到的 14×14 absolute mass，不是 forward feature map。",
@@ -771,7 +771,7 @@ def build_docs() -> None:
         40: "固定 ViT-B/16 输入和 channel 0，展示 patch embedding、Block 0/5/11 的 Norm1、attention projection、Norm2、MLP fc1、GELU、fc2，以及 final CLS 和类别 logit。它对应 NNSViT-IG Figure 28–34 的模块链阅读方式，但使用 Endpoint 标量目标。",
     }
     captions_en = {
-        34: "Six registered scalar targets for the fixed first DeiT-S/16 evaluation image. The blue-base main panels show only positive values with per-panel P99 scaling; they are spatial reading views, not cross-target magnitude comparisons.",
+        34: "Six registered scalar targets for the display sample ILSVRC2012_val_00005415.JPEG. This sample is one of the first 16 retained E2 full atlases and was chosen for its clear object contour and readable Endpoint structure; it does not alter formal statistics. The blue-base panels show only positive values with per-panel P99 scaling.",
         35: "Identity, head, routing, value, attention, MLP, and complete Endpoint maps for the same image, ground-truth class target, and block 5. Every panel comes directly from raw component arrays that passed closure validation.",
         36: "Total G×I, raw gradient, and three registered head-component maps used by the fixed RQ4 task. These panels show the fine-grained spatial form of the ranking inputs; finite-intervention curves determine the behavioral result.",
         37: "Following the cross-layer organization of NNS Figure 13, this figure tracks a fixed DeiT-S/16 input from patch embedding through Blocks 0–11 to final CLS and the class logit. The bottom row is 14×14 absolute mass pooled from the same raw Endpoint maps over native 16×16 input patches; it is not a forward feature map.",
@@ -884,7 +884,7 @@ def main() -> None:
     require(vit_e3_result["image_sha256"] == sha256(SOURCE_IMAGE), "VIT_E3_SOURCE_IMAGE_SHA256_MISMATCH")
     specs = [
         (34, "registered_target_learning_images", "Endpoint target atlas: real fine-grained learning images",
-         "DeiT-S/16 · fixed first evaluation image · six preregistered scalar targets", atlas_panels),
+         "DeiT-S/16 · display sample 014 · six preregistered scalar targets", atlas_panels),
         (35, "block5_structural_learning_images", "Block 5: real structural Endpoint learning images",
          "Same image · same ground-truth class target · closure-validated component arrays", component_panels),
         (36, "spatial_ranking_learning_images", "Block 5: real maps used for spatial ranking",
@@ -949,6 +949,9 @@ def main() -> None:
     source_inventory = signed({
         "schema_version": 1,
         "sample_id": SOURCE_IMAGE.name,
+        "selection_order": 14,
+        "selection_scope": "presentation_only_from_first_16_retained_full_atlases",
+        "selection_reason": "clear_single_object_contour_and_readable_endpoint_spatial_structure",
         "sources": sorted(SOURCE_FILES.values(), key=lambda item: item["path"]),
     })
     write_json(ROOT / "source_inventory.json", source_inventory)
@@ -965,7 +968,7 @@ def main() -> None:
     write_json(ROOT / "display_receipt.json", display_receipt)
     manifest_base = {
         "schema_version": 1,
-        "revision": "ENDPOINT-FINE-GRAINED-BLUE-R1",
+        "revision": "ENDPOINT-FINE-GRAINED-BLUE-R2",
         "status": "PENDING_VALIDATION",
         "figure_count": len(FIGURES),
         "figures": FIGURES,
@@ -979,6 +982,7 @@ def main() -> None:
             "new_statistics_or_inference": False,
             "positive_main_panels_are_display_only": True,
             "numerical_claims_use_sealed_raw_arrays": True,
+            "sample_selection_is_presentation_only": True,
         },
     }
     manifest = signed(manifest_base)
@@ -1003,6 +1007,13 @@ def main() -> None:
     paper_binding = {
         "schema_version": 1,
         "source_root": ROOT.relative_to(REPO).as_posix(),
+        "display_sample": {
+            "sample_id": SOURCE_IMAGE.name,
+            "selection_order": 14,
+            "scope": "presentation_only_from_first_16_retained_full_atlases",
+            "reason": "clear_single_object_contour_and_readable_endpoint_spatial_structure",
+            "formal_statistics_unchanged": True,
+        },
         "source_manifest": {
             "path": (ROOT / "figure_manifest.json").relative_to(REPO).as_posix(),
             "sha256": sha256(ROOT / "figure_manifest.json"),
