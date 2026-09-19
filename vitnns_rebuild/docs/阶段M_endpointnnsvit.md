@@ -1895,6 +1895,32 @@ M5 正式交付为：
 
 ---
 
+## 13.7 M5 正式结论
+
+M5 将 Endpoint 的方法定位明确为：**给定输入坐标、模型、标量目标和预处理后，在观测输入点上唯一确定的局部 Jacobian 输入表示**。它不需要额外选择 intervention reference，但并非脱离坐标原点的“绝对无 baseline”方法；对 normalized input `x=(r-\mu)/\sigma`，其 raw-RGB 原点由 normalization mean `\mu` 确定。对类别 logit，Endpoint `x\odot\nabla_xF` 与 normalized-input 坐标中的 Input × Gradient 是同一对象。
+
+两种既有 reference 的复用分析给出三个直接结果：
+
+1. **Endpoint 本身不随 intervention reference 改变。** 在 163,200 个 component-reference 配对中，Endpoint absolute mass `m` 与 signed sum `a` 在 normalized-zero 和 blur-rgb 间逐项相同，最大绝对差均为 0。
+2. **有限干预问题具有 reference-specific 排序。** Taylor magnitude 和实际 absolute finite effect 在全部 163,200 个配对中均发生变化；9,600 个 image-block head 比较中，两 reference 下的 Taylor 排名仅 46 项完全相同，有限效应排名仅 64 项完全相同。ViT-B/16 的 Taylor/有限效应跨 reference 排名一致性中位数为 0.3782/0.3759，DeiT-S 为 0.3000/0.3071。
+3. **与指定 reference 的有限替换相比，匹配 displacement 的 Taylor 更贴合该任务。** M1 中 Endpoint 在 zero/blur 下的行为关联分别为 ViT-B 0.2815/0.2727、DeiT-S 0.1952/0.1476，Taylor 则为 0.6742/0.6856 与 0.6095/0.6238。M2 的 24 个复用组中，regional Taylor 的中位 AUC 全部高于 Endpoint；原 M2 Holm family 的 Taylor 优势保持为完整输入 11/12、隔离 head 12/12。
+
+这些结果区分了两种用途：Endpoint 适合在统一输入坐标中扫描异构内部标量目标、执行 attention/residual 局部 Jacobian 记账和构建机制 atlas；activation-space Taylor 适合预测一个已经指定 reference 与 replacement displacement 的有限干预。两者的 estimand 和信息条件不同，M5 的结论不是跨任务方法排行榜。
+
+Path IG 的跨模型比较仍受 EP2-R1 数值门约束：在冻结的最大 512 个积分点下，DeiT-S 的两个 target 分别达到 61/64 与 62/64，ViT-B 只有 41/64 与 40/64，未达到每 target 61/64 的发布门。M5 因此不签发跨模型 Endpoint–Path fidelity、stability 或 cost-quality 结论。M1/M2 的观测耗时也属于多个 predictor、共享 forward、控制项和候选反事实的联合 package 成本，不能拆解为 Endpoint 的逐方法 runtime 优势。
+
+M5 的最终方法结论为：
+
+> **Endpoint is independent of an externally chosen intervention reference, while remaining tied to the model's input coordinate system and normalization origin. It provides a unified and structurally auditable representation of observed-input local dependence; reference-matched Taylor is better aligned with the specific finite replacements evaluated in M1 and M2.**
+
+对应中文：
+
+> **Endpoint 不依赖外部选择的干预 reference，但仍绑定模型输入坐标系及其 normalization origin。它的主要作用是统一、可审计地表示观测输入处的局部依赖；对于 M1/M2 所评估的指定 reference 有限替换，reference-matched Taylor 与任务更匹配。**
+
+M5 保持 `next_authorization=STOP_AFTER_M5`；本阶段不进入 M6。
+
+---
+
 # 十四、M6：机制案例与可视化 atlas
 
 M6 的目标是将 M3 和 M4 的统计规律可视化，而不是围绕 Endpoint–Taylor 胜负挑选案例。
@@ -2414,7 +2440,7 @@ M3、M4 与 M5 已完成。剩余最低完成集为：
 
 ## 5. 行为相关性与边界
 
-> Endpoint mass 与有限成分效应存在广泛但非普遍的关联；原 all-family omnibus 保持 `NOT_SUPPORTED`。对于特定 reference 下的有限区域干预，regional Taylor 更匹配实际位移，Endpoint 不应被直接解释为最优 intervention map。
+> Endpoint mass 与有限成分效应存在广泛但非普遍的关联；原 all-family omnibus 保持 `NOT_SUPPORTED`。M5 进一步确认 Endpoint 的 `m/a` 在 normalized-zero 与 blur-rgb 间逐项不变，而 Taylor 和实际有限效应的排序随 reference 改变。对于指定 reference 的有限替换，regional Taylor 因显式使用 activation displacement 而与 M1/M2 的冻结任务更匹配；Endpoint 的主要用途是统一、可审计地表示观测输入处的局部依赖。
 
 ---
 
