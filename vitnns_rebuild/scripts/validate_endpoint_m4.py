@@ -176,9 +176,18 @@ def main():
             require(len(residual) == 2 and len({row["test_id"] for row in residual}) == 2, "RESIDUAL_HOLM_FAMILY")
     analysis = load(ROOT / "analysis_receipt.json")
     require(analysis["mode"] == "CPU_ONLY" and analysis["cuda_visible_devices"] == "" and analysis["prohibited_imports_absent"], "ANALYSIS_BOUNDARY")
+    a1 = load(ROOT / "m4_a1_analysis_receipt.json")
+    require(a1["status"] == "PASS" and a1["mode"] == "CPU_ONLY" and a1["task_count"] == 800
+            and a1["new_inferential_tests"] == 0 and a1["cuda_visible_devices"] == "", "A1_ANALYSIS")
+    with (ROOT / "m4_a1_descriptive_summary.csv").open() as stream:
+        a1_rows = list(csv.DictReader(stream))
+    require(any(row["domain"] == "attention" and row["metric"] == "signed_magnitude" for row in a1_rows), "A1_SIGNED")
+    require(any(row["domain"] == "residual_relation" and row["metric"] == "branch_share_path_cancellation_spearman" for row in a1_rows), "A1_RELATION")
+    require(any(row["domain"] == "residual_type_contrast" for row in a1_rows), "A1_TYPE_CONTRAST")
     report = {"status": "PASS", "task_count": 800, **counts, "maximum_errors": maximum,
               "independent_image_contrasts": independent, "primary_tests": 16,
-              "source_bindings": "PASS", "queue_and_result_digests": "PASS", "cpu_only": True}
+              "a1_descriptive_summary_rows": len(a1_rows), "source_bindings": "PASS",
+              "queue_and_result_digests": "PASS", "cpu_only": True}
     path = ROOT / "validation_report.json"
     if path.exists():
         require(load(path) == report, "VALIDATION_REPORT_DRIFT")

@@ -32,6 +32,11 @@ def value(table, model, block, metric, kind=None):
                 and row["metric"] == metric and (kind is None or row.get("residual_type") == kind))
 
 
+def a1_value(table, model, domain, group, metric, block=""):
+    return next(row for row in table if row["model_id"] == model and row["domain"] == domain
+                and row["group"] == group and str(row["block"]) == str(block) and row["metric"] == metric)
+
+
 def number(observed, digits=4):
     return "NA" if observed is None else f"{float(observed):.{digits}f}"
 
@@ -51,6 +56,7 @@ def replace_marker(path: Path, marker: str, content: str) -> None:
 
 def main():
     attention = rows("attention_block_summary.csv"); residual = rows("residual_block_summary.csv")
+    a1 = rows("m4_a1_descriptive_summary.csv")
     tests = load(ROOT / "m4_tests.json")["tests"]
     validation = load(ROOT / "validation_report.json"); analysis = load(ROOT / "analysis_receipt.json")
     models = ("vit_b16", "deit_s16")
@@ -79,6 +85,29 @@ def main():
             f"| {row['model_id']} | {row['domain']} | {group} | {row['test_id']} | "
             f"{number(row['median'])} | {row['positive']}/{row['negative']}/{row['ties']} | "
             f"{float(row['holm_p']):.3e} | {row['decision']} |")
+    type_lines = []
+    relation_lines = []
+    cancellation_lines = []
+    for model in models:
+        for phase in ("early", "middle", "late"):
+            type_lines.append(
+                f"| {model} | {phase} | "
+                f"{number(a1_value(a1, model, 'residual_type_contrast', phase, 'attention_minus_mlp_identity_share')['median'])} | "
+                f"{number(a1_value(a1, model, 'residual_type_contrast', phase, 'attention_minus_mlp_path_cancellation')['median'])} | "
+                f"{number(a1_value(a1, model, 'residual_type_contrast', phase, 'attention_minus_mlp_output_identity_patch_tv')['median'])} |")
+        for kind in ("attention", "mlp"):
+            relation_lines.append(
+                f"| {model} | {kind} | "
+                f"{number(a1_value(a1, model, 'residual_relation', kind, 'branch_share_path_cancellation_spearman')['median'])} |")
+        for domain, group in (("attention", "routing"), ("attention", "value"),
+                              ("residual", "attention_identity"), ("residual", "attention_branch"),
+                              ("residual", "mlp_identity"), ("residual", "mlp_branch")):
+            for block in (0, 5, 11):
+                cancellation_lines.append(
+                    f"| {model} | {group} | {block} | "
+                    f"{number(a1_value(a1, model, domain, group, 'signed_magnitude', block)['median'])} | "
+                    f"{number(a1_value(a1, model, domain, group, 'absolute_mass', block)['median'])} | "
+                    f"{number(a1_value(a1, model, domain, group, 'map_cancellation', block)['median'])} |")
     extrema = {}
     for model in models:
         extrema[model] = {}
@@ -99,6 +128,7 @@ def main():
     }
     (ROOT / "scientific_decision.json").write_text(json.dumps(decision, indent=2, allow_nan=False) + "\n")
     attention_table = "\n".join(attention_lines); residual_table = "\n".join(residual_lines); test_table = "\n".join(test_lines)
+    type_table = "\n".join(type_lines); relation_table = "\n".join(relation_lines); cancellation_table = "\n".join(cancellation_lines)
     zh = f"""# Endpoint M4：Attention 与 residual 结构机制分析
 
 ## 执行与验证
@@ -129,9 +159,23 @@ Saturation 关系是在每张图、每一层的 heads 内计算 Spearman 后再�
 
 Identity share 描述 absolute Endpoint mass 在 skip 与 branch 两条局部路径间的比例；path cancellation 比较两条 signed map 相加前后的 absolute mass。Output-identity patch TV 衡量 residual 输出相对只走 identity 时的空间依赖改变。ViT-B/16 中 attention/MLP residual 的最小与最大空间 TV 位于 blocks {extrema['vit_b16']['attention']['min_block']}/{extrema['vit_b16']['attention']['max_block']} 和 {extrema['vit_b16']['mlp']['min_block']}/{extrema['vit_b16']['mlp']['max_block']}；DeiT-S 对应为 {extrema['deit_s16']['attention']['min_block']}/{extrema['deit_s16']['attention']['max_block']} 和 {extrema['deit_s16']['mlp']['min_block']}/{extrema['deit_s16']['mlp']['max_block']}。这些层级定位来自冻结 cohort 的描述性中位数。
 
+| 模型 | Phase | Attention−MLP identity share | Attention−MLP path cancellation | Attention−MLP spatial TV |
+|---|---|---:|---:|---:|
+{type_table}
+
+| 模型 | Residual | Branch share–path cancellation Spearman（跨 12 blocks） |
+|---|---|---:|
+{relation_table}
+
+前一表直接比较 attention 与 MLP residual；后一表回答 branch mass 较大时 path cancellation 是否一并变化。两表均为冻结 A1 描述性分析，不加入原 M4 Holm families。
+
 ## Signed、absolute 与 cancellation
 
 每条路径均同时保留 signed sum、absolute mass、positive/negative mass 和 map cancellation。M4 区分同一 map 内的正负抵消与 routing/value 或 identity/branch 之间的 path cancellation；二者没有合并为单一“重要性”指标。所有零分母、零范数和常数 head 关系严格传播为 NA，没有加入 epsilon。
+
+| 模型 | 路径 | Block | Signed magnitude | Absolute mass | Map cancellation |
+|---|---|---:|---:|---:|---:|
+{cancellation_table}
 
 ## 图
 
@@ -173,9 +217,23 @@ Saturation relations use Spearman correlations across heads within each image an
 
 Identity share partitions absolute Endpoint mass between the skip and branch paths. Path cancellation compares their signed sum with the sum of their absolute masses. Output-identity patch TV measures the spatial change from the identity-only distribution to the residual output. For ViT-B/16, the minimum/maximum spatial-TV blocks were {extrema['vit_b16']['attention']['min_block']}/{extrema['vit_b16']['attention']['max_block']} for attention residuals and {extrema['vit_b16']['mlp']['min_block']}/{extrema['vit_b16']['mlp']['max_block']} for MLP residuals; the DeiT-S pairs were {extrema['deit_s16']['attention']['min_block']}/{extrema['deit_s16']['attention']['max_block']} and {extrema['deit_s16']['mlp']['min_block']}/{extrema['deit_s16']['mlp']['max_block']}. These locations are descriptive medians over the frozen cohort.
 
+| Model | Phase | Attention−MLP identity share | Attention−MLP path cancellation | Attention−MLP spatial TV |
+|---|---|---:|---:|---:|
+{type_table}
+
+| Model | Residual | Branch share–path cancellation Spearman across 12 blocks |
+|---|---|---:|
+{relation_table}
+
+The first table directly compares attention and MLP residuals. The second asks whether path cancellation changes with branch mass. Both are frozen A1 descriptive analyses outside the original M4 Holm families.
+
 ## Signed, absolute, and cancellation views
 
 Every path retains signed sum, absolute mass, positive/negative mass, and within-map cancellation. M4 keeps within-map cancellation separate from routing/value or identity/branch path cancellation. Zero denominators, zero norms, and constant-head correlations propagate as NA without epsilon substitution.
+
+| Model | Path | Block | Signed magnitude | Absolute mass | Map cancellation |
+|---|---|---:|---:|---:|---:|
+{cancellation_table}
 
 ## Figures
 
