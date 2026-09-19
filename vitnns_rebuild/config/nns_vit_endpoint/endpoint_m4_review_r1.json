@@ -1,0 +1,75 @@
+{
+  "stage": "ENDPOINT-M4-REVIEW-R1",
+  "status": "review_driven_post_hoc_descriptive_frozen_before_execution",
+  "objective": "Tighten M4 estimands and add source-only robustness diagnostics requested in external review",
+  "immutable_predecessor": {
+    "status": "ENDPOINT_M4_PASS_EXECUTION_AND_AUDIT",
+    "next_authorization": "STOP_AFTER_M4",
+    "root": "reports/nns_vit_endpoint_m4_r1_20260919"
+  },
+  "analysis_scope": {
+    "jvp_distribution": {
+      "cohort": "all_800_M4_image_model_tasks",
+      "aggregation": "median_heads_within_image_block_then_across_images",
+      "report": ["q10", "q25", "median", "q75", "q90", "bootstrap_median_ci95"],
+      "fields": ["relative_error", "absolute_error", "full_response_denominator", "routing_numerator"]
+    },
+    "saturation_robustness": {
+      "cohort": "all_800_M4_image_model_tasks",
+      "within_image_block_unit": "heads",
+      "saturation": ["mean_query", "cls_query"],
+      "outcomes": ["routing_share", "frozen_attention_endpoint_error", "frozen_attention_jvp_error"],
+      "adjustments": ["none", "head_output_norm", "head_output_norm_and_downstream_cotangent_norm"],
+      "phases": {"early": [0, 1, 2, 3], "middle": [4, 5, 6, 7], "late": [8, 9, 10, 11], "all": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]},
+      "inference": "post_hoc_sensitivity_image_bootstrap_and_two_sided_sign_with_holm_per_model_all_phase"
+    },
+    "residual_spatial": {
+      "cohort": "all_800_M4_image_model_tasks",
+      "primary_review_metric": "late_minus_early_output_identity_patch_tv",
+      "secondary": "branch_share_vs_spatial_tv_spearman_across_blocks",
+      "inference": "post_hoc_two_sided_sign_with_holm_across_four_model_type_tests"
+    },
+    "m3_m4_bridge": {
+      "raw_map_subset": "E3_evaluation_orders_0_to_15_per_model",
+      "tasks": 32,
+      "blocks": 12,
+      "maps": ["attention_full", "routing", "value"],
+      "metrics": ["normalized_patch_absolute_entropy", "full_value_patch_total_variation", "full_minus_value_entropy"],
+      "m3_comparison": "model_block_median_depth_trajectory_only",
+      "interpretation": "descriptive_approximation_difference_not_additive_or_causal",
+      "own_token_locality": "NOT_APPLICABLE_TO_LOGIT_TARGET"
+    }
+  },
+  "estimand_language": {
+    "routing_share": "relative Endpoint path-norm scale, not percentage contribution",
+    "jvp_error": "normalized RMS directional discrepancy, not percent omitted",
+    "identity_share": "relative Endpoint path-norm scale, not causal carry fraction",
+    "target_conditioning": "all decompositions include the downstream cotangent of the frozen ground-truth logit"
+  },
+  "runtime": {
+    "CPU_only": true,
+    "CUDA_VISIBLE_DEVICES": "",
+    "jpeg_reads": false,
+    "model_loads": false,
+    "torch_or_timm_imports": false,
+    "bootstrap_repetitions": 10000,
+    "confidence": 0.95
+  },
+  "source_bindings": {
+    "reports/nns_vit_endpoint_m4_r1_20260919/terminal_receipt.json": "6ade8e65e9d36edc049e7af7b55643a125eb6d24425860f38a54c46a3b522ed4",
+    "reports/nns_vit_endpoint_m4_r1_20260919/artifact_manifest.json": "99a48c9cc973646adc9b7a00453ce731a68b76ab5e92cc33286d63f5937a1f3f",
+    "reports/nns_vit_endpoint_m4_r1_20260919/task_manifest.json": "84823bc9d88ff512f2360c28403bc985fea6f980db5efcafb5f59563f6d3a455",
+    "reports/nns_vit_endpoint_e3_closure_r1_20260918/artifact_manifest.json": "7d90f2f5584e8e7da3c35615ba00aff99d70234d0da7b9316c1a79c5f452e7a4",
+    "reports/nns_vit_endpoint_e3_closure_r2_20260918/terminal_receipt.json": "675cf4c6bec7dd681497f57bbd31b638dece7a5dfe0abc2b99e921bdbfbfe8ac",
+    "reports/nns_vit_endpoint_m1_r1_20260918/terminal_receipt.json": "1c36dc2804240cd1150c3356664af7f98fcbaefa7aaa6fb28a1919e5ff306e72",
+    "reports/nns_vit_endpoint_m1_r1_20260918/artifact_manifest.json": "2adfd8d81ed1ef888d57a4a5de471847c5d07eabc2f85c903a6ce79444079820",
+    "reports/nns_vit_endpoint_m1_r1_20260918/metrics_manifest.json": "33dee264c73b2f544af5b9d7db6bc7b5d2c8094a8197e2dfb138ea5b892d2d85",
+    "reports/nns_vit_endpoint_m3_sup_r2_20260919/terminal_receipt.json": "df90654ede0ed7dc665b5ac509c61ab401fd59e0f78f813b5ffbd1f8076c7533",
+    "reports/nns_vit_endpoint_m3_sup_r2_20260919/artifact_manifest.json": "cbd9f272642d5632714ee68c04df7d06d3af845abcac169dab8422ace6cf075f",
+    "reports/nns_vit_endpoint_m3_sup_r2_20260919/block_summary.csv": "cbca58a8e1ef95869ae6dd1372e2a847652ab743b07400bb0c6d9e37bc2974e4",
+    "papers/nns_vit_endpoint/en/full_draft.md": "5dcd5dcef104cf1174ea53a523df79458d1b97779cfa12022a4aa61c59e0c43e",
+    "papers/nns_vit_endpoint/zh/full_draft.md": "299db0c8cdda8021f847adc132e7e26be5f9293386bb9de5e0ceabc6274a69ef"
+  },
+  "output_root": "reports/nns_vit_endpoint_m4_review_r1_20260919",
+  "next_authorization": "STOP_AFTER_M4_REVIEW_R1"
+}
