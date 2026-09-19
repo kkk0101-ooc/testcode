@@ -9,15 +9,16 @@
 
 ## Evidence discipline
 
-- Bind numerical claims to `notes/endpoint_scanner_paper_evidence_matrix_r1.md` and sealed sources.
+- Bind current numerical claims to `notes/revision_v1_evidence_matrix.md` and sealed sources;
+  `notes/endpoint_scanner_paper_evidence_matrix_r1.md` retains the original release mapping.
 - The base Endpoint object is $x\odot\nabla_xs(x)$, numerically Gradient × Input for the same
   scalar target. Do not present the base formula as novel.
 - Separate Identity, Correctness, and Utility. Closure and JVP results do not establish finite
   intervention utility.
-- Following Stage M, state RQ3 as broad but non-universal family-level support (11/12);
+- In the revised RQ order, state RQ5a as broad but non-universal family-level support (11/12);
   retain the frozen all-family omnibus C4a `NOT_SUPPORTED` field. Report supplementary M1
   comparisons separately from the original confirmatory analysis.
-- Preserve RQ4/C4b `NOT_SUPPORTED` and the stronger registered regional-Taylor result.
+- Preserve RQ5b/C4b `NOT_SUPPORTED` and the stronger registered regional-Taylor result.
 - Do not publish cross-model Endpoint–Path claims because ViT-B Path-IG calibration failed.
 
 ## Writing and figures
@@ -25,5 +26,6 @@
 - Use claim -> evidence -> concise boundary.
 - Mark missing information with `[EVIDENCE REQUIRED]`, `[PARAMETER REQUIRED]`, or
   `[REFERENCE REQUIRED]`.
-- Reference figures through `figure_manifest.json`; do not modify or duplicate the sealed package.
+- Reference figures through `figure_manifest.json`; do not modify or duplicate the sealed R2
+  source package. The publication revision is a separate derivative package with ten main figures.
 - Treat display-normalized maps as spatial-shape views; numerical claims use raw records.
