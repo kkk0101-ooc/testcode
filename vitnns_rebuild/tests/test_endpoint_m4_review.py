@@ -1,4 +1,6 @@
 import math
+import ast
+from pathlib import Path
 
 import numpy as np
 
@@ -32,3 +34,10 @@ def test_patch_entropy_and_tv_keep_nonadditive_spatial_objects_separate():
     assert entropy(p) == 0 and entropy(q) == 0
     assert total_variation(p, q) == 1
     assert patch_distribution(np.zeros_like(left)) is None
+
+
+def test_review_runner_contains_no_json_boolean_names_in_python_expressions():
+    path = Path(__file__).resolve().parents[1] / "scripts/run_endpoint_m4_review.py"
+    tree = ast.parse(path.read_text())
+    names = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
+    assert "false" not in names and "true" not in names

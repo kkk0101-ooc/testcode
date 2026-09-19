@@ -102,6 +102,12 @@ def startup(spec):
     for relative, expected in spec["source_bindings"].items():
         if sha(REPO / relative) != expected:
             raise ValueError("SOURCE_BINDING:" + relative)
+    failure = REPO / spec["recovery_predecessor"]["root"] / "failure_receipt.json"
+    if sha(failure) != spec["recovery_predecessor"]["failure_receipt_sha256"]:
+        raise ValueError("R1_FAILURE_BINDING")
+    failure_value = load(failure)
+    if failure_value["status"] != "FAIL_IMPLEMENTATION_NAMEERROR" or failure_value["scientific_results_released"]:
+        raise ValueError("R1_FAILURE_STATUS")
     completed = subprocess.run(
         [sys.executable, "scripts/seal_endpoint_m4.py", "--verify"], cwd=REPO,
         env=dict(os.environ, CUDA_VISIBLE_DEVICES="", OPENBLAS_NUM_THREADS="1"),
@@ -310,7 +316,7 @@ def bridge_analysis():
                 right = [next(row["median"] for row in summary if row["model_id"] == model and row["block"] == block and row["metric"] == bridge_metric) for block in range(12)]
                 trajectory.append({"model_id": model, "m3_metric": m3_metric, "m4_bridge_metric": bridge_metric,
                                    "block_trajectory_spearman": spearman(left, right),
-                                   "unit": "12_model_level_block_medians", "causal_interpretation": false})
+                                   "unit": "12_model_level_block_medians", "causal_interpretation": False})
     return rows, summary, m3_rows, trajectory
 
 
