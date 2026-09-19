@@ -1,0 +1,45 @@
+{
+  "stage": "ENDPOINT-M3-SUP-R1",
+  "status": "supplementary_descriptive_frozen_before_analysis",
+  "objective": "Add error distributions, operator tables, blockwise trajectories, stratified CLS-patch summaries, cancellation-scale diagnostics, and float32/float64 finite-difference diagnostics without changing M3 decisions",
+  "source_stage_status": "ENDPOINT_M3_PASS_EXECUTION_AND_AUDIT",
+  "scope": {
+    "m3a_error_quantiles": [0.0, 0.5, 0.9, 0.99, 1.0],
+    "m3a_groups": ["dtype", "model", "model_dtype"],
+    "operator_fields": ["directions", "dtype", "max_analytic_autograd_jvp_relative_error", "max_jvp_vjp_identity_relative_error", "max_best_finite_difference_relative_error", "epsilons", "analytic_jacobian", "autograd_jvp_vjp"],
+    "atlas_blocks": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+    "atlas_metrics": ["entropy", "locality", "distance", "cancellation", "net_ratio"],
+    "atlas_bootstrap_repetitions": 10000,
+    "cls_patch_strata": ["all", "early", "middle", "late", "block_00", "block_01", "block_02", "block_03", "block_04", "block_05", "block_06", "block_07", "block_08", "block_09", "block_10", "block_11"],
+    "cancellation_scales": ["within_rgb_channels", "within_patch_after_rgb_sum", "across_patch_signed", "whole_image", "net_ratio"],
+    "cancellation_chain": "net_ratio=(pixel_signed_mass/coordinate_absolute_mass)*(patch_signed_mass/pixel_signed_mass)*(absolute_net/patch_signed_mass)",
+    "full_map_source": "pre_frozen_120_float32_maps",
+    "float64_cancellation_images_per_model": 2,
+    "float64_cancellation_targets_per_image": 6,
+    "fd_diagnostics": "all_36_float32_failures_and_float64_counterparts",
+    "fd_operator_attribution": "not_identifiable_for_post_block_token_channel_targets",
+    "new_confirmatory_tests": 0
+  },
+  "interpretation": {
+    "preferred_term": "spatial broadening of local input dependence",
+    "chinese_term": "层深相关的局部一阶输入依赖空间扩展",
+    "cls_patch_role": "construct_validity_descriptive",
+    "cancellation_role": "signed_vs_absolute_interpretation_boundary",
+    "fd_role": "numerical_diagnostic_not_scientific_effect"
+  },
+  "source_bindings": {
+    "reports/nns_vit_endpoint_m3_r1_20260919/terminal_receipt.json": "205a21b0f06aef2cd0ca4c6786b7ac7e320a1c363e01a4f506081ccad1314b73",
+    "reports/nns_vit_endpoint_m3_r1_20260919/artifact_manifest.json": "21abd4aa70ca33ae2d7150e8d8e69d77151c94c9201a1e0e298bed0fb99d6ddb",
+    "reports/nns_vit_endpoint_m3_r1_20260919/m3a_fidelity.json": "f74bd05852a8f62dbdce619c6aecf12cf61257113f14c980a77e25663baeb23a",
+    "reports/nns_vit_endpoint_m3_r1_20260919/m3a_operator_validation.json": "95ecd2bac2df3275fe3bc993172672bfe9e0fa41cd23bce0b5320fbbb3cc2383",
+    "reports/nns_vit_endpoint_m3_r1_20260919/task_manifest.json": "0221eb7c6c48c68fef3c3e351044fe83d6d28e427e73dc015efdf3c674355ef9",
+    "reports/nns_vit_endpoint_m3_r1_20260919/target_registry.json": "8103de722e5451fbd4339785ccf3a87bade2482a03efe571e2128921685503d5",
+    "reports/nns_vit_endpoint_m3_r1_20260919/task_validation.json": "fc6536052eae7ccc10ffa27810dd536b12a05aced5eb7f0a12cadd376c9a247a",
+    "reports/nns_vit_endpoint_m3_r1_20260919/atlas_tests.json": "25003bdaecb678b19aa3f3473532ef4bf5df7b382cb63458aaf1719c75a3aa83",
+    "reports/nns_vit_endpoint_m3_r1_20260919/initial_numeric_validation_failure.json": "8646eb60e0c49971a88c9be986e30d823400a4ea120d9f7186be0abc5fa6a68e",
+    "reports/nns_vit_endpoint_m3_r1_20260919/m3b_float64_recovery.json": "cc9ddc334085ea27304bc27fff50c99a16338da8ce2aa2046f5ae03e5cbb8828",
+    "reports/nns_vit_endpoint_m3_r1_20260919/full_map_manifest.json": "7de0613a2e517f2442af04b20d6a5256710398434cb3879c3c55094cf833d290"
+  },
+  "output_root": "reports/nns_vit_endpoint_m3_sup_r1_20260919",
+  "next_authorization": "STOP_AFTER_M3_SUP_R1"
+}
