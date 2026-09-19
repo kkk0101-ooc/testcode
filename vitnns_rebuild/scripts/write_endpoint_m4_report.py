@@ -23,7 +23,7 @@ def rows(name):
         if "median" in row:
             row["median"] = None if row["median"] == "" else float(row["median"])
         if "ci95" in row:
-            row["ci95"] = None if row["ci95"] == "" else json.loads(row["ci95"].replace("'", '"'))
+            row["ci95"] = None if row["ci95"] == "" else json.loads(row["ci95"])
     return output
 
 

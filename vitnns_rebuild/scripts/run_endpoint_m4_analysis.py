@@ -51,7 +51,8 @@ def write_csv(path: Path, fieldnames: list[str], rows: list[dict]) -> None:
     with path.open("x", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=fieldnames)
         writer.writeheader()
-        writer.writerows(rows)
+        writer.writerows({key: (json.dumps(value, separators=(",", ":")) if isinstance(value, (list, dict)) else value)
+                          for key, value in row.items()} for row in rows)
 
 
 def accepted_results() -> list[dict]:
