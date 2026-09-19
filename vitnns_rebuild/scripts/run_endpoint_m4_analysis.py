@@ -6,11 +6,14 @@ os.environ["OPENBLAS_NUM_THREADS"] = "1"
 
 from collections import defaultdict
 import csv
+import hashlib
 import json
 import math
 from pathlib import Path
 import shutil
+import subprocess
 import sys
+import time
 
 import matplotlib
 matplotlib.use("Agg")
@@ -30,6 +33,10 @@ from vitnns.endpoint_m4_statistics import (  # noqa: E402
 
 def load(path: Path):
     return json.loads(path.read_text())
+
+
+def sha(path: Path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def write_new(path: Path, value) -> None:
@@ -214,8 +221,26 @@ def render(attention: list[dict], residual: list[dict]) -> list[dict]:
 
 
 def main() -> None:
-    if any(name in sys.modules for name in ("torch", "timm", "PIL")):
+    if any(name in sys.modules for name in ("torch", "timm")):
         raise ValueError("CPU_ONLY_IMPORT_BOUNDARY")
+    head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True).strip()
+    branch = subprocess.check_output(["git", "symbolic-ref", "--short", "HEAD"], cwd=REPO, text=True).strip()
+    remote = subprocess.check_output(["git", "ls-remote", "origin", "refs/heads/" + branch], cwd=REPO, text=True).split()[0]
+    if head != remote:
+        raise ValueError("PUBLISHED_ANALYSIS_IMPORT_AMENDMENT_REQUIRED")
+    amendment_sources = ["docs/endpoint_m4_analysis_import_amendment_20260919.md", "scripts/run_endpoint_m4_analysis.py"]
+    bindings = {}
+    for relative in amendment_sources:
+        local = sha(REPO / relative)
+        published = hashlib.sha256(subprocess.check_output(["git", "show", f"{head}:vitnns_rebuild/{relative}"], cwd=REPO)).hexdigest()
+        if local != published:
+            raise ValueError("PUBLISHED_ANALYSIS_IMPORT_SOURCE_DRIFT:" + relative)
+        bindings[relative] = local
+    write_new(ROOT / "analysis_import_amendment.json", {
+        "stage": "ENDPOINT-M4-A2", "time_ns": time.time_ns(), "producer_commit": head,
+        "remote_commit": remote, "sources": bindings,
+        "unchanged": ["GPU results", "task manifest", "metrics", "statistical families", "thresholds"],
+    })
     results = accepted_results(); derived = [validate_result(row) for row in results]
     if len(results) != 800 or {row["model_id"] for row in results} != {"vit_b16", "deit_s16"}:
         raise ValueError("RESULT_SCOPE")

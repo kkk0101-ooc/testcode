@@ -62,16 +62,20 @@ def main():
           "attention uses g_r1 and MLP uses g_r2; identity seed excludes sibling branch")
     check("11.2 both residuals over full cohort", [rel + "residual_block_summary.csv", rel + "analysis_receipt.json"],
           "19,200 image-block-residual records")
-    check("11.3 share, cancellation, cosine and spatial change", [rel + "residual_block_summary.csv", rel + "descriptive_contrast_summary.csv", rel + "figures/m4_residual_depth.png"],
+    check("11.3 share, cancellation, cosine and spatial change", [rel + "residual_block_summary.csv", rel + "m4_a1_descriptive_summary.csv", rel + "figures/m4_residual_depth.png"],
           "identity/branch shares, path cancellation, cosine, patch-distribution total variation")
-    check("11.4 six residual mechanism questions", ["docs/endpoint_m4_results_20260919.md", rel + "residual_block_summary.csv", rel + "descriptive_contrast_summary.csv"],
+    check("11.4 six residual mechanism questions", ["docs/endpoint_m4_results_20260919.md", rel + "residual_block_summary.csv", rel + "m4_a1_descriptive_summary.csv"],
           "depth, residual type, branch-cancellation association, preservation/rewrite layers, and separate-model patterns")
     check("11.5 omitted-identity negative controls", [rel + "validation_report.json"],
           "all 19,200 nonzero identity/carry omissions rejected exact closure")
-    check("M4-C signed, absolute, map and path cancellation", [rel + "attention_block_summary.csv", rel + "residual_block_summary.csv"],
+    check("M4-C signed, absolute, map and path cancellation", [rel + "m4_a1_image_values.csv", rel + "m4_a1_descriptive_summary.csv", rel + "residual_block_summary.csv"],
           "signed magnitude, absolute mass, within-map cancellation and cross-path cancellation remain distinct")
     check("15 image-first inference and frozen Holm families", [rel + "image_values.csv", rel + "m4_tests.json", "src/vitnns/endpoint_m4_statistics.py"],
           "10,000 bootstrap, two-sided exact sign, four attention tests/model and two residual tests/model/type")
+    check("pre-result M4-A1 descriptive amendment", ["docs/endpoint_m4_analysis_amendment_20260919.md", rel + "m4_a1_freeze.json", rel + "m4_a1_analysis_receipt.json"],
+          "published before analysis; no new inferential tests; adds signed/absolute and residual-type descriptive contrasts")
+    check("pre-analysis M4-A2 import-boundary amendment", ["docs/endpoint_m4_analysis_import_amendment_20260919.md", rel + "analysis_import_amendment.json"],
+          "matplotlib Pillow writer allowed without JPEG reads; Torch/timm/GPU remain prohibited during analysis")
     check("figures and numbered analysis", [rel + "figure_manifest.json", rel + "figures/m4_attention_depth.png", rel + "figures/m4_attention_saturation.png", rel + "figures/m4_residual_depth.png", "docs/endpoint_m4_results_20260919.md"],
           "three PNG/PDF result figures mirrored into paper package and described as Image #1 through Image #3")
     check("bilingual manuscript integration and writing audit", ["papers/nns_vit_endpoint/zh/full_draft.md", "papers/nns_vit_endpoint/en/full_draft.md", "papers/nns_vit_endpoint/zh/endpoint_m4_supplement.md", "papers/nns_vit_endpoint/en/endpoint_m4_supplement.md", "papers/nns_vit_endpoint/qc/endpoint_m4_writing_audit.md", rel + "document_validation.json"],
