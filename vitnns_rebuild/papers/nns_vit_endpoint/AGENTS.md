@@ -10,6 +10,7 @@
 ## Evidence discipline
 
 - Bind current numerical claims to `notes/revision_v1_evidence_matrix.md` and sealed sources;
+  publication-specific display evidence lives in `publication_r2_20260920/evidence/`.
   `notes/endpoint_scanner_paper_evidence_matrix_r1.md` retains the original release mapping.
 - The base Endpoint object is $x\odot\nabla_xs(x)$, numerically Gradient × Input for the same
   scalar target. Do not present the base formula as novel.
@@ -26,6 +27,10 @@
 - Use claim -> evidence -> concise boundary.
 - Mark missing information with `[EVIDENCE REQUIRED]`, `[PARAMETER REQUIRED]`, or
   `[REFERENCE REQUIRED]`.
-- Reference figures through `figure_manifest.json`; do not modify or duplicate the sealed R2
-  source package. The publication revision is a separate derivative package with ten main figures.
+- Reference figures through `figure_manifest.json`. The current portable publication is
+  `publication_r2_20260920/`, containing both languages and 22 main figures.
+- The user's 2026-09-20 instruction authorizes local copies of required supplementary figures
+  inside that publication directory. Preserve sealed source packages and record copy hashes.
+- Use blue positive learning-image displays with explicit display rules and local signed/absolute
+  counterparts. Include the original input in every empirical map page.
 - Treat display-normalized maps as spatial-shape views; numerical claims use raw records.

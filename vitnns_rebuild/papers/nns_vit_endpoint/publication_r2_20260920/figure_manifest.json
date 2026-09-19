@@ -1,0 +1,512 @@
+{
+  "revision": "PUBLICATION-R2",
+  "figure_count": 22,
+  "figures": [
+    {
+      "number": 1,
+      "original_number": 1,
+      "slug": "concept_overview",
+      "title": "Seeing a Vision Transformer through learning images",
+      "caption_zh": "同一输入经过正常前向计算得到预测；NNS-ViT 为内部目标与输出目标提供保留输入位置的学习图像。虚线表示目标与学习图像的对应关系。",
+      "caption_en": "The same input produces a prediction through the ordinary forward computation. NNS-ViT associates internal and output targets with learning images in the original input coordinates. Dashed lines link targets to their images.",
+      "role": "concept",
+      "files": {
+        "png": {
+          "path": "figures/png/fig_01_concept_overview.png",
+          "sha256": "7a9dc21a8c8577e2dde8e8b433cb276610b680bb6257d03bf2baba7b4e50f186"
+        },
+        "pdf": {
+          "path": "figures/pdf/fig_01_concept_overview.pdf",
+          "sha256": "898c5862a0c682645d83fffc57f0842f79db8af47eae4a84d96a6c22e0c7bf54"
+        },
+        "svg": {
+          "path": "figures/svg/fig_01_concept_overview.svg",
+          "sha256": "74914b4562eaf319904a8024fc56a19b416baa287f2f4dc43d88c91e2d0d365d"
+        }
+      }
+    },
+    {
+      "number": 2,
+      "original_number": 2,
+      "slug": "neuron_learning_image",
+      "title": "A neuron and its learning image carry different information",
+      "caption_zh": "四坐标线性示例：上方为神经元值，下方为相同计算对应的输入坐标学习图像。此例用于解释传播规则，数值由图中权重直接计算。",
+      "caption_en": "A four-coordinate linear example. The upper diagram shows neuron values; the lower matrices preserve each input coordinate through the same computation. Values follow directly from the displayed weights.",
+      "role": "concept",
+      "files": {
+        "png": {
+          "path": "figures/png/fig_02_neuron_learning_image.png",
+          "sha256": "4c14ee0d6fd001b38a891070673ea5375d8f09a537e975d18048301d2f2b0915"
+        },
+        "pdf": {
+          "path": "figures/pdf/fig_02_neuron_learning_image.pdf",
+          "sha256": "0e5f751c923f9c9d151d8f476fad758b78885d9a8e5e1421227ae059e0b4225b"
+        },
+        "svg": {
+          "path": "figures/svg/fig_02_neuron_learning_image.svg",
+          "sha256": "31cffd15050843b563356b3fd42afc44d3c57aa7ef82bf3dddd16ff41ee80f14"
+        }
+      }
+    },
+    {
+      "number": 3,
+      "original_number": 3,
+      "slug": "coordinate_initialization",
+      "title": "Initialization: preserve both value and position",
+      "caption_zh": "输入值初始化为对角 learning-image 矩阵；拆分后每个坐标的位置保持不变。RGB 输入对每个通道分别进行相同初始化。",
+      "caption_en": "Input values initialize a diagonal learning-image matrix. Each split coordinate retains its location; RGB channels follow the same initialization independently.",
+      "role": "concept",
+      "files": {
+        "png": {
+          "path": "figures/png/fig_03_coordinate_initialization.png",
+          "sha256": "3d1ae9b52d56af215fe7e82133cbddfa0e303096930218edff425df322cb4ecb"
+        },
+        "pdf": {
+          "path": "figures/pdf/fig_03_coordinate_initialization.pdf",
+          "sha256": "809ef548e0d9815c8adfdbbcbd0fa04f138a0cd4191218602b2e1846eaf95861"
+        },
+        "svg": {
+          "path": "figures/svg/fig_03_coordinate_initialization.svg",
+          "sha256": "f7170a2dd3024302e162c6a1ed9bd7c04ef89169da1ff2728f676b675f6ec7ea"
+        }
+      }
+    },
+    {
+      "number": 4,
+      "original_number": 4,
+      "slug": "local_derivative_generation",
+      "title": "Generation: combine learning images with local derivatives",
+      "caption_zh": "局部导数作为组合系数，学习图像逐层传播后与输入乘目标梯度一致。这里展示已定义线性示例的完整数值运算。",
+      "caption_en": "Local derivatives weight the incoming learning images. Layerwise propagation equals input times target gradient. The figure shows the complete numerical operation for the defined linear example.",
+      "role": "concept",
+      "files": {
+        "png": {
+          "path": "figures/png/fig_04_local_derivative_generation.png",
+          "sha256": "bf77e578c1881907f5a2cf2e5c0b5b8817d5578dd2185ef04c834c05cde178cf"
+        },
+        "pdf": {
+          "path": "figures/pdf/fig_04_local_derivative_generation.pdf",
+          "sha256": "2215aaedbcdcfea4bb50e871068bdbb52c96475470334cdc877731c107f8b8ae"
+        },
+        "svg": {
+          "path": "figures/svg/fig_04_local_derivative_generation.svg",
+          "sha256": "b5fea2f4797ea5a8c28c8d699528c8ed18a8996f07369338cc9e1b108666c67b"
+        }
+      }
+    },
+    {
+      "number": 5,
+      "original_number": 5,
+      "slug": "patch_embedding",
+      "title": "From pixels to tokens without losing image coordinates",
+      "caption_zh": "Patch embedding 可写为局部线性映射。其 token-channel 坐标的学习图像保留在原输入网格；示意支持区域对应一个 patch，偏置不形成图像坐标项。",
+      "caption_en": "Patch embedding is a local linear map. A token-channel learning image retains the original input grid; the illustrated support is one patch. Biases have no independent image-coordinate term.",
+      "role": "concept",
+      "files": {
+        "png": {
+          "path": "figures/png/fig_05_patch_embedding.png",
+          "sha256": "b3a929856f204c267b048272e0fac09df9426e5ee9d1eb309963173080d07958"
+        },
+        "pdf": {
+          "path": "figures/pdf/fig_05_patch_embedding.pdf",
+          "sha256": "a86035591ecb0a5a0e28abdf0dc58041597330e68a57abf05ba73213fa70fe33"
+        },
+        "svg": {
+          "path": "figures/svg/fig_05_patch_embedding.svg",
+          "sha256": "c0a3b6d0f6c5a241b38b4a4c676b4fbace46df090c6db550352ee4bbf7212e49"
+        }
+      }
+    },
+    {
+      "number": 6,
+      "original_number": 6,
+      "slug": "attention_differential",
+      "title": "Attention separates routing from value transmission",
+      "caption_zh": "Q/K 的变化通过 attention weights 改变 routing；V 的变化通过当前权重传播。两条微分路径相加重构完整 attention 微分，head 下游 cotangent 包含 output projection。",
+      "caption_en": "Q/K changes alter routing through attention weights; V changes propagate through the current weights. The two differential paths sum to the full attention differential, with output projection included in the downstream cotangent.",
+      "role": "concept",
+      "files": {
+        "png": {
+          "path": "figures/png/fig_06_attention_differential.png",
+          "sha256": "874bcdeea46fa72dd73945072d7c893a666d64418bd2958c653ed967185a14a3"
+        },
+        "pdf": {
+          "path": "figures/pdf/fig_06_attention_differential.pdf",
+          "sha256": "4134660e3db92308751b08a6c4acbef3541eeac89a56774bab5d7b874b281c8f"
+        },
+        "svg": {
+          "path": "figures/svg/fig_06_attention_differential.svg",
+          "sha256": "0075ea3cf5d69bdebb88843ebc6ea94269aa06fb5202f64073133d10efa4198a"
+        }
+      }
+    },
+    {
+      "number": 7,
+      "original_number": 7,
+      "slug": "residual_principle",
+      "title": "Residual connections retain and transform input dependence",
+      "caption_zh": "上方为 residual 的两条真实边，下方为同一懒熊输入和类别目标的两路径学习图像。等式对 signed maps 成立，蓝底正部仅供空间阅读。",
+      "caption_en": "The residual has two distinct computational edges. Below are their learning images for the same sloth-bear input and class target. Additivity holds for signed maps; blue positive views show spatial structure.",
+      "role": "concept",
+      "files": {
+        "png": {
+          "path": "figures/png/fig_07_residual_principle.png",
+          "sha256": "319255a7ae129de76feca4f299196440f1b26df42ce8d48e8819a18b6e46451e"
+        },
+        "pdf": {
+          "path": "figures/pdf/fig_07_residual_principle.pdf",
+          "sha256": "1f01664bd62f22e6413ef6643d40ac3c6d3759a79728f442f44841ff1bc14be4"
+        },
+        "svg": {
+          "path": "figures/svg/fig_07_residual_principle.svg",
+          "sha256": "420130a62e36be4b990ca5d63f92bb38c5b75f9a4fd8933ffd0769896dcb71ee"
+        }
+      }
+    },
+    {
+      "number": 8,
+      "original_number": 8,
+      "slug": "internal_targets",
+      "title": "Different targets reveal different parts of the same input",
+      "caption_zh": "同一图像的不同内部与类别目标。Energy targets 使用前向空间方差最大的通道；这与单个 token-channel 目标和最终类别目标区分。",
+      "caption_en": "Different internal and class targets for one image. Energy targets use the channel of highest forward spatial variance and are distinct from individual token-channel and final class targets.",
+      "role": "qualitative",
+      "files": {
+        "png": {
+          "path": "figures/png/fig_08_internal_targets.png",
+          "sha256": "3e8965070a42402bd65a3e9cff50f495e8a85ed6153dc6203a80d41c27aa2878"
+        },
+        "pdf": {
+          "path": "figures/pdf/fig_08_internal_targets.pdf",
+          "sha256": "7b6bbaaa8f5f94adfd930812ac5f214f8c8cf84d7b85161bf8c6307e4b27e3a8"
+        },
+        "svg": {
+          "path": "figures/svg/fig_08_internal_targets.svg",
+          "sha256": "db3a4e14200a0f66b0ea3355b4da8864ba1bf6a6c9c0c83cbf53fa69d1584dd6"
+        }
+      }
+    },
+    {
+      "number": 9,
+      "original_number": 9,
+      "slug": "deit_s16_layerwise",
+      "title": "DeiT-S/16: learning images through all twelve blocks",
+      "caption_zh": "同一懒熊输入跨全部 12 层的学习图像及真实前向特征。每层通道按前向空间方差选择；上排为该通道 energy scalar 的输入图，下排为该通道原生 14×14 activation 的正部。各面板独立缩放。",
+      "caption_en": "Learning images and actual forward features across all 12 blocks for the same sloth-bear input. Each block selects a channel by forward spatial variance. The upper row shows its energy-target input map, and the lower row the positive native 14×14 activation. Panels are independently scaled.",
+      "role": "qualitative",
+      "files": {
+        "png": {
+          "path": "figures/png/fig_09_deit_s16_layerwise.png",
+          "sha256": "a5ba58d3a19a233d0c9ff24bf9178ff3b189a707a3f944c7f8b0b96d9a683cd7"
+        },
+        "pdf": {
+          "path": "figures/pdf/fig_09_deit_s16_layerwise.pdf",
+          "sha256": "ef9f098dff24de3228a8c03bb67ab39388d18d739ecbdb0ef964ba1a106f89f3"
+        },
+        "svg": {
+          "path": "figures/svg/fig_09_deit_s16_layerwise.svg",
+          "sha256": "082b30d6a73d3e61ab8fdd09aa5c70f1c92c017b0bf4a8d956014db6bff00357"
+        }
+      }
+    },
+    {
+      "number": 10,
+      "original_number": 10,
+      "slug": "vit_b16_layerwise",
+      "title": "ViT-B/16: learning images through all twelve blocks",
+      "caption_zh": "同一懒熊输入跨全部 12 层的学习图像及真实前向特征。每层通道按前向空间方差选择；上排为该通道 energy scalar 的输入图，下排为该通道原生 14×14 activation 的正部。各面板独立缩放。",
+      "caption_en": "Learning images and actual forward features across all 12 blocks for the same sloth-bear input. Each block selects a channel by forward spatial variance. The upper row shows its energy-target input map, and the lower row the positive native 14×14 activation. Panels are independently scaled.",
+      "role": "qualitative",
+      "files": {
+        "png": {
+          "path": "figures/png/fig_10_vit_b16_layerwise.png",
+          "sha256": "18a116f7150d77a72cff533b28d2d2965c6342867b39f87e066d84e53946d12c"
+        },
+        "pdf": {
+          "path": "figures/pdf/fig_10_vit_b16_layerwise.pdf",
+          "sha256": "e349176b94f401962d2dbeec38865b34c8f6b685b8a35466273c5c3b83b17829"
+        },
+        "svg": {
+          "path": "figures/svg/fig_10_vit_b16_layerwise.svg",
+          "sha256": "e1eaf35095c293ac21adc203c294b698785d6830d3c60255166d1544c00fc477"
+        }
+      }
+    },
+    {
+      "number": 11,
+      "original_number": 11,
+      "slug": "module_learning_images",
+      "title": "Inside a block: normalization, attention and the MLP",
+      "caption_zh": "DeiT-S blocks 0、5、11 内部模块的学习图像和真实前向 activation。每个模块独立选择高空间方差通道并定义 energy target；LayerNorm、attention projection、MLP 的 fc1/GELU/fc2 清楚对应。",
+      "caption_en": "Learning images and actual forward activations inside DeiT-S blocks 0, 5 and 11. Each module independently selects a high-spatial-variance channel and defines an energy target, covering LayerNorm, attention projection and MLP fc1/GELU/fc2.",
+      "role": "qualitative",
+      "files": {
+        "png": {
+          "path": "figures/png/fig_11_module_learning_images.png",
+          "sha256": "6c5cf1dc35f916fcd3cec476a504b727f24552f81aee64310ad280c3babaec10"
+        },
+        "pdf": {
+          "path": "figures/pdf/fig_11_module_learning_images.pdf",
+          "sha256": "e47222e845948778bd5b21b279a54c225b581c139294fd330950c1fdf5a368d6"
+        },
+        "svg": {
+          "path": "figures/svg/fig_11_module_learning_images.svg",
+          "sha256": "545b4a4358b608d4549e1aab6e8933018536b793b10487012455e81a12128a62"
+        }
+      }
+    },
+    {
+      "number": 12,
+      "original_number": 16,
+      "slug": "spatial_broadening",
+      "title": "Spatial dependence broadens with depth",
+      "caption_zh": "完整 cohort 的图像级层深轨迹，阴影为 95% bootstrap 区间。空间分析每模型 100 图，attention/residual 每模型 400 图；推断沿用原冻结分析。",
+      "caption_en": "Image-level depth trajectories from the full cohorts, with 95% bootstrap intervals. Spatial analyses use 100 images per model and attention/residual analyses 400; inference follows the original analysis.",
+      "role": "quantitative",
+      "files": {
+        "png": {
+          "path": "figures/png/fig_12_spatial_broadening.png",
+          "sha256": "6e9a799ac6c10247368c7f8af73c4433bc13994c6dcea344953051b131cca974"
+        },
+        "pdf": {
+          "path": "figures/pdf/fig_12_spatial_broadening.pdf",
+          "sha256": "a3dd2696391e01ca65b5a64c9ad43f6f60e42a77bbf558d0ffafb7e6d03774b8"
+        },
+        "svg": {
+          "path": "figures/svg/fig_12_spatial_broadening.svg",
+          "sha256": "3bf5dfff120c5225eb303bd8cab261ef8f50df58cba488246a6330af50833f36"
+        }
+      }
+    },
+    {
+      "number": 13,
+      "original_number": 12,
+      "slug": "all_heads",
+      "title": "Attention heads distribute dependence differently",
+      "caption_zh": "DeiT-S 在 blocks 0、5、11 的全部六个 heads，对同一个 ground-truth logit 的输入依赖图。原图逐行保留，无按地图观感筛选 head。",
+      "caption_en": "All six DeiT-S heads at blocks 0, 5 and 11, conditioned on the same ground-truth logit. Each row retains the original image, and no heads are selected by visual appearance.",
+      "role": "qualitative",
+      "files": {
+        "png": {
+          "path": "figures/png/fig_13_all_heads.png",
+          "sha256": "0ad45479fb4b908fb224203a3599989b96468011c871faa87eca90beeb9c174a"
+        },
+        "pdf": {
+          "path": "figures/pdf/fig_13_all_heads.pdf",
+          "sha256": "97bda53ea5fca45652db3fa1514ff24dc877fa066eab493105bc6a3d5859f8bc"
+        },
+        "svg": {
+          "path": "figures/svg/fig_13_all_heads.svg",
+          "sha256": "727346743b22c07c3d74dabf58babf2fb163ef922cacc99a90a92dad33d2c34c"
+        }
+      }
+    },
+    {
+      "number": 14,
+      "original_number": 13,
+      "slug": "cross_model_examples",
+      "title": "Class-target learning images across two models",
+      "caption_zh": "三个主体可辨的展示样本及两模型的同类别 Endpoint。样本为展示选择，模型间颜色强度不作为量值比较。",
+      "caption_en": "Three presentation-selected images with recognizable subjects and same-class Endpoints from both models. Color intensities are not used for cross-model magnitude comparisons.",
+      "role": "qualitative",
+      "files": {
+        "png": {
+          "path": "figures/png/fig_14_cross_model_examples.png",
+          "sha256": "559798299e7a03d4fb0633f52e1f6f4a8feee7c2b63256d93c5dd9c776469ed4"
+        },
+        "pdf": {
+          "path": "figures/pdf/fig_14_cross_model_examples.pdf",
+          "sha256": "eec4a1b3252871beb63b8ca4e27dfacbef14206bbff6124fb994ee99f840d663"
+        },
+        "svg": {
+          "path": "figures/svg/fig_14_cross_model_examples.svg",
+          "sha256": "793561156a1f8db62c946e5f0418e624192e36d11d192a8c2f100ce4a479263f"
+        }
+      }
+    },
+    {
+      "number": 15,
+      "original_number": 14,
+      "slug": "routing_value_examples",
+      "title": "Routing and value on the same image and class target",
+      "caption_zh": "同一懒熊输入在浅层和深层的 Q、K、routing 与 value 路径。蓝底保留正部细节；signed closure 和绝对质量来自完整原始 arrays。",
+      "caption_en": "Q, K, routing and value paths at early and late blocks for the same sloth-bear image. Blue displays retain positive detail; signed closure and absolute masses use complete original arrays.",
+      "role": "qualitative",
+      "files": {
+        "png": {
+          "path": "figures/png/fig_15_routing_value_examples.png",
+          "sha256": "b1bce278115a820b05476c71535e0f048b11004035638b4d096b44549ebe7b45"
+        },
+        "pdf": {
+          "path": "figures/pdf/fig_15_routing_value_examples.pdf",
+          "sha256": "700c8f77ae651266a36ecfe29fe4c6289ac57944e8a00a97a46ca4da81edae6f"
+        },
+        "svg": {
+          "path": "figures/svg/fig_15_routing_value_examples.svg",
+          "sha256": "f57928f4645176182fe94bf7f6bb007f3a0dc80a31bd42ece58ccffdd97d20dc"
+        }
+      }
+    },
+    {
+      "number": 16,
+      "original_number": 17,
+      "slug": "attention_depth",
+      "title": "Deep attention departs from Value-only propagation",
+      "caption_zh": "完整 cohort 的图像级层深轨迹，阴影为 95% bootstrap 区间。空间分析每模型 100 图，attention/residual 每模型 400 图；推断沿用原冻结分析。",
+      "caption_en": "Image-level depth trajectories from the full cohorts, with 95% bootstrap intervals. Spatial analyses use 100 images per model and attention/residual analyses 400; inference follows the original analysis.",
+      "role": "quantitative",
+      "files": {
+        "png": {
+          "path": "figures/png/fig_16_attention_depth.png",
+          "sha256": "a358e2d46fce5cb2a6fe55a166a69884ab437ed572e40cb3d497c8609c06fbbb"
+        },
+        "pdf": {
+          "path": "figures/pdf/fig_16_attention_depth.pdf",
+          "sha256": "e347da762e9de594733c5dc3c0f1dd69262d30316746eaa6cf0969341707b519"
+        },
+        "svg": {
+          "path": "figures/svg/fig_16_attention_depth.svg",
+          "sha256": "89fa35377b419a60896339205744c673bd25926035af1c78f851b88615f50e2d"
+        }
+      }
+    },
+    {
+      "number": 17,
+      "original_number": 15,
+      "slug": "residual_examples",
+      "title": "Two residual sublayers, one downstream target",
+      "caption_zh": "同一 block 5 中 attention 与 MLP residual 对同一类别目标的两条路径。两行的 identity 指向不同 residual 输入边。正部图不可直接相加，完整 signed maps 满足闭合。",
+      "caption_en": "Attention and MLP residual paths in block 5 for the same class target. The identity paths refer to different residual input edges. Positive displays are not additive; the complete signed maps satisfy closure.",
+      "role": "qualitative",
+      "files": {
+        "png": {
+          "path": "figures/png/fig_17_residual_examples.png",
+          "sha256": "97d77810a98e700dcad5dc0354cc37e172cd89856ce8e2ed443cac5d26fc305d"
+        },
+        "pdf": {
+          "path": "figures/pdf/fig_17_residual_examples.pdf",
+          "sha256": "e59071ef090fc1f1ee73c54e8a0b5cdf1b889db32873353ebc1c502451b2f4e0"
+        },
+        "svg": {
+          "path": "figures/svg/fig_17_residual_examples.svg",
+          "sha256": "bc3a443097f694c4de1aa6f2d0d93625968942e5979f32c4a77da6bea7706133"
+        }
+      }
+    },
+    {
+      "number": 18,
+      "original_number": 18,
+      "slug": "residual_depth",
+      "title": "Attention and MLP residuals follow distinct trends",
+      "caption_zh": "完整 cohort 的图像级层深轨迹，阴影为 95% bootstrap 区间。空间分析每模型 100 图，attention/residual 每模型 400 图；推断沿用原冻结分析。",
+      "caption_en": "Image-level depth trajectories from the full cohorts, with 95% bootstrap intervals. Spatial analyses use 100 images per model and attention/residual analyses 400; inference follows the original analysis.",
+      "role": "quantitative",
+      "files": {
+        "png": {
+          "path": "figures/png/fig_18_residual_depth.png",
+          "sha256": "bca54f908044855571f526e72af4b23fd53b9654a74b47537e44475022ce18d6"
+        },
+        "pdf": {
+          "path": "figures/pdf/fig_18_residual_depth.pdf",
+          "sha256": "13dd04a582b2e714e59db2661c7a7de8bb3118d160c664508cb8041a2448cfb3"
+        },
+        "svg": {
+          "path": "figures/svg/fig_18_residual_depth.svg",
+          "sha256": "f00d656df349743cb6b4fae6113e69a1d123a299b38da091059087c8db5af157"
+        }
+      }
+    },
+    {
+      "number": 19,
+      "original_number": 19,
+      "slug": "deit_s16_method_comparison",
+      "title": "DeiT-S/16: learning images and other visual explanations",
+      "caption_zh": "同输入实际计算的 Endpoint、patch-max 显示变体、Grad-CAM、attention rollout 与 raw attention。Endpoint/Grad-CAM 使用同一 GT logit；后两种 attention 方法不依赖类别。所有图采用相同蓝底色系并独立归一化，只比较表示形态与粒度。",
+      "caption_en": "Actual same-input Endpoint, its patch-max display variant, Grad-CAM, attention rollout and raw attention. Endpoint/Grad-CAM use the same GT logit; attention methods are class-agnostic. A common blue palette and independent normalization compare spatial form and granularity, not quantitative superiority.",
+      "role": "qualitative",
+      "files": {
+        "png": {
+          "path": "figures/png/fig_19_deit_s16_method_comparison.png",
+          "sha256": "b3a0f7ad7e6a412e78156d4f664953761a97b9f81b3fa58c28bafbb8b892c23c"
+        },
+        "pdf": {
+          "path": "figures/pdf/fig_19_deit_s16_method_comparison.pdf",
+          "sha256": "f927553c06f0ad20d97d78e62e5c8e3b10e3d0bae3ce7327cc3995c35bc5c532"
+        },
+        "svg": {
+          "path": "figures/svg/fig_19_deit_s16_method_comparison.svg",
+          "sha256": "f5fa4ff2474aeafd82c755f6dd593614cd28020d75bca59c0209736e7cb1c870"
+        }
+      }
+    },
+    {
+      "number": 20,
+      "original_number": 20,
+      "slug": "vit_b16_method_comparison",
+      "title": "ViT-B/16: learning images and other visual explanations",
+      "caption_zh": "同输入实际计算的 Endpoint、patch-max 显示变体、Grad-CAM、attention rollout 与 raw attention。Endpoint/Grad-CAM 使用同一 GT logit；后两种 attention 方法不依赖类别。所有图采用相同蓝底色系并独立归一化，只比较表示形态与粒度。",
+      "caption_en": "Actual same-input Endpoint, its patch-max display variant, Grad-CAM, attention rollout and raw attention. Endpoint/Grad-CAM use the same GT logit; attention methods are class-agnostic. A common blue palette and independent normalization compare spatial form and granularity, not quantitative superiority.",
+      "role": "qualitative",
+      "files": {
+        "png": {
+          "path": "figures/png/fig_20_vit_b16_method_comparison.png",
+          "sha256": "99791d0b65d6ee113fcf978f0a521d0120328534957baa66becccfbdc46aa145"
+        },
+        "pdf": {
+          "path": "figures/pdf/fig_20_vit_b16_method_comparison.pdf",
+          "sha256": "71341be256902999bd35cd69715a7d9bdc0af1cd91f2e149ea368fcd5848f743"
+        },
+        "svg": {
+          "path": "figures/svg/fig_20_vit_b16_method_comparison.svg",
+          "sha256": "ac59db3950ca8de3dce7d3616e51f7de157b63170545d883c350a682d38bb160"
+        }
+      }
+    },
+    {
+      "number": 21,
+      "original_number": 21,
+      "slug": "intervention_boundary",
+      "title": "Spatial intervention evaluates a different property",
+      "caption_zh": "左侧示例的有限区域替换曲线与右侧完整 400 图 family 的绝对 AUC。候选 oracle 只在已评价区域集合中取最优；数学闭合与区域干预选择属于不同性质。",
+      "caption_en": "Finite region-replacement curves for the example and absolute AUC over complete 400-image families. The candidate oracle is restricted to evaluated region sets; mathematical closure and spatial intervention selection measure different properties.",
+      "role": "quantitative",
+      "files": {
+        "png": {
+          "path": "figures/png/fig_21_intervention_boundary.png",
+          "sha256": "4b90fa384c180f17b9aaa245b431a3f3b25c297afa2afa9404da285b363ab7e7"
+        },
+        "pdf": {
+          "path": "figures/pdf/fig_21_intervention_boundary.pdf",
+          "sha256": "295e329c7472d09a2c7735b17c41c9b4d27041a7f17ae6cf936acefc64de151d"
+        },
+        "svg": {
+          "path": "figures/svg/fig_21_intervention_boundary.svg",
+          "sha256": "af85dbde7cb486bac890d826d390c6b4aeba9fd51dc9011d8bb8bba2798eafc1"
+        }
+      }
+    },
+    {
+      "number": 22,
+      "original_number": 22,
+      "slug": "signed_and_blue",
+      "title": "Reading positive structure without discarding signed information",
+      "caption_zh": "同一原始图的蓝底正部、signed 与 RGB absolute mass 三种视图。正部用于读取空间细节，signed 保留方向，absolute 保留通道抵消前的总幅值。",
+      "caption_en": "Blue positive, signed and RGB absolute-mass views of the same original arrays. The positive view displays spatial detail, signed maps retain direction, and absolute maps preserve magnitude before channel cancellation.",
+      "role": "qualitative",
+      "files": {
+        "png": {
+          "path": "figures/png/fig_22_signed_and_blue.png",
+          "sha256": "434656376be7fdb75e4c81aa2159cd48923b280491f76ea1746f2d98767628b8"
+        },
+        "pdf": {
+          "path": "figures/pdf/fig_22_signed_and_blue.pdf",
+          "sha256": "7f074e8ae64208e91bf1f55a5a9f4de58f68044eb8c744b280f56c0822656755"
+        },
+        "svg": {
+          "path": "figures/svg/fig_22_signed_and_blue.svg",
+          "sha256": "c627ec68c052d97eab01ba8c9b84fa744848daf5e6cffba147a772cba6c3b6ae"
+        }
+      }
+    }
+  ]
+}
