@@ -182,7 +182,7 @@ def bootstrap_median(values: Sequence[float], key: str, replicates: int = 10000)
 
 def scan_multi_amplitude(
     model, image: Tensor, references: Mapping[str, Tensor], class_id: int,
-    alphas: Sequence[float], chunk_size: int = 64, progress=None,
+    alphas: Sequence[float], chunk_size: int = 8, progress=None,
 ) -> tuple[dict[str, np.ndarray], dict]:
     """Scan all attention heads at fixed amplitudes on the same clean graph."""
     from .endpoint_e4_intervention import (

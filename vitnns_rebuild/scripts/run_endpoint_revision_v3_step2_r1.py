@@ -26,6 +26,8 @@ PARENT_BINDINGS = {
     "task_manifest.json": "0fce654435af35320ffe8f8b4390db857fcfd7223c74282044565bbfeab6acf0",
     "freeze.json": "acfb52d619fbad83151da29349eccba2dbde56a5cbe22b6cb5fcac7fc8815ccb",
 }
+EXPECTED_PARENT_STATES = {"completed": 403, "failed": 1, "pending": 596}
+EXPECTED_INHERITED = 403
 SOURCE_FILES = (*BASE_SOURCE_FILES, "docs/Endpoint修改意见v3第二步R1恢复修正_20260921.md", "scripts/run_endpoint_revision_v3_step2_r1.py")
 
 
@@ -40,7 +42,7 @@ def prepare() -> None:
         if sha(PARENT / name) != expected:
             raise ValueError("PARENT_BINDING_DRIFT:" + name)
     parent_receipt = load(PARENT / "acquisition_receipt.json")
-    if parent_receipt["status"] != "FAIL" or parent_receipt["states"] != {"completed": 403, "failed": 1, "pending": 596}:
+    if parent_receipt["status"] != "FAIL" or parent_receipt["states"] != EXPECTED_PARENT_STATES:
         raise ValueError("PARENT_FAILURE_STATE")
     tasks = load(PARENT / "task_manifest.json")["tasks"]
     ROOT.mkdir(parents=True); create_queue(ROOT / "queue.sqlite3", tasks)
@@ -106,7 +108,7 @@ def prepare() -> None:
                 for key in ("amplitude_path", "qkv_path", "sampling_path") if key in result
             ],
         })
-    if len(inherited) != 403:
+    if len(inherited) != EXPECTED_INHERITED:
         raise ValueError("INHERITED_COUNT")
     write_new(ROOT / "inheritance.json", {
         "status": "PASS", "parent_root": PARENT.relative_to(REPO).as_posix(),
@@ -171,7 +173,7 @@ def run() -> None:
     with sqlite3.connect(ROOT / "queue.sqlite3") as connection:
         states = dict(connection.execute("SELECT state,COUNT(*) FROM tasks GROUP BY state"))
     passed = all(code == 0 for code in exits) and states == {"completed": 1000}
-    write_new(ROOT / "acquisition_receipt.json", {"status": "PASS" if passed else "FAIL", "states": states, "exits": exits, "wall_seconds": time.monotonic() - started, "gpu_count": len(selected), "inherited_tasks": 403, "newly_executed_tasks": 597})
+    write_new(ROOT / "acquisition_receipt.json", {"status": "PASS" if passed else "FAIL", "states": states, "exits": exits, "wall_seconds": time.monotonic() - started, "gpu_count": len(selected), "inherited_tasks": EXPECTED_INHERITED, "newly_executed_tasks": 1000 - EXPECTED_INHERITED})
     print(json.dumps(load(ROOT / "acquisition_receipt.json")))
     if not passed:
         raise ValueError("ACQUISITION_FAILED")
