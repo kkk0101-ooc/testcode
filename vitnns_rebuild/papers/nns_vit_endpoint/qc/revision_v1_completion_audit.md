@@ -2,7 +2,7 @@
 
 Objective: revise the Endpoint paper according to the current 修改意见v1.md and improve the paper figures based on reports/nns_vit_endpoint_all_figures_r2_20260919. Concrete deliverables are synchronized current Chinese/English manuscripts; a concise RQ-ordered narrative; explicit mathematical/statistical conditions; ten main figures; complete supplementary navigation; source-bound descriptive statistics; and reproducible validation.
 
-The scope is a manuscript and figure revision using existing evidence. Suggested new studies in Section 6 of the opinion are handled by explicit current limitations and a prioritized prospective protocol. They are not represented as performed. The optional scope question received no response; the default manuscript/presentation scope was stated before proceeding. No new model inference was run.
+This file is the historical completion audit for the earlier manuscript-and-figure revision. At that checkpoint, suggested new studies were prospective and no new model inference had been run. The later supplement-v1 execution supersedes that experimental status; see `publication_r2_20260920/qc/supplement_v1_completion_audit.md` for the current audit.
 
 | Opinion / instruction | Artifact and direct evidence | Completion disposition |
 |---|---|---|

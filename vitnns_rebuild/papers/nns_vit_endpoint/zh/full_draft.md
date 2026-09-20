@@ -6,7 +6,7 @@
 
 ## 摘要
 
-视觉 Transformer 通过多层注意力和前馈网络将图像转换为类别预测，但不同内部单元如何依赖输入图像仍难以直接观察。本文提出 NNS-ViT，将 Neural Network Scanner 的学习图像表示推广到视觉 Transformer。该方法为神经元、通道聚合响应、注意力路径和残差分支生成保留输入位置的学习图像，使不同内部对象可以在同一图像坐标中进行分析。我们以局部 Jacobian 形式描述学习图像的生成，并推导注意力 routing/value 和残差 identity/branch 的分解。对 ViT-B/16 和 DeiT-S/16 的研究表明，抽样单元的输入依赖随深度向更广、更远的区域扩展，深层注意力更难由固定权重的 Value-only 近似表示，注意力与 MLP 残差呈现不同的层深变化。逐层可视化进一步展示学习图像与前向特征图的对应关系。有限替换实验揭示，学习图像包含成分级行为信息，而具体区域干预还依赖替换参考与位移。该研究提供了一种观察 ViT 内部响应的统一表示，并刻画其局部结构与行为含义。
+视觉 Transformer 通过多层注意力和前馈网络将图像转换为类别预测，但不同内部单元如何依赖输入图像仍难以直接观察。本文提出 NNS-ViT，将 Neural Network Scanner 的学习图像表示推广到视觉 Transformer。该方法为神经元、通道聚合响应、注意力路径和残差分支生成保留输入位置的学习图像，使不同内部对象可以在同一图像坐标中进行分析。我们以局部 Jacobian 形式描述学习图像的生成，并推导注意力 routing/value 和残差 identity/branch 的分解。对 ViT-B/16 和 DeiT-S/16 的研究表明，抽样单元的输入依赖随深度向更广、更远的区域扩展，深层注意力更难由固定权重的 Value-only 近似表示，注意力与 MLP 残差呈现不同的层深变化。训练与三种随机初始化对照表明，空间扩展具有架构与初始化基础，并在训练模型中增强；三种类别/决策目标保留主要趋势方向。冻结随机通道的定量分析显示，学习图像与前向 energy 的关联高于四种配对控制。有限替换实验揭示，学习图像包含成分级行为信息，而具体区域干预还依赖替换参考与位移。该研究提供了一种观察 ViT 内部响应的统一表示，并刻画其局部结构与行为含义。
 
 关键词：视觉 Transformer；神经网络可视化；学习图像；局部 Jacobian；注意力
 
@@ -176,7 +176,7 @@ Routing scale 为 $\|E^{\mathrm{routing}}\|_1/(\|E^{\mathrm{routing}}\|_1+\|E^{\
 
 成分有限效应为 $e_k=F(x)-F(x;z_k\leftarrow z_k^{\mathrm{ref}})$，主要统计比较每图 $m(E_k)$ 与 $|e_k|$ 的 Spearman 相关。Taylor 量为 $p_k=\langle\nabla_{z_k}F,z_k(x)-z_k^{\mathrm{ref}}\rangle$。
 
-空间任务固定 block 5 的三个 heads，将输入分成 $4\times4$ 区域并依次替换 1、2、4 个区域。干预只把目标 head 的边替换为对应扰动输入产生的 activation，其余 heads 与 identity 保持 clean。每条曲线先取 absolute isolated effect，在面积 0–25% 上作梯形积分并除以 0.25，再在图内平均三个 heads。随机基线先平均 20 条 signed effect 曲线，再取绝对值积分。Endpoint、total G×I、raw gradient、regional Taylor 和 random 共用候选池与面积预算。
+空间任务固定 block 5 的三个 heads，将输入分成 $4\times4$ 区域并依次替换 1、2、4 个区域。干预只把目标 head 的边替换为对应扰动输入产生的 activation，其余 heads 与 identity 保持 clean。每条曲线先取 absolute isolated effect，在面积 0–25% 上作梯形积分并除以 0.25，再在图内平均三个 heads。随机基线对每次重复先取 absolute effect 并积分，再平均 20 次 AUC；其估计器与确定性方法使用相同绝对值顺序。Endpoint、total G×I、raw gradient、regional Taylor 和 random 共用候选池与面积预算。
 
 
 ## 4. 实验设置
@@ -353,30 +353,48 @@ Endpoint 保留像素尺度的局部项，Grad-CAM 和 attention 类方法提供
 
 | Model | Reference | vs total G×I | vs gradient | vs Taylor | vs random | Composite criterion |
 | --- | --- | --- | --- | --- | --- | --- |
-| ViT-B/16 | normalized-zero | -0.0009 | -0.0000 | -0.0234 | 0.0011 | Unmet |
-| ViT-B/16 | blur | -0.0010 | -0.0007 | -0.0237 | 0.0042 | Unmet |
-| DeiT-S/16 | normalized-zero | -0.0018 | -0.0006 | -0.0299 | 0.0107 | Unmet |
-| DeiT-S/16 | blur | 0.0002 | -0.0002 | -0.0356 | 0.0085 | Unmet |
+| ViT-B/16 | normalized-zero | -0.0009 | -0.0000 | -0.0234 | -0.0023 | Unmet |
+| ViT-B/16 | blur | -0.0010 | -0.0007 | -0.0237 | -0.0031 | Unmet |
+| DeiT-S/16 | normalized-zero | -0.0018 | -0.0006 | -0.0299 | 0.0009 | Unmet |
+| DeiT-S/16 | blur | 0.0002 | -0.0002 | -0.0356 | -0.0010 | Unmet |
 
 **Table 6. 绝对 AUC 与输出尺度**
 
 | Model | Reference | Endpoint AUC | Taylor AUC | Random AUC | Candidate oracle AUC | Clean GT logit |
 | --- | --- | --- | --- | --- | --- | --- |
-| ViT-B/16 | normalized-zero | 0.0309 | 0.0558 | 0.0294 | 0.0654 | 8.8989 |
-| ViT-B/16 | blur | 0.0276 | 0.0518 | 0.0225 | 0.0747 | 8.8989 |
-| DeiT-S/16 | normalized-zero | 0.0617 | 0.0961 | 0.0475 | 0.1474 | 8.7974 |
-| DeiT-S/16 | blur | 0.0395 | 0.0770 | 0.0296 | 0.1063 | 8.7974 |
+| ViT-B/16 | normalized-zero | 0.0309 | 0.0558 | 0.0339 | 0.0654 | 8.8989 |
+| ViT-B/16 | blur | 0.0276 | 0.0518 | 0.0307 | 0.0747 | 8.8989 |
+| DeiT-S/16 | normalized-zero | 0.0617 | 0.0961 | 0.0611 | 0.1474 | 8.7974 |
+| DeiT-S/16 | blur | 0.0395 | 0.0770 | 0.0411 | 0.1063 | 8.7974 |
 
 **Table 7. 候选 oracle regret 与 logit 尺度比**
 
 | Model | Reference | Endpoint regret | Taylor regret | Random regret | Endpoint AUC/abs(logit) | Taylor AUC/abs(logit) |
 | --- | --- | --- | --- | --- | --- | --- |
-| ViT-B/16 | normalized-zero | 0.5303 | 0.1442 | 0.5563 | 0.0035 | 0.0062 |
-| ViT-B/16 | blur | 0.6366 | 0.2557 | 0.6942 | 0.0031 | 0.0059 |
-| DeiT-S/16 | normalized-zero | 0.5646 | 0.3352 | 0.6780 | 0.0072 | 0.0107 |
-| DeiT-S/16 | blur | 0.6289 | 0.2705 | 0.7130 | 0.0045 | 0.0089 |
+| ViT-B/16 | normalized-zero | 0.5303 | 0.1442 | 0.5059 | 0.0035 | 0.0062 |
+| ViT-B/16 | blur | 0.6366 | 0.2557 | 0.5929 | 0.0031 | 0.0059 |
+| DeiT-S/16 | normalized-zero | 0.5646 | 0.3352 | 0.5947 | 0.0072 | 0.0107 |
+| DeiT-S/16 | blur | 0.6289 | 0.2705 | 0.6153 | 0.0045 | 0.0089 |
+
+修正随机基线后，Endpoint−random 的配对中位差为 −0.0023、−0.0031、0.0009、−0.0010；DeiT-S 两个区间跨零。Taylor−random 的四个区间均为正。原 block-5 三-head 结果对应确认性协议；补充跨层全-head M2 覆盖 blocks 2/5/10，在完整输入替换的 11/12 family 与单-head 隔离替换的 12/12 family 显著偏向 Taylor，详见补充实验 S14。
 
 跨 reference 分析补充了这一结果的含义。Endpoint 使用观测输入处的 clean map，而 Taylor 显式使用替换位移。对 163,200 个成分配对，Taylor magnitude 与 absolute effect 在原 atol=1e-12、rtol=0 标准下均发生变化；分布及 head 排名一致性见补充表。Reference 会改变干预相关排序，局部输入图与位移估计器因而适用于不同问题。
+
+### 5.6 训练与初始化对照
+
+在每模型 32 张共享图像、全部 12 blocks 和 3 个随机初始化状态上，随机模型也表现出空间扩展。训练模型 entropy 的 late−early 为 0.2288/0.2256，随机均值为 0.0940/0.1718；训练−随机差分别为 0.1348 [0.1232, 0.1466] 和 0.0539 [0.0473, 0.0602]。区间同时重采样模型种子和共享图像。Routing scale 的 trained/random 层深变化为 0.0512/−0.0479 与 0.1314/−0.0043；attention identity 在训练模型中减少、随机模型中增加。MLP identity 在两类状态中均增加，ViT-B 的增量差区间跨零。空间扩展存在架构/初始化基础，而训练后参数强化其幅度，并改变部分路径趋势。
+
+### 5.7 目标稳健性
+
+在每模型 100 张冻结图像的 blocks 0、5、11 上，GT、clean-top1 与 top1 margin 均保留 routing/Value-only error 增加、attention identity 减少和 MLP identity 增加的方向。ViT-B 与 DeiT-S 的正确/错误图数量为 92/8 和 86/14，两个子集分别报告。Margin 改变效应幅度，例如 ViT-B routing 的 B11−B0 从 GT 的 0.2031 变为 0.1439。Native attention-output JVP 不依赖类别目标；另外报告目标 cotangent 收缩的方向 discrepancy。
+
+### 5.8 前向 feature 与 Endpoint 的定量关联
+
+在每模型 32 图、12 blocks、每层 16 个冻结随机 channels 上，12,288 个 patch-energy 目标给出前向平方响应分布与 Endpoint absolute patch mass。正确配对的图像级 Spearman 均值为 0.2663/0.2811，均高于同层错误 channel、跨层同 channel、空间置换和随机 channel 控制；其配对差区间均为正。Cosine、Jensen–Shannon distance 和 top-20 overlap 得到对应的定量比较。前向响应与局部输入依赖具有同通道关联，仍为互补对象。
+
+### 5.9 抽样敏感性
+
+复用相同 32 图的原 M3 单元记录，channel/token-stratum/image bootstrap 以及 leave-one-block/stratum-out 均保留 entropy 增大、locality 减小与距离增大的方向。该结果描述既有样本的抽样敏感性。全部实验设置、逐项指标、区间及五张补充图见[补充实验 v1](../publication_r2_20260920/zh/supplement_experiments_v1.md)。
 
 ## 6. 讨论
 
@@ -388,11 +406,11 @@ Endpoint 保留像素尺度的局部项，Grad-CAM 和 attention 类方法提供
 
 **Figure 22.** 同一原始图的蓝底正部、signed 与 RGB absolute mass 三种视图。正部用于读取空间细节，signed 保留方向，absolute 保留通道抵消前的总幅值。
 
-本研究尚不能区分层深趋势来自架构、初始化还是训练。两模型同时在规模、head 数与训练策略上不同；缺少随机初始化和同架构替代 checkpoint 控制。路径结果以 GT logit 为条件，其在 clean-top1 目标以及正确/错误分类子集中的稳健性仍需研究。抽样 token-channel 与类别路径没有组成逐单元匹配的因果链。空间干预结论也受所选层、区域和 reference 限定。ViT-B Path IG 在既定 512 点范围内未达到共同校准要求，因此本文不报告跨模型 Endpoint–Path 比较。
+训练控制覆盖每架构三个初始化种子，尚未比较同架构不同训练 checkpoint，也未单独区分架构与初始化参数化。错误分类子集只有 8/14 图。抽样 token-channel 与类别路径没有组成逐单元匹配的因果链；同目标桥接与 cascading randomization 仍未执行。空间干预结论受区域和 reference 限定，跨层 M2 将已测范围扩展到 blocks 2/5/10。ViT-B Path IG 在既定 512 点范围内未达到共同校准要求，因此本文不报告跨模型 Endpoint–Path 比较。
 
 ## 7. 结论
 
-本文将 NNS 的学习图像思想推广到视觉 Transformer，以局部 Jacobian 统一表示神经元、通道聚合响应和结构路径。坐标初始化与逐层生成保留输入位置，attention 和 residual 分解使同一目标的不同路径可以分别观察。两模型实验展示了输入依赖的层深空间扩展、深层 attention 对 routing differential 的依赖，以及 attention/MLP residual 的不同变化。与前向特征和其他方法的可视化比较说明了该表示的粒度与对象；有限替换进一步界定其成分级关联和区域选择能力。后续研究将结合训练控制与匹配目标实验，分析这些局部结构规律的形成来源。
+本文将 NNS 的学习图像思想推广到视觉 Transformer，以局部 Jacobian 统一表示神经元、通道聚合响应和结构路径。坐标初始化与逐层生成保留输入位置，attention 和 residual 分解使同一目标的不同路径可以分别观察。两模型实验展示了输入依赖的层深空间扩展、深层 attention 对 routing differential 的依赖，以及 attention/MLP residual 的不同变化。与前向特征和其他方法的可视化比较说明了该表示的粒度与对象；有限替换进一步界定其成分级关联和区域选择能力。训练对照与目标分析进一步区分了结构基础、训练强化和目标相关幅度；同目标机制桥接仍是后续问题。
 
 ## 参考文献与补充材料
 

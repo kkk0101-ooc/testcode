@@ -2,7 +2,7 @@
 
 The deliverables are synchronized Chinese and English current manuscripts, ten readable main figures with signed and absolute views, supplementary material retaining the previous evidence, and a requirement-to-artifact completion audit. The source opinion is the current working-tree version of `修改意见/修改意见v1.md`; its digest is recorded by the revision analysis.
 
-This is a manuscript and presentation revision using existing evidence. No trained/random-model comparison, target-robustness computation, matched-target decomposition, alternative checkpoint, or new method benchmark is represented as completed. These suggested experiments are addressed by explicit limitations and a prospective prioritized plan. No new model inference is required for the accepted writing scope.
+This document records the earlier manuscript-and-presentation revision scope. The later `补充实验/执行协议v1.md` prospectively supersedes the status of trained/random controls, target robustness and feature–Endpoint quantification, all now completed in `publication_r2_20260920/evidence/supplement_v1/`. Matched-target decomposition and alternative trained checkpoints remain prospective.
 
 ## Provenance and scope
 

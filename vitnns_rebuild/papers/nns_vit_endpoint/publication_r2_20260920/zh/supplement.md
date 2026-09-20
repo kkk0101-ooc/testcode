@@ -98,9 +98,9 @@ Head rankings use average ranks and Kendall tau-b. Top-K ties are broken by asce
 | Chefer / AttnLRP | Transformer relevance | Implementation-specific | Method-specific relevance rules |
 | Raw attention | Token allocation | No | Forward attention weights |
 
-## S5. Descriptive absolute AUC and oracle
+## S5. Corrected absolute random AUC and oracle
 
-[Raw recomputation](../evidence/analysis.json) and [image values](../evidence/spatial_image_values.csv). The empirical oracle integrates a budgetwise upper envelope of evaluated candidates. Zero oracle or clean-logit denominators are NA; all displayed families have 400 defined image ratios. All five original per-image method scores match the frozen E6 release to less than 1e-12. The random baseline averages signed curves before taking absolute values. Supplementary M2 uses a separate task with blocks 2/5/10 and native patch or legacy grids; its results are not substituted for the original C4b task.
+当前随机基线对每次重复先取绝对值并积分，再平均 AUC。修正结果、重复分布和 MC 稳定性见[supplementary experiments S9](supplement_experiments_v1.md). 旧分析作为原估计器的历史复核保留。
 
 ## S6. Detailed attention/residual evidence (historical stage identifiers retained)
 
@@ -388,3 +388,6 @@ The six CPU image-model computations use the same source images, checkpoints and
 | DeiT-S/16 | taylor | 0.3000 | 0.2389 | 0.3333 | 0.6111 | 1.5278 |
 | ViT-B/16 | finite_effect | 0.3759 | 0.2803 | 0.3333 | 0.5000 | 2.9444 |
 | ViT-B/16 | taylor | 0.3782 | 0.2828 | 0.3333 | 0.5000 | 2.9444 |
+
+
+[新增补充实验 S9–S14](supplement_experiments_v1.md)

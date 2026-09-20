@@ -1,5 +1,7 @@
 # User-feedback completion audit — 2026-09-20
 
+Current status note: this audit covers the publication-R2 figure and writing request. The later scientific supplement is audited separately in [supplement_v1_completion_audit.md](supplement_v1_completion_audit.md); it supersedes the earlier absence of random-initialization, target-robustness, and quantitative feature–Endpoint controls.
+
 | User requirement | Delivered evidence | Verification |
 |---|---|---|
 | 1. Ten figures are too few | 22 main figures, 66 PNG/PDF/SVG exports, 7 main tables | Manifest and each manuscript's image references |

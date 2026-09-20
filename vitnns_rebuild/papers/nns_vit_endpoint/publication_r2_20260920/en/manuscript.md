@@ -6,7 +6,7 @@
 
 ## Abstract
 
-Vision Transformers transform images into predictions through layers of attention and feed-forward computation, yet the input dependence of their internal units remains difficult to inspect. We introduce NNS-ViT, extending the learning-image representation of Neural Network Scanner to Vision Transformers. The method associates neurons, channel aggregates, attention paths, and residual branches with images that preserve input positions, allowing heterogeneous internal objects to be examined in a common coordinate system. We formulate learning-image generation through local Jacobians and derive attention routing/value and residual identity/branch decompositions. Studies of ViT-B/16 and DeiT-S/16 show that sampled units depend on broader and more distant input regions with depth, that deep attention departs further from a fixed-weight Value-only approximation, and that attention and MLP residuals exhibit different depth trends. Layerwise visualizations relate learning images to actual forward feature maps. Finite replacement experiments reveal component-level behavioral information while showing that spatial intervention also depends on the replacement reference and displacement. NNS-ViT provides a unified view of internal ViT responses and characterizes its local structural and behavioral meaning.
+Vision Transformers transform images into predictions through layers of attention and feed-forward computation, yet the input dependence of their internal units remains difficult to inspect. We introduce NNS-ViT, extending the learning-image representation of Neural Network Scanner to Vision Transformers. The method associates neurons, channel aggregates, attention paths, and residual branches with images that preserve input positions, allowing heterogeneous internal objects to be examined in a common coordinate system. We formulate learning-image generation through local Jacobians and derive attention routing/value and residual identity/branch decompositions. Studies of ViT-B/16 and DeiT-S/16 show that sampled units depend on broader and more distant input regions with depth, that deep attention departs further from a fixed-weight Value-only approximation, and that attention and MLP residuals exhibit different depth trends. Controls with three random initializations show an architectural/initialization basis for spatial broadening that is strengthened in trained models; three class/decision targets retain the main trend directions. Frozen-channel analysis quantifies a feature–Endpoint association beyond four pairing controls. Finite replacement experiments reveal component-level behavioral information while showing that spatial intervention also depends on the replacement reference and displacement. NNS-ViT provides a unified view of internal ViT responses and characterizes its local structural and behavioral meaning.
 
 Keywords: Vision Transformer; neural network visualization; learning image; local Jacobian; attention
 
@@ -176,7 +176,7 @@ Statistics use complete signed RGB tensors; zero denominators or norms yield NA.
 
 The finite component effect is $e_k=F(x)-F(x;z_k\leftarrow z_k^{\mathrm{ref}})$. The primary statistic compares $m(E_k)$ and $|e_k|$ with within-image Spearman correlation. The Taylor quantity is $p_k=\langle\nabla_{z_k}F,z_k(x)-z_k^{\mathrm{ref}}\rangle$.
 
-The spatial task fixes three heads at block 5, divides the input into $4\times4$ regions, and replaces 1, 2, or 4 regions. Only the selected head edge is replaced by the activation produced by that perturbed input; other heads and the identity remain clean. Each curve integrates absolute isolated effect over 0–25% area using trapezoids and divides by 0.25, then averages the three heads within each image. The random baseline averages 20 signed-effect curves before taking absolute values and integrating. Endpoint, total G×I, raw gradient, regional Taylor, and random share the region pool and area budgets.
+The spatial task fixes three heads at block 5, divides the input into $4\times4$ regions, and replaces 1, 2, or 4 regions. Only the selected head edge is replaced by the activation produced by that perturbed input; other heads and the identity remain clean. Each curve integrates absolute isolated effect over 0–25% area using trapezoids and divides by 0.25, then averages the three heads within each image. Each random repetition takes the absolute effect before integration, and its AUC is then averaged over 20 repetitions, using the same absolute-value order as deterministic methods. Endpoint, total G×I, raw gradient, regional Taylor, and random share the region pool and area budgets.
 
 
 ## 4. Experimental Setup
@@ -353,30 +353,48 @@ The spatial experiment fixes three heads in block 5, a shared 4×4 region pool a
 
 | Model | Reference | vs total G×I | vs gradient | vs Taylor | vs random | Composite criterion |
 | --- | --- | --- | --- | --- | --- | --- |
-| ViT-B/16 | normalized-zero | -0.0009 | -0.0000 | -0.0234 | 0.0011 | Unmet |
-| ViT-B/16 | blur | -0.0010 | -0.0007 | -0.0237 | 0.0042 | Unmet |
-| DeiT-S/16 | normalized-zero | -0.0018 | -0.0006 | -0.0299 | 0.0107 | Unmet |
-| DeiT-S/16 | blur | 0.0002 | -0.0002 | -0.0356 | 0.0085 | Unmet |
+| ViT-B/16 | normalized-zero | -0.0009 | -0.0000 | -0.0234 | -0.0023 | Unmet |
+| ViT-B/16 | blur | -0.0010 | -0.0007 | -0.0237 | -0.0031 | Unmet |
+| DeiT-S/16 | normalized-zero | -0.0018 | -0.0006 | -0.0299 | 0.0009 | Unmet |
+| DeiT-S/16 | blur | 0.0002 | -0.0002 | -0.0356 | -0.0010 | Unmet |
 
 **Table 6. Absolute AUC and output scale**
 
 | Model | Reference | Endpoint AUC | Taylor AUC | Random AUC | Candidate oracle AUC | Clean GT logit |
 | --- | --- | --- | --- | --- | --- | --- |
-| ViT-B/16 | normalized-zero | 0.0309 | 0.0558 | 0.0294 | 0.0654 | 8.8989 |
-| ViT-B/16 | blur | 0.0276 | 0.0518 | 0.0225 | 0.0747 | 8.8989 |
-| DeiT-S/16 | normalized-zero | 0.0617 | 0.0961 | 0.0475 | 0.1474 | 8.7974 |
-| DeiT-S/16 | blur | 0.0395 | 0.0770 | 0.0296 | 0.1063 | 8.7974 |
+| ViT-B/16 | normalized-zero | 0.0309 | 0.0558 | 0.0339 | 0.0654 | 8.8989 |
+| ViT-B/16 | blur | 0.0276 | 0.0518 | 0.0307 | 0.0747 | 8.8989 |
+| DeiT-S/16 | normalized-zero | 0.0617 | 0.0961 | 0.0611 | 0.1474 | 8.7974 |
+| DeiT-S/16 | blur | 0.0395 | 0.0770 | 0.0411 | 0.1063 | 8.7974 |
 
 **Table 7. Candidate-oracle regret and logit-scale ratios**
 
 | Model | Reference | Endpoint regret | Taylor regret | Random regret | Endpoint AUC/abs(logit) | Taylor AUC/abs(logit) |
 | --- | --- | --- | --- | --- | --- | --- |
-| ViT-B/16 | normalized-zero | 0.5303 | 0.1442 | 0.5563 | 0.0035 | 0.0062 |
-| ViT-B/16 | blur | 0.6366 | 0.2557 | 0.6942 | 0.0031 | 0.0059 |
-| DeiT-S/16 | normalized-zero | 0.5646 | 0.3352 | 0.6780 | 0.0072 | 0.0107 |
-| DeiT-S/16 | blur | 0.6289 | 0.2705 | 0.7130 | 0.0045 | 0.0089 |
+| ViT-B/16 | normalized-zero | 0.5303 | 0.1442 | 0.5059 | 0.0035 | 0.0062 |
+| ViT-B/16 | blur | 0.6366 | 0.2557 | 0.5929 | 0.0031 | 0.0059 |
+| DeiT-S/16 | normalized-zero | 0.5646 | 0.3352 | 0.5947 | 0.0072 | 0.0107 |
+| DeiT-S/16 | blur | 0.6289 | 0.2705 | 0.6153 | 0.0045 | 0.0089 |
 
 Cross-reference analysis clarifies this distinction. Endpoint uses the clean observed-input map, whereas Taylor explicitly uses replacement displacement. Across 163,200 component pairs, Taylor magnitude and absolute effect change under the original atol=1e-12, rtol=0 criterion. Their distributions and head-rank concordance are reported in supplementary tables. Reference choice changes intervention-related ordering, so local input maps and displacement estimators serve different questions.
+
+With the corrected random estimator, paired Endpoint-minus-random medians are −0.0023, −0.0031, 0.0009 and −0.0010; both DeiT-S intervals include zero. All four Taylor-minus-random intervals are positive. The block-5 three-head task follows the original confirmatory protocol; supplementary cross-layer all-head M2 covers blocks 2/5/10 and favors Taylor in 11/12 full-input and 12/12 isolated-head families (Supplement S14).
+
+### 5.6 Training and initialization controls
+
+Across 32 shared images per model, all 12 blocks and three random initialization states, random models also show spatial broadening. Trained entropy late-minus-early is 0.2288/0.2256, versus random means of 0.0940/0.1718. Trained-minus-random differences are 0.1348 [0.1232, 0.1466] and 0.0539 [0.0473, 0.0602], with intervals resampling model seeds and shared images. Routing-scale trained/random depth changes are 0.0512/−0.0479 and 0.1314/−0.0043; attention identity decreases in trained models and increases in random models. MLP identity increases in both, with the ViT-B increment-difference interval crossing zero. Spatial broadening has an architectural/initialization basis, while trained parameters strengthen its magnitude and change some path trends.
+
+### 5.7 Target robustness
+
+Across 100 frozen images per model at blocks 0, 5 and 11, GT, clean-top1 and top1 margin preserve increasing routing/Value-only error, decreasing attention identity and increasing MLP identity. Correct/incorrect counts are 92/8 for ViT-B and 86/14 for DeiT-S, with both subsets reported separately. Margin changes magnitudes: ViT-B routing B11-minus-B0 is 0.1439 versus 0.2031 for GT. Native attention-output JVP is class independent; target-cotangent contracted directional discrepancy is reported separately.
+
+### 5.8 Quantitative feature–Endpoint association
+
+With 32 images per model, 12 blocks and 16 frozen random channels per block, 12,288 patch-energy targets pair squared forward-response distributions with absolute Endpoint patch mass. Correct-pair mean image-level Spearman is 0.2663/0.2811, exceeding wrong-channel, cross-layer same-channel, spatial-permutation and random-channel controls; all paired-difference intervals are positive. Cosine, Jensen–Shannon distance and top-20 overlap supply corresponding quantitative comparisons. Forward responses and local input dependence have a same-channel association while remaining complementary objects.
+
+### 5.9 Sampling sensitivity
+
+Reusing original M3 unit records for the same 32 images, channel/token-stratum/image bootstraps and leave-one-block/stratum-out analyses retain increasing entropy and distance and decreasing locality. This characterizes sampling sensitivity in the existing sample. Full settings, metric estimates, intervals and five supplementary figures are in [Supplementary experiments v1](supplement_experiments_v1.md).
 
 ## 6. Discussion
 
@@ -388,11 +406,11 @@ Blue high-intensity displays make distributed texture easier to inspect while sh
 
 **Figure 22.** Blue positive, signed and RGB absolute-mass views of the same original arrays. The positive view displays spatial detail, signed maps retain direction, and absolute maps preserve magnitude before channel cancellation.
 
-The study cannot yet separate architectural, initialization and training contributions to depth trends. The two models differ in size, head count and training strategy, and random-initialization and same-architecture alternative-checkpoint controls are absent. Path results condition on GT logits; robustness to clean-top1 targets and correct/incorrect subsets remains to be studied. Sampled token-channel and class paths do not form a unit-matched causal chain. Spatial conclusions also depend on the chosen layer, regions and reference. ViT-B Path IG does not meet the common calibration requirement within the fixed 512-point range, so cross-model Endpoint–Path comparisons are not reported.
+Training controls cover three initialization seeds per architecture. Same-architecture alternative trained checkpoints remain untested, and architecture is not separated from initialization parameterization. Incorrect subsets contain only 8/14 images. Sampled token-channel and class paths do not form a unit-matched causal chain; same-target bridging and cascading randomization remain untested. Spatial conclusions depend on regions and references, with cross-layer M2 extending the observed range to blocks 2/5/10. ViT-B Path IG does not meet the common calibration requirement within the fixed 512-point range, so cross-model Endpoint–Path comparisons are not reported.
 
 ## 7. Conclusion
 
-We extend NNS learning images to Vision Transformers through a local-Jacobian representation of neurons, channel aggregates and structural paths. Coordinate initialization and layerwise generation preserve input locations, while attention and residual decompositions expose different paths to the same target. Experiments in two models reveal spatial broadening with depth, stronger deep-attention dependence on routing differentials, and distinct changes in attention and MLP residuals. Comparisons with forward features and other visual explanations clarify the representation's granularity and target; finite replacement further characterizes component association and region-selection performance. Training controls and matched-target studies offer a next step toward explaining the origins of these local structural patterns.
+We extend NNS learning images to Vision Transformers through a local-Jacobian representation of neurons, channel aggregates and structural paths. Coordinate initialization and layerwise generation preserve input locations, while attention and residual decompositions expose different paths to the same target. Experiments in two models reveal spatial broadening with depth, stronger deep-attention dependence on routing differentials, and distinct changes in attention and MLP residuals. Comparisons with forward features and other visual explanations clarify the representation's granularity and target; finite replacement further characterizes component association and region-selection performance. Training and target controls distinguish structural foundations, training-related amplification and target-dependent magnitudes; same-target mechanism bridging remains a further question.
 
 ## References and Supplementary Material
 

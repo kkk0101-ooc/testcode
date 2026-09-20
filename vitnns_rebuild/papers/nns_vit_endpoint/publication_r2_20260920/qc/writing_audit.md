@@ -16,7 +16,9 @@ Paper-level defensive-writing score: 2/10 (editorial assessment). Main text cont
 
 Highest-priority changes: rewrite front matter around interpretation; replace project labels with scientific section names; explain learning images before validation; present sparse numerical comparisons as tables; connect qualitative figures to observed structures; keep one concise limitations discussion.
 
-Necessary caveats: known Gradient × Input identity, coordinate-origin dependence, non-completeness, correct residual cotangent, local rather than finite causal meaning, sample selection, class-agnostic attention comparison, distinct display normalization, original family decisions, untested training and target controls.
+Necessary caveats: known Gradient × Input identity, coordinate-origin dependence, non-completeness, correct residual cotangent, local rather than finite causal meaning, sample selection, class-agnostic attention comparison, distinct display normalization, original family decisions, three-seed initialization scope, small incorrect-classification subsets, and the unexecuted matched-target bridge.
+
+Supplement-v1 re-audit: the new Results 5.6–5.9 and Supplement S9–S14 use direct result-first prose. Reviewer-facing prebuttals and repeated non-claim disclaimers are absent. The phrases “architectural/initialization basis,” “three seeds limit inference,” “8/14 incorrect images,” and “same-target bridge remains untested” are necessary evidence boundaries. Paper-level defensive-writing score remains 2/10.
 
 Figure 20 revision: the current examples were selected from pre-retained class Endpoint maps by a presealed readability rule before Grad-CAM or attention outputs were computed. The text describes them as presentation examples and does not infer population superiority.
 

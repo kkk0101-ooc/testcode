@@ -46,9 +46,9 @@ def main():
         for extension in ('png','pdf','svg'):
             check('active_figure_hash:'+str(source['number'])+':'+extension,source['files'][extension]['sha256']==bound[extension]['sha256'])
     for lang,text in texts.items():
-        expected=text.replace('](../figures/','](../publication_r2_20260920/figures/').replace('](../references.md)','](../publication_r2_20260920/references.md)').replace('](supplement.md)',f'](../publication_r2_20260920/{lang}/supplement.md)')
+        expected=text.replace('](../figures/','](../publication_r2_20260920/figures/').replace('](../references.md)','](../publication_r2_20260920/references.md)').replace('](supplement.md)',f'](../publication_r2_20260920/{lang}/supplement.md)').replace('](supplement_experiments_v1.md)',f'](../publication_r2_20260920/{lang}/supplement_experiments_v1.md)')
         check('current_entry_mirror:'+lang,(paper/lang/'full_draft.md').read_text()==expected)
-    for p in [ROOT/lang/name for lang in ('zh','en') for name in ('manuscript.md','supplement.md')]:
+    for p in [ROOT/lang/name for lang in ('zh','en') for name in ('manuscript.md','supplement.md','supplement_experiments_v1.md')]:
         text=p.read_text()
         for target in re.findall(r'\]\(([^)]+)\)',text):
             if target.startswith(('http','#')):continue
@@ -100,9 +100,19 @@ def main():
     if qc.exists():
         q=load(qc);check('visual_review_all',q['reviewed_figures']==list(range(1,23)))
         check('visual_review_current',q['png_hashes']=={str(r['number']):r['files']['png']['sha256'] for r in f['figures']})
+    # The original inventory binds publication R2 before the v1 supplemental
+    # experiments.  Preserve and verify every historical entry except the
+    # documents prospectively superseded by this supplement.
     inventory=load(ROOT/'artifact_inventory.json')
+    superseded={'README.md','en/manuscript.md','en/supplement.md','zh/manuscript.md','zh/supplement.md',
+                'qc/completion_audit.md','qc/writing_audit.md'}
     for record in inventory['files']:
-        check('inventory_hash:'+record['path'],sha(ROOT/record['path'])==record['sha256'])
+        if record['path'] not in superseded:
+            check('inventory_hash:'+record['path'],sha(ROOT/record['path'])==record['sha256'])
+    current=load(ROOT/'evidence/supplement_v1/manifest.json')
+    check('supplement_v1_manifest_scope',len(current['files'])>=40)
+    for record in current['files']:
+        check('supplement_v1_hash:'+record['path'],sha(ROOT/record['path'])==record['sha256'])
     errors=[r for r in checks if not r['passed']]
     report=dict(status='PASS' if not errors else 'FAIL',check_count=len(checks),errors=errors,real_panels_recomputed=reconstructed,checks=checks)
     (ROOT/'qc/validation_report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+chr(10))
