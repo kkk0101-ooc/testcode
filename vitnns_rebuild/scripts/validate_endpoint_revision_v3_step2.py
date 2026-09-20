@@ -4,6 +4,7 @@ import os
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 
+import argparse
 import csv
 import gzip
 import hashlib
@@ -101,7 +102,8 @@ def validate_payloads(tasks: list[dict]) -> dict:
             amplitude = np.load(amplitude_path); qkv = np.load(qkv_path)
             heads = 12 if record["model_id"] == "vit_b16" else 6
             require(len(amplitude["alpha"]) == 12 * heads * 2 * 5, "AMPLITUDE_COUNT")
-            require(set(np.round(amplitude["alpha"], 5)) == {0.05, 0.1, 0.25, 0.5, 1.0}, "ALPHAS")
+            observed_alphas = np.asarray(sorted(set(float(value) for value in amplitude["alpha"])), dtype=np.float64)
+            require(np.allclose(observed_alphas, [0.05, 0.1, 0.25, 0.5, 1.0], atol=1e-7, rtol=0), "ALPHAS")
             require(set(amplitude["reference_id"].tolist()) == {"normalized_zero", "blur_rgb"}, "AMPLITUDE_REFERENCES")
             require(all(np.isfinite(amplitude[key]).all() for key in ("finite_effect", "p_ref", "taylor_prediction", "absolute_error")), "AMPLITUDE_FINITE")
             require(np.allclose(amplitude["taylor_prediction"], amplitude["alpha"] * amplitude["p_ref"], atol=2e-7, rtol=2e-6), "TAYLOR_FORMULA")
@@ -110,6 +112,7 @@ def validate_payloads(tasks: list[dict]) -> dict:
             require(all(np.isfinite(qkv[key]).all() for key in ("absolute_mass", "normalized_spatial_entropy", "normalized_pairwise_distance", "cancellation", "relative_scale")), "QKV_FINITE")
             for block in range(12):
                 require(abs(float(qkv["relative_scale"][qkv["block"] == block].sum()) - 1.0) <= 2e-6, "QKV_SCALE_SUM")
+            require(record["amplitude_validation"]["alpha_one_source_max_tolerance_ratio"] <= 1.0, "ALPHA_ONE_PARITY")
             amplitude_parity.append(record["amplitude_validation"]["alpha_one_source_max_abs"]); qkv_parity.append(record["qkv_source_max_abs"])
         else:
             path = REPO / record["sampling_path"]; require(sha(path) == record["sampling_sha256"], "SAMPLING_SHA")
@@ -177,6 +180,9 @@ def validate_analysis() -> dict:
 
 
 def main() -> None:
+    global ROOT
+    parser = argparse.ArgumentParser(); parser.add_argument("--root", type=Path, default=ROOT); args = parser.parse_args()
+    ROOT = args.root.resolve()
     spec, tasks = validate_freeze_and_queue(); validate_registry(spec)
     payload = validate_payloads(tasks); analysis = validate_analysis(); raw = validate_raw_qkv_recompute()
     report = {

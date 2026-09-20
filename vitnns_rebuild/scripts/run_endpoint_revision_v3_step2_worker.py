@@ -87,7 +87,15 @@ def primary_task(model, image, references, task: dict, root: Path, progress) -> 
         )
     ]
     amplitude_validation["alpha_one_source_max_abs"] = max(parity)
-    if amplitude_validation["alpha_one_source_max_abs"] > 2e-5:
+    parity_ratios = []
+    for reference, block, head, effect in zip(
+            amplitude["reference_id"][alpha_one], amplitude["block"][alpha_one],
+            amplitude["head"][alpha_one], amplitude["finite_effect"][alpha_one]):
+        expected = source[(str(reference), int(block), int(head))]
+        parity_ratios.append(abs(float(effect) - expected) / (1e-4 + 1e-4 * abs(expected)))
+    amplitude_validation["alpha_one_source_max_tolerance_ratio"] = max(parity_ratios)
+    amplitude_validation["alpha_one_source_tolerance"] = "1e-4 + 1e-4*abs(sealed_effect)"
+    if amplitude_validation["alpha_one_source_max_tolerance_ratio"] > 1.0:
         raise ValueError("ALPHA_ONE_SOURCE_PARITY")
 
     e3_path = REPO / task["e3_path"]

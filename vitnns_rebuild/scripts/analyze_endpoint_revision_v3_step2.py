@@ -4,6 +4,7 @@ import os
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 
+import argparse
 import csv
 import json
 import math
@@ -49,11 +50,12 @@ def summarize(rows: list[dict], keys: tuple[str, ...], metrics: tuple[str, ...],
         base = dict(zip(keys, identity))
         for metric in metrics:
             values = [float(row[metric]) for row in part if row[metric] is not None and math.isfinite(float(row[metric]))]
+            interval = None if not values else bootstrap_median(values, prefix + "|" + "|".join(map(str, identity)) + "|" + metric)
             output.append({
                 **base, "metric": metric, "n_images": len(values),
                 "median": None if not values else float(np.median(values)),
-                "ci95_low": None if not values else bootstrap_median(values, prefix + "|" + "|".join(map(str, identity)) + "|" + metric)[0],
-                "ci95_high": None if not values else bootstrap_median(values, prefix + "|" + "|".join(map(str, identity)) + "|" + metric)[1],
+                "ci95_low": None if interval is None else interval[0],
+                "ci95_high": None if interval is None else interval[1],
             })
     return output
 
@@ -248,6 +250,9 @@ def plot_results(amplitude_summary, qkv_summary, sampling_variation) -> None:
 
 
 def main() -> None:
+    global ROOT
+    parser = argparse.ArgumentParser(); parser.add_argument("--root", type=Path, default=ROOT); args = parser.parse_args()
+    ROOT = args.root.resolve()
     tasks = load(ROOT / "task_manifest.json")["tasks"]
     amplitude_images, amplitude_summary, amplitude_decision = analyze_amplitude(tasks)
     qkv_images, qkv_summary, qkv_contrasts = analyze_qkv(tasks)
