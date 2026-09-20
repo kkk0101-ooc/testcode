@@ -27,5 +27,5 @@ Figures 2–5 和 7 进一步采用参考论文的概念图视觉语法：虚线
 
 补充实验 v1 新增 456 个任务：两模型各三种随机初始化的 32 图 M3/M4 对照、两模型各 100 图的 GT/top1/margin 分解，以及两模型各 32 图的 feature–Endpoint 定量分析。随机区域基线按每次重复先取 absolute effect 再计算 AUC；正文 Tables 6–8 已使用修正后的值。五张新增图和可重算的图像/单元级数据位于 `evidence/supplement_v1/`。
 
-复现入口位于上级 scripts/：compute_publication_r2.py、render_publication_r2.py、verify_publication_r2_methods.py、validate_publication_r2.py。write_publication_r2.py 是旧 v1 生成器，默认拒绝覆盖当前手工审校后的 v2 稿件。实际阅读和图件复制只需本目录。
+复现入口位于上级 scripts/：compute_publication_r2.py、render_publication_r2.py、verify_publication_r2_methods.py、validate_publication_r2.py；v3 第一步专项审计为 validate_revision_v3_step1.py。write_publication_r2.py 是旧 v1 生成器，默认拒绝覆盖当前手工审校稿。实际阅读和图件复制只需本目录。
 补充实验入口为 `prepare_endpoint_supplement_v1.py`、`run_endpoint_supplement_v1.py`、`analyze_endpoint_supplement_*.py`、`render_endpoint_supplement_v1.py`、`write_endpoint_supplement_v1.py` 与 `validate_endpoint_supplement_v1.py`。
