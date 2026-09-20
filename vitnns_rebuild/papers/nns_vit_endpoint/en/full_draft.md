@@ -1,4 +1,4 @@
-# A Computational-Graph Interpretation of NNS Learning Images and Structural Path Analysis in Vision Transformers
+# NNS Structural Path Decomposition and Systematic Validation on Vision Transformer Computational Graphs
 
 - Authors: [AUTHOR REQUIRED]
 - Affiliations: [AFFILIATION REQUIRED]
@@ -6,7 +6,7 @@
 
 ## Abstract
 
-Neural Network Scanner (NNS) propagates local scales layer by layer to construct position-preserving learning images for internal network targets. We restate this procedure on a general computational graph: when every layer uses the exact local derivative at the observed forward state and no normalization, truncation, or relevance redistribution is introduced, the learning image of a scalar target is $x\odot\nabla_xs(x)$, i.e., Input × Gradient for the same target. Building on this identity, we extend NNS from sequential CNN-unit propagation to structured local-differential analysis of Vision Transformer (ViT) graphs. We define complete computational cuts, decompose the attention differential into Q-induced, K-induced, and V-induced paths, and decompose residual differentials into identity and branch paths. Numerical experiments verify the original-NNS identity and additive closure of the registered structural cuts. In two fixed ImageNet-pretrained checkpoints, ViT-B/16 and DeiT-S/16, sampled internal targets depend on broader and more distant patches with depth; routing-relative norm and Value-only approximation error rise in deep attention, while attention and MLP residuals exhibit different depth trends. Random-initialization, target, and sampling controls delimit these observations. Finite replacement shows broad but non-universal association between local path maps and component effects; for region replacement with a specified reference, displacement-aware Taylor ranking outperforms clean-only Endpoint ranking. The extension developed here is a unified representation, closure test, and empirical analysis of actual ViT graph edges, rather than a new base input-attribution quantity.
+Neural Network Scanner (NNS) propagates local scales layer by layer to construct position-preserving learning images for internal network targets. We study the structured implementation, path decomposition, and systematic validation of NNS on specified Vision Transformer (ViT) computational graphs. When every layer uses the exact local derivative at the observed forward state without normalization, truncation, or relevance redistribution, a scalar NNS learning image equals $x\odot\nabla_xs(x)$, i.e. same-target Gradient × Input; this identity defines the base quantity rather than serving as the main innovation. We register heterogeneous ViT targets, define valid computational cuts, decompose the attention differential into Q-induced, K-induced, and V-induced paths, decompose residual differentials into identity and branch paths, and test additive closure at each cut. The decomposition is defined relative to a specified graph, cut, and parameterization and is not generally implementation invariant. Experiments on two fixed ImageNet-pretrained checkpoints, ViT-B/16 and DeiT-S/16, cover numerical correctness, path-depth statistics, differences between trained and random parameter states, and ranking performance in prescribed finite-replacement tasks. Sampled targets depend on broader and more distant patches at depth; routing-relative norm and Value-only approximation error increase in deep attention, while attention and MLP residuals exhibit different depth trajectories. Local path maps have broad but non-universal association with finite component effects; in reference-specified regional replacement, displacement-aware Taylor ranking outperforms clean-only Endpoint. The contribution lies in a unified implementation on actual ViT edges, graph-relative path decomposition, and systematic evidence, rather than a new base input-attribution quantity.
 
 Keywords: Vision Transformer; Neural Network Scanner; learning image; local Jacobian; structural path decomposition
 
@@ -22,14 +22,14 @@ Neural Network Scanner (NNS) associates a neuron with a learning image that pres
 
 **Figure 1.** The same input produces a prediction through the ordinary forward computation. NNS-ViT associates internal and output targets with learning images in the original input coordinates. Dashed lines link targets to their images.
 
-The overarching question is how NNS can represent the local input dependence of an internal ViT target as computable, decomposable, and verifiable structural-path maps, and what these maps reveal about depth trends and finite-intervention limits. We address four questions:
+The overarching question is how NNS can represent the local input dependence of an internal ViT target as computable, decomposable, and verifiable structural-path maps, and how these maps vary with depth and rank candidates in prescribed finite-replacement tasks. We address four questions:
 
 1. **RQ1: What is the mathematical object represented by an NNS learning image?** We relate layerwise scale propagation to the Jacobian chain rule and Input × Gradient, including the effects of non-homogeneous operations, fixed tokens, and the input-coordinate origin.
 2. **RQ2: How can NNS be extended to a structured ViT computational graph?** We define internal scalar targets, actual graph edges, complete computational cuts, and additive local differentials for attention, multi-head structure, and residual paths.
-3. **RQ3: How do structural paths vary with depth?** We analyze spatial broadening, routing/value, Q/K/V, and identity/branch trends in two fixed pretrained checkpoints, with initialization, target, and sampling controls.
-4. **RQ4: To what extent do local path maps correspond to finite interventions?** We distinguish clean-only local dependence from reference-aware displacement estimates and evaluate component and regional replacement.
+3. **RQ3: How do structural paths vary with depth?** In frozen target samples from two fixed pretrained checkpoints, we analyze spatial broadening, routing/value, and identity/branch trends and compare trained and random parameter states together with target and sampling controls.
+4. **RQ4: Can local path maps rank components and spatial regions in the prescribed finite-replacement tasks?** With model, sample, layer, head, reference, replacement operator, and region budget fixed, we compare clean-only local path maps with reference-aware displacement estimates for component ranking and regional selection.
 
-This work contributes four elements. First, it gives a computational-graph account of NNS layerwise propagation and states the conditions under which a scalar learning image equals Input × Gradient. Second, it extends the common input-coordinate representation to ViT token-channel units, channel aggregates, attention heads, residual branches, and class targets. Third, it systematizes Q/K/V, multi-head, and identity/branch local-differential decomposition within the NNS framework and tests completeness through valid cuts and numerical closure. Fourth, it characterizes path-level depth trends, training and target sensitivity, and finite-intervention boundaries in two fixed models. Prior work already covers input gradients, hidden-unit attribution, Transformer relevance, and activation patching; neither the base formula nor generic path attribution is presented as novel here.
+We make three contributions. First, NNS, Gradient × Input, and conductance already provide learning images, local input-weighted gradients, and hidden-unit path attribution; we add a unified target registry and input-coordinate implementation for ViT token-channel units, channel aggregates, attention heads, residual edges, and class targets. Direct evidence consists of the 457/385 registered targets in Table 2 and 5,000 formula-regression cases plus 88 operator-direction checks in Table 3. Second, GlobEnc, DecompX, AttnLRP, and LibraGrad already propagate Transformer token contributions or relevance; we add Q/K/V, multi-head, and identity/branch local-differential accounting relative to a specified ViT graph and valid cut. Direct evidence consists of 76,800 positive closure checks, 28,800 omission/duplication controls, and 6,144 analytic JVP checks. Third, activation patching and edge attribution already study finite internal effects; we place path-depth statistics, parameter-state controls, and prescribed finite-replacement tasks in one validation suite for two fixed ViT checkpoints. Figures 6–11 and Tables 4–8 provide the image-level evidence. The chain rule and the $x\odot\nabla_xs(x)$ identity delimit the method and are not listed as primary innovations.
 
 We next delimit the related methods and our positioning, derive the general Jacobian representation and ViT structural decomposition, and organize experiments around identity and closure, depth trends, structural paths, and finite intervention.
 
@@ -39,21 +39,38 @@ We next delimit the related methods and our positioning, derive the general Jaco
 
 Neuron visualization examines internal responses through input patterns or observed samples. NNS organizes a neuron's computation as an input-coordinate learning image and represents convolutional channels through activation-weighted aggregation (Dou et al., 2023). This organization maps internal objects with different native spatial structures into common image coordinates. We retain “learning image” as the historical term and use “local input-dependence map” in the mathematical development to emphasize a first-order response at the observed input.
 
-### 2.2 Local gradients, path integration, and hidden-unit attribution
+### 2.2 Local gradients, path integration, FullGrad, and hidden-unit attribution
 
-Gradient × Input is the input-weighted gradient at the observed point (Shrikumar et al., 2017). Integrated Gradients averages gradients along a reference-to-input path and satisfies its corresponding completeness axioms (Sundararajan et al., 2017), while conductance extends path attribution to hidden units (Dhamdhere et al., 2018). Endpoint uses the true current-point Jacobian without path integration. These objects differ in reference dependence, locality, and completeness and are not interchangeable on the basis of visual appearance.
+Gradient × Input is the input-weighted gradient at the observed point (Shrikumar et al., 2017). Integrated Gradients averages gradients along a reference-to-input path and satisfies its corresponding completeness axioms (Sundararajan et al., 2017), while conductance extends path attribution to hidden units (Dhamdhere et al., 2018). FullGrad combines input-gradient and layerwise bias-gradient components into a complete representation and then aggregates them into a saliency map (Srinivas and Fleuret, 2019). Endpoint uses the true current-point Jacobian without path integration and does not add bias terms to its input map. Conductance path completeness, the FullGrad function-value representation, and local-differential closure on our valid cuts are distinct objects.
 
-### 2.3 Computational paths and internal intervention
+### 2.3 Transformer token contribution and relevance propagation
 
-Activation replacement measures a finite output change after substituting an actual internal variable. Activation-space Taylor approximates that change by the inner product of the clean gradient and replacement displacement; AtP* further analyzes approximation errors caused by attention saturation and cancellation (Kramár et al., 2024). Local input dependence and finite replacement correspond to a current-point differential and an operation-specific finite effect, respectively. We therefore evaluate structural closure, component ranking, and region selection under fixed spatial budgets separately.
+GlobEnc incorporates attention, residual, and normalization components into layerwise token attribution and aggregates them across encoder layers (Modarressi et al., 2022). DecompX propagates unmixed token-representation components through nonlinear feed-forward layers and the classification head to connect token decomposition to predictions (Modarressi et al., 2023). AttnLRP defines relevance propagation through attention and skip connections for input and latent attribution (Achtibat et al., 2024). LibraGrad prunes and rescales backward paths to correct ViT gradient-flow imbalance under its FullGrad-completeness objective (Mehri et al., 2025). These methods already cover internal contribution propagation in Transformers. Our method retains the model's actual local derivatives and accounts for actual edges on specified computational cuts of the same local differential.
 
-### 2.4 Transformer interpretability
+### 2.4 Activation patching and edge attribution
 
-Grad-CAM forms class-conditioned localization from gradient-weighted feature maps (Selvaraju et al., 2017). Attention rollout aggregates attention flow across layers (Abnar and Zuidema, 2020). Transformer relevance methods introduce specialized propagation rules for attention and skip connections (Chefer et al., 2021; Achtibat et al., 2024), and LibraGrad rescales and prunes backward paths to improve ViT attribution (Mehri et al., 2025). These methods have different targets, propagation rules, and completeness objects; our same-input figures compare spatial granularity and explanatory objects rather than treating the maps as interchangeable scores.
+Activation patching replaces actual internal variables with clean/corrupted reference states and measures finite output changes; its result depends on the corruption, patch location, and metric (Zhang and Nanda, 2023). Attribution patching approximates a component patching effect with the inner product of activation displacement and a local gradient, and edge attribution patching applies this approximation to computational edges (Syed et al., 2023). AtP* further treats approximation errors caused by attention saturation and cancellation (Kramár et al., 2024). These methods directly evaluate or approximate reference-specified finite effects. We report clean-only path maps, reference-aware Taylor quantities, and actual replacement effects separately and do not substitute structural closure for finite-intervention utility.
 
-### 2.5 Positioning of this study
+### 2.5 Visual attribution and position of this work
 
-Input × Gradient, hidden-unit attribution, attention flow, Transformer relevance, and activation patching all precede this work. Our technical delta is a systematic implementation of the original NNS input-coordinate learning-image idea on actual ViT computation graphs: heterogeneous scalar targets are registered explicitly; Q/K/V, individual heads, and residual edges are separated; complete cuts test local-differential closure without omission or duplication; and depth statistics plus finite replacement delimit empirical scope.
+Grad-CAM provides class-conditioned localization through gradient-weighted feature maps (Selvaraju et al., 2017), attention rollout combines attention flow across layers (Abnar and Zuidema, 2020), and Chefer et al. (2021) design relevance propagation for Transformers. These approaches, Gradient × Input, token decomposition, LRP, and finite replacement address different explanation objects. Table 1 positions the methods used in this study.
+
+**Table 1. Method positioning; completeness denotes each method's own function-value, attribution, or local-differential closure object**
+
+| Method | Primary object | External reference | Internal-path decomposition | Completeness / closure | Finite-intervention evaluation |
+| --- | --- | --- | --- | --- | --- |
+| Gradient × Input | Input coordinates at one point | No | No | No, except under homogeneity conditions | Not intrinsic |
+| Conductance | Hidden-unit attribution along an input path | Yes | Hidden units, not graph-edge cuts | Yes, for its path-attribution object | Neuron ablation |
+| FullGrad | Input and bias-gradient components | No | Layerwise bias components, not graph paths | Yes, for the full-gradient representation | Input perturbation, not internal replacement |
+| GlobEnc | Token attribution through encoder blocks | No | Token/component propagation | No formal class-score closure | Input-token evaluation |
+| DecompX | Token contributions to a prediction | No | Token decomposition through encoder components | Specified token decomposition, not this work's Jacobian-cut closure | Input-token erasure |
+| AttnLRP | Input and latent relevance | No | Attention/skip relevance propagation | Yes, relevance conservation | Input perturbation |
+| LibraGrad | ViT input attribution | No | Modified backward paths, not an additive edge cut | Targets FullGrad completeness | Input perturbation |
+| Activation patching | Finite effects of internal variables | Yes | Nodes or edges selected for replacement | Not an additive completeness objective | Yes, direct replacement |
+| Edge attribution patching | First-order finite-effect estimates on edges | Yes | Yes, computational edges | Not an additive completeness objective | Yes, checked against patching |
+| NNS–ViT (this work) | Local input maps for ViT targets and edges | No for maps; yes for replacement evaluation | Yes, on specified Q/K/V, head and residual cuts | Yes, local-differential closure on a valid cut; no function-value completeness | Yes, prescribed replacement tasks |
+
+The increment comprises three linked steps: implementing the NNS learning-image representation for heterogeneous ViT targets and actual graph edges; accounting for paths without omission or duplication under a specified graph, cut, and parameterization; and separately evaluating correctness, structural patterns, and task utility through numerical closure, depth statistics, and finite replacement.
 
 ## 3. Jacobian Interpretation of NNS
 
@@ -164,7 +181,23 @@ $$
 
 **Proof.** Expand the chain rule into Jacobian products over input-to-target paths. A valid cut partitions these paths without omission or duplication. Each group factors into its upstream Jacobian to $z_k$ and the downstream cotangent at that edge. Summing all groups and multiplying by $x_i$ gives the result. Cutting only $f(u)$ omits the identity bypass in $y=u+f(u)$; using the complete $\nabla_uF$ as an identity term and then adding the branch duplicates the branch path. A cut internal to one branch reconstructs only that branch; a full residual or target also requires the remaining paths.
 
-### 4.4 Mass, cancellation, and the Value-only approximation
+### 4.4 Computational-graph dependence and non-uniqueness
+
+Closure in Proposition 2 is relative to a specified computational graph, cut, and internal coordinate system. An equivalent reparameterization can preserve the end-to-end function and total Endpoint while changing coordinate-wise or path-wise terms. Let $x=(x_1,x_2)^\top$, hidden state $h=x$, and output $s=(1,1)h=x_1+x_2$. A cut over the two hidden coordinates gives
+
+$$
+E_1=(x_1,0)^\top,\qquad E_2=(0,x_2)^\top.
+$$
+
+Now use the invertible transform $R=\begin{bmatrix}1&1\\0&1\end{bmatrix}$ and rewrite the same function with $h'=Rh$ and $w'=R^{-\top}(1,1)^\top=(1,0)^\top$, so $s=w'^\top h'$. The coordinate-path maps become
+
+$$
+E'_1=(x_1,x_2)^\top,\qquad E'_2=(0,0)^\top.
+$$
+
+Both implementations satisfy $E_1+E_2=E'_1+E'_2=(x_1,x_2)^\top$, but their terms differ. Changing a valid cut likewise changes the named path groups. Our Q/K/V, head, and residual maps are therefore decompositions of specified actual edges in the frozen ViT implementation, not unique explanations determined solely by the end-to-end function, and they are not generally implementation invariant. Numerical closure establishes accounting without omission or duplication for that representation; it does not establish uniqueness across equivalent graph representations.
+
+### 4.5 Mass, cancellation, and the Value-only approximation
 
 On the raw normalized-input RGB tensor, define the primary spatial measure at pixel $p$ as
 
@@ -185,7 +218,7 @@ Routing scale is $\|E^{\mathrm{routing}}\|_1/(\|E^{\mathrm{routing}}\|_1+\|E^{\m
 
 Statistics use complete signed RGB tensors; zero denominators or norms yield NA. The blue display convention is described in the experimental settings.
 
-### 4.5 Finite replacement and spatial region selection
+### 4.6 Finite replacement and spatial region selection
 
 The finite component effect is $e_k=F(x)-F(x;z_k\leftarrow z_k^{\mathrm{ref}})$. The primary statistic compares $m(E_k)$ and $|e_k|$ with within-image Spearman correlation. The Taylor quantity is $p_k=\langle\nabla_{z_k}F,z_k(x)-z_k^{\mathrm{ref}}\rangle$. Interventions replace actual head-output or residual-edge activations in the model forward pass; routing/value and Q/K/V differentials are derivative paths and are not treated as independently replaceable forward activations. Endpoint and raw gradient use only the clean state and are clean-only methods; regional Taylor explicitly uses the reference displacement and is reference-aware. Because their information budgets differ, comparisons measure task fit rather than unconditional method rank.
 
@@ -196,9 +229,9 @@ The spatial task fixes three heads at block 5, divides the input into $4\times4$
 
 ### 5.1 Models and images
 
-We study ImageNet classification models ViT-B/16 and DeiT-S/16. They share 400 evaluation images, with separate sets of 64 discovery and 64 calibration images. Inputs are resized to short side 248 and center-cropped to 224 using each model's normalization; dropout and drop path are disabled. Table 1 summarizes the models.
+We study ImageNet classification models ViT-B/16 and DeiT-S/16. They share 400 evaluation images, with separate sets of 64 discovery and 64 calibration images. Inputs are resized to short side 248 and center-cropped to 224 using each model's normalization; dropout and drop path are disabled. Table 2 summarizes the models.
 
-**Table 1. Model settings**
+**Table 2. Model settings**
 
 | Model / setting | ViT-B/16 | DeiT-S/16 |
 | --- | --- | --- |
@@ -221,9 +254,9 @@ Main learning images use a deep-blue, cyan, yellow and red positive view. With $
 
 Population inference aggregates within images and treats images as statistical units, with 10,000 bootstrap replicates. The 0.10 component-correlation and 0.05 regional-gain values are point-estimate thresholds; sign tests examine direction relative to zero, with the original 28-test Holm correction and CI-width limits of 0.30/0.50. Unit-depth statistics use five-test families per model. Subsequent residual spatial-TV analysis is labeled post-hoc and corrected separately.
 
-Discrete numerical checks are reported in tables rather than sparse error plots. Table 2 summarizes numerical agreement in five original-NNS-compatible network families and structural checks. Original float32 finite-difference failures and their float64 reviews remain in the supplement.
+Discrete numerical checks are reported in tables rather than sparse error plots. Table 3 summarizes numerical agreement in five original-NNS-compatible network families and structural checks. Original float32 finite-difference failures and their float64 reviews remain in the supplement.
 
-**Table 2. Numerical agreement and structural checks**
+**Table 3. Numerical agreement and structural checks**
 
 | Compatible network | Max relative L2: float64 | Max relative L2: float32 | Comparisons |
 | --- | --- | --- | --- |
@@ -250,7 +283,7 @@ The experiments follow the four research questions. Group 1 compares original NN
 
 ### 6.1 RQ1–RQ2: NNS equivalence and structural-path closure
 
-The 5,000 original-NNS-compatible comparisons in Table 2 give maximum relative L2 errors of $4.769\times10^{-16}$ in float64 and $2.427\times10^{-7}$ in float32 between layerwise learning-image propagation and same-target Input × Gradient. Structural validation covers 76,800 positive closure checks, 28,800 omission/duplication controls, 6,144 analytic JVP checks, and 88 operator directions. All positive closures and analytic directional checks pass, all negative controls are rejected, and all 36 float32 finite-difference exceedances pass same-coordinate float64 review. These results establish the numerical identity in Proposition 1 and structural accounting in Proposition 2; Section 7 evaluates finite-intervention utility separately.
+The 5,000 original-NNS-compatible comparisons in Table 3 give maximum relative L2 errors of $4.769\times10^{-16}$ in float64 and $2.427\times10^{-7}$ in float32 between layerwise learning-image propagation and same-target Input × Gradient. Structural validation covers 76,800 positive closure checks, 28,800 omission/duplication controls, 6,144 analytic JVP checks, and 88 operator directions. All positive closures and analytic directional checks pass, all negative controls are rejected, and all 36 float32 finite-difference exceedances pass same-coordinate float64 review. These results establish the numerical identity in Proposition 1 and structural accounting in Proposition 2; Section 7 evaluates finite-intervention utility separately.
 
 ### 6.2 RQ3: Learning images and forward features across layers
 
@@ -306,7 +339,7 @@ Endpoint retains pixel-scale local terms, whereas Grad-CAM and attention methods
 
 ### 6.6 RQ3 control: training and initialization
 
-Across 32 shared images per model, all 12 blocks and three random initialization states, random models also show spatial broadening. Trained entropy late-minus-early is 0.2288/0.2256, versus random means of 0.0940/0.1718. Trained-minus-random differences are 0.1348 [0.1232, 0.1466] and 0.0539 [0.0473, 0.0602], with intervals resampling model seeds and shared images. Routing-scale trained/random depth changes are 0.0512/−0.0479 and 0.1314/−0.0043; attention identity decreases in trained models and increases in random models. MLP identity increases in both, with the ViT-B increment-difference interval crossing zero. Spatial broadening has an architectural/initialization basis, while trained parameters strengthen its magnitude and change some path trends.
+Across 32 shared images per model, all 12 blocks and three random initialization states, random models also show spatial broadening. Trained entropy late-minus-early is 0.2288/0.2256, versus random means of 0.0940/0.1718. Trained-minus-random differences are 0.1348 [0.1232, 0.1466] and 0.0539 [0.0473, 0.0602], with intervals resampling model seeds and shared images. Routing-scale trained/random depth changes are 0.0512/−0.0479 and 0.1314/−0.0043; attention identity decreases in trained models and increases in random models. MLP identity increases in both, with the ViT-B increment-difference interval crossing zero. The trained and random parameter states differ by the reported spatial-broadening magnitudes and path trends; this comparison does not identify a causal effect of training.
 
 ### 6.7 RQ3 control: target robustness
 
@@ -320,13 +353,13 @@ With 32 images per model, 12 blocks and 16 frozen random channels per block, 12,
 
 Reusing original M3 unit records for the same 32 images, channel/token-stratum/image bootstraps and leave-one-block/stratum-out analyses retain increasing entropy and distance and decreasing locality. This characterizes sampling sensitivity in the existing sample. Full settings, metric estimates, intervals and five supplementary figures are in [Supplementary experiments v1](../publication_r2_20260920/en/supplement_experiments_v1.md).
 
-## 7. Finite Intervention and First-Order Boundaries
+## 7. Ranking in Prescribed Finite-Replacement Tasks
 
-### 7.1 RQ4: From component association to finite regional intervention
+### 7.1 RQ4: Prescribed component replacement and regional selection
 
-In component replacement, 11 of 12 model–reference–component-family combinations satisfy the original composite criteria. Table 3 directly reports estimates, intervals and threshold relationships. ViT-B normalized-zero routing/value has estimate 0.0996 and the corresponding DeiT-S estimate is 0.1065; both intervals cross 0.10. Satisfying a family criterion and establishing a population effect above 0.10 are therefore different conclusions. The all-family criterion is unmet.
+In component replacement, 11 of 12 model–reference–component-family combinations satisfy the original composite criteria. Table 4 directly reports estimates, intervals and threshold relationships. ViT-B normalized-zero routing/value has estimate 0.0996 and the corresponding DeiT-S estimate is 0.1065; both intervals cross 0.10. Satisfying a family criterion and establishing a population effect above 0.10 are therefore different conclusions. The all-family criterion is unmet.
 
-**Table 3. Component association estimates and intervals**
+**Table 4. Component association estimates and intervals**
 
 | Model | Reference | Family | Median rho | 95% CI | Holm p | Composite criterion | CI lower > 0.10 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -343,9 +376,9 @@ In component replacement, 11 of 12 model–reference–component-family combinat
 | DeiT-S/16 | blur | routing/value | 0.1600 | [0.1278, 0.1822] | 9.90e-31 | Met | yes |
 | DeiT-S/16 | blur | residual/branches | 0.2287 | [0.2035, 0.2504] | 3.70e-54 | Met | yes |
 
-In the supplementary within-block head comparison, Taylor achieves higher Spearman and Capture and lower Regret (Table 4). Across-layer residual identity has Endpoint-minus-Taylor Spearman differences of 0.0865–0.4209 but a zero median Capture@1 difference, indicating task- and metric-dependent incremental value.
+In the supplementary within-block head comparison, Taylor achieves higher Spearman and Capture and lower Regret (Table 5). Across-layer residual identity has Endpoint-minus-Taylor Spearman differences of 0.0865–0.4209 but a zero median Capture@1 difference, indicating task- and metric-dependent incremental value.
 
-**Table 4. Within-block head ranking: E=Endpoint, T=Taylor**
+**Table 5. Within-block head ranking: E=Endpoint, T=Taylor**
 
 | Model | Reference | E rho | T rho | E Capture@1 | T Capture@1 | E Capture@3 | T Capture@3 | E Regret@1 | T Regret@1 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -354,13 +387,13 @@ In the supplementary within-block head comparison, Taylor achieves higher Spearm
 | DeiT-S/16 | normalized-zero | 0.1952 | 0.6095 | 0.5609 | 0.8028 | 0.7122 | 0.8894 | 0.2381 | 0.0860 |
 | DeiT-S/16 | blur | 0.1476 | 0.6238 | 0.5506 | 0.8426 | 0.7105 | 0.8970 | 0.1326 | 0.0443 |
 
-The spatial experiment fixes three heads in block 5, a shared 4×4 region pool and a maximum 25% area. Figure 11 and Tables 5–7 report paired differences, absolute AUC and normalized regret. Paired median Endpoint-minus-regional-Taylor differences are −0.023433, −0.023697, −0.029900 and −0.035630. None of the four families meets the +0.05 criterion over every baseline. The candidate oracle maximizes effects only over evaluated sets and is not a global optimum over all regions.
+The spatial experiment fixes three heads in block 5, a shared 4×4 region pool and a maximum 25% area. Figure 11 and Tables 6–8 report paired differences, absolute AUC and normalized regret. Paired median Endpoint-minus-regional-Taylor differences are −0.023433, −0.023697, −0.029900 and −0.035630. None of the four families meets the +0.05 criterion over every baseline. The candidate oracle maximizes effects only over evaluated sets and is not a global optimum over all regions.
 
 ![Figure 11](../publication_r2_20260920/figures/png/fig_21_intervention_boundary.png)
 
 **Figure 11.** Finite region-replacement curves for the example and absolute AUC over complete 400-image families. The candidate oracle is restricted to evaluated region sets; mathematical closure and spatial intervention selection measure different properties.
 
-**Table 5. Paired spatial-intervention differences**
+**Table 6. Paired spatial-intervention differences**
 
 | Model | Reference | vs total G×I | vs gradient | vs Taylor | vs random | Composite criterion |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -369,7 +402,7 @@ The spatial experiment fixes three heads in block 5, a shared 4×4 region pool a
 | DeiT-S/16 | normalized-zero | -0.0018 | -0.0006 | -0.0299 | 0.0009 | Unmet |
 | DeiT-S/16 | blur | 0.0002 | -0.0002 | -0.0356 | -0.0010 | Unmet |
 
-**Table 6. Absolute AUC and output scale**
+**Table 7. Absolute AUC and output scale**
 
 | Model | Reference | Endpoint AUC | Taylor AUC | Random AUC | Candidate oracle AUC | Clean GT logit |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -378,7 +411,7 @@ The spatial experiment fixes three heads in block 5, a shared 4×4 region pool a
 | DeiT-S/16 | normalized-zero | 0.0617 | 0.0961 | 0.0611 | 0.1474 | 8.7974 |
 | DeiT-S/16 | blur | 0.0395 | 0.0770 | 0.0411 | 0.1063 | 8.7974 |
 
-**Table 7. Candidate-oracle regret and logit-scale ratios**
+**Table 8. Candidate-oracle regret and logit-scale ratios**
 
 | Model | Reference | Endpoint regret | Taylor regret | Random regret | Endpoint AUC/abs(logit) | Taylor AUC/abs(logit) |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -395,9 +428,9 @@ With the corrected random estimator, paired Endpoint-minus-random medians are �
 
 ### 8.1 Discussion
 
-This study unifies NNS layerwise scale propagation as local Jacobian propagation on a general computational graph and extends the common input-coordinate representation to actual ViT edges. The theoretical result applies to graphs satisfying Propositions 1 and 2, whereas the empirical results are scoped to two fixed ImageNet-pretrained checkpoints and prespecified target samples. Together they support NNS as a local-scale analysis framework.
+Building on established local Jacobian propagation, this study implements the NNS input-coordinate representation on actual ViT structural edges. Proposition 1 identifies its relationship to Gradient × Input, Proposition 2 states closure conditions for a specified graph and cut, and the empirical results come from two fixed ImageNet-pretrained checkpoints and prespecified target samples.
 
-Structural closure, local path scale, and finite intervention answer three distinct questions. Additive closure of Q/K/V, individual heads, and identity/branch paths shows that the terms reconstruct the specified target differential. Routing and identity scales compare relative map norms. Activation replacement measures a finite effect under a specified reference and replacement operator. The regional experiment uses full replacement at fixed area budgets, so the current evidence delimits first-order association; an error-versus-amplitude curve over $\alpha\in\{0.05,0.1,0.25,0.5,1.0\}$ remains unmeasured.
+Structural closure, local path scale, and finite-replacement ranking answer three distinct questions. Additive closure of Q/K/V, individual heads, and identity/branch paths shows that the terms reconstruct the specified target differential. Routing and identity scales compare relative map norms. Activation replacement measures a finite effect under a specified reference and replacement operator. RQ4 evaluates component ranking and regional selection under full replacement and fixed area budgets; it does not estimate a boundary for Taylor error as intervention amplitude changes.
 
 Learning images place heterogeneous internal objects on the same input grid. Explicit targets, layers, and channels support comparisons between forward responses and local input dependence and show how attention and residual paths combine. Correct feature–Endpoint pairs outperform four negative controls, while their association remains far from equivalence. Pixel-resolution maps also remain conditioned by the $16\times16$ patch embedding and the normalization-coordinate origin.
 
@@ -407,7 +440,7 @@ Training controls cover three initialization seeds per architecture; the empiric
 
 ### 8.2 Conclusion
 
-Four conclusions follow. First, with exact current-point local derivatives and no additional redistribution, a scalar NNS learning image equals Input × Gradient; its general role is a local input-coordinate representation on a computational graph. Second, the ViT attention differential separates into Q-induced, K-induced, and V-induced paths, while residual differentials separate into identity and branch paths; terms on a valid cut add to the complete local input dependence. Third, sampled targets in the two fixed ViT-B/16 and DeiT-S/16 checkpoints show spatial broadening, increasing routing-relative scale and Value-only error in deep attention, and distinct attention-versus-MLP residual trends; training, target, and sampling controls delimit these observations. Fourth, local path maps have broad but non-universal association with finite component effects, while reference-specified regional replacement is better matched by displacement-aware Taylor estimation. The contribution of NNS-ViT is therefore an extension of the theoretical scope and applicable objects of NNS together with a unified implementation and validation of ViT structural paths.
+Four conclusions follow. First, with exact current-point local derivatives and no additional redistribution, a scalar NNS learning image equals Input × Gradient; this identity defines the base quantity rather than the main innovation. Second, on a specified ViT graph the attention differential separates into Q-induced, K-induced, and V-induced paths, while residual differentials separate into identity and branch paths; terms on a valid cut add to complete local input dependence, but the terms vary with graph, cut, and parameterization. Third, frozen target samples in the two fixed ViT-B/16 and DeiT-S/16 checkpoints show spatial broadening, increasing routing-relative scale and Value-only error in deep attention, and distinct attention-versus-MLP residual trends; trained and random parameter states exhibit the reported differences. Fourth, local path maps have broad but non-universal association with finite effects in the prescribed component-replacement task, while displacement-aware Taylor ranking is better suited to the prescribed reference-specified regional replacement. The contribution of NNS-ViT is a unified implementation on actual ViT graph edges, graph-relative path decomposition, and systematic validation.
 
 ## References and Supplementary Material
 

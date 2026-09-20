@@ -1,4 +1,4 @@
-# NNS 学习图像的计算图解释与视觉 Transformer 结构路径分析
+# 视觉 Transformer 计算图上的 NNS 结构路径分解与系统验证
 
 - 作者：[AUTHOR REQUIRED]
 - 单位：[AFFILIATION REQUIRED]
@@ -6,7 +6,7 @@
 
 ## 摘要
 
-神经网络扫描器（Neural Network Scanner，NNS）通过逐层传播局部尺度，为网络内部目标生成保留输入位置的学习图像。本文从一般计算图重新表述这一过程：当各层使用实际前向状态下的精确局部导数，且不加入归一化、截断或相关性重分配时，标量目标的学习图像等于 $x\odot\nabla_xs(x)$，即同目标的 Input × Gradient。基于这一等价关系，我们把 NNS 从顺序式 CNN 单元传播扩展为视觉 Transformer（ViT）计算图上的结构化局部微分分析，定义完整计算切面，并将 attention differential 分解为 Q-induced、K-induced 与 V-induced 路径，将 residual differential 分解为 identity 与 branch 路径。数值实验验证了原始 NNS 等价性和各结构切面的加和闭合。在两个固定 ImageNet 预训练 checkpoint——ViT-B/16 与 DeiT-S/16——中，抽样内部目标的局部输入依赖随深度扩展到更广、更远的 patch；深层 attention 的 routing 相对范数和 Value-only 近似误差提高，attention 与 MLP residual 呈现不同的层深变化。随机初始化、目标类型和抽样敏感性对照进一步限定了这些规律。有限替换结果显示，局部路径图与成分效应存在广泛但非普遍的关联；在给定 reference 的区域替换中，显式使用实际位移的 Taylor 估计优于 clean-only Endpoint 排序。NNS 在这里的扩展是面向 ViT 真实计算边的统一表示、闭合验证与经验分析，而非新的基础输入归因量。
+神经网络扫描器（Neural Network Scanner，NNS）通过逐层传播局部尺度，为网络内部目标生成保留输入位置的学习图像。本文研究 NNS 在视觉 Transformer（ViT）指定计算图上的结构化实现、路径分解和系统验证。当各层使用实际前向状态下的精确局部导数，且不加入归一化、截断或相关性重分配时，标量 NNS 学习图像等于 $x\odot\nabla_xs(x)$，即同目标的 Gradient × Input；这一关系用于界定基础量，而不是作为主要创新。本文在此基础上注册 ViT 异构内部目标，定义合法计算切面，将 attention differential 分为 Q-induced、K-induced 与 V-induced 路径，将 residual differential 分为 identity 与 branch 路径，并检验各切面是否加和闭合。该分解相对于指定计算图、切面和参数化定义，不具有一般实现不变性。两个固定 ImageNet 预训练 checkpoint——ViT-B/16 与 DeiT-S/16——上的实验覆盖数值正确性、路径层深统计、训练参数状态与随机参数状态的差异，以及规定有限替换任务中的排序能力。抽样目标的局部输入依赖随深度扩展到更广、更远的 patch；深层 attention 的 routing 相对范数和 Value-only 近似误差提高，attention 与 MLP residual 呈现不同的层深变化。局部路径图与有限成分效应存在广泛但非普遍的关联；给定 reference 的区域替换中，显式使用实际位移的 Taylor 排序优于 clean-only Endpoint。本文的贡献落在 ViT 真实计算边上的统一实现、图相对路径分解和系统证据，而非新的基础输入归因量。
 
 关键词：视觉 Transformer；Neural Network Scanner；学习图像；局部 Jacobian；结构路径分解
 
@@ -22,14 +22,14 @@ Neural Network Scanner（NNS）为神经元关联一张保留输入位置的 lea
 
 **Figure 1.** 同一输入经过正常前向计算得到预测；NNS-ViT 为内部目标与输出目标提供保留输入位置的学习图像。虚线表示目标与学习图像的对应关系。
 
-本文的总体问题是：如何在 NNS 框架下，将 ViT 内部目标对输入的局部依赖表示为可计算、可分解和可验证的结构路径图，并分析其层深规律及有限干预边界？具体研究四个问题：
+本文的总体问题是：如何在 NNS 框架下，将 ViT 内部目标对输入的局部依赖表示为可计算、可分解和可验证的结构路径图，并评价其层深规律及在规定有限替换任务中的排序能力？具体研究四个问题：
 
 1. **RQ1：NNS 学习图像的数学本质是什么？** 明确逐层尺度传播、Jacobian 链式法则与 Input × Gradient 的关系，以及非齐次项、固定 token 和输入坐标原点带来的限制。
 2. **RQ2：NNS 如何推广到 ViT 的结构化计算图？** 定义内部标量目标、真实计算边、合法计算切面及 attention、multi-head 和 residual 的可加局部微分路径。
-3. **RQ3：结构路径如何随深度变化？** 在两个固定预训练 checkpoint 上分析空间扩展、routing/value、Q/K/V 和 identity/branch 的层深规律，并以初始化、目标和抽样控制检验范围。
-4. **RQ4：局部路径图在多大程度上对应有限干预？** 区分 clean-only 局部依赖与 reference-aware 位移估计，比较成分替换和区域替换中的预测能力。
+3. **RQ3：结构路径如何随深度变化？** 在两个固定预训练 checkpoint 的冻结抽样目标上分析空间扩展、routing/value 与 identity/branch 的层深规律，并比较训练参数状态和随机参数状态以及目标与抽样控制。
+4. **RQ4：局部路径图能否在规定的有限替换任务中排序成分和空间区域？** 对固定模型、样本、层、head、reference、替换算子和区域预算，比较 clean-only 局部路径图与 reference-aware 位移估计的成分排序和区域选择。
 
-本文的贡献包括四项：第一，从计算图微分角度统一 NNS 的逐层传播，给出标量学习图像与 Input × Gradient 等价的条件；第二，将统一输入坐标表示扩展到 ViT 的 token-channel、通道聚合、attention head、residual branch 和类别目标；第三，在 NNS 框架下系统化 Q/K/V、multi-head 与 identity/branch 的局部微分分解，并用合法切面和数值闭合检验其完整性；第四，在两个固定模型上分析路径级层深规律、训练与目标敏感性及有限干预边界。已有工作已覆盖输入梯度、隐藏单元归因、Transformer relevance 与 activation patching，因此本文不把基础公式或一般路径归因概念列为新颖性来源。
+本文作出三项贡献。第一，已有 NNS、Gradient × Input 和 conductance 分别提供学习图像、局部输入加权梯度和隐藏单元路径归因；本文新增面向 ViT token-channel、通道聚合、attention head、residual edge 与类别目标的统一目标注册和输入坐标实现，直接证据是 Table 2 的 457/385 个注册目标、Table 3 的 5,000 个公式回归及 88 个算子方向检查。第二，已有 GlobEnc、DecompX、AttnLRP 和 LibraGrad 已传播 Transformer token contribution 或 relevance；本文新增相对于指定 ViT 计算图与合法切面的 Q/K/V、multi-head 和 identity/branch 局部微分记账，直接证据是 76,800 项正向闭合、28,800 项遗漏/重复负控和 6,144 项解析 JVP 检查。第三，已有 activation patching 与 edge attribution 研究内部有限效应；本文在两个固定 ViT checkpoint 上把结构路径的层深统计、参数状态对照和规定有限替换任务纳入同一套验证，直接证据是 Figures 6–11 与 Tables 4–8 的图像级结果。链式法则及 $x\odot\nabla_xs(x)$ 身份用于界定方法，不列为主要创新。
 
 下文先界定相关方法与本文定位，再给出 NNS 的一般 Jacobian 表示和 ViT 结构分解。实验按等价性与闭合、层深规律、结构路径和有限干预组织，最后讨论证据范围。
 
@@ -39,21 +39,38 @@ Neural Network Scanner（NNS）为神经元关联一张保留输入位置的 lea
 
 神经元可视化通过输入模式或实际样本分析内部响应。NNS 将单个神经元的计算组织为输入坐标 learning image，并用 activation-weighted aggregation 表示卷积通道（Dou et al., 2023）。这种组织方式使不同原生空间结构的内部对象能够映射到同一图像坐标。本文保留“学习图像”这一历史术语；在数学推导中称其为“局部输入依赖图”，以强调它描述当前输入点的一阶响应。
 
-### 2.2 局部梯度、路径积分与隐藏单元归因
+### 2.2 局部梯度、路径积分、FullGrad 与隐藏单元归因
 
-Gradient × Input 是观测点上的输入加权梯度（Shrikumar et al., 2017）；Integrated Gradients 沿参考到输入的路径平均梯度并满足相应完整性公理（Sundararajan et al., 2017），conductance 将路径归因扩展到隐藏单元（Dhamdhere et al., 2018）。本文的 Endpoint 使用当前点的真实 Jacobian，不进行路径积分。三类对象的 reference、局部性与完整性不同，不能仅按图像外观互换。
+Gradient × Input 是观测点上的输入加权梯度（Shrikumar et al., 2017）；Integrated Gradients 沿 reference 到输入的路径平均梯度并满足相应完整性公理（Sundararajan et al., 2017），conductance 将该路径归因扩展到隐藏单元（Dhamdhere et al., 2018）。FullGrad 将输入梯度项与各层 bias-gradient 项共同组成完整表示，再聚合为显著图（Srinivas and Fleuret, 2019）。本文的 Endpoint 使用当前点的真实 Jacobian，不进行路径积分，也不把 bias 项加入输入图。因此 conductance 的路径完整性、FullGrad 的函数值完整表示和本文合法切面的局部微分闭合是三个不同对象。
 
-### 2.3 计算路径与内部干预
+### 2.3 Transformer token contribution 与 relevance 传播
 
-Activation replacement 通过替换真实内部变量测量有限输出变化。Activation-space Taylor 使用 clean gradient 与替换位移的内积近似该变化；AtP* 进一步分析注意力饱和与抵消造成的近似误差（Kramár et al., 2024）。局部输入依赖与有限替换分别对应当前点微分和指定操作下的有限效应，本文据此分开评价结构闭合、成分排序和固定空间预算下的区域选择。
+GlobEnc 把 encoder block 的 attention、residual 与 normalization 纳入逐层 token attribution，并跨层聚合（Modarressi et al., 2022）。DecompX 传播不混合的 token representation 分量，覆盖非线性前馈层和分类头，将 token decomposition 连接到预测（Modarressi et al., 2023）。AttnLRP 为 attention 与 skip connection 定义 relevance 传播并支持输入和 latent attribution（Achtibat et al., 2024）；LibraGrad 通过剪枝和缩放反向路径校正 ViT 的 gradient-flow imbalance，以满足其 FullGrad-completeness 目标（Mehri et al., 2025）。这些方法已经覆盖 Transformer 内部贡献传播。本文保留模型真实局部导数，研究的是指定计算图切面上各真实边对同一局部微分的可加记账。
 
-### 2.4 Transformer 可解释性
+### 2.4 Activation patching 与 edge attribution
 
-Grad-CAM 通过梯度加权特征图获得类别相关定位（Selvaraju et al., 2017）。Attention rollout 组合跨层 attention flow（Abnar and Zuidema, 2020）；Transformer relevance 方法使用专门的传播规则处理 attention 与 skip connection（Chefer et al., 2021；Achtibat et al., 2024），LibraGrad 则修改 backward path 的缩放与剪枝以改善 ViT 归因（Mehri et al., 2025）。这些方法的目标、传播规则和完整性对象不同，本文的同输入图只用于比较空间粒度和解释对象。
+Activation patching 以 clean/corrupted reference 替换真实内部变量并测量有限输出变化；结果依赖 corruption、替换位置和评价指标（Zhang and Nanda, 2023）。Attribution patching 以 activation displacement 与局部梯度的内积近似单个组件的 patching effect；edge attribution patching 将这一近似用于计算图边（Syed et al., 2023）。AtP* 进一步处理 attention saturation 与抵消造成的近似误差（Kramár et al., 2024）。这些方法直接评价或近似 reference-specified finite effect。本文分别报告 clean-only 路径图、reference-aware Taylor 量和真实替换效应，不用结构闭合代替有限干预效用。
 
-### 2.5 本文定位
+### 2.5 视觉归因与本文定位
 
-已有研究表明，Input × Gradient、隐藏单元归因、attention flow、Transformer relevance 和 activation patching 均不是本文首次提出。本文的技术增量是把原始 NNS 的输入坐标 learning-image 思想系统化为 ViT 真实计算图上的统一实现：显式注册异构内部标量，区分 Q/K/V、各 head 与 residual edges，在完整切面上检查不遗漏、不重复的局部微分闭合，并以层深统计和有限替换标定其适用范围。
+Grad-CAM 通过梯度加权特征图获得类别相关定位（Selvaraju et al., 2017），attention rollout 组合跨层 attention flow（Abnar and Zuidema, 2020），Chefer et al.（2021）则为 Transformer 设计 relevance 传播。它们与 Gradient × Input、token decomposition、LRP 和有限替换面向不同解释对象。本文的方法位置汇总于 Table 1。
+
+**Table 1. 方法定位：完整性指各方法自身声明的函数值、归因或局部微分闭合对象**
+
+| Method | Primary object | External reference | Internal-path decomposition | Completeness / closure | Finite-intervention evaluation |
+| --- | --- | --- | --- | --- | --- |
+| Gradient × Input | Input coordinates at one point | No | No | No, except under homogeneity conditions | Not intrinsic |
+| Conductance | Hidden-unit attribution along an input path | Yes | Hidden units, not graph-edge cuts | Yes, for its path-attribution object | Neuron ablation |
+| FullGrad | Input and bias-gradient components | No | Layerwise bias components, not graph paths | Yes, for the full-gradient representation | Input perturbation, not internal replacement |
+| GlobEnc | Token attribution through encoder blocks | No | Token/component propagation | No formal class-score closure | Input-token evaluation |
+| DecompX | Token contributions to a prediction | No | Token decomposition through encoder components | Specified token decomposition, not this work's Jacobian-cut closure | Input-token erasure |
+| AttnLRP | Input and latent relevance | No | Attention/skip relevance propagation | Yes, relevance conservation | Input perturbation |
+| LibraGrad | ViT input attribution | No | Modified backward paths, not an additive edge cut | Targets FullGrad completeness | Input perturbation |
+| Activation patching | Finite effects of internal variables | Yes | Nodes or edges selected for replacement | Not an additive completeness objective | Yes, direct replacement |
+| Edge attribution patching | First-order finite-effect estimates on edges | Yes | Yes, computational edges | Not an additive completeness objective | Yes, checked against patching |
+| NNS–ViT (this work) | Local input maps for ViT targets and edges | No for maps; yes for replacement evaluation | Yes, on specified Q/K/V, head and residual cuts | Yes, local-differential closure on a valid cut; no function-value completeness | Yes, prescribed replacement tasks |
+
+本文的增量由后三个环节共同构成：把 NNS learning-image 表示实现到 ViT 异构目标与真实计算边；在指定图、切面和参数化下进行不遗漏、不重复的路径记账；以数值闭合、层深统计和有限替换分别评价正确性、结构规律与任务效用。
 
 ## 3. NNS 的 Jacobian 解释
 
@@ -164,7 +181,23 @@ $$
 
 **证明。** 展开链式法则为各输入到目标路径的 Jacobian 乘积。合法切面把路径不重不漏地分组；每组可因式分解为到达 $z_k$ 的上游 Jacobian 与该边的下游 cotangent。对所有组求和，再乘输入坐标 $x_i$，即得结论。只切 $f(u)$ 会遗漏 $y=u+f(u)$ 的 identity bypass；以完整 $\nabla_uF$ 作为 identity 项后再加入 branch 项则会重复分支。分支内部的 cut 只重构该分支，完整 residual 或目标还需纳入其余路径。
 
-### 4.4 质量、抵消与 Value-only 近似
+### 4.4 计算图依赖与分解非唯一性
+
+命题 2 的闭合是相对于指定计算图、切面和内部坐标成立的。端到端函数及总 Endpoint 可以在等价重参数化下保持不变，但逐坐标或逐路径项不必保持不变。考虑 $x=(x_1,x_2)^\top$、隐藏变量 $h=x$ 和输出 $s=(1,1)h=x_1+x_2$。按隐藏坐标切分时，两个路径图分别为
+
+$$
+E_1=(x_1,0)^\top,\qquad E_2=(0,x_2)^\top.
+$$
+
+令可逆变换 $R=\begin{bmatrix}1&1\\0&1\end{bmatrix}$，并以 $h'=Rh$、$w'=R^{-\top}(1,1)^\top=(1,0)^\top$ 重写同一函数 $s=w'^\top h'$。新隐藏坐标下的路径图变为
+
+$$
+E'_1=(x_1,x_2)^\top,\qquad E'_2=(0,0)^\top.
+$$
+
+两种实现都有 $E_1+E_2=E'_1+E'_2=(x_1,x_2)^\top$，但分项不同。类似地，改变合法切面会改变被命名和汇总的路径组。因此本文的 Q/K/V、head 和 residual 图是对冻结 ViT 实现中指定真实边的分解，不是仅由端到端函数决定的唯一解释，也不具有一般实现不变性。数值闭合证明给定记账无遗漏或重复，不证明该分解跨等价图表示唯一。
+
+### 4.5 质量、抵消与 Value-only 近似
 
 在原始 normalized-input RGB 张量坐标上，以像素 $p$ 的 RGB absolute mass
 
@@ -185,7 +218,7 @@ Routing scale 为 $\|E^{\mathrm{routing}}\|_1/(\|E^{\mathrm{routing}}\|_1+\|E^{\
 
 统计在完整 signed RGB 张量上计算，零分母或零范数记为 NA。蓝底显示规则在实验设置中说明。
 
-### 4.5 有限替换与空间区域选择
+### 4.6 有限替换与空间区域选择
 
 成分有限效应为 $e_k=F(x)-F(x;z_k\leftarrow z_k^{\mathrm{ref}})$，主要统计比较每图 $m(E_k)$ 与 $|e_k|$ 的 Spearman 相关。Taylor 量为 $p_k=\langle\nabla_{z_k}F,z_k(x)-z_k^{\mathrm{ref}}\rangle$。干预仅替换模型前向中实际存在的 head output 或 residual edge activation；routing/value 与 Q/K/V differential 是导数路径，不被当作可直接替换的前向激活。Endpoint 和 raw gradient 只使用 clean 状态，属于 clean-only 方法；regional Taylor 显式使用 reference 位移，属于 reference-aware 方法。二者的信息预算不同，比较结果解释为任务适配性，而非无条件方法排名。
 
@@ -196,9 +229,9 @@ Routing scale 为 $\|E^{\mathrm{routing}}\|_1/(\|E^{\mathrm{routing}}\|_1+\|E^{\
 
 ### 5.1 模型与图像
 
-实验采用 ViT-B/16 和 DeiT-S/16 两个 ImageNet 分类模型。两模型共享 400 张 evaluation 图像；另有互不重叠的 64 张 discovery 和 64 张 calibration 图像。输入短边 resize 到 248 后中心裁剪为 224，采用各模型的 normalization 参数，推理时关闭 dropout 和 drop path。Table 1 列出模型设置。
+实验采用 ViT-B/16 和 DeiT-S/16 两个 ImageNet 分类模型。两模型共享 400 张 evaluation 图像；另有互不重叠的 64 张 discovery 和 64 张 calibration 图像。输入短边 resize 到 248 后中心裁剪为 224，采用各模型的 normalization 参数，推理时关闭 dropout 和 drop path。Table 2 列出模型设置。
 
-**Table 1. 模型设置**
+**Table 2. 模型设置**
 
 | Model / setting | ViT-B/16 | DeiT-S/16 |
 | --- | --- | --- |
@@ -221,9 +254,9 @@ Routing scale 为 $\|E^{\mathrm{routing}}\|_1/(\|E^{\mathrm{routing}}\|_1+\|E^{\
 
 所有总体推断先在图内聚合，以图像作为统计单位，使用 10,000 次 bootstrap。成分相关规则的 0.10 与区域增益规则的 0.05 是点估计门槛；符号检验检验相对零的方向，采用原 28 项 Holm 校正，CI 精度上限分别为 0.30/0.50。单元层深统计按模型使用五项校正；后续 residual spatial-TV 分析单独标为 post-hoc。
 
-表格用于报告离散数值验证，避免把少量误差点绘为趋势。Table 2 汇总五类原始 NNS 兼容网络的数值一致性与结构检查。原始 float32 有限差分失败和 float64 复核保留在补充材料中。
+表格用于报告离散数值验证，避免把少量误差点绘为趋势。Table 3 汇总五类原始 NNS 兼容网络的数值一致性与结构检查。原始 float32 有限差分失败和 float64 复核保留在补充材料中。
 
-**Table 2. 数值一致性与结构检查**
+**Table 3. 数值一致性与结构检查**
 
 | Compatible network | Max relative L2: float64 | Max relative L2: float32 | Comparisons |
 | --- | --- | --- | --- |
@@ -250,7 +283,7 @@ Routing scale 为 $\|E^{\mathrm{routing}}\|_1/(\|E^{\mathrm{routing}}\|_1+\|E^{\
 
 ### 6.1 RQ1–RQ2：NNS 等价性与结构路径闭合
 
-Table 2 的 5,000 个原始 NNS 兼容网络比较表明，逐层 learning-image propagation 与同目标 Input × Gradient 的最大 relative L2 error 在 float64 下不超过 $4.769\times10^{-16}$，在 float32 下不超过 $2.427\times10^{-7}$。结构验证进一步覆盖 76,800 项正向闭合、28,800 项遗漏/重复负控、6,144 项解析 JVP 和 88 个算子方向。所有正向闭合与解析方向检查通过，所有负控被拒绝；36 个 float32 有限差分超差点在相同坐标的 float64 复核中全部通过。这些结果分别建立命题 1 的数值身份和命题 2 的结构记账；有限干预效用由 Section 7 单独评价。
+Table 3 的 5,000 个原始 NNS 兼容网络比较表明，逐层 learning-image propagation 与同目标 Input × Gradient 的最大 relative L2 error 在 float64 下不超过 $4.769\times10^{-16}$，在 float32 下不超过 $2.427\times10^{-7}$。结构验证进一步覆盖 76,800 项正向闭合、28,800 项遗漏/重复负控、6,144 项解析 JVP 和 88 个算子方向。所有正向闭合与解析方向检查通过，所有负控被拒绝；36 个 float32 有限差分超差点在相同坐标的 float64 复核中全部通过。这些结果分别建立命题 1 的数值身份和命题 2 的结构记账；有限干预效用由 Section 7 单独评价。
 
 ### 6.2 RQ3：学习图像与前向特征的层间变化
 
@@ -306,7 +339,7 @@ Endpoint 保留像素尺度的局部项，Grad-CAM 和 attention 类方法提供
 
 ### 6.6 RQ3 控制：训练与初始化
 
-在每模型 32 张共享图像、全部 12 blocks 和 3 个随机初始化状态上，随机模型也表现出空间扩展。训练模型 entropy 的 late−early 为 0.2288/0.2256，随机均值为 0.0940/0.1718；训练−随机差分别为 0.1348 [0.1232, 0.1466] 和 0.0539 [0.0473, 0.0602]。区间同时重采样模型种子和共享图像。Routing scale 的 trained/random 层深变化为 0.0512/−0.0479 与 0.1314/−0.0043；attention identity 在训练模型中减少、随机模型中增加。MLP identity 在两类状态中均增加，ViT-B 的增量差区间跨零。空间扩展存在架构/初始化基础，而训练后参数强化其幅度，并改变部分路径趋势。
+在每模型 32 张共享图像、全部 12 blocks 和 3 个随机初始化状态上，随机模型也表现出空间扩展。训练模型 entropy 的 late−early 为 0.2288/0.2256，随机均值为 0.0940/0.1718；训练−随机差分别为 0.1348 [0.1232, 0.1466] 和 0.0539 [0.0473, 0.0602]。区间同时重采样模型种子和共享图像。Routing scale 的 trained/random 层深变化为 0.0512/−0.0479 与 0.1314/−0.0043；attention identity 在训练模型中减少、随机模型中增加。MLP identity 在两类状态中均增加，ViT-B 的增量差区间跨零。训练参数状态与随机参数状态在空间扩展幅度和部分路径趋势上存在上述差异；该对照不识别训练过程的因果效应。
 
 ### 6.7 RQ3 控制：目标稳健性
 
@@ -320,13 +353,13 @@ Endpoint 保留像素尺度的局部项，Grad-CAM 和 attention 类方法提供
 
 复用相同 32 图的原 M3 单元记录，channel/token-stratum/image bootstrap 以及 leave-one-block/stratum-out 均保留 entropy 增大、locality 减小与距离增大的方向。该结果描述既有样本的抽样敏感性。全部实验设置、逐项指标、区间及五张补充图见[补充实验 v1](supplement_experiments_v1.md)。
 
-## 7. 有限干预及一阶近似边界
+## 7. 规定有限替换任务中的排序能力
 
-### 7.1 RQ4：从成分关联到有限区域干预
+### 7.1 RQ4：规定成分替换与区域选择
 
-在成分替换实验中，12 个模型–reference–成分族组合有 11 个满足原复合条件。Table 3 直接列出相关估计、区间和阈值关系。ViT-B normalized-zero routing/value 为 0.0996，DeiT-S 对应估计为 0.1065，两个区间均跨越 0.10。因此 family 条件是否满足与总体效应是否超过 0.10 是不同判断；全部成分族的联合条件未满足。
+在成分替换实验中，12 个模型–reference–成分族组合有 11 个满足原复合条件。Table 4 直接列出相关估计、区间和阈值关系。ViT-B normalized-zero routing/value 为 0.0996，DeiT-S 对应估计为 0.1065，两个区间均跨越 0.10。因此 family 条件是否满足与总体效应是否超过 0.10 是不同判断；全部成分族的联合条件未满足。
 
-**Table 3. 成分关联估计及区间**
+**Table 4. 成分关联估计及区间**
 
 | Model | Reference | Family | Median rho | 95% CI | Holm p | Composite criterion | CI lower > 0.10 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -343,9 +376,9 @@ Endpoint 保留像素尺度的局部项，Grad-CAM 和 attention 类方法提供
 | DeiT-S/16 | blur | routing/value | 0.1600 | [0.1278, 0.1822] | 9.90e-31 | Met | yes |
 | DeiT-S/16 | blur | residual/branches | 0.2287 | [0.2035, 0.2504] | 3.70e-54 | Met | yes |
 
-补充同层 head 比较中，Taylor 具有更高 Spearman 与 Capture、更低 Regret（Table 4）。跨层 residual identity 的 Endpoint−Taylor Spearman 差为 0.0865–0.4209，但 Capture@1 中位差为零，表明增量价值依赖任务和指标。
+补充同层 head 比较中，Taylor 具有更高 Spearman 与 Capture、更低 Regret（Table 5）。跨层 residual identity 的 Endpoint−Taylor Spearman 差为 0.0865–0.4209，但 Capture@1 中位差为零，表明增量价值依赖任务和指标。
 
-**Table 4. 同层 head 排序：E=Endpoint，T=Taylor**
+**Table 5. 同层 head 排序：E=Endpoint，T=Taylor**
 
 | Model | Reference | E rho | T rho | E Capture@1 | T Capture@1 | E Capture@3 | T Capture@3 | E Regret@1 | T Regret@1 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -354,13 +387,13 @@ Endpoint 保留像素尺度的局部项，Grad-CAM 和 attention 类方法提供
 | DeiT-S/16 | normalized-zero | 0.1952 | 0.6095 | 0.5609 | 0.8028 | 0.7122 | 0.8894 | 0.2381 | 0.0860 |
 | DeiT-S/16 | blur | 0.1476 | 0.6238 | 0.5506 | 0.8426 | 0.7105 | 0.8970 | 0.1326 | 0.0443 |
 
-区域实验固定 block 5 的三个 heads，所有方法共用 4×4 候选区域及最高 25% 面积。Figure 11 和 Tables 5–7 给出配对差、绝对 AUC 与归一化 regret。Endpoint−regional Taylor 的配对中位差为 −0.023433、−0.023697、−0.029900、−0.035630；四个 family 都未满足相对全部基线的 +0.05 条件。候选 oracle 仅取实际评价集合的最优效果，不能视为全部可能区域的全局最优。
+区域实验固定 block 5 的三个 heads，所有方法共用 4×4 候选区域及最高 25% 面积。Figure 11 和 Tables 6–8 给出配对差、绝对 AUC 与归一化 regret。Endpoint−regional Taylor 的配对中位差为 −0.023433、−0.023697、−0.029900、−0.035630；四个 family 都未满足相对全部基线的 +0.05 条件。候选 oracle 仅取实际评价集合的最优效果，不能视为全部可能区域的全局最优。
 
 ![Figure 11](../figures/png/fig_21_intervention_boundary.png)
 
 **Figure 11.** 左侧示例的有限区域替换曲线与右侧完整 400 图 family 的绝对 AUC。候选 oracle 只在已评价区域集合中取最优；数学闭合与区域干预选择属于不同性质。
 
-**Table 5. 空间干预配对差**
+**Table 6. 空间干预配对差**
 
 | Model | Reference | vs total G×I | vs gradient | vs Taylor | vs random | Composite criterion |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -369,7 +402,7 @@ Endpoint 保留像素尺度的局部项，Grad-CAM 和 attention 类方法提供
 | DeiT-S/16 | normalized-zero | -0.0018 | -0.0006 | -0.0299 | 0.0009 | Unmet |
 | DeiT-S/16 | blur | 0.0002 | -0.0002 | -0.0356 | -0.0010 | Unmet |
 
-**Table 6. 绝对 AUC 与输出尺度**
+**Table 7. 绝对 AUC 与输出尺度**
 
 | Model | Reference | Endpoint AUC | Taylor AUC | Random AUC | Candidate oracle AUC | Clean GT logit |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -378,7 +411,7 @@ Endpoint 保留像素尺度的局部项，Grad-CAM 和 attention 类方法提供
 | DeiT-S/16 | normalized-zero | 0.0617 | 0.0961 | 0.0611 | 0.1474 | 8.7974 |
 | DeiT-S/16 | blur | 0.0395 | 0.0770 | 0.0411 | 0.1063 | 8.7974 |
 
-**Table 7. 候选 oracle regret 与 logit 尺度比**
+**Table 8. 候选 oracle regret 与 logit 尺度比**
 
 | Model | Reference | Endpoint regret | Taylor regret | Random regret | Endpoint AUC/abs(logit) | Taylor AUC/abs(logit) |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -395,9 +428,9 @@ Endpoint 保留像素尺度的局部项，Grad-CAM 和 attention 类方法提供
 
 ### 8.1 讨论
 
-本文把 NNS 的逐层尺度传播统一为一般计算图上的局部 Jacobian 传播，并把同一输入坐标表示扩展到 ViT 的真实结构边。理论结论适用于满足命题 1 和命题 2 条件的计算图；经验结论限定于两个固定 ImageNet 预训练 checkpoint 及其预定目标样本。二者共同支持把 NNS 视为局部尺度分析框架。
+本文在计算图局部 Jacobian 传播的既有数学基础上，实现了面向 ViT 真实结构边的 NNS 输入坐标表示。命题 1 界定其与 Gradient × Input 的身份，命题 2 界定指定图与切面上的闭合条件；经验结果来自两个固定 ImageNet 预训练 checkpoint 及其预定目标样本。
 
-结构闭合、局部路径尺度和有限干预对应三个不同问题。Q/K/V、multi-head 与 identity/branch 的加和闭合说明各项完整重构指定目标的局部微分；routing 或 identity scale 比较路径图的相对范数；activation replacement 测量指定 reference 和替换算子下的有限效应。本文的区域实验使用完整替换与固定面积预算，现有证据界定一阶关联；$\alpha\in\{0.05,0.1,0.25,0.5,1.0\}$ 的误差—幅度曲线尚未测量。
+结构闭合、局部路径尺度和有限替换排序对应三个不同问题。Q/K/V、multi-head 与 identity/branch 的加和闭合说明各项重构指定目标的局部微分；routing 或 identity scale 比较路径图的相对范数；activation replacement 测量指定 reference 和替换算子下的有限效应。本文的 RQ4 只评价完整替换与固定面积预算下的成分排序和区域选择，不估计 Taylor 误差随干预幅度变化的边界。
 
 学习图像使不同内部对象能够在同一输入网格上观察。明确的目标、层与通道支持比较前向响应和局部输入依赖，以及注意力与残差路径如何组合。正确 feature–Endpoint 配对优于四种负控制，但二者的相关程度远低于等价；高分辨率输入图也受 $16\times16$ patch embedding 与归一化坐标原点约束。
 
@@ -407,7 +440,7 @@ Endpoint 保留像素尺度的局部项，Grad-CAM 和 attention 类方法提供
 
 ### 8.2 结论
 
-本文得到四点结论。第一，使用精确当前点局部导数且无额外重分配时，NNS 标量学习图像等于 Input × Gradient；其一般意义是计算图上的局部输入坐标表示。第二，ViT 的 attention 可在一阶微分层面分为 Q-induced、K-induced 与 V-induced 路径，residual 可分为 identity 与 branch 路径；合法切面上的各项能够加和恢复完整局部输入依赖。第三，在 ViT-B/16 与 DeiT-S/16 两个固定 checkpoint 中，抽样目标总体呈空间扩展，深层 attention 的 routing 相对尺度和 Value-only 误差提高，attention 与 MLP residual 呈不同趋势；训练、目标和抽样控制限定并细化了这些观察。第四，局部路径图与有限成分效应具有广泛但非普遍的关联；给定 reference 的区域替换更适合使用显式位移的 Taylor 估计。NNS-ViT 的贡献由此落在 NNS 理论边界与适用对象的扩展，以及 ViT 结构路径的统一实现和验证。
+本文得到四点结论。第一，使用精确当前点局部导数且无额外重分配时，NNS 标量学习图像等于 Input × Gradient；这一身份界定基础量而非主要创新。第二，指定 ViT 计算图上的 attention differential 可分为 Q-induced、K-induced 与 V-induced 路径，residual differential 可分为 identity 与 branch 路径；合法切面上的各项加和恢复完整局部输入依赖，但分项随图、切面和参数化而变。第三，在 ViT-B/16 与 DeiT-S/16 两个固定 checkpoint 中，冻结抽样目标总体呈空间扩展，深层 attention 的 routing 相对尺度和 Value-only 误差提高，attention 与 MLP residual 呈不同趋势；训练参数状态与随机参数状态存在报告的差异。第四，局部路径图在规定成分替换任务中与有限效应具有广泛但非普遍的关联；给定 reference 的规定区域替换更适合使用显式位移的 Taylor 排序。NNS-ViT 的贡献是 NNS 在 ViT 真实计算边上的统一实现、图相对路径分解和系统验证。
 
 ## 参考文献与补充材料
 

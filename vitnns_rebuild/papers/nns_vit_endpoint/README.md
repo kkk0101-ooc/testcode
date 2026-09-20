@@ -10,10 +10,12 @@
 - [修改意见 v2 完成审计](publication_r2_20260920/qc/revision_v2_completion_audit.md)
 - [补充实验 v1（中文）](publication_r2_20260920/zh/supplement_experiments_v1.md) / [English](publication_r2_20260920/en/supplement_experiments_v1.md)
 - [补充实验 v1 完成审计](publication_r2_20260920/qc/supplement_v1_completion_audit.md)
+- [修改意见 v3 第一步冻结主张](notes/revision_v3_frozen_claims.md)
+- [修改意见 v3 第一步完成审计](publication_r2_20260920/qc/revision_v3_step1_completion_audit.md)
 
-当前双语主文已执行修改意见 v2：题名与主线改为 NNS 学习图像的一般计算图解释和 ViT 结构路径分析；四个 RQ 分别覆盖数学身份、结构化分解、层深规律与有限干预；方法部分补齐合法计算切面、Q/K/V-induced differential、multi-head output-projection accounting、residual shared cotangent、空间指标及 Value-only error。
+当前双语主文已执行修改意见 v3 第一步：题名与核心贡献限定为 NNS 在指定 ViT 计算图上的结构化实现、图相对路径分解和系统验证；四个 RQ 分别覆盖数学身份、结构化分解、冻结抽样中的层深规律与规定有限替换任务中的排序。相关工作及方法定位表已扩展，Section 4.4 给出等价重参数化反例；训练结果仅解释为训练参数状态与随机参数状态的差异。冻结主张见 [revision_v3_frozen_claims.md](notes/revision_v3_frozen_claims.md)。
 
-补充实验 v1 修正了 random baseline 的绝对值顺序，复核了跨层全-head M2，并完成训练模型与三种随机初始化、GT/top1/margin 目标稳健性、feature–Endpoint 定量关系及 M3 抽样敏感性分析。正文 Tables 5–7、Results 6.6–6.9、Section 7.1、Discussion 与双语补充 S9–S14 已同步到新证据。多幅度 activation replacement、替代训练 checkpoint、独立 channel seeds 与同目标机制桥接仍是未执行的增强项，不作为当前结果。
+补充实验 v1 修正了 random baseline 的绝对值顺序，复核了跨层全-head M2，并完成训练模型与三种随机初始化、GT/top1/margin 目标稳健性、feature–Endpoint 定量关系及 M3 抽样敏感性分析。正文 Tables 6–8、Results 6.6–6.9、Section 7.1、Discussion 与双语补充 S9–S14 已同步到新证据。多幅度 activation replacement、替代训练 checkpoint、独立 channel seeds 与同目标机制桥接仍是未执行的增强项，不作为当前结果。
 
 zh/full_draft.md 和 en/full_draft.md 同步指向本轮正文；其图片路径链接到完整 publication 目录。早期 full_draft_m*、full_draft_r3_archive.md 和 full_draft_revision_v1_archive.md 为历史版本。原报告图包保留为来源，论文阅读请以本页面链接为准。
 
