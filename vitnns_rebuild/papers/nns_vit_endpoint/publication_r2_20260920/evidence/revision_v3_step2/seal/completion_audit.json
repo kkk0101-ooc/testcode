@@ -1,0 +1,116 @@
+{
+  "objective": "执行修改意见v3第二步：补齐决定论文可信度的实验",
+  "success_criteria": [
+    "multi-amplitude finite interventions",
+    "population Q/K/V statistics",
+    "five independent channel/token sampling replications"
+  ],
+  "status": "PASS",
+  "requirements": [
+    {
+      "requirement": "1. same images, targets, layers, heads and references at alpha 0.05/0.1/0.25/0.5/1.0",
+      "status": "PASS",
+      "evidence": [
+        "task_manifest.json",
+        "multi_amplitude_summary.csv"
+      ]
+    },
+    {
+      "requirement": "1. finite effect, Taylor prediction, absolute/relative error and rank correlation",
+      "status": "PASS",
+      "evidence": [
+        "multi_amplitude_image_values.csv",
+        "multi_amplitude_summary.csv"
+      ]
+    },
+    {
+      "requirement": "1. image-level error trend and strong-boundary disposition",
+      "status": "PASS",
+      "evidence": [
+        "multi_amplitude_decision.json",
+        "figures/multi_amplitude.png"
+      ]
+    },
+    {
+      "requirement": "2. Q/K/V absolute mass, entropy, normalized distance, cancellation and relative scale",
+      "status": "PASS",
+      "evidence": [
+        "qkv_image_values.csv",
+        "qkv_block_summary.csv"
+      ]
+    },
+    {
+      "requirement": "2. block-wise image summaries, confidence intervals and cross-model directions",
+      "status": "PASS",
+      "evidence": [
+        "qkv_block_summary.csv",
+        "qkv_depth_contrasts.csv"
+      ]
+    },
+    {
+      "requirement": "3. at least five independent channel/token samples",
+      "status": "PASS",
+      "evidence": [
+        "sampling_registry.json",
+        "independent_sampling_summary.csv"
+      ]
+    },
+    {
+      "requirement": "3. entropy/locality/distance depth comparisons, between-group variation and direction rates",
+      "status": "PASS",
+      "evidence": [
+        "independent_sampling_variation.json",
+        "figures/independent_sampling.png"
+      ]
+    },
+    {
+      "requirement": "image is the inferential unit; bootstrap is not used as independent replication",
+      "status": "PASS",
+      "evidence": [
+        "analysis_receipt.json",
+        "sampling_registry.json"
+      ]
+    },
+    {
+      "requirement": "closure error not substituted for finite utility",
+      "status": "PASS",
+      "evidence": [
+        "multi_amplitude_image_values.csv",
+        "validation_report.json"
+      ]
+    },
+    {
+      "requirement": "no training-causal claim from random initialization comparison",
+      "status": "PASS",
+      "evidence": [
+        "../../papers/nns_vit_endpoint/notes/revision_v3_step2_claims.md"
+      ]
+    },
+    {
+      "requirement": "bilingual evidence report and successor claim list",
+      "status": "PASS",
+      "evidence": [
+        "../../papers/nns_vit_endpoint/publication_r2_20260920/zh/revision_v3_step2_experiments.md",
+        "../../papers/nns_vit_endpoint/publication_r2_20260920/en/revision_v3_step2_experiments.md"
+      ]
+    },
+    {
+      "requirement": "independent validation covers actual objective, not proxy green status",
+      "status": "PASS",
+      "evidence": [
+        "validation_report.json",
+        "../../papers/nns_vit_endpoint/publication_r2_20260920/qc/revision_v3_step2_validation.json"
+      ]
+    }
+  ],
+  "requirement_count": 12,
+  "missing": [],
+  "incomplete": [],
+  "weakly_verified": [],
+  "outside_step2": [
+    "alternative trained checkpoints (resource-optional)",
+    "patch pixel controls (resource-optional)",
+    "full thesis rewrite (Step 3)"
+  ],
+  "producer_head": "c9d42eb063a63346dc2400c09f9d30c10dc8a56f"
+}
