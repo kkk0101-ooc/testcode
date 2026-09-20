@@ -48,15 +48,15 @@ A neuron produces a scalar value, whereas its learning image retains the input c
 
 ![Figure 2](../figures/png/fig_02_neuron_learning_image.png)
 
-**Figure 2.** A four-coordinate linear example. The upper diagram shows neuron values; the lower matrices preserve each input coordinate through the same computation. Values follow directly from the displayed weights.
+**Figure 2.** Ordinary scalar computation and NNS-ViT learning-image propagation in the same four-coordinate network. Matching colors link nodes to learning images; lower matrices preserve input positions and combine with the graph coefficients.
 
 ![Figure 3](../figures/png/fig_03_coordinate_initialization.png)
 
-**Figure 3.** Input values initialize a diagonal learning-image matrix. Each split coordinate retains its location; RGB channels follow the same initialization independently.
+**Figure 3.** Initialization has two steps: split the input into four sparse coordinate images and assign them to input nodes using matching colored links. Each image preserves both value and position.
 
 ![Figure 4](../figures/png/fig_04_local_derivative_generation.png)
 
-**Figure 4.** Local derivatives weight the incoming learning images. Layerwise propagation equals input times target gradient. The figure shows the complete numerical operation for the defined linear example.
+**Figure 4.** The intermediate graph is muted while red dashed paths highlight composed local coefficients from every input coordinate to the target. The lower-right matrix is the weighted sum of input learning images and equals input times target gradient.
 
 Let the image input $x\in\mathbb R^d$ and scalar gradient $\nabla_xs\in\mathbb R^d$ be column vectors. For $u(x)\in\mathbb R^m$, the learning-image matrix is $\mathcal L(u;x)\in\mathbb R^{m\times d}$. Initialization and propagation are
 
@@ -97,7 +97,7 @@ Patch embedding maps a local image block to a token vector. Figure 5 shows that 
 
 ![Figure 5](../figures/png/fig_05_patch_embedding.png)
 
-**Figure 5.** Patch embedding is a local linear map. A token-channel learning image retains the original input grid; the illustrated support is one patch. Biases have no independent image-coordinate term.
+**Figure 5.** The left panel shows native patch projection on a real image; the right expresses the same operation as a sparse row over global input coordinates. The orange region corresponds across token support, sparse weights and learning-image support.
 
 We distinguish native token-channel units, aggregate responses, structural paths, and output targets (Figure 8). For patch activations in channel $c$, define
 
@@ -119,7 +119,7 @@ Figure 6 separates content transmission from weight changes, and Figure 7 relate
 
 ![Figure 7](../figures/png/fig_07_residual_principle.png)
 
-**Figure 7.** The residual has two distinct computational edges. Below are their learning images for the same sloth-bear input and class target. Additivity holds for signed maps; blue positive views show spatial structure.
+**Figure 7.** The upper graph shows the native identity and branch edges; matching dashed links connect them to path learning images for the same input and class target. Complete signed maps add to the residual output, while blue positive views display spatial structure.
 
 For each head, $Q=XW_Q+b_Q$, $K=XW_K+b_K$, $V=XW_V+b_V$, and
 

@@ -29,22 +29,22 @@
       "number": 2,
       "original_number": 2,
       "slug": "neuron_learning_image",
-      "title": "A neuron and its learning image carry different information",
-      "caption_zh": "四坐标线性示例：上方为神经元值，下方为相同计算对应的输入坐标学习图像。此例用于解释传播规则，数值由图中权重直接计算。",
-      "caption_en": "A four-coordinate linear example. The upper diagram shows neuron values; the lower matrices preserve each input coordinate through the same computation. Values follow directly from the displayed weights.",
+      "title": "A neuron value and its learning image are computed together",
+      "caption_zh": "同一四坐标网络的正常数值计算与 NNS-ViT 学习图像传播。节点与对应学习图像使用同色标记；下方矩阵保留各输入项的位置，并按上方网络的局部系数组合。",
+      "caption_en": "Ordinary scalar computation and NNS-ViT learning-image propagation in the same four-coordinate network. Matching colors link nodes to learning images; lower matrices preserve input positions and combine with the graph coefficients.",
       "role": "concept",
       "files": {
         "png": {
           "path": "figures/png/fig_02_neuron_learning_image.png",
-          "sha256": "4c14ee0d6fd001b38a891070673ea5375d8f09a537e975d18048301d2f2b0915"
+          "sha256": "6414022a5a3a9d06ae53089d49de43a03f481982ef1f09448b0fe915a0f96d1c"
         },
         "pdf": {
           "path": "figures/pdf/fig_02_neuron_learning_image.pdf",
-          "sha256": "0e5f751c923f9c9d151d8f476fad758b78885d9a8e5e1421227ae059e0b4225b"
+          "sha256": "757f19a8ebefb2dac482171ac539219b201346e5a22302a91c07f8ef518acc52"
         },
         "svg": {
           "path": "figures/svg/fig_02_neuron_learning_image.svg",
-          "sha256": "31cffd15050843b563356b3fd42afc44d3c57aa7ef82bf3dddd16ff41ee80f14"
+          "sha256": "38753cd0880f6f1990f41c9208f6d521fa9bcf56d574c1f237d11b7c6521750c"
         }
       }
     },
@@ -52,22 +52,22 @@
       "number": 3,
       "original_number": 3,
       "slug": "coordinate_initialization",
-      "title": "Initialization: preserve both value and position",
-      "caption_zh": "输入值初始化为对角 learning-image 矩阵；拆分后每个坐标的位置保持不变。RGB 输入对每个通道分别进行相同初始化。",
-      "caption_en": "Input values initialize a diagonal learning-image matrix. Each split coordinate retains its location; RGB channels follow the same initialization independently.",
+      "title": "Initialization: split the input, then assign one image to each coordinate",
+      "caption_zh": "初始化分为拆分与分配两步：输入矩阵被拆成四张稀疏坐标图，并按同色虚线分配给四个输入节点。每张图同时保存输入值与其位置。",
+      "caption_en": "Initialization has two steps: split the input into four sparse coordinate images and assign them to input nodes using matching colored links. Each image preserves both value and position.",
       "role": "concept",
       "files": {
         "png": {
           "path": "figures/png/fig_03_coordinate_initialization.png",
-          "sha256": "3d1ae9b52d56af215fe7e82133cbddfa0e303096930218edff425df322cb4ecb"
+          "sha256": "c9e39491c13435b941ce5f1677aac9b6d700d6a4cb8c6ffa765bbefb2940088a"
         },
         "pdf": {
           "path": "figures/pdf/fig_03_coordinate_initialization.pdf",
-          "sha256": "809ef548e0d9815c8adfdbbcbd0fa04f138a0cd4191218602b2e1846eaf95861"
+          "sha256": "184583b9d1a79b0d198c6a4ba296cceca4d35548ddb8c6de8c2b53ec2ec58a1f"
         },
         "svg": {
           "path": "figures/svg/fig_03_coordinate_initialization.svg",
-          "sha256": "f7170a2dd3024302e162c6a1ed9bd7c04ef89169da1ff2728f676b675f6ec7ea"
+          "sha256": "bc9a137093fed573f03aca6e6e439b43cad8cc9ed3aa5882cec85d2dc68140ae"
         }
       }
     },
@@ -75,22 +75,22 @@
       "number": 4,
       "original_number": 4,
       "slug": "local_derivative_generation",
-      "title": "Generation: combine learning images with local derivatives",
-      "caption_zh": "局部导数作为组合系数，学习图像逐层传播后与输入乘目标梯度一致。这里展示已定义线性示例的完整数值运算。",
-      "caption_en": "Local derivatives weight the incoming learning images. Layerwise propagation equals input times target gradient. The figure shows the complete numerical operation for the defined linear example.",
+      "title": "Generation: collect every input path to the selected target",
+      "caption_zh": "中间网络以灰色显示，红色虚线路径突出每个输入坐标到目标的合成局部系数。右下矩阵是四张输入 learning images 的加权和，与输入乘目标梯度一致。",
+      "caption_en": "The intermediate graph is muted while red dashed paths highlight composed local coefficients from every input coordinate to the target. The lower-right matrix is the weighted sum of input learning images and equals input times target gradient.",
       "role": "concept",
       "files": {
         "png": {
           "path": "figures/png/fig_04_local_derivative_generation.png",
-          "sha256": "bf77e578c1881907f5a2cf2e5c0b5b8817d5578dd2185ef04c834c05cde178cf"
+          "sha256": "f328e3dad5f34043ea1023589d5d973ee683585c8f88c2aae20c1212bdcafe9f"
         },
         "pdf": {
           "path": "figures/pdf/fig_04_local_derivative_generation.pdf",
-          "sha256": "2215aaedbcdcfea4bb50e871068bdbb52c96475470334cdc877731c107f8b8ae"
+          "sha256": "e88490a8df33d1051db9287ac6fc54cd276315e7c52e142740d223ffbd625bad"
         },
         "svg": {
           "path": "figures/svg/fig_04_local_derivative_generation.svg",
-          "sha256": "b5fea2f4797ea5a8c28c8d699528c8ed18a8996f07369338cc9e1b108666c67b"
+          "sha256": "703c41758a3fecb4ae630067ae3f8fb69f6161b147af4e223ddf13bab337087d"
         }
       }
     },
@@ -98,22 +98,22 @@
       "number": 5,
       "original_number": 5,
       "slug": "patch_embedding",
-      "title": "From pixels to tokens without losing image coordinates",
-      "caption_zh": "Patch embedding 可写为局部线性映射。其 token-channel 坐标的学习图像保留在原输入网格；示意支持区域对应一个 patch，偏置不形成图像坐标项。",
-      "caption_en": "Patch embedding is a local linear map. A token-channel learning image retains the original input grid; the illustrated support is one patch. Biases have no independent image-coordinate term.",
+      "title": "Patch embedding is a local projection and a sparse global linear map",
+      "caption_zh": "左栏以真实图像说明 patch embedding 的局部投影；右栏将同一运算写成全局输入上的稀疏线性行。橙色区域在 token、稀疏权重与 learning-image support 之间一一对应。",
+      "caption_en": "The left panel shows native patch projection on a real image; the right expresses the same operation as a sparse row over global input coordinates. The orange region corresponds across token support, sparse weights and learning-image support.",
       "role": "concept",
       "files": {
         "png": {
           "path": "figures/png/fig_05_patch_embedding.png",
-          "sha256": "b3a929856f204c267b048272e0fac09df9426e5ee9d1eb309963173080d07958"
+          "sha256": "4d64f7c4ddd918c33860a53b6677c981e932184b4f9ac4ce20d6de00a54c46ef"
         },
         "pdf": {
           "path": "figures/pdf/fig_05_patch_embedding.pdf",
-          "sha256": "a86035591ecb0a5a0e28abdf0dc58041597330e68a57abf05ba73213fa70fe33"
+          "sha256": "d35208c8b57247e39bbec0c3611535a31ef14a826f9c626d1e2380dd3fb07f2f"
         },
         "svg": {
           "path": "figures/svg/fig_05_patch_embedding.svg",
-          "sha256": "c0a3b6d0f6c5a241b38b4a4c676b4fbace46df090c6db550352ee4bbf7212e49"
+          "sha256": "20fa6e2ea65aa07f7d14fe3b7927f7966d970e613be553234727dea7f8767b1a"
         }
       }
     },
@@ -144,22 +144,22 @@
       "number": 7,
       "original_number": 7,
       "slug": "residual_principle",
-      "title": "Residual connections retain and transform input dependence",
-      "caption_zh": "上方为 residual 的两条真实边，下方为同一懒熊输入和类别目标的两路径学习图像。等式对 signed maps 成立，蓝底正部仅供空间阅读。",
-      "caption_en": "The residual has two distinct computational edges. Below are their learning images for the same sloth-bear input and class target. Additivity holds for signed maps; blue positive views show spatial structure.",
+      "title": "Residual connections preserve an identity path and add a transformed path",
+      "caption_zh": "上方显示 residual 的 identity 与 branch 两条真实计算边；下方用同色虚线连接到同一输入、同一类别目标的路径 learning images。完整 signed maps 相加得到 residual output，蓝底正部用于阅读空间结构。",
+      "caption_en": "The upper graph shows the native identity and branch edges; matching dashed links connect them to path learning images for the same input and class target. Complete signed maps add to the residual output, while blue positive views display spatial structure.",
       "role": "concept",
       "files": {
         "png": {
           "path": "figures/png/fig_07_residual_principle.png",
-          "sha256": "319255a7ae129de76feca4f299196440f1b26df42ce8d48e8819a18b6e46451e"
+          "sha256": "e92fcfee77ea344566ef745ce1dc8b19016742c51d3d522d606a923e401356a3"
         },
         "pdf": {
           "path": "figures/pdf/fig_07_residual_principle.pdf",
-          "sha256": "1f01664bd62f22e6413ef6643d40ac3c6d3759a79728f442f44841ff1bc14be4"
+          "sha256": "306487958a169bb602acd258455c84d06491cbb38357c78e3ea10468c86749d7"
         },
         "svg": {
           "path": "figures/svg/fig_07_residual_principle.svg",
-          "sha256": "420130a62e36be4b990ca5d63f92bb38c5b75f9a4fd8933ffd0769896dcb71ee"
+          "sha256": "5b495a2e63538a91e9da6af6ed91ac4a0bd95b877040feea7944b17273ec191c"
         }
       }
     },

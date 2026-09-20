@@ -48,15 +48,15 @@ Activation replacement 通过替换内部响应测量有限输出变化。Activa
 
 ![Figure 2](../publication_r2_20260920/figures/png/fig_02_neuron_learning_image.png)
 
-**Figure 2.** 四坐标线性示例：上方为神经元值，下方为相同计算对应的输入坐标学习图像。此例用于解释传播规则，数值由图中权重直接计算。
+**Figure 2.** 同一四坐标网络的正常数值计算与 NNS-ViT 学习图像传播。节点与对应学习图像使用同色标记；下方矩阵保留各输入项的位置，并按上方网络的局部系数组合。
 
 ![Figure 3](../publication_r2_20260920/figures/png/fig_03_coordinate_initialization.png)
 
-**Figure 3.** 输入值初始化为对角 learning-image 矩阵；拆分后每个坐标的位置保持不变。RGB 输入对每个通道分别进行相同初始化。
+**Figure 3.** 初始化分为拆分与分配两步：输入矩阵被拆成四张稀疏坐标图，并按同色虚线分配给四个输入节点。每张图同时保存输入值与其位置。
 
 ![Figure 4](../publication_r2_20260920/figures/png/fig_04_local_derivative_generation.png)
 
-**Figure 4.** 局部导数作为组合系数，学习图像逐层传播后与输入乘目标梯度一致。这里展示已定义线性示例的完整数值运算。
+**Figure 4.** 中间网络以灰色显示，红色虚线路径突出每个输入坐标到目标的合成局部系数。右下矩阵是四张输入 learning images 的加权和，与输入乘目标梯度一致。
 
 设图像输入为列向量 $x\in\mathbb R^d$，标量梯度 $\nabla_xs\in\mathbb R^d$ 也按列向量记。对 $u(x)\in\mathbb R^m$，learning-image 矩阵为 $\mathcal L(u;x)\in\mathbb R^{m\times d}$。初始化与传播规则为
 
@@ -97,7 +97,7 @@ ViT 的 patch embedding 将每个局部图像块映射到 token 向量。Figure 
 
 ![Figure 5](../publication_r2_20260920/figures/png/fig_05_patch_embedding.png)
 
-**Figure 5.** Patch embedding 可写为局部线性映射。其 token-channel 坐标的学习图像保留在原输入网格；示意支持区域对应一个 patch，偏置不形成图像坐标项。
+**Figure 5.** 左栏以真实图像说明 patch embedding 的局部投影；右栏将同一运算写成全局输入上的稀疏线性行。橙色区域在 token、稀疏权重与 learning-image support 之间一一对应。
 
 本文区分原生 token-channel 单元、聚合响应、结构路径和输出目标（Figure 8）。对通道 $c$ 的 patch activations，定义
 
@@ -119,7 +119,7 @@ Figure 6 将内容传递与权重变化分开，Figure 7 则将 residual 的 ide
 
 ![Figure 7](../publication_r2_20260920/figures/png/fig_07_residual_principle.png)
 
-**Figure 7.** 上方为 residual 的两条真实边，下方为同一懒熊输入和类别目标的两路径学习图像。等式对 signed maps 成立，蓝底正部仅供空间阅读。
+**Figure 7.** 上方显示 residual 的 identity 与 branch 两条真实计算边；下方用同色虚线连接到同一输入、同一类别目标的路径 learning images。完整 signed maps 相加得到 residual output，蓝底正部用于阅读空间结构。
 
 对每个 head，$Q=XW_Q+b_Q$、$K=XW_K+b_K$、$V=XW_V+b_V$，且
 

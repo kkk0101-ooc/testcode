@@ -68,8 +68,8 @@ def box(ax,x,y,w,h,text,color=BLUE,fill='#F0F6FB',fontsize=12):
     ax.add_patch(FancyBboxPatch((x,y),w,h,boxstyle='round,pad=0.009,rounding_size=0.012',facecolor=fill,edgecolor=color,lw=1.4))
     ax.text(x+w/2,y+h/2,text,ha='center',va='center',fontsize=fontsize,color=INK)
 def arrow(ax,a,b,color=BLUE,style='-',lw=1.8):ax.add_patch(FancyArrowPatch(a,b,arrowstyle='-|>',mutation_scale=13,color=color,lw=lw,linestyle=style,connectionstyle='arc3'))
-def inset(fig,x,y,w,h,value,label='',kind='learning',source=''):
-    ax=fig.add_axes([x,y,w,h]);show(ax,value,label,kind,source);return ax
+def inset(fig,x,y,w,h,value,label='',kind='learning',source='',interpolation='nearest'):
+    ax=fig.add_axes([x,y,w,h]);show(ax,value,label,kind,source,interpolation);return ax
 def matrix(ax,x,y,w,h,a,label='',color=BLUE):
     a=np.asarray(a);nr,nc=a.shape
     for i in range(nr):
@@ -78,6 +78,14 @@ def matrix(ax,x,y,w,h,a,label='',color=BLUE):
             ax.add_patch(Rectangle((xx,yy),w/nc,h/nr,facecolor='#EAF3FB' if a[i,j]!=0 else 'white',edgecolor=color,lw=1))
             ax.text(xx+w/nc/2,yy+h/nr/2,f'{a[i,j]:g}',ha='center',va='center',fontsize=12)
     if label:ax.text(x+w/2,y+h+.018,label,ha='center',fontsize=11,color=color)
+def dashed_panel(ax,x,y,w,h,label='',color='#9AA3AC'):
+    ax.add_patch(FancyBboxPatch((x,y),w,h,boxstyle='round,pad=0.012,rounding_size=0.018',
+        facecolor='white',edgecolor=color,lw=1.5,linestyle=(0,(5,4))))
+    if label:ax.text(x+.018,y+h-.032,label,ha='left',va='top',fontsize=12,style='italic',weight='bold',color=INK)
+def node(ax,x,y,text,color,r=.034,fill='white'):
+    ax.add_patch(Circle((x,y),r,facecolor=fill,edgecolor=color,lw=2.0));ax.text(x,y,text,ha='center',va='center',fontsize=11)
+def dotted_link(ax,a,b,color,lw=1.5):
+    ax.plot([a[0],b[0]],[a[1],b[1]],color=color,lw=lw,linestyle=(0,(2,3)))
 def e3(model,b):
     p=REPO/f'reports/nns_vit_endpoint_e3_closure_r1_20260918/formal_results/attempts/{model}__014/attempt-01.json'
     d=load(p)['result'];r=next(r for r in d['artifacts'] if r.get('block')==b)
@@ -103,55 +111,93 @@ def main():
     for i,(name,key) in enumerate([('Patch embedding','patch.energy.endpoint'),('Intermediate unit','b5.energy.endpoint'),('Class output','class_endpoint')]):
         x=.25+i*.245;inset(fig,x,.08,.19,.24,bear[key],name,source='deit_s16__014/'+key);arrow(ax,(x+.095,.61),(x+.095,.36),TEAL,'--')
     finish(fig,1,'concept_overview','同一输入经过正常前向计算得到预测；NNS-ViT 为内部目标与输出目标提供保留输入位置的学习图像。虚线表示目标与学习图像的对应关系。','The same input produces a prediction through the ordinary forward computation. NNS-ViT associates internal and output targets with learning images in the original input coordinates. Dashed lines link targets to their images.','concept')
-    # 2. Explicit four-coordinate example, values and learning images paired.
+    # 2. Reference-paper-style paired forward/scanner workflow.
     x=np.array([1.,2.,3.,4.]);W=np.array([[1.,.5,0.,0.],[0.,0.,.5,1.]]);h=W@x;v=np.array([1.,.5]);E=x*(v@W)
-    fig,ax=canvas((12,7));title(fig,'A neuron and its learning image carry different information')
-    ax.text(.025,.75,'Forward\nvalues',fontsize=13,color=BLUE);ax.text(.025,.27,'Learning\nimages',fontsize=13,color=TEAL)
-    positions=[[(.25,.8),(.25,.67),(.25,.54),(.25,.41)],[(.56,.73),(.56,.49)],[(.86,.61)]]
-    for (xx,yy),val in zip(positions[0],x):ax.add_patch(Circle((xx,yy),.035,fc='white',ec=BLUE,lw=2));ax.text(xx,yy,f'{val:g}',ha='center',va='center')
-    for (xx,yy),val in zip(positions[1],h):ax.add_patch(Circle((xx,yy),.04,fc='#EAF3FB',ec=TEAL,lw=2));ax.text(xx,yy,f'{val:g}',ha='center',va='center')
-    ax.add_patch(Circle(positions[2][0],.045,fc='#FFF4E6',ec=ORANGE,lw=2));ax.text(.86,.61,f'{v@h:g}',ha='center',va='center')
+    colors=['#E67E22','#2E8B57','#8E44AD','#D4A017'];fig,ax=canvas((12,7.4));title(fig,'A neuron value and its learning image are computed together','Same graph · same local coefficients · learning images retain input positions')
+    dashed_panel(ax,.025,.51,.95,.37,'Neural network: scalar values');dashed_panel(ax,.025,.075,.95,.37,'NNS-ViT: input-coordinate learning images')
+    ax.text(.075,.70,'Input',ha='center',fontsize=12,weight='bold');ax.text(.48,.86,'Hidden layer',ha='center',fontsize=12,style='italic');ax.text(.86,.76,'Output',ha='center',fontsize=12,style='italic')
+    inputs=[(.17,.80),(.17,.71),(.17,.62),(.17,.53)];hidden=[(.50,.76),(.50,.61)];output=(.86,.685)
+    for i,(pos,val,c) in enumerate(zip(inputs,x,colors)):node(ax,*pos,fr'$x_{i+1}={val:g}$',c,.027)
+    node(ax,*hidden[0],fr'$h_1={h[0]:g}$',TEAL,.032,'#E9F7F5');node(ax,*hidden[1],fr'$h_2={h[1]:g}$',TEAL,.032,'#E9F7F5');node(ax,*output,fr'$s={v@h:g}$',ORANGE,.038,'#FFF3E4')
     for i in range(4):
         for j in range(2):
-            if W[j,i]:arrow(ax,(.29,positions[0][i][1]),(.515,positions[1][j][1]),GRAY);ax.text(.4,(positions[0][i][1]+positions[1][j][1])/2,f'{W[j,i]:g}',fontsize=9)
-    for j in range(2):
-        arrow(ax,(.60,positions[1][j][1]),(.81,.61),GRAY)
-        ax.text(.70,(positions[1][j][1]+.61)/2+.025,f'{v[j]:g}',fontsize=10)
-    for i in range(4):
-        a=np.zeros(4);a[i]=x[i];matrix(ax,.17+i*.115,.12,.085,.14,a.reshape(2,2))
-    matrix(ax,.66,.24,.09,.10,(x*W[0]).reshape(2,2),'Unit 1',TEAL)
-    matrix(ax,.66,.065,.09,.10,(x*W[1]).reshape(2,2),'Unit 2',TEAL)
-    matrix(ax,.84,.13,.10,.14,E.reshape(2,2),'Output',ORANGE)
-    arrow(ax,(.61,.19),(.65,.29));arrow(ax,(.61,.19),(.65,.115))
-    arrow(ax,(.76,.29),(.83,.23));arrow(ax,(.76,.115),(.83,.17))
-    ax.text(.20,.015,'Each hidden unit has its own learning image; both contribute to the output image.',ha='left',fontsize=10)
-    finish(fig,2,'neuron_learning_image','四坐标线性示例：上方为神经元值，下方为相同计算对应的输入坐标学习图像。此例用于解释传播规则，数值由图中权重直接计算。','A four-coordinate linear example. The upper diagram shows neuron values; the lower matrices preserve each input coordinate through the same computation. Values follow directly from the displayed weights.','concept')
-    # 3. Initialization.
-    fig,ax=canvas((12,4.6));title(fig,'Initialization: preserve both value and position')
-    matrix(ax,.045,.27,.16,.38,x.reshape(2,2),'Input x');ax.text(.245,.44,'=',fontsize=25)
-    for i in range(4):
-        a=np.zeros(4);a[i]=x[i];xx=.31+i*.17;matrix(ax,xx,.27,.12,.38,a.reshape(2,2),f'Coordinate {i+1}')
-        if i<3:ax.text(xx+.135,.44,'+',fontsize=22)
-    ax.text(.30,.08,r'$\mathcal{L}(x;x)=\mathrm{diag}(x)$',fontsize=17);ax.text(.60,.08,'Each coordinate starts in its own image location.',fontsize=11)
-    finish(fig,3,'coordinate_initialization','输入值初始化为对角 learning-image 矩阵；拆分后每个坐标的位置保持不变。RGB 输入对每个通道分别进行相同初始化。','Input values initialize a diagonal learning-image matrix. Each split coordinate retains its location; RGB channels follow the same initialization independently.','concept')
-    # 4. Generation and chain rule.
-    fig,ax=canvas((12,5.2));title(fig,'Generation: combine learning images with local derivatives')
-    a=x*W[0];b=x*W[1]
-    matrix(ax,.055,.35,.17,.34,a.reshape(2,2),'Learning image of h1',BLUE);ax.text(.25,.51,'× 1  +',fontsize=18)
-    matrix(ax,.36,.35,.17,.34,b.reshape(2,2),'Learning image of h2',TEAL);ax.text(.55,.51,'× 0.5  =',fontsize=18)
-    matrix(ax,.76,.35,.17,.34,E.reshape(2,2),'Learning image of s',ORANGE)
-    ax.text(.06,.16,r'$\mathcal{L}(s;x)=\sum_k \frac{\partial s}{\partial h_k}\mathcal{L}(h_k;x)$',fontsize=17)
-    ax.text(.57,.16,r'$E_s(x)=x\odot\nabla_x s(x)$',fontsize=18,color=BLUE)
-    finish(fig,4,'local_derivative_generation','局部导数作为组合系数，学习图像逐层传播后与输入乘目标梯度一致。这里展示已定义线性示例的完整数值运算。','Local derivatives weight the incoming learning images. Layerwise propagation equals input times target gradient. The figure shows the complete numerical operation for the defined linear example.','concept')
-    # 5. Patch embedding as a spatially restricted linear map.
-    fig,ax=canvas((12,5.8));title(fig,'From pixels to tokens without losing image coordinates')
-    ia=inset(fig,.035,.25,.25,.49,photo,'Image divided into 16 × 16 patches','photo')
-    for k in range(1,14):ia.axvline(k*16-.5,color='white',lw=.35,alpha=.65);ia.axhline(k*16-.5,color='white',lw=.35,alpha=.65)
-    box(ax,.36,.42,.22,.22,'Flatten one patch\n\nLinear projection W',fontsize=12);arrow(ax,(.29,.53),(.35,.53))
-    box(ax,.67,.59,.27,.13,'Token coordinate z(t, c)',TEAL);arrow(ax,(.59,.54),(.68,.64))
-    seed=np.zeros((224,224));seed[96:112,96:112]=1;inset(fig,.70,.15,.19,.31,seed,'Input-coordinate support')
-    arrow(ax,(.8,.58),(.8,.47),TEAL,'--');ax.text(.035,.075,r'$z_{t,c}=w_c^\top x_t+b_c\qquad E_{t,c}=x\odot w_{t,c}$',fontsize=15)
-    finish(fig,5,'patch_embedding','Patch embedding 可写为局部线性映射。其 token-channel 坐标的学习图像保留在原输入网格；示意支持区域对应一个 patch，偏置不形成图像坐标项。','Patch embedding is a local linear map. A token-channel learning image retains the original input grid; the illustrated support is one patch. Biases have no independent image-coordinate term.','concept')
+            if W[j,i]:arrow(ax,(inputs[i][0]+.03,inputs[i][1]),(hidden[j][0]-.035,hidden[j][1]),GRAY,lw=1.05)
+    for j in range(2):arrow(ax,(hidden[j][0]+.035,hidden[j][1]),(output[0]-.043,output[1]),GRAY,lw=1.2)
+    ax.text(.32,.815,r'$1$',fontsize=9);ax.text(.33,.735,r'$0.5$',fontsize=9);ax.text(.32,.61,r'$0.5$',fontsize=9);ax.text(.32,.535,r'$1$',fontsize=9)
+    ax.text(.68,.76,r'$1$',fontsize=9);ax.text(.68,.61,r'$0.5$',fontsize=9)
+    matrix_positions=[]
+    for i,(val,c) in enumerate(zip(x,colors)):
+        a=np.zeros(4);a[i]=val;xx=.105+i*.105;matrix(ax,xx,.245,.074,.115,a.reshape(2,2),fr'$I_{i+1}^{0}$',c);matrix_positions.append((xx+.037,.302))
+        dotted_link(ax,(inputs[i][0],inputs[i][1]-.03),(xx+.037,.375),c)
+    matrix(ax,.55,.30,.09,.115,(x*W[0]).reshape(2,2),r'$I_1^{1}$',TEAL);matrix(ax,.55,.135,.09,.115,(x*W[1]).reshape(2,2),r'$I_2^{1}$',TEAL)
+    matrix(ax,.80,.215,.105,.135,E.reshape(2,2),r'$I_s$',ORANGE)
+    # Only structurally nonzero connections are drawn, matching the upper graph.
+    arrow(ax,(matrix_positions[0][0]+.04,matrix_positions[0][1]),(.545,.355),'#B8C0C8',lw=.95)
+    arrow(ax,(matrix_positions[1][0]+.04,matrix_positions[1][1]),(.545,.355),'#B8C0C8',lw=.95)
+    arrow(ax,(matrix_positions[2][0]+.04,matrix_positions[2][1]),(.545,.19),'#B8C0C8',lw=.95)
+    arrow(ax,(matrix_positions[3][0]+.04,matrix_positions[3][1]),(.545,.19),'#B8C0C8',lw=.95)
+    arrow(ax,(.65,.355),(.792,.29),TEAL,lw=1.25);arrow(ax,(.65,.19),(.792,.255),TEAL,lw=1.25)
+    dotted_link(ax,(hidden[0][0],hidden[0][1]-.034),(.595,.43),TEAL);dotted_link(ax,(hidden[1][0],hidden[1][1]-.034),(.595,.265),TEAL);dotted_link(ax,(output[0],output[1]-.04),(.852,.37),ORANGE)
+    ax.text(.12,.095,'Step 1 · Initialization',fontsize=12,style='italic',weight='bold',color=BLUE);ax.text(.56,.095,'Step 2 · Generation',fontsize=12,style='italic',weight='bold',color=TEAL)
+    finish(fig,2,'neuron_learning_image','同一四坐标网络的正常数值计算与 NNS-ViT 学习图像传播。节点与对应学习图像使用同色标记；下方矩阵保留各输入项的位置，并按上方网络的局部系数组合。','Ordinary scalar computation and NNS-ViT learning-image propagation in the same four-coordinate network. Matching colors link nodes to learning images; lower matrices preserve input positions and combine with the graph coefficients.','concept')
+    # 3. Reference Fig. 3 style: split at left, distribute to nodes at right.
+    fig,ax=canvas((12,6.6));title(fig,'Initialization: split the input, then assign one image to each coordinate')
+    dashed_panel(ax,.025,.075,.51,.795,'1 · Split the input');dashed_panel(ax,.58,.075,.395,.795,'2 · Assign learning images')
+    matrix(ax,.065,.37,.15,.31,x.reshape(2,2),r'$x$',INK);ax.text(.24,.50,'=',fontsize=25)
+    for i,(val,c) in enumerate(zip(x,colors)):
+        a=np.zeros(4);a[i]=val;yy=.70-i*.155;matrix(ax,.32,yy-.075,.105,.145,a.reshape(2,2),fr'$I_{i+1}$',c)
+        if i<3:ax.text(.45,yy-.01,'+',fontsize=20)
+        matrix(ax,.64,yy-.075,.105,.145,a.reshape(2,2),fr'$I_{i+1}^{0}$',c);dotted_link(ax,(.755,yy),(.845,yy),c);node(ax,.88,yy,fr'$O_{i+1}^{0}$',c,.03)
+    arrow(ax,(.52,.49),(.575,.49),GRAY,lw=2.2)
+    ax.text(.08,.105,r'$x=I_1+I_2+I_3+I_4$',fontsize=14);ax.text(.635,.105,r'$\mathcal{L}(x;x)=\mathrm{diag}(x)$',fontsize=15)
+    finish(fig,3,'coordinate_initialization','初始化分为拆分与分配两步：输入矩阵被拆成四张稀疏坐标图，并按同色虚线分配给四个输入节点。每张图同时保存输入值与其位置。','Initialization has two steps: split the input into four sparse coordinate images and assign them to input nodes using matching colored links. Each image preserves both value and position.','concept')
+    # 4. Reference Fig. 4 style: muted intermediate graph, highlighted complete path coefficients.
+    fig,ax=canvas((12,6.5));title(fig,'Generation: collect every input path to the selected target')
+    dashed_panel(ax,.035,.13,.93,.70,'Learning-image generation for target s')
+    for i,c in enumerate(colors):matrix(ax,.07,.625-i*.105,.09,.085,(np.eye(4)[i]*x[i]).reshape(2,2),fr'$I_{i+1}^{0}$',c)
+    hidden_pos=[(.49,.65),(.49,.38)];target_pos=(.86,.515)
+    for j,pos in enumerate(hidden_pos):box(ax,pos[0]-.055,pos[1]-.055,.11,.11,fr'$I_{j+1}^{1}$','#B6BDC4','#F7F8F9',13)
+    box(ax,target_pos[0]-.06,target_pos[1]-.06,.12,.12,r'$I_s$',ORANGE,'#FFF4E8',14)
+    for i,c in enumerate(colors):
+        yy=.6675-i*.105
+        for j,pos in enumerate(hidden_pos):
+            if W[j,i]:arrow(ax,(.17,yy),(pos[0]-.062,pos[1]),'#BCC2C8',lw=.9)
+    for pos in hidden_pos:arrow(ax,(pos[0]+.062,pos[1]),(target_pos[0]-.067,target_pos[1]),'#BCC2C8',lw=1.0)
+    # First and last composed paths are highlighted, as in the reference-paper convention.
+    coeff=v@W
+    for i in (0,3):
+        yy=.6675-i*.105;ax.plot([.16,.72,.80],[yy,yy,target_pos[1]],color='#C62828',lw=1.35,linestyle=(0,(5,3)))
+        arrow(ax,(.80,target_pos[1]),(target_pos[0]-.067,target_pos[1]),'#C62828',style=(0,(5,3)),lw=1.35)
+        ax.text(.67,yy+.018,fr'$c_{i+1}={coeff[i]:g}$',fontsize=10,color='#C62828')
+    ax.text(.69,.555,r'$c_2=0.5$',fontsize=10,color='#C62828');ax.text(.69,.475,r'$c_3=0.25$',fontsize=10,color='#C62828');ax.text(.735,.515,r'$\vdots$',fontsize=15,color='#C62828')
+    matrix(ax,.78,.19,.16,.21,E.reshape(2,2),r'$I_s=\sum_i c_i I_i^0$',ORANGE)
+    ax.text(.25,.20,r'$c_i=\frac{\partial s}{\partial x_i}$',fontsize=15,color='#C62828');ax.text(.24,.075,r'$I_s=\mathcal{L}(s;x),\qquad E_s=x\odot\nabla_xs$',fontsize=16)
+    finish(fig,4,'local_derivative_generation','中间网络以灰色显示，红色虚线路径突出每个输入坐标到目标的合成局部系数。右下矩阵是四张输入 learning images 的加权和，与输入乘目标梯度一致。','The intermediate graph is muted while red dashed paths highlight composed local coefficients from every input coordinate to the target. The lower-right matrix is the weighted sum of input learning images and equals input times target gradient.','concept')
+    # 5. Reference Fig. 5 style: native patch operation and equivalent sparse linear map.
+    fig,ax=canvas((13,6.6));title(fig,'Patch embedding is a local projection and a sparse global linear map')
+    dashed_panel(ax,.02,.12,.46,.75,'Native patch projection');dashed_panel(ax,.52,.12,.46,.75,'Sparse linear form')
+    ia=inset(fig,.045,.35,.21,.39,photo,'Input image','photo')
+    for k in range(1,14):ia.axvline(k*16-.5,color='white',lw=.28,alpha=.55);ia.axhline(k*16-.5,color='white',lw=.28,alpha=.55)
+    ia.add_patch(Rectangle((6*16-.5,6*16-.5),16,16,fill=False,edgecolor='#D62728',lw=2.2))
+    ax.text(.27,.55,'×',fontsize=25);box(ax,.31,.47,.13,.16,'Patch row\n$w_c^\top$',ORANGE,'#FFF2E3',12);arrow(ax,(.255,.545),(.30,.545),GRAY)
+    box(ax,.32,.25,.12,.12,r'$z_{t,c}$',TEAL,'#EAF7F6',13);arrow(ax,(.375,.46),(.38,.38),TEAL)
+    ax.text(.055,.20,r'$z_{t,c}=w_c^\top x_t+b_c$',fontsize=14)
+    # Global patch grid and sparse row-matrix view.
+    grid=np.zeros((14,14));grid[6,6]=1;gx=.55;gy=.405;gw=.19;gh=.31
+    for i in range(14):
+        for j in range(14):
+            color='#F05A28' if (i,j)==(6,6) else '#EAF1F6'
+            ax.add_patch(Rectangle((gx+j*gw/14,gy+(13-i)*gh/14),gw/14,gh/14,facecolor=color,edgecolor='white',lw=.18))
+    ax.text(gx+gw/2,gy+gh+.025,'Image coordinates',ha='center',fontsize=11)
+    arrow(ax,(.75,.61),(.79,.61),GRAY)
+    # Sparse projection row with one active 16x16 block.
+    ax.add_patch(Rectangle((.80,.50),.145,.21,facecolor='#F4F6F8',edgecolor=GRAY,lw=1.2))
+    for j in range(7):ax.add_patch(Rectangle((.805+j*.019,.56),.016,.09,facecolor=('#F05A28' if j==3 else 'white'),edgecolor='#A9B2BA',lw=.45))
+    ax.text(.872,.755,'Sparse row $W_{t,c}$',ha='center',fontsize=11);ax.text(.872,.525,'nonzero only in patch t',ha='center',fontsize=9,color=GRAY)
+    arrow(ax,(.872,.49),(.872,.39),TEAL)
+    inset(fig,.80,.16,.145,.20,grid,'Learning-image support','score','patch-support',interpolation='nearest')
+    ax.text(.55,.19,r'$E_{t,c}=x\odot W_{t,c}$',fontsize=15);ax.text(.55,.14,'Bias changes the scalar value but has no input-coordinate term.',fontsize=9.5,color=GRAY)
+    finish(fig,5,'patch_embedding','左栏以真实图像说明 patch embedding 的局部投影；右栏将同一运算写成全局输入上的稀疏线性行。橙色区域在 token、稀疏权重与 learning-image support 之间一一对应。','The left panel shows native patch projection on a real image; the right expresses the same operation as a sparse row over global input coordinates. The orange region corresponds across token support, sparse weights and learning-image support.','concept')
     # 6. Attention graph rather than a text list.
     fig,ax=canvas((12,6));title(fig,'Attention separates routing from value transmission')
     box(ax,.035,.40,.13,.18,'Input X')
@@ -162,15 +208,21 @@ def main():
     ax.text(.58,.52,'Q/K: routing',color=TEAL,fontsize=11)
     ax.text(.50,.18,'V: value transmission',color=BLUE,fontsize=11)
     finish(fig,6,'attention_differential','Q/K 的变化通过 attention weights 改变 routing；V 的变化通过当前权重传播。两条微分路径相加重构完整 attention 微分，head 下游 cotangent 包含 output projection。','Q/K changes alter routing through attention weights; V changes propagate through the current weights. The two differential paths sum to the full attention differential, with output projection included in the downstream cotangent.','concept')
-    # 7. Residual, actual maps underneath.
-    fig,ax=canvas((12,6.2));title(fig,'Residual connections retain and transform input dependence')
-    box(ax,.06,.66,.15,.13,'u');box(ax,.36,.75,.23,.12,'Branch f(u)',ORANGE);box(ax,.77,.66,.16,.13,'y = u + f(u)',TEAL,fontsize=11)
-    arrow(ax,(.22,.73),(.35,.8));arrow(ax,(.60,.80),(.76,.73));arrow(ax,(.22,.68),(.76,.68),BLUE)
-    ax.text(.38,.61,'Identity edge uses the output cotangent gᵧ',fontsize=11,color=GRAY)
-    for i,(lab,key) in enumerate([('Original image',None),('Identity','identity'),('Attention branch','attention'),('Residual output','L_F')]):
-        inset(fig,.04+i*.245,.13,.20,.34,photo if key is None else parts[key],lab,'photo' if key is None else 'learning',key or '')
-    ax.text(.25,.04,r'$E_{\mathrm{output}}=E_{\mathrm{identity}}+E_{\mathrm{branch}}$',fontsize=16)
-    finish(fig,7,'residual_principle','上方为 residual 的两条真实边，下方为同一懒熊输入和类别目标的两路径学习图像。等式对 signed maps 成立，蓝底正部仅供空间阅读。','The residual has two distinct computational edges. Below are their learning images for the same sloth-bear input and class target. Additivity holds for signed maps; blue positive views show spatial structure.','concept')
+    # 7. Paired forward/residual path and aligned real learning images.
+    fig,ax=canvas((13,7.2));title(fig,'Residual connections preserve an identity path and add a transformed path','Top: native computation · Bottom: corresponding input-coordinate learning images')
+    dashed_panel(ax,.025,.54,.95,.34,'Residual computation');dashed_panel(ax,.025,.055,.95,.405,'NNS-ViT path images')
+    node(ax,.14,.70,r'$u$',BLUE,.038,'#EEF5FB');box(ax,.38,.73,.19,.12,r'Branch $f(u)$',ORANGE,'#FFF2E3',13);node(ax,.75,.70,r'$+$',TEAL,.035,'#E9F7F5');node(ax,.89,.70,r'$y$',TEAL,.038,'#E9F7F5')
+    arrow(ax,(.18,.73),(.37,.79),ORANGE);arrow(ax,(.58,.79),(.71,.72),ORANGE);arrow(ax,(.18,.67),(.71,.68),BLUE);arrow(ax,(.79,.70),(.85,.70),TEAL)
+    ax.text(.41,.60,r'$y=u+f(u)$',fontsize=15);ax.text(.61,.60,r'$g_y=\nabla_yF$',fontsize=13,color=GRAY)
+    panels=[('Original input',photo,'photo',''),('Identity path',parts['identity'],'learning','identity'),('Branch path',parts['attention'],'learning','attention'),('Residual output',parts['L_F'],'learning','L_F')]
+    centers=[]
+    for i,(lab,value,kind,source) in enumerate(panels):
+        xx=.045+i*.235;inset(fig,xx,.125,.18,.235,value,lab,kind,source);centers.append(xx+.09)
+    dotted_link(ax,(.14,.66),(centers[1],.385),BLUE);dotted_link(ax,(.475,.73),(centers[2],.385),ORANGE);dotted_link(ax,(.89,.66),(centers[3],.385),TEAL)
+    ax.text(.49,.245,r'$+$',fontsize=24,color=TEAL);ax.text(.72,.245,r'$=$',fontsize=24,color=TEAL)
+    arrow(ax,(centers[1]+.095,.245),(centers[2]-.10,.245),'#C62828',style=(0,(5,3)),lw=1.3);arrow(ax,(centers[2]+.095,.245),(centers[3]-.10,.245),'#C62828',style=(0,(5,3)),lw=1.3)
+    ax.text(.28,.075,r'$E_y^{\mathrm{signed}}=E_{\mathrm{identity}}+E_{\mathrm{branch}}$',fontsize=15);ax.text(.67,.075,'All paths use the same output cotangent.',fontsize=10,color=GRAY)
+    finish(fig,7,'residual_principle','上方显示 residual 的 identity 与 branch 两条真实计算边；下方用同色虚线连接到同一输入、同一类别目标的路径 learning images。完整 signed maps 相加得到 residual output，蓝底正部用于阅读空间结构。','The upper graph shows the native identity and branch edges; matching dashed links connect them to path learning images for the same input and class target. Complete signed maps add to the residual output, while blue positive views display spatial structure.','concept')
     # 8. Internal target types, larger panels with clear photograph.
     fig,axes=plt.subplots(2,4,figsize=(12,7.5));fig.subplots_adjust(top=.85,bottom=.08,wspace=.12,hspace=.24)
     title(fig,'Different targets reveal different parts of the same input')

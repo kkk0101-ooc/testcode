@@ -6,27 +6,27 @@
 
 [打开图片](figures/png/fig_01_concept_overview.png)
 
-**Image #2 — A neuron and its learning image carry different information**
+**Image #2 — A neuron value and its learning image are computed together**
 
-四坐标线性示例：上方为神经元值，下方为相同计算对应的输入坐标学习图像。此例用于解释传播规则，数值由图中权重直接计算。
+上半区为四坐标网络的 scalar values，下半区为对应 learning images；同色虚线连接节点与图像，灰线只画真实非零连接。下方保留输入位置并沿相同局部系数组合。
 
 [打开图片](figures/png/fig_02_neuron_learning_image.png)
 
-**Image #3 — Initialization: preserve both value and position**
+**Image #3 — Initialization: split the input, then assign one image to each coordinate**
 
-输入值初始化为对角 learning-image 矩阵；拆分后每个坐标的位置保持不变。RGB 输入对每个通道分别进行相同初始化。
+左栏将输入拆成四张稀疏坐标图，右栏以同色虚线把图分配给输入节点；公式位于步骤底部。RGB 输入对各通道采用相同初始化。
 
 [打开图片](figures/png/fig_03_coordinate_initialization.png)
 
-**Image #4 — Generation: combine learning images with local derivatives**
+**Image #4 — Generation: collect every input path to the selected target**
 
-局部导数作为组合系数，学习图像逐层传播后与输入乘目标梯度一致。这里展示已定义线性示例的完整数值运算。
+灰色网络表示中间 learning images；红色虚线路径突出首末输入坐标到目标的合成系数，其余系数在目标侧列出。最终矩阵是输入坐标图的加权和。
 
 [打开图片](figures/png/fig_04_local_derivative_generation.png)
 
-**Image #5 — From pixels to tokens without losing image coordinates**
+**Image #5 — Patch embedding is a local projection and a sparse global linear map**
 
-Patch embedding 可写为局部线性映射。其 token-channel 坐标的学习图像保留在原输入网格；示意支持区域对应一个 patch，偏置不形成图像坐标项。
+左栏显示真实图像上的局部 patch projection；右栏把同一运算写为全局输入坐标上的稀疏线性行。橙色 patch、非零权重块和 learning-image support 一一对应。
 
 [打开图片](figures/png/fig_05_patch_embedding.png)
 
@@ -36,9 +36,9 @@ Q/K 的变化通过 attention weights 改变 routing；V 的变化通过当前�
 
 [打开图片](figures/png/fig_06_attention_differential.png)
 
-**Image #7 — Residual connections retain and transform input dependence**
+**Image #7 — Residual connections preserve an identity path and add a transformed path**
 
-上方为 residual 的两条真实边，下方为同一懒熊输入和类别目标的两路径学习图像。等式对 signed maps 成立，蓝底正部仅供空间阅读。
+上半区展示 residual 的 identity/branch 计算边，下半区保留原图并对齐两条真实路径及输出 learning image。同色虚线连接计算边与图像。
 
 [打开图片](figures/png/fig_07_residual_principle.png)
 
