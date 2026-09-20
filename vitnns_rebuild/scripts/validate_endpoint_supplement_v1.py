@@ -71,7 +71,7 @@ def main():
  if a.paper:
   for lang in ('zh','en'):
    text=(PAPER/lang/'manuscript.md').read_text();sup=(PAPER/lang/'supplement.md').read_text();new=(PAPER/lang/'supplement_experiments_v1.md').read_text()
-   check('main_supplement_section:'+lang,'5.9' in text and 'supplement_experiments_v1.md' in text)
+   check('main_supplement_section:'+lang,('6.9' in text or '5.9' in text) and 'supplement_experiments_v1.md' in text)
    check('old_estimator_removed:'+lang,'随机基线先平均 20 条 signed effect' not in text and 'random baseline averages 20 signed-effect' not in text)
    for section in ('S9.','S10.','S11.','S12.','S13.','S14.'):check('supplement_section:'+lang+section,section in new)
    for p in (PAPER/lang/'manuscript.md',PAPER/lang/'supplement.md',PAPER/lang/'supplement_experiments_v1.md'):

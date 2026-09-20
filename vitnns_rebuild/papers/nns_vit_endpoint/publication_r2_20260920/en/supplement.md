@@ -1,4 +1,4 @@
-# Supplement: Endpoint revision v1
+# Supplement: Computational-graph interpretation of NNS and ViT structural paths (revision v2)
 
 [Return to manuscript](manuscript.md). This file contains reproducibility parameters, complete statistics, archived figure navigation, and prospective experiment scope. RQ labels in the current manuscript follow the revision.
 
@@ -39,6 +39,36 @@ Models: `vit_base_patch16_224.augreg2_in21k_ft_in1k` and `deit_small_patch16_224
 | Peak CPU RSS | 2.018 GB |
 | M1 random permutations | 128,000,000 |
 | M4 attention / residual / JVP records | 86,400 / 19,200 / 691,200 |
+
+### S1.1 Implementation and core-metric pseudocode
+
+All models run in evaluation mode. M3 computes chunked VJPs with torch.autograd.grad in is_grads_batched mode and frozen gradient_chunk_size=16. Evidence JSON files record random seeds, model and image hashes, worker environments, and per-task times. Table S2 reports scan time, throughput, memory, and retained storage; the 456 supplemental-control tasks total 2.4502 GPU-hours. Core implementations reside in src/vitnns/endpoint_m3_atlas.py, src/vitnns/endpoint_m4.py, and the corresponding scripts/run_endpoint_*.py entry points.
+
+    Endpoint(s, x):
+        g <- VJP(s, x) at the observed forward state
+        return x * g
+
+    StructuredCut(F, edges):
+        for each actual use-edge z_k in a valid cut:
+            g_k <- downstream cotangent dF/dz_k
+            E_k <- x * VJP(z_k, x; vector=g_k)
+        assert sum_k E_k closes to Endpoint(F, x)
+
+    SpatialMetrics(E, target_patch):
+        M[p] <- sum_rgb abs(E[p, rgb])
+        if sum_p M[p] == 0: return NA
+        p_patch <- patch_sum(M) / sum_p M[p]
+        entropy <- -sum_j p_patch[j] log(p_patch[j]) / log(196)
+        locality <- neighborhood_mass(target_patch) - uniform_neighborhood_mass
+        distance <- sum_j p_patch[j] normalized_distance(j, target_patch)
+
+    RandomRegionAUC(repeats):
+        for each random repeat r:
+            curve_r <- absolute finite effect at every area budget
+            auc_r <- trapezoid(curve_r, area in [0, 0.25]) / 0.25
+        return mean_r auc_r
+
+CLS has no natural target patch, so locality and target-relative distance are defined only for patch-token targets; zero-mass cases propagate as NA. Tokens, channels, and heads are aggregated within each image by prespecified rules before image-level inference.
 
 ## S2. Frozen decisions and numerical diagnostics
 
@@ -105,7 +135,7 @@ The current random baseline takes absolute effects before integration within eac
 ## S6. Detailed attention/residual evidence (historical stage identifiers retained)
 
 
-### 5.8 RQ4: Attention routing/value and residual mechanisms
+### Historical M4: attention routing/value and residual mechanisms
 
 M4 covered a shared 400-image cohort, both models, all 12 blocks, and every head for the frozen ground-truth logit. The result contains 86,400 image-block-head attention records, 19,200 image-block-residual records, and 691,200 direction-head JVP records. Per-head Q+K+V reconstructed the native attention Endpoint, routing+value reconstructed the same object, and identity/carry plus branch reconstructed the full logit Endpoint at both residual additions.
 
@@ -383,6 +413,20 @@ M4 quantifies local Jacobian path accounting at the observed input for the froze
 ## S8. Current qualitative comparisons
 
 The six CPU image-model computations use the same source images, checkpoints and preprocessing. Grad-CAM uses the last norm1 patch activations; attention rollout and raw attention are class-agnostic. These presentation-selected examples add no population tests. See [display protocol](../evidence/display_protocol.md) and [compute receipt](../evidence/compute_receipt.json).
+
+Revision v2 moves the following presentation-oriented or repetitive figures out of the main text. File names retain their original publication-R2 numbers to preserve hashes and provenance bindings:
+
+- [Coordinate initialization](../figures/png/fig_03_coordinate_initialization.png)
+- [Local-derivative propagation](../figures/png/fig_04_local_derivative_generation.png)
+- [Patch embedding](../figures/png/fig_05_patch_embedding.png)
+- [DeiT-S/16 across twelve layers](../figures/png/fig_09_deit_s16_layerwise.png)
+- [ViT-B/16 across twelve layers](../figures/png/fig_10_vit_b16_layerwise.png)
+- [Module-level learning images and forward activations](../figures/png/fig_11_module_learning_images.png)
+- [All attention heads](../figures/png/fig_13_all_heads.png)
+- [Cross-model display examples](../figures/png/fig_14_cross_model_examples.png)
+- [DeiT-S/16 method display](../figures/png/fig_19_deit_s16_method_comparison.png)
+- [ViT-B/16 method display](../figures/png/fig_20_vit_b16_method_comparison.png)
+- [Positive, signed, and absolute reading views](../figures/png/fig_22_signed_and_blue.png)
 
 **Table S6. Cross-reference rank concordance.**
 

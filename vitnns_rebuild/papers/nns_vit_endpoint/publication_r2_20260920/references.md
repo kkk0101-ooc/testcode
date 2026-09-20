@@ -1,8 +1,8 @@
 # References
 
-Achtibat, R., et al. (2024). AttnLRP: Attention-aware layer-wise
-relevance propagation for Transformers. *Proceedings of the 41st International Conference on
-Machine Learning*, PMLR 235, 135–168. `[FULL AUTHOR LIST TO VERIFY]`
+Achtibat, R., Hatefi, S. M. V., Dreyer, M., Jain, A., Wiegand, T., Lapuschkin, S., & Samek, W.
+(2024). AttnLRP: Attention-aware layer-wise relevance propagation for Transformers. *Proceedings
+of the 41st International Conference on Machine Learning*, PMLR 235, 135–168.
 
 Abnar, S., & Zuidema, W. (2020). Quantifying attention flow in transformers. *Proceedings of the
 58th Annual Meeting of the Association for Computational Linguistics*, 4190–4197.
@@ -24,9 +24,17 @@ visualization. *Neural Networks, 168*, 484–495. https://doi.org/10.1016/j.neun
 Kramár, J., Lieberum, T., Shah, R., & Nanda, N. (2024). AtP*: An efficient and scalable method
 for localizing LLM behaviour to components. *arXiv preprint arXiv:2403.00745*.
 
-Mehri, Baghshah, & Pilehvar (2025). LibraGrad: Balancing gradient flow for universally better Vision
-Transformer attributions. *Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern
-Recognition*, 67–78. `[AUTHOR INITIALS TO VERIFY]`
+Mehri, F., Soleymani Baghshah, M., & Pilehvar, M. T. (2025). LibraGrad: Balancing gradient flow for
+universally better Vision Transformer attributions. *Proceedings of the IEEE/CVF Conference on
+Computer Vision and Pattern Recognition*, 67–78.
+
+Shrikumar, A., Greenside, P., & Kundaje, A. (2017). Learning important features through propagating
+activation differences. *Proceedings of the 34th International Conference on Machine Learning*,
+PMLR 70, 3145–3153.
+
+Selvaraju, R. R., Cogswell, M., Das, A., Vedantam, R., Parikh, D., & Batra, D. (2017). Grad-CAM:
+Visual explanations from deep networks via gradient-based localization. *Proceedings of the
+IEEE International Conference on Computer Vision*, 618–626.
 
 Sundararajan, M., Taly, A., & Yan, Q. (2017). Axiomatic attribution for deep networks.
 *Proceedings of the 34th International Conference on Machine Learning*, PMLR 70, 3319–3328.
@@ -42,11 +50,9 @@ as software documentation rather than peer-reviewed method papers in the final b
 
 - Dou et al. (2023) is the primary NNS source. Its FCN/CNN experiments are background, not ViT
   evidence.
-- Sundararajan et al. (2017) and Dhamdhere et al. (2018) anchor path integration and hidden-unit
-  attribution.
+- Shrikumar et al. (2017), Sundararajan et al. (2017), and Dhamdhere et al. (2018) anchor local
+  input weighting, path integration, and hidden-unit attribution.
 - Kramár et al. (2024) anchors the activation-displacement Taylor comparison; the present image
   intervention uses its own frozen target, sign, reference, and aggregation definitions.
 - Achtibat et al. (2024), Chefer et al. (2021), and Mehri et al. (2025) are related Transformer
   attribution methods, not equivalent implementations of Endpoint Scanner.
-
-Selvaraju, R. R., Cogswell, M., Das, A., Vedantam, R., Parikh, D., & Batra, D. (2017). Grad-CAM: Visual explanations from deep networks via gradient-based localization. Proceedings of ICCV, 618–626.

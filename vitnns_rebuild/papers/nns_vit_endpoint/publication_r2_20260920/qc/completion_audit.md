@@ -1,10 +1,10 @@
 # User-feedback completion audit — 2026-09-20
 
-Current status note: this audit covers the publication-R2 figure and writing request. The later scientific supplement is audited separately in [supplement_v1_completion_audit.md](supplement_v1_completion_audit.md); it supersedes the earlier absence of random-initialization, target-robustness, and quantitative feature–Endpoint controls.
+Historical-scope note: this audit records the earlier publication-R2 figure and writing request. Revision v2 subsequently reduced the main text to 11 core figures while preserving all 22 rendered figures in the local package and linking moved items from the supplement. The current requirement-level audit is [revision_v2_completion_audit.md](revision_v2_completion_audit.md); the scientific supplement is audited separately in [supplement_v1_completion_audit.md](supplement_v1_completion_audit.md).
 
 | User requirement | Delivered evidence | Verification |
 |---|---|---|
-| 1. Ten figures are too few | 22 main figures, 66 PNG/PDF/SVG exports, 7 main tables | Manifest and each manuscript's image references |
+| 1. Ten figures are too few | Historical delivery: 22 rendered figures and 66 PNG/PDF/SVG exports | Manifest and historical figure package; revision v2 now selects 11 core figures for the main text |
 | 2. Paper and required images in one directory | publication_r2_20260920 contains zh/en text, figures, 92 supplementary pages, reference list and data | Every main/supplement link resolves inside the directory |
 | 3. Formal paper style, learn local articles | Both manuscripts rewritten with problem → representation → method → observation → intervention structure | Read NNS abstract/introduction/method/conclusion and ViT visual-analytics abstract; writing audit |
 | 4. Ugly text-only concept / sparse points / forest lines | New explanatory diagrams 1–7; former fidelity points moved to Table 2; former association forest moved to Table 3 | Figure content review; numerical table values retained |

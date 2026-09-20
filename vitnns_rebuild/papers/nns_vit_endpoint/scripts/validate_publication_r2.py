@@ -20,6 +20,7 @@ def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 
 def main():
     f=load(ROOT/'figure_manifest.json');check('22_figures',[r['number'] for r in f['figures']]==list(range(1,23)))
+    check('11_main_figure_mapping',f.get('main_text_figure_count')==11 and f.get('main_text_figure_map')==[{'main_number':i+1,'package_number':n} for i,n in enumerate((1,2,6,7,8,12,15,16,17,18,21))])
     for r in f['figures']:
         for ext,record in r['files'].items():
             p=ROOT/record['path'];check('figure_hash:'+str(r['number'])+':'+ext,p.is_file() and sha(p)==record['sha256'])
@@ -29,12 +30,26 @@ def main():
     supplement=load(ROOT/'evidence/supplement_manifest.json');check('92_supplement_pages',len(supplement)==92)
     for r in supplement:check('supplement_hash:'+str(r['number']),sha(ROOT/r['path'])==r['sha256'])
     texts={lang:(ROOT/lang/'manuscript.md').read_text() for lang in ('zh','en')}
+    main_paths={row['main_number']:next(x['files']['png']['path'] for x in f['figures'] if x['number']==row['package_number']) for row in f['main_text_figure_map']}
     for lang,text in texts.items():
-        check('figure_order:'+lang,re.findall(r'!\[Figure (\d+)\]',text)==[str(i) for i in range(1,23)])
+        check('11_main_figures:'+lang,re.findall(r'!\[Figure (\d+)\]',text)==[str(i) for i in range(1,12)])
+        check('main_figure_paths:'+lang,{int(n):path for n,path in re.findall(r'!\[Figure (\d+)\]\(\.\./([^)]*)\)',text)}==main_paths)
+        check('main_figure_caption_order:'+lang,re.findall(r'\*\*Figure (\d+)\.',text)==[str(i) for i in range(1,12)])
         check('7_tables:'+lang,re.findall(r'\*\*Table (\d+)\.',text)==[str(i) for i in range(1,8)])
-        check('no_report_states:'+lang,not re.search(r'RQ[1-5]|NOT_SUPPORTED|PASS_|reports/|registry-complete|C4[ab]',text))
+        check('no_historical_report_states:'+lang,not re.search(r'RQ4[a-c]|RQ5|NOT_SUPPORTED|PASS_|reports/|registry-complete|C4[ab]',text))
         check('balanced_math:'+lang,text.count('$$')%2==0)
         check('no_placeholders:'+lang,'{{' not in text and '\x00' not in text)
+        check('four_research_questions:'+lang,all(f'RQ{i}' in text for i in range(1,5)) and 'RQ5' not in text)
+        check('required_method_terms:'+lang,all(term in text for term in ('Input × Gradient','valid computational cut' if lang=='en' else '合法计算切面','Q-induced','K-induced','V-induced','identity','branch')))
+        check('corrected_random_estimator:'+lang,('Each random repetition takes the absolute effect before integration' if lang=='en' else '随机基线对每次重复先取 absolute effect 并积分') in text)
+        check('v2_eight_chapters:'+lang,all(re.search(rf'^## {i}\.',text,re.M) for i in range(1,9)))
+        check('v2_result_structure:'+lang,all(f'### 6.{i}' in text for i in range(1,10)) and '### 7.1' in text and all(f'### 8.{i}' in text for i in (1,2)))
+        check('finite_amplitude_boundary:'+lang,'0.05,0.1,0.25,0.5,1.0' in text)
+        check('no_defensive_stock_phrases:'+lang,not re.search(r'We emphasize that|It should be noted that|We do not claim|To avoid misunderstanding|Taken together|需要强调的是|应当指出|为避免误解|我们不声称',text,re.I))
+    check('v2_titles',texts['zh'].startswith('# NNS 学习图像的计算图解释与视觉 Transformer 结构路径分析') and texts['en'].startswith('# A Computational-Graph Interpretation of NNS Learning Images and Structural Path Analysis in Vision Transformers'))
+    check('bilingual_main_figure_paths',[path for _,path in re.findall(r'!\[Figure (\d+)\]\(\.\./([^)]*)\)',texts['zh'])]==[path for _,path in re.findall(r'!\[Figure (\d+)\]\(\.\./([^)]*)\)',texts['en'])])
+    refs=(ROOT/'references.md').read_text()
+    check('bibliography_complete',all(name in refs for name in ('Achtibat, R., Hatefi','Mehri, F., Soleymani Baghshah','Shrikumar, A., Greenside')) and 'TO VERIFY' not in refs)
     check('same_display_equations',re.findall(r'\$\$(.*?)\$\$',texts['zh'],re.S)==re.findall(r'\$\$(.*?)\$\$',texts['en'],re.S))
     check('same_section_numbers',re.findall(r'^#{2,3} (\d+(?:\.\d+)?)',texts['zh'],re.M)==re.findall(r'^#{2,3} (\d+(?:\.\d+)?)',texts['en'],re.M))
     check('same_table_data',[l for l in texts['zh'].splitlines() if l.startswith('|')]==[l for l in texts['en'].splitlines() if l.startswith('|')])
@@ -104,7 +119,7 @@ def main():
     # experiments.  Preserve and verify every historical entry except the
     # documents prospectively superseded by this supplement.
     inventory=load(ROOT/'artifact_inventory.json')
-    superseded={'README.md','en/manuscript.md','en/supplement.md','zh/manuscript.md','zh/supplement.md',
+    superseded={'README.md','references.md','figure_manifest.json','en/manuscript.md','en/supplement.md','zh/manuscript.md','zh/supplement.md',
                 'qc/completion_audit.md','qc/writing_audit.md'}
     for record in inventory['files']:
         if record['path'] not in superseded:

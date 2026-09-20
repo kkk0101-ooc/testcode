@@ -26,7 +26,7 @@
 | 七：同架构替代 trained checkpoint | Discussion、S14 | 三种随机初始化不能替代不同训练 checkpoint | 未执行（P2） |
 | 九：输入变换；十二 5：CNN 页 | S14 scope | 明确保留为可选项 | 未执行（P3） |
 | 十：不继续扩大 leaderboard/Path-IG 调参/神经元穷举 | 协议与任务 manifest | 没有新增 Endpoint–Taylor 搜索、saliency leaderboard、百万目标或 Path-IG 调参 | 遵守 |
-| 双语论文与图表 | `zh/en/manuscript.md`、`zh/en/supplement_experiments_v1.md`、5 张 PNG/PDF/SVG | 正文 5.6–5.9、Tables 5–7、Discussion/Conclusion 同步；视觉 contact sheet 人工检查 | 完成 |
+| 双语论文与图表 | `zh/en/manuscript.md`、`zh/en/supplement_experiments_v1.md`、5 张 PNG/PDF/SVG | 修订 v2 正文 6.6–6.9、7.1、Tables 5–7、Discussion/Conclusion 同步；视觉 contact sheet 人工检查 | 完成 |
 | 可复现验证 | `validation_report.json`、`paper_validation_summary.json`、`native_verification.json`、`independent_statistics_verification.json`、`test_results.json` | 32,091 项最终 paper-aware 覆盖检查、16 项真实架构原生复算、63,448 项独立统计复算、15 tests | 完成 |
 
 ## 科学结论

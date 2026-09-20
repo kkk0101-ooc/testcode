@@ -1,8 +1,17 @@
 #!/usr/bin/env python3
 """Integrate measured supplemental results into the current bilingual paper."""
-import hashlib,json,re,shutil
+import hashlib,json,re,shutil,sys
 from pathlib import Path
 REPO=Path(__file__).resolve().parents[1];ROOT=REPO/'reports/nns_vit_endpoint_supplement_v1_20260920';PAPER=REPO/'papers/nns_vit_endpoint/publication_r2_20260920';DEST=PAPER/'evidence/supplement_v1'
+if '--sync-current-v2' in sys.argv:
+ for lang in ('zh','en'):
+  s=(PAPER/lang/'manuscript.md').read_text()
+  mirrored=s.replace('](../figures/','](../publication_r2_20260920/figures/').replace('](../references.md)','](../publication_r2_20260920/references.md)').replace('](supplement.md)',f'](../publication_r2_20260920/{lang}/supplement.md)').replace('](supplement_experiments_v1.md)',f'](../publication_r2_20260920/{lang}/supplement_experiments_v1.md)')
+  (PAPER.parent/lang/'full_draft.md').write_text(mirrored)
+ print('Synchronized review-v2 manuscript mirrors')
+ raise SystemExit(0)
+if '--rebuild-legacy-v1' not in sys.argv:
+ raise SystemExit('REFUSED: publication_r2_20260920 contains the review-v2 manuscript; pass --rebuild-legacy-v1 only for an intentional archival rebuild')
 def load(n):return json.loads((ROOT/n).read_text())
 def fmt(x):return 'NA' if x is None else f'{x:.4f}'
 def ci(x):return 'NA' if x is None else '['+', '.join(fmt(v) for v in x)+']'

@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
-"""Formal bilingual narrative; shared formulas/tables; fully local figure links."""
+"""Legacy publication-R2 generator.
+
+The current revision-v2 manuscripts contain evidence-bounded hand edits that this
+historical template cannot reproduce.  Refuse an accidental overwrite unless the
+caller explicitly requests the legacy rebuild for archival comparison.
+"""
 import json
 import re
 from pathlib import Path
 import shutil
+import sys
 from bind_revision_v1 import build_tables,table
 
 REPO=Path(__file__).resolve().parents[3]
@@ -335,6 +341,8 @@ We extend NNS learning images to Vision Transformers through a local-Jacobian re
 '''
 
 def main():
+    if '--rebuild-legacy-v1' not in sys.argv:
+        raise SystemExit('REFUSED: publication_r2_20260920 contains the review-v2 manuscript; pass --rebuild-legacy-v1 only for an intentional archival rebuild')
     manifest=json.loads((ROOT/'figure_manifest.json').read_text());figs={r['original_number']:r for r in manifest['figures']};tables,_=build_tables()
     # Verification values become a table, replacing the earlier sparse-point figure.
     fid=json.loads((REPO/'reports/nns_vit_endpoint_m3_r1_20260919/m3a_fidelity.json').read_text());vr=[]

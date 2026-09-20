@@ -1,4 +1,4 @@
-# 补充材料：Endpoint 修订 v1
+# 补充材料：NNS 计算图解释与 ViT 结构路径分析（修订 v2）
 
 [返回正文](manuscript.md)。本文件包含复现参数、完整统计、历史图索引与后续实验范围。主文 RQ 编号按修订版使用。
 
@@ -39,6 +39,36 @@ Models: `vit_base_patch16_224.augreg2_in21k_ft_in1k` and `deit_small_patch16_224
 | Peak CPU RSS | 2.018 GB |
 | M1 random permutations | 128,000,000 |
 | M4 attention / residual / JVP records | 86,400 / 19,200 / 691,200 |
+
+### S1.1 实现与核心指标伪代码
+
+模型均处于 evaluation mode。M3 使用 torch.autograd.grad 的 is_grads_batched 模式分块执行 VJP，冻结 gradient_chunk_size=16；具体随机种子、模型与图像哈希、worker 环境和每任务耗时记录在对应 evidence JSON 中。主扫描的时间、吞吐、显存与保留数据量见 Table S2；补充控制实验的 456 个任务合计 2.4502 GPU-hours。核心实现位于 src/vitnns/endpoint_m3_atlas.py、src/vitnns/endpoint_m4.py 与相应 scripts/run_endpoint_*.py。
+
+    Endpoint(s, x):
+        g <- VJP(s, x) at the observed forward state
+        return x * g
+
+    StructuredCut(F, edges):
+        for each actual use-edge z_k in a valid cut:
+            g_k <- downstream cotangent dF/dz_k
+            E_k <- x * VJP(z_k, x; vector=g_k)
+        assert sum_k E_k closes to Endpoint(F, x)
+
+    SpatialMetrics(E, target_patch):
+        M[p] <- sum_rgb abs(E[p, rgb])
+        if sum_p M[p] == 0: return NA
+        p_patch <- patch_sum(M) / sum_p M[p]
+        entropy <- -sum_j p_patch[j] log(p_patch[j]) / log(196)
+        locality <- neighborhood_mass(target_patch) - uniform_neighborhood_mass
+        distance <- sum_j p_patch[j] normalized_distance(j, target_patch)
+
+    RandomRegionAUC(repeats):
+        for each random repeat r:
+            curve_r <- absolute finite effect at every area budget
+            auc_r <- trapezoid(curve_r, area in [0, 0.25]) / 0.25
+        return mean_r auc_r
+
+CLS 没有自然的目标 patch，因此 locality 与 target-relative distance 仅对 patch-token 目标定义；零质量样本传播为 NA。图内 token、channel 与 head 先按预定规则汇总，再以图像为统计单位。
 
 ## S2. Frozen decisions and numerical diagnostics
 
@@ -105,7 +135,7 @@ Head rankings use average ranks and Kendall tau-b. Top-K ties are broken by asce
 ## S6. Detailed attention/residual evidence (historical stage identifiers retained)
 
 
-### 5.8 RQ4：Attention routing/value 与 residual 机制
+### 历史 M4：Attention routing/value 与 residual 机制
 
 M4 完成两模型共享 400 图、12 个 blocks 和全部 heads 的 ground-truth-logit 局部输入依赖分解，共 86,400 个 image-block-head attention records、19,200 个 image-block-residual records 和 691,200 个 direction-head JVP records。Q+K+V 逐 head 重构 native attention Endpoint；routing+value 重构同一对象；attention 和 MLP residual 的 identity/carry 加 branch 均重构完整 logit Endpoint。
 
@@ -376,11 +406,25 @@ M4 定量描述当前输入点和冻结 ground-truth logit 下的局部 Jacobian
 - [S91 — S91_figure_39_vit_b16_attention_head_depth_atlas_signed](../supplement/S91_figure_39_vit_b16_attention_head_depth_atlas_signed.png)
 - [S92 — S92_figure_40_vit_b16_module_chain_signed](../supplement/S92_figure_40_vit_b16_module_chain_signed.png)
 
-## S8. Current qualitative comparisons
+## S8. 当前定性比较
 
-The six CPU image-model computations use the same source images, checkpoints and preprocessing. Grad-CAM uses the last norm1 patch activations; attention rollout and raw attention are class-agnostic. These presentation-selected examples add no population tests. See [display protocol](../evidence/display_protocol.md) and [compute receipt](../evidence/compute_receipt.json).
+六项 CPU image-model 计算使用相同来源图像、checkpoint 与预处理。Grad-CAM 使用最后一个 norm1 的 patch activation；attention rollout 与 raw attention 不依赖类别。展示样本不进入总体推断。具体规则见[显示协议](../evidence/display_protocol.md)与[计算收据](../evidence/compute_receipt.json)。
 
-**Table S6. Cross-reference rank concordance.**
+修改意见 v2 将下列展示性或重复性图件从主文移至补充材料；文件名保留原 publication-R2 编号以维持哈希和来源绑定：
+
+- [坐标初始化](../figures/png/fig_03_coordinate_initialization.png)
+- [局部导数传播](../figures/png/fig_04_local_derivative_generation.png)
+- [Patch embedding](../figures/png/fig_05_patch_embedding.png)
+- [DeiT-S/16 十二层图](../figures/png/fig_09_deit_s16_layerwise.png)
+- [ViT-B/16 十二层图](../figures/png/fig_10_vit_b16_layerwise.png)
+- [模块级学习图像与前向 activation](../figures/png/fig_11_module_learning_images.png)
+- [全部 attention heads](../figures/png/fig_13_all_heads.png)
+- [跨模型展示样本](../figures/png/fig_14_cross_model_examples.png)
+- [DeiT-S/16 方法展示](../figures/png/fig_19_deit_s16_method_comparison.png)
+- [ViT-B/16 方法展示](../figures/png/fig_20_vit_b16_method_comparison.png)
+- [Positive、signed 与 absolute 读图对照](../figures/png/fig_22_signed_and_blue.png)
+
+**Table S6. 跨 reference 排名一致性。**
 
 | Model | Quantity | Spearman | Kendall tau-b | Top-1 agreement | Top-3 overlap | Mean abs rank displacement |
 | --- | --- | --- | --- | --- | --- | --- |
