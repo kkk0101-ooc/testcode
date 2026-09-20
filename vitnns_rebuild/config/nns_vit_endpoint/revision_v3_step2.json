@@ -1,0 +1,81 @@
+{
+  "stage": "ENDPOINT-REVISION-V3-STEP2",
+  "status": "frozen_before_new_experiment_execution",
+  "objective": "Execute the three mandatory credibility experiments in 修改意见v3 Step 2",
+  "models": ["vit_b16", "deit_s16"],
+  "multi_amplitude": {
+    "source_cohort": "ENDPOINT-M1 400 images per model",
+    "target": "frozen_ground_truth_logit",
+    "blocks": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+    "components": "all_attention_heads",
+    "references": ["normalized_zero", "blur_rgb"],
+    "alphas": [0.05, 0.1, 0.25, 0.5, 1.0],
+    "replacement": "z_alpha=(1-alpha)*z_clean+alpha*z_reference",
+    "taylor_prediction": "alpha*dot(grad_z_F,z_clean-z_reference)",
+    "relative_error": "abs(actual-predicted)/abs(actual); exact-zero actual effects are NA",
+    "ranking": "within-image within-block Spearman of absolute Taylor prediction versus absolute finite effect, then mean over 12 blocks",
+    "statistics_unit": "image",
+    "expected_image_model_tasks": 800
+  },
+  "qkv_population": {
+    "source_cohort": "ENDPOINT-M1 400 images per model",
+    "target": "frozen_ground_truth_logit",
+    "blocks": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+    "paths": ["Q", "K", "V"],
+    "metrics": ["absolute_mass", "normalized_spatial_entropy", "normalized_pairwise_distance", "cancellation", "relative_scale"],
+    "normalized_pairwise_distance": "expected Euclidean distance between two independent draws from the 14x14 absolute-mass distribution, divided by 13*sqrt(2)",
+    "relative_scale": "path absolute mass divided by the sum of Q,K,V absolute masses in the same image and block",
+    "statistics_unit": "image",
+    "expected_image_model_tasks": 800
+  },
+  "independent_sampling": {
+    "source_cohort": "ENDPOINT-M3 shared 100 images per model",
+    "groups": ["sample_1", "sample_2", "sample_3", "sample_4", "sample_5"],
+    "group_namespace_prefix": "ENDPOINT_REVISION_V3_STEP2_SAMPLE_20260921",
+    "tokens_per_block": 16,
+    "token_rule": "CLS plus one independently hash-selected patch from each of the fixed 3x5 spatial strata",
+    "channels_per_block": 32,
+    "channel_rule": "independent namespace hash sample per group, model and block",
+    "blocks": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+    "metrics": ["normalized_spatial_entropy", "own_token_locality_above_uniform", "input_dependency_distance"],
+    "contrasts": ["late_minus_early", "block11_minus_block0"],
+    "expected_directions": {
+      "normalized_spatial_entropy": "positive",
+      "own_token_locality_above_uniform": "negative",
+      "input_dependency_distance": "positive"
+    },
+    "statistics_unit": "image",
+    "expected_image_model_group_evaluations": 1000,
+    "physical_tasks_with_five_groups_each": 200
+  },
+  "statistics": {
+    "within_image_aggregation": "median over sampled units; ranking is mean of within-block correlations",
+    "cohort_summary": "median",
+    "confidence_interval": 0.95,
+    "bootstrap_replicates": 10000,
+    "bootstrap_namespace": "ENDPOINT_REVISION_V3_STEP2_BOOTSTRAP_20260921",
+    "zero_mass_policy": "NA without epsilon",
+    "direction_rule": "compare signs of image-level median contrasts across the two models"
+  },
+  "runtime": {
+    "queue": "dynamic_atomic_sqlite",
+    "max_attempts": 2,
+    "gpus_max": 4,
+    "min_free_mib": 80000,
+    "max_utilization_percent": 10,
+    "CUBLAS_WORKSPACE_CONFIG": ":4096:8",
+    "tf32": false,
+    "autocast": false,
+    "deterministic_algorithms": true,
+    "disk_floor_gib": 100
+  },
+  "source_bindings": {
+    "修改意见/修改意见v3.md": "5e39a561b98454c9311e551bdafa28d17a11d1cc6ce6a56566d05b94a8eb097c",
+    "reports/nns_vit_endpoint_m1_r1_20260918/task_manifest.json": "0aca0376c728b8b69701b4289ea36fdfdd61bc6ec39e5d37457a39b9e6328801",
+    "reports/nns_vit_endpoint_m1_r1_20260918/terminal_receipt.json": "1c36dc2804240cd1150c3356664af7f98fcbaefa7aaa6fb28a1919e5ff306e72",
+    "reports/nns_vit_endpoint_m3_r1_20260919/task_manifest.json": "0221eb7c6c48c68fef3c3e351044fe83d6d28e427e73dc015efdf3c674355ef9",
+    "reports/nns_vit_endpoint_m3_r1_20260919/terminal_receipt.json": "205a21b0f06aef2cd0ca4c6786b7ac7e320a1c363e01a4f506081ccad1314b73",
+    "reports/nns_vit_endpoint_e3_closure_r2_20260918/terminal_receipt.json": "675cf4c6bec7dd681497f57bbd31b638dece7a5dfe0abc2b99e921bdbfbfe8ac"
+  },
+  "output_root": "reports/nns_vit_endpoint_revision_v3_step2_20260921"
+}
