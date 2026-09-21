@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 
 import pymupdf
@@ -16,11 +17,13 @@ PDF = PACKAGE / "NNS_ViT_学位论文_匿名内容审阅版.pdf"
 OUT = PACKAGE / "qc" / "page_audit.json"
 SHEET = PACKAGE / "qc" / "page_contact_sheet.png"
 EXPECTED_CHAPTERS = [f"第 {i} 章" for i in range(1, 9)]
-FORBIDDEN = ["AUTHOR REQUIRED", "AFFILIATION REQUIRED", "CORRESPONDING AUTHOR", "/data01", "yeziqi", "ByteDance", "字节"]
+FORBIDDEN = ["AUTHOR REQUIRED", "AFFILIATION REQUIRED", "CORRESPONDING AUTHOR", "/data01", "yeziqi", "ByteDance", "字节跳动"]
 
 
 def main() -> int:
     doc = pymupdf.open(PDF)
+    source=(PACKAGE/'zh/manuscript.md').read_text()
+    render=json.loads((PACKAGE/'qc/render_receipt.json').read_text())
     page_details = []
     thumbnails = []
     errors = []
@@ -63,10 +66,16 @@ def main() -> int:
     missing_chapters = [x for x in EXPECTED_CHAPTERS if x not in text]
     if missing_chapters:
         errors.append(f"missing chapter titles: {missing_chapters}")
-    if "[1] Dosovitskiy" not in text or "[37] Holm" not in text:
+    if "[1] Dosovitskiy" not in text or "[41] Izadi" not in text:
         errors.append("bibliography endpoints missing")
-    if image_count != 25:
-        errors.append(f"expected 25 embedded images (7 figures + 18 equations), got {image_count}")
+    if render['pdf_sha256'] != hashlib.sha256(PDF.read_bytes()).hexdigest() or render['source_sha256'] != hashlib.sha256(source.encode()).hexdigest():
+        errors.append('stale PDF or source binding')
+    if render['fallback_count'] != 0 or render['display_equations'] != len(re.findall(r'\$\$(.*?)\$\$',source,re.S)):
+        errors.append('formula render coverage')
+    if image_count < render['scientific_figures'] + render['display_equations']:
+        errors.append('missing embedded figures/equations')
+    if any(token in text for token in ['\\frac', '\\begin', '\\operatorname', '$$']):
+        errors.append('raw LaTeX leaked into PDF')
     metadata_text = json.dumps(doc.metadata, ensure_ascii=False)
     identity_hits = [x for x in FORBIDDEN if x.lower() in (text + metadata_text).lower()]
     if identity_hits:
@@ -91,7 +100,9 @@ def main() -> int:
         "pdf_bytes": PDF.stat().st_size,
         "page_count": doc.page_count,
         "embedded_image_count": image_count,
-        "expected_images": {"scientific_figures": 7, "numbered_equation_images": 18},
+        "expected_images": {"scientific_figures": render["scientific_figures"], "numbered_equation_images": render["display_equations"]},
+        "source_sha256": render["source_sha256"],
+        "formula_fallback_count": render["fallback_count"],
         "metadata": doc.metadata,
         "identity_hits": identity_hits,
         "missing_chapters": missing_chapters,

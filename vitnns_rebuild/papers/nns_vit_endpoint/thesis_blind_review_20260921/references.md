@@ -39,7 +39,7 @@ gradient-based attribution methods for deep neural networks[C]//International Co
 on Learning Representations. 2018.
 
 [12] Smilkov D, Thorat N, Kim B, et al. SmoothGrad: Removing noise by adding
-noise[EB/OL]. arXiv:1706.03825, 2017.
+noise[EB/OL]. arXiv:1706.03825v1, 2017. Preprint version v1; accessed 2026-09-21. https://arxiv.org/abs/1706.03825v1.
 
 [13] Selvaraju R R, Cogswell M, Das A, et al. Grad-CAM: Visual explanations from deep
 networks via gradient-based localization[C]//Proceedings of the IEEE International
@@ -105,13 +105,13 @@ universally better Vision Transformer attributions[C]//Proceedings of the IEEE/C
 Conference on Computer Vision and Pattern Recognition. 2025: 67-78.
 
 [31] Zhang F, Nanda N. Towards best practices of activation patching in language models:
-Metrics and methods[EB/OL]. arXiv:2309.16042, 2023.
+Metrics and methods[EB/OL]. arXiv:2309.16042v1, 2023. Preprint version v1; accessed 2026-09-21. https://arxiv.org/abs/2309.16042v1.
 
 [32] Syed A, Rager C, Conmy A. Attribution patching outperforms automated circuit
-discovery[EB/OL]. arXiv:2310.10348, 2023.
+discovery[EB/OL]. arXiv:2310.10348v1, 2023. Preprint version v1; accessed 2026-09-21. https://arxiv.org/abs/2310.10348v1.
 
 [33] Kramár J, Lieberum T, Shah R, Nanda N. AtP*: An efficient and scalable method for
-localizing LLM behaviour to components[EB/OL]. arXiv:2403.00745, 2024.
+localizing LLM behaviour to components[EB/OL]. arXiv:2403.00745v1, 2024. Preprint version v1; accessed 2026-09-21. https://arxiv.org/abs/2403.00745v1.
 
 [34] Meng K, Bau D, Andonian A, Belinkov Y. Locating and editing factual associations in
 GPT[C]//Advances in Neural Information Processing Systems. 2022, 35: 17359-17372.
@@ -124,3 +124,11 @@ Hall/CRC, 1993.
 
 [37] Holm S. A simple sequentially rejective multiple test procedure[J]. Scandinavian
 Journal of Statistics, 1979, 6(2): 65-70.
+
+[38] Bousselham W, Boggust A, Chaybouti S, Strobelt H, Kuehne H. LeGrad: An Explainability Method for Vision Transformers via Feature Formation Sensitivity[EB/OL]. arXiv:2404.03214v1, 2024. Preprint version v1; accessed 2026-09-21. https://arxiv.org/abs/2404.03214v1.
+
+[39] Joseph S, Suresh P, Hufe L, et al. Prisma: An Open Source Toolkit for Mechanistic Interpretability in Vision and Video[EB/OL]. arXiv:2504.19475v1, 2025. Preprint version v1; accessed 2026-09-21. https://arxiv.org/abs/2504.19475v1.
+
+[40] Żukowska N, Stammer W, Schiele B, Fischer J. Seeing Through Circuits: Faithful Mechanistic Interpretability for Vision Transformers[EB/OL]. arXiv:2604.14477v1, 2026. Preprint version v1; accessed 2026-09-21. https://arxiv.org/abs/2604.14477v1.
+
+[41] Izadi A, Banayeeanzade M, Mirrokni A, et al. Causal Attribution via Activation Patching[EB/OL]. arXiv:2603.13652v1, 2026. Preprint version v1; accessed 2026-09-21. https://arxiv.org/abs/2603.13652v1.

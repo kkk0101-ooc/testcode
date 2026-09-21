@@ -1,0 +1,122 @@
+[
+  {
+    "arxiv_version": "2504.19475v1",
+    "title": "Prisma: An Open Source Toolkit for Mechanistic Interpretability in Vision and Video",
+    "authors": [
+      "Joseph, Sonia",
+      "Suresh, Praneet",
+      "Hufe, Lorenz",
+      "Stevinson, Edward",
+      "Graham, Robert",
+      "Vadi, Yash",
+      "Bzdok, Danilo",
+      "Lapuschkin, Sebastian",
+      "Sharkey, Lee",
+      "Richards, Blake Aaron"
+    ],
+    "abstract": "Abstract: Robust tooling and publicly available pre-trained models have helped drive recent advances in mechanistic interpretability for language models. However, similar progress in vision mechanistic interpretability has been hindered by the lack of accessible frameworks and pre-trained weights. We present Prisma (Access the codebase here:  this https URL ), an open-source framework designed to accelerate vision mechanistic interpretability research, providing a unified toolkit for accessing 75+ vision and video transformers; support for sparse autoencoder (SAE), transcoder, and crosscoder training; a suite of 80+ pre-trained SAE weights; activation caching, circuit analysis tools, and visualization tools; and educational resources. Our analysis reveals surprising findings, including that effective vision SAEs can exhibit substantially lower sparsity patterns than language SAEs, and that in some instances, SAE reconstructions can decrease model loss. Prisma enables new research directions for understanding vision model internals while lowering barriers to entry in this emerging field.",
+    "history": "Submission history  From: Sonia Joseph [ view email ]            [v1] \n        Mon, 28 Apr 2025 04:31:24 UTC (294 KB) \n              [v2]  \n        Mon, 2 Jun 2025 05:24:10 UTC (195 KB) \n              [v3]  \n        Tue, 3 Jun 2025 06:43:53 UTC (195 KB)",
+    "url": "https://arxiv.org/abs/2504.19475v1",
+    "accessed": "2026-09-21"
+  },
+  {
+    "arxiv_version": "2604.14477v1",
+    "title": "Seeing Through Circuits: Faithful Mechanistic Interpretability for Vision Transformers",
+    "authors": [
+      "Żukowska, Nina",
+      "Stammer, Wolfgang",
+      "Schiele, Bernt",
+      "Fischer, Jonas"
+    ],
+    "abstract": "Abstract: Transparency of neural networks&#39; internal reasoning is at the heart of interpretability research, adding to trust, safety, and understanding of these models. The field of mechanistic interpretability has recently focused on studying task-specific computational graphs, defined by connections (edges) between model components. Such edge-based circuits have been defined in the context of large language models, yet vision-based approaches so far only consider neuron-based circuits. These tell which information is encoded, but not how it is routed through the complex wiring of a neural network. In this work, we investigate whether useful mechanistic circuits can be identified through computational graphs in vision transformers. We propose an effective method for Automatic Visual Circuit Discovery (Vi-CD) that recovers class-specific circuits for classification, identifies circuits underlying typographic attacks in CLIP, and discovers circuits that lend themselves for steering to correct harmful model behavior. Overall, we find that insightful and actionable edge-based circuits can be recovered from vision transformers, adding transparency to the internal computations of these models.",
+    "history": "Submission history  From: Nina Zukowska [ view email ]            [v1] \n        Wed, 15 Apr 2026 23:25:46 UTC (20,986 KB)",
+    "url": "https://arxiv.org/abs/2604.14477v1",
+    "accessed": "2026-09-21"
+  },
+  {
+    "arxiv_version": "2603.13652v1",
+    "title": "Causal Attribution via Activation Patching",
+    "authors": [
+      "Izadi, Amirmohammad",
+      "Banayeeanzade, Mohammadali",
+      "Mirrokni, Alireza",
+      "Hasani, Hosein",
+      "Bagherian, Mobin",
+      "Mehri, Faridoun",
+      "Baghshah, Mahdieh Soleymani"
+    ],
+    "abstract": "Abstract: Attribution methods for Vision Transformers (ViTs) aim to identify image regions that influence model predictions, but producing faithful and well-localized attributions remains challenging. Existing gradient-based and perturbation-based techniques often fail to isolate the causal contribution of internal representations associated with individual image patches. The key challenge is that class-relevant evidence is formed through interactions between patch tokens across layers, and input-level perturbations can be poor proxies for patch importance, since they may fail to reconstruct the internal evidence actually used by the model. We propose Causal Attribution via Activation Patching (CAAP), which estimates the contribution of individual image patches to the ViT&#39;s prediction by directly intervening on internal activations rather than using learned masks or synthetic perturbation patterns. For each patch, CAAP inserts the corresponding source-image activations into a neutral target context over an intermediate range of layers and uses the resulting target-class score as the attribution signal. The resulting attribution map reflects the causal effect of patch-associated internal representations on the model&#39;s prediction. The causal intervention serves as a principled measure of patch influence by capturing class-relevant evidence after initial representation formation, while avoiding late-layer global mixing that can reduce spatial specificity. Across multiple ViT backbones and standard metrics, CAAP significantly outperforms existing methods and produces more faithful and localized attributions.",
+    "history": "Submission history  From: Hosein Hasani [ view email ]            [v1] \n        Fri, 13 Mar 2026 23:25:49 UTC (12,662 KB) \n              [v2]  \n        Sun, 17 May 2026 17:44:53 UTC (17,324 KB)",
+    "url": "https://arxiv.org/abs/2603.13652v1",
+    "accessed": "2026-09-21"
+  },
+  {
+    "arxiv_version": "2404.03214v1",
+    "title": "LeGrad: An Explainability Method for Vision Transformers via Feature Formation Sensitivity",
+    "authors": [
+      "Bousselham, Walid",
+      "Boggust, Angie",
+      "Chaybouti, Sofian",
+      "Strobelt, Hendrik",
+      "Kuehne, Hilde"
+    ],
+    "abstract": "Abstract: Vision Transformers (ViTs), with their ability to model long-range dependencies through self-attention mechanisms, have become a standard architecture in computer vision. However, the interpretability of these models remains a challenge. To address this, we propose LeGrad, an explainability method specifically designed for ViTs. LeGrad computes the gradient with respect to the attention maps of ViT layers, considering the gradient itself as the explainability signal. We aggregate the signal over all layers, combining the activations of the last as well as intermediate tokens to produce the merged explainability map. This makes LeGrad a conceptually simple and an easy-to-implement tool for enhancing the transparency of ViTs. We evaluate LeGrad in challenging segmentation, perturbation, and open-vocabulary settings, showcasing its versatility compared to other SotA explainability methods demonstrating its superior spatial fidelity and robustness to perturbations. A demo and the code is available at  this https URL .",
+    "history": "Submission history  From: Walid Bousselham Mr [ view email ]            [v1] \n        Thu, 4 Apr 2024 05:39:09 UTC (7,068 KB) \n              [v2]  \n        Wed, 8 Jan 2025 16:10:20 UTC (21,389 KB)",
+    "url": "https://arxiv.org/abs/2404.03214v1",
+    "accessed": "2026-09-21"
+  },
+  {
+    "arxiv_version": "1706.03825v1",
+    "title": "SmoothGrad: removing noise by adding noise",
+    "authors": [
+      "Smilkov, Daniel",
+      "Thorat, Nikhil",
+      "Kim, Been",
+      "Viégas, Fernanda",
+      "Wattenberg, Martin"
+    ],
+    "abstract": "Abstract: Explaining the output of a deep network remains a challenge. In the case of an image classifier, one type of explanation is to identify pixels that strongly influence the final decision. A starting point for this strategy is the gradient of the class score function with respect to the input image. This gradient can be interpreted as a sensitivity map, and there are several techniques that elaborate on this basic idea. This paper makes two contributions: it introduces SmoothGrad, a simple method that can help visually sharpen gradient-based sensitivity maps, and it discusses lessons in the visualization of these maps. We publish the code for our experiments and a website with our results.",
+    "history": "Submission history  From: Daniel Smilkov [ view email ]            [v1] \n        Mon, 12 Jun 2017 19:53:30 UTC (7,629 KB)",
+    "url": "https://arxiv.org/abs/1706.03825v1",
+    "accessed": "2026-09-21"
+  },
+  {
+    "arxiv_version": "2309.16042v1",
+    "title": "Towards Best Practices of Activation Patching in Language Models: Metrics and Methods",
+    "authors": [
+      "Zhang, Fred",
+      "Nanda, Neel"
+    ],
+    "abstract": "Abstract: Mechanistic interpretability seeks to understand the internal mechanisms of machine learning models, where localization -- identifying the important model components -- is a key step. Activation patching, also known as causal tracing or interchange intervention, is a standard technique for this task (Vig et al., 2020), but the literature contains many variants with little consensus on the choice of hyperparameters or methodology. In this work, we systematically examine the impact of methodological details in activation patching, including evaluation metrics and corruption methods. In several settings of localization and circuit discovery in language models, we find that varying these hyperparameters could lead to disparate interpretability results. Backed by empirical observations, we give conceptual arguments for why certain metrics or methods may be preferred. Finally, we provide recommendations for the best practices of activation patching going forwards.",
+    "history": "Submission history  From: Fred Zhang [ view email ]            [v1] \n        Wed, 27 Sep 2023 21:53:56 UTC (727 KB) \n              [v2]  \n        Wed, 17 Jan 2024 04:07:06 UTC (697 KB)",
+    "url": "https://arxiv.org/abs/2309.16042v1",
+    "accessed": "2026-09-21"
+  },
+  {
+    "arxiv_version": "2310.10348v1",
+    "title": "Attribution Patching Outperforms Automated Circuit Discovery",
+    "authors": [
+      "Syed, Aaquib",
+      "Rager, Can",
+      "Conmy, Arthur"
+    ],
+    "abstract": "Abstract: Automated interpretability research has recently attracted attention as a potential research direction that could scale explanations of neural network behavior to large models. Existing automated circuit discovery work applies activation patching to identify subnetworks responsible for solving specific tasks (circuits). In this work, we show that a simple method based on attribution patching outperforms all existing methods while requiring just two forward passes and a backward pass. We apply a linear approximation to activation patching to estimate the importance of each edge in the computational subgraph. Using this approximation, we prune the least important edges of the network. We survey the performance and limitations of this method, finding that averaged over all tasks our method has greater AUC from circuit recovery than other methods.",
+    "history": "Submission history  From: Arthur Conmy [ view email ]            [v1] \n        Mon, 16 Oct 2023 12:34:43 UTC (3,365 KB) \n              [v2]  \n        Mon, 20 Nov 2023 11:31:16 UTC (3,367 KB)",
+    "url": "https://arxiv.org/abs/2310.10348v1",
+    "accessed": "2026-09-21"
+  },
+  {
+    "arxiv_version": "2403.00745v1",
+    "title": "AtP*: An efficient and scalable method for localizing LLM behaviour to components",
+    "authors": [
+      "Kramár, János",
+      "Lieberum, Tom",
+      "Shah, Rohin",
+      "Nanda, Neel"
+    ],
+    "abstract": "Abstract: Activation Patching is a method of directly computing causal attributions of behavior to model components. However, applying it exhaustively requires a sweep with cost scaling linearly in the number of model components, which can be prohibitively expensive for SoTA Large Language Models (LLMs). We investigate Attribution Patching (AtP), a fast gradient-based approximation to Activation Patching and find two classes of failure modes of AtP which lead to significant false negatives. We propose a variant of AtP called AtP*, with two changes to address these failure modes while retaining scalability. We present the first systematic study of AtP and alternative methods for faster activation patching and show that AtP significantly outperforms all other investigated methods, with AtP* providing further significant improvement. Finally, we provide a method to bound the probability of remaining false negatives of AtP* estimates.",
+    "history": "Submission history  From: Janos Kramar [ view email ]            [v1] \n        Fri, 1 Mar 2024 18:43:51 UTC (16,911 KB)",
+    "url": "https://arxiv.org/abs/2403.00745v1",
+    "accessed": "2026-09-21"
+  }
+]
