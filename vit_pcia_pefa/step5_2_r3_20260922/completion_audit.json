@@ -1,0 +1,126 @@
+{
+  "audited_terminal_digest": "700d01bb086e1980eb26c34f2fc378abbe7a7cd9ee4cb4f478e1f00f0f8d5d11",
+  "boundaries": {
+    "evaluation_access": false,
+    "holdout_started": false,
+    "prior_step5_1_decision": "NOT_SUPPORTED_INCREMENTAL_OVER_SIMPLE_BASELINES",
+    "prior_step5_decision": "NOT_SUPPORTED_EMPIRICAL_VALUE",
+    "step6_started": false
+  },
+  "canonical_digest": "2d0ace68e3c0a3e776444a27cba07b97eeea90c3dc4f9397a8e80b69a0df2d3d",
+  "claims": {
+    "DIRECTIONAL_ALIGNMENT": "SUPPORTED",
+    "DOSE_ORDER": "SUPPORTED",
+    "NATURAL_GAP_PREDICTION": "SUPPORTED",
+    "NUMERICAL_VALIDITY_AND_COST": "SUPPORTED",
+    "PREDICTIVE_INCREMENT_OVER_SIMPLE_BASELINES": "NOT_SUPPORTED"
+  },
+  "commands": {
+    "current_verification": [
+      "validate_step5_2.py <root>",
+      "pytest Step-4/Step-5.1/Step-5.2 regression suite"
+    ]
+  },
+  "completed_unix_ns": 1790013623450044978,
+  "prompt_to_artifact_checklist": [
+    {
+      "evidence": [
+        "protocol.json",
+        "terminal_receipt.json"
+      ],
+      "requirement": "5.2.1 independent prospective question and immutable Step-5/5.1 conclusions",
+      "status": "PASS"
+    },
+    {
+      "evidence": [
+        "prediction_freeze_receipt.json",
+        "prediction arrays"
+      ],
+      "requirement": "5.2.2 clean-model scores and signed R/A/Q maps sealed before interventions",
+      "status": "PASS"
+    },
+    {
+      "evidence": [
+        "src/step5_2_prediction.py",
+        "8 intervention results"
+      ],
+      "requirement": "5.2.3 block-5 like-for-like heads and complete natural head local linearization",
+      "status": "PASS"
+    },
+    {
+      "evidence": [
+        "analysis.json"
+      ],
+      "requirement": "5.2.4 Y, Spearman, top-1, top-k capture, dose and signed direction metrics",
+      "status": "PASS"
+    },
+    {
+      "evidence": [
+        "p0_rebind_receipt.json",
+        "task_manifest.json",
+        "claim_decisions.json"
+      ],
+      "requirement": "5.2.5 P0 then calibration 16..23 P1 under the frozen model scope and stop rule",
+      "status": "PASS"
+    },
+    {
+      "evidence": [
+        "terminal_receipt.json"
+      ],
+      "requirement": "5.2.6 claim boundaries and no automatic holdout, evaluation or Step 6",
+      "status": "PASS"
+    },
+    {
+      "evidence": [
+        "claim_decisions.json"
+      ],
+      "requirement": "all five claim-level decisions",
+      "status": "PASS"
+    },
+    {
+      "evidence": [
+        "reproduction_commands.json"
+      ],
+      "requirement": "reproduction and current validation commands",
+      "status": "PASS"
+    },
+    {
+      "evidence": [
+        "source_binding.json",
+        "prediction/intervention queues"
+      ],
+      "requirement": "source, queue, result and array integrity",
+      "status": "PASS"
+    },
+    {
+      "evidence": [
+        "resource_ledger.json",
+        "raw results"
+      ],
+      "requirement": "numeric and resource accounting recomputed",
+      "status": "PASS"
+    },
+    {
+      "evidence": [
+        ".................                                                        [100%]\n17 passed in 5.80s",
+        "validate_step5_2.py"
+      ],
+      "requirement": "regression tests and terminal validation",
+      "status": "PASS"
+    }
+  ],
+  "protocol_digest": "8a08609503f30a399bded8a520b8e47a5a758d472aad50ad16bb46b9508badee",
+  "recomputed": {
+    "intervention_tasks": 8,
+    "p1_worker_seconds": 11674.558247896843,
+    "prediction_arrays_valid": true,
+    "prediction_tasks": 8,
+    "r2_h20_hours": 3.242932846638012,
+    "source_bindings": 51,
+    "step5_2_h20_hours_including_predecessor": 4.149036685802644
+  },
+  "run_id": "step5_2_r3_20260922",
+  "schema_version": 1,
+  "stage": "ENDPOINT_PCIA_PEFA_STEP5_2",
+  "status": "PASS_STEP5_2_PROMPT_TO_ARTIFACT_AUDIT"
+}

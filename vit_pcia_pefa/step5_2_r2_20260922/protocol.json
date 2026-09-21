@@ -1,0 +1,165 @@
+{
+  "amendment": "step5_2_r2_amendment.md",
+  "authorization": "USER_AUTHORIZED_DEIT_S16_ONLY_SCOPE_20260922",
+  "canonical_digest": "c743c29fe1cf12f566e9f7596d0f919b7164af7e9654ff67aed977e9dd99218f",
+  "claims": [
+    "NATURAL_GAP_PREDICTION",
+    "PREDICTIVE_INCREMENT_OVER_SIMPLE_BASELINES",
+    "DOSE_ORDER",
+    "DIRECTIONAL_ALIGNMENT",
+    "NUMERICAL_VALIDITY_AND_COST"
+  ],
+  "cross_architecture_replication_claim": false,
+  "cut_id": "HEADS_WITH_BYPASS_FULL",
+  "evaluation_access": false,
+  "failure_codes": [
+    "FAIL_SOURCE_BINDING",
+    "INVALID_NUMERICAL_OR_INTERVENTION",
+    "FAIL_QUADRATURE_CONVERGENCE",
+    "FAIL_COMPLETE_CUT_CLOSURE",
+    "FAIL_NONFINITE",
+    "PAUSED_RESOURCE_CAP"
+  ],
+  "head_mapping": "complete normalized residual input to one pre-projection attention-head output including Q,K,V,softmax,AV",
+  "holdout_authorized": false,
+  "integration": {
+    "adaptive_per_sample_nodes": false,
+    "coarse_nodes_sha256": "2c59b901948b3d4ee29feb946c34c9b7d9bf2fd0feb251f01adb63b7563beb09",
+    "coarse_weights_sha256": "1746948d8fa5a2d915838c469b45755d50ddd4ce758662a33b0c195544614706",
+    "fine_nodes_sha256": "c16d608c616eeee3d1cf1fea50215b9c2dee95ef8c4b0321df68b71fd5087f06",
+    "fine_weights_sha256": "02a77e73475533c0a82a7ec94235d3bedda8b061e8103dc6c8783aa6a481d69e",
+    "fixture_coarse_nodes": 32,
+    "fixture_fine_nodes": 64,
+    "real_coarse_nodes": 1024,
+    "real_fine_nodes": 2048,
+    "rule": "Gauss-Legendre"
+  },
+  "lambdas": [
+    1.0,
+    0.5,
+    0.0
+  ],
+  "model_scope": "DEIT_S16_ONLY",
+  "models": [
+    "deit_s16"
+  ],
+  "numeric": {
+    "dose_absolute_tolerance": 1e-08,
+    "fixture": {
+      "atol": 1e-09,
+      "convergence_atol": 1e-07,
+      "convergence_rtol": 0.0001,
+      "dtype": "float64",
+      "near_zero": 1e-12,
+      "rtol": 1e-07
+    },
+    "outcome_epsilon": 1e-12,
+    "real": {
+      "atol": 1e-05,
+      "autocast": false,
+      "convergence_atol": 0.0001,
+      "convergence_rtol": 0.01,
+      "convergence_rule": "global_relative_l2_or_absolute_near_zero",
+      "elementwise_convergence_is_diagnostic_only": true,
+      "forward_dtype": "float32",
+      "near_zero": 1e-06,
+      "reduction_dtype": "float64",
+      "rtol": 0.0001,
+      "tf32": false
+    }
+  },
+  "p0": {
+    "development_split": "discovery",
+    "development_split_order": 0,
+    "fixture_block": 1,
+    "gate": "analytic and graph fixtures; DeiT-S/16 only; convergence, clean parity, closure, nonzero Y and dose order",
+    "real_test_head": 0,
+    "scientific_claim": false
+  },
+  "p1": {
+    "bootstrap_confidence": 0.95,
+    "bootstrap_resamples": 20000,
+    "bootstrap_seed_namespace": "ENDPOINT_PCIA_PEFA|step5_2|bootstrap",
+    "candidate_scope": "all block-5 attention heads in DeiT-S/16",
+    "direction_supported_if": "DeiT-S/16 cosine lower CI > 0 and sign-agreement lower CI > 0.5",
+    "dose_order_rate_min": 0.9,
+    "image_count": 8,
+    "image_task_count": 8,
+    "increment_over_strongest_baseline": {
+      "lower_ci_strictly_above": 0.0,
+      "paired_mean_spearman_min": 0.1
+    },
+    "methods": [
+      "pefa_R",
+      "pcia_A",
+      "endpoint_Q",
+      "gradient_norm",
+      "activation_norm",
+      "random"
+    ],
+    "metrics": [
+      "spearman",
+      "top1_hit",
+      "top_k_effect_capture"
+    ],
+    "positive_prediction": {
+      "lower_ci_strictly_above": 0.0,
+      "mean_spearman_min": 0.2
+    },
+    "prediction_frozen_before_intervention": true,
+    "primary_outcome": "Y_e_lambda0",
+    "simple_baseline_tie_order": [
+      "pcia_A",
+      "endpoint_Q",
+      "gradient_norm",
+      "activation_norm",
+      "random"
+    ],
+    "split": "calibration",
+    "split_order_range": [
+      16,
+      24
+    ],
+    "statistical_unit": "image",
+    "top_k_rule": "ceil(0.25*num_heads)",
+    "undefined_direction_for_summary": 0.0,
+    "undefined_spearman_for_gate": 0.0
+  },
+  "path": "straight",
+  "predecessor_run": {
+    "failure_code": "FAIL_QUADRATURE_CONVERGENCE",
+    "run_id": "step5_2_r1_20260922",
+    "scientific_decision": "NONE_NUMERICALLY_INVALID",
+    "status": "INVALID_NUMERICAL_OR_INTERVENTION"
+  },
+  "prior_results_immutable": {
+    "step5": "NOT_SUPPORTED_EMPIRICAL_VALUE",
+    "step5_1": "NOT_SUPPORTED_INCREMENTAL_OVER_SIMPLE_BASELINES"
+  },
+  "real_block_index": 5,
+  "reference": "normalized_zero",
+  "resources": {
+    "cpu_rss_cap_bytes": 34359738368,
+    "cumulative_step5_h20_hours_cap": 64,
+    "gpu_memory_cap_bytes": 51539607552,
+    "max_attempts": 2,
+    "maximum_gpu_utilization_percent": 10,
+    "maximum_gpus": 4,
+    "minimum_free_gpu_mib": 32768,
+    "predecessor_h20_hours": 14.182787541702375,
+    "prior_step5_2_breakdown": {
+      "r1_diagnostic_h20_hours": 0.13542925118326415,
+      "r1_p0_h20_hours": 0.05570836260248648
+    },
+    "prior_step5_2_h20_hours": 0.19113761378575064,
+    "retained_bytes_cap": 137438953472,
+    "step5_2_h20_hours_cap": 32,
+    "task_timeout_seconds": 14400
+  },
+  "run_id": "step5_2_r2_20260922",
+  "schema_version": 1,
+  "stage": "ENDPOINT_PCIA_PEFA_STEP5_2",
+  "status": "FROZEN_PROSPECTIVE",
+  "step6_authorized": false,
+  "target": "ground_truth_raw_logit"
+}
