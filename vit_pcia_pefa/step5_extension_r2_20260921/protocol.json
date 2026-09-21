@@ -1,0 +1,140 @@
+{
+  "authorization": "execute Step-5 mechanism extension only",
+  "block": 5,
+  "canonical_digest": "02bf9d362d982d65b1fe41daf35a26d743086ce836033b83ac2c4e25e5c958b7",
+  "claim_states": [
+    "SUPPORTED",
+    "NOT_SUPPORTED",
+    "INVALID"
+  ],
+  "confirmatory_claim_allowed": false,
+  "evaluation_access": false,
+  "forward_dtype": "float32",
+  "loop": {
+    "direction_generation": "two deterministic Gram-Schmidt orthonormal Gaussian directions",
+    "edge_nodes": 128,
+    "epsilon_l2": [
+      0.25,
+      0.5,
+      1.0
+    ],
+    "metrics": [
+      "absolute_rank_spearman",
+      "signed_cosine",
+      "sign_agreement",
+      "relative_slope_error",
+      "circulation_scaling_exponent",
+      "rank_advantage_over_random"
+    ],
+    "object": "oriented closed port-field line integral; never same-endpoint Endpoint difference",
+    "primary_epsilon_l2": 0.5,
+    "thresholds": {
+      "absolute_rank_spearman": 0.5,
+      "rank_advantage_over_random": 0.1,
+      "relative_slope_error_max": 0.5,
+      "scaling_exponent_max": 2.5,
+      "scaling_exponent_min": 1.5,
+      "sign_agreement": 0.75,
+      "signed_cosine": 0.8
+    },
+    "validity": {
+      "complete_cut_vs_full_abs_error": 0.0001,
+      "full_gradient_circulation_abs": 0.0001,
+      "identical_endpoint_max_abs": 1e-06
+    }
+  },
+  "model_registry_path": "vitnns_rebuild/manifests/nns_vit_endpoint/ep0_r1_20260918/model_registry.json",
+  "models": [
+    "deit_s16",
+    "vit_b16"
+  ],
+  "new_hypothesis_after_original_pilot": true,
+  "nonlinearity": {
+    "boundary_epsilons_rgb": [
+      0.00392156862745098,
+      0.00784313725490196,
+      0.01568627450980392,
+      0.03137254901960784
+    ],
+    "condition": "one-step ground-truth-versus-clean-best-other margin-gradient sign",
+    "thresholds": {
+      "boundary_signed_cosine": 0.5,
+      "boundary_to_clean_circulation_density_ratio": 1.25,
+      "boundary_to_clean_curl_norm_ratio": 1.25,
+      "low_margin_exceeds_high_margin": true,
+      "margin_reduced_or_crossed_fraction": 0.75
+    }
+  },
+  "original_pilot_run_id": "step5_pilot_r8_20260921",
+  "original_pilot_status": "NOT_SUPPORTED_EMPIRICAL_VALUE",
+  "original_terminal_immutable": true,
+  "outcome_access_before_freeze": true,
+  "outcome_access_during_execution": false,
+  "phase": "E1_E2",
+  "predecessor_h20_hours_including_diagnosis": 11.192851527668978,
+  "predecessor_run_id": "step5_extension_r1_20260921",
+  "predecessor_status": "INVALID",
+  "prior_outcome_known": true,
+  "recovery_scope": "increase edge quadrature from 8 to 128 nodes after conservative-field validity failure",
+  "recovery_trigger_outcome_independent": true,
+  "reduction_dtype": "float64",
+  "resources": {
+    "cpu_rss_cap_bytes": 34359738368,
+    "cumulative_step5_h20_hours_cap": 64,
+    "dynamic_global_queue": true,
+    "extension_h20_hours_cap": 24,
+    "gpu_memory_cap_bytes": 42949672960,
+    "heartbeat_seconds": 25,
+    "lease_seconds": 3600,
+    "max_attempts": 2,
+    "maximum_gpu_utilization_percent": 10,
+    "maximum_gpus": 4,
+    "minimum_free_disk_bytes": 53687091200,
+    "minimum_free_gpu_mib": 45000,
+    "retained_bytes_cap": 137438953472,
+    "static_modulo_sharding": false,
+    "task_timeout_seconds": 3600,
+    "wall_hours_cap": 72
+  },
+  "run_id": "step5_extension_r2_20260921",
+  "schema_version": 1,
+  "seed_namespace": "ENDPOINT_PCIA_PEFA|step5_extension_r1",
+  "source_resolution": {
+    "advance_to_14x14": {
+      "every_image_improves": true,
+      "minimum_7x7_over_4x4": 0.05,
+      "minimum_baseline_advantage": 0.05
+    },
+    "comparators": [
+      "endpoint",
+      "input_norm",
+      "conductance_pcia",
+      "random"
+    ],
+    "grids": [
+      4,
+      7
+    ],
+    "images_per_model": 2,
+    "method": "head-port source-resolved PEFA-R absolute mass",
+    "nodes": 16,
+    "primary_effect": "endpoint_change_l1",
+    "secondary_effect": "target_logit_abs_change"
+  },
+  "split": "calibration",
+  "split_orders": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "stage": "ENDPOINT_PCIA_PEFA_STEP5_EXTENSION",
+  "status": "FROZEN_PROSPECTIVE",
+  "step6_authorized": false,
+  "target": "ground_truth_raw_logit",
+  "task_count": 16
+}

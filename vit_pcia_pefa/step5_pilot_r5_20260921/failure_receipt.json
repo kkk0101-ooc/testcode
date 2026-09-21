@@ -1,0 +1,14 @@
+{
+  "completed_deit_s16_tasks": 8,
+  "completed_vit_b16_tasks": 0,
+  "failure_code": "FAIL_FINALIZER_SCHEMA",
+  "immutable_evidence": true,
+  "predecessor_h20_hours_upper_bound": 4.760936721545555,
+  "r5_h20_hours_upper_bound": 0.3244111108027778,
+  "reason": "an isolated pre-outcome finalizer smoke test detected that D/Q/R category summaries are stored under registered_categories while Omega summaries are stored under categories; the frozen r5 finalizer used categories for both and would fail after task completion",
+  "recovery_rule": "create a fresh r6 root with unchanged 40 GiB resource cap and scientific protocol; correct only the finalizer category-field dispatch, verify the entire finalizer on an isolated synthetic completion copy before freezing, and inherit the eight immutable DeiT-S results by canonical digest",
+  "r5_worker_seconds_upper_bound": 1167.87999889,
+  "run_id": "step5_pilot_r5_20260921",
+  "status": "TERMINAL_INFRASTRUCTURE_FAIL",
+  "step6_started": false
+}

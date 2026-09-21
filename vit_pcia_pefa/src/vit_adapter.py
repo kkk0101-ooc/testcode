@@ -82,7 +82,8 @@ def _register_capture(stack: ExitStack, module: nn.Module, location: str,
 
 
 def port_fields(model: nn.Module, root: Tensor, *, block_index: int,
-                class_id: int, second_order: bool = True) -> tuple[Tensor, tuple[str, ...]]:
+                class_id: int, second_order: bool = True,
+                requested_names: Sequence[str] | None = None) -> tuple[Tensor, tuple[str, ...]]:
     """Return every registered port field plus the independent full gradient.
 
     Each port field is ``J(z_e, root)^T dF/dz_e``.  ``create_graph=True`` is
@@ -104,12 +105,23 @@ def port_fields(model: nn.Module, root: Tensor, *, block_index: int,
         raise VitAdapterError("STRUCTURAL_BACKEND_REQUIRES_UNFUSED_ATTENTION")
     if getattr(model, "grad_checkpointing", False):
         raise VitAdapterError("GRAD_CHECKPOINTING_NOT_ALLOWED")
+    layout = port_layout(block.attn.num_heads)
+    allowed_names = (*layout.component_ids, "__full__")
+    requested = allowed_names if requested_names is None else tuple(requested_names)
+    if not requested or len(set(requested)) != len(requested) or any(name not in allowed_names for name in requested):
+        raise VitAdapterError("REQUESTED_PORT_NAMES")
+    requested_set = set(requested)
 
     observed: dict[str, Tensor] = {}
     with ExitStack() as stack:
         for module, location, key in (
             (block, "input", "block_input"),
             (block.drop_path1, "output", "attention_branch"),
+            # Capture the value after every scoped forward-pre-hook.  This is
+            # the actual consumer use-port seen by attn.proj; the tensor named
+            # ``projection_input`` inside the explicit attention forward is
+            # only the upstream producer when a Step-5.1 wrapper is present.
+            (block.attn.proj, "input", "projection_consumer_input"),
             (block.norm2, "input", "r1"),
             (block.norm2, "output", "mlp_input"),
             (block.mlp.fc1, "output", "fc1_output"),
@@ -126,7 +138,7 @@ def port_fields(model: nn.Module, root: Tensor, *, block_index: int,
             score = logits[:, class_id].sum()
 
             cotangent_keys = (
-                "r1", "r2", "projection_input", "query_after_norm",
+                "r1", "r2", "projection_consumer_input", "query_after_norm",
                 "key_after_norm", "value_projection", "mlp_input",
                 "fc1_output", "fc2_input",
             )
@@ -139,6 +151,8 @@ def port_fields(model: nn.Module, root: Tensor, *, block_index: int,
             names: list[str] = []
 
             def append(name: str, value_key: str, seed: Tensor) -> None:
+                if name not in requested_set:
+                    return
                 field = torch.autograd.grad(
                     observed[value_key], root, grad_outputs=seed,
                     create_graph=second_order, retain_graph=True, allow_unused=False,
@@ -149,8 +163,9 @@ def port_fields(model: nn.Module, root: Tensor, *, block_index: int,
             def append_head_slices(prefix: str, value_key: str, seed_source: Tensor,
                                    *, head_axis: int, head_count: int, batch_size: int = 3) -> None:
                 """Evaluate disjoint head VJPs in small auditable batches."""
-                for begin in range(0, head_count, batch_size):
-                    selected = tuple(range(begin, min(begin + batch_size, head_count)))
+                wanted = tuple(head for head in range(head_count) if f"{prefix}_{head}" in requested_set)
+                for begin in range(0, len(wanted), batch_size):
+                    selected = wanted[begin:begin + batch_size]
                     seeds = torch.zeros(
                         (len(selected), *seed_source.shape), dtype=seed_source.dtype,
                         device=seed_source.device,
@@ -173,10 +188,11 @@ def port_fields(model: nn.Module, root: Tensor, *, block_index: int,
 
             append("identity", "block_input", cotangent["r1"])
             append("attention", "attention_branch", cotangent["r1"])
-            append("projection", "projection_input", cotangent["projection_input"])
+            append("projection", "projection_consumer_input",
+                   cotangent["projection_consumer_input"])
 
-            projection = observed["projection_input"]
-            projection_cotangent = cotangent["projection_input"]
+            projection = observed["projection_consumer_input"]
+            projection_cotangent = cotangent["projection_consumer_input"]
             heads = block.attn.num_heads
             if projection.shape[-1] % heads:
                 raise VitAdapterError("HEAD_SLICE_NOT_EXHAUSTIVE")
@@ -209,14 +225,15 @@ def port_fields(model: nn.Module, root: Tensor, *, block_index: int,
             append("mlp_fc1", "mlp_input", cotangent["mlp_input"])
             append("mlp_gelu", "fc1_output", cotangent["fc1_output"])
             append("mlp_fc2", "fc2_input", cotangent["fc2_input"])
-            full = torch.autograd.grad(
-                score, root, create_graph=second_order, retain_graph=True, allow_unused=False,
-            )[0]
-            names.append("__full__")
-            values.append(full)
+            if "__full__" in requested_set:
+                full = torch.autograd.grad(
+                    score, root, create_graph=second_order, retain_graph=True, allow_unused=False,
+                )[0]
+                names.append("__full__")
+                values.append(full)
 
-    layout = port_layout(block.attn.num_heads)
-    if tuple(names[:-1]) != layout.component_ids:
+    expected_names = tuple(name for name in allowed_names if name in requested_set)
+    if tuple(names) != expected_names:
         raise VitAdapterError("PORT_ORDER_DRIFT")
     result = torch.stack(values)
     if not bool(torch.isfinite(result).all()):

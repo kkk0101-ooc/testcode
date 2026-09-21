@@ -1,0 +1,182 @@
+{
+  "a0": {
+    "development_split": "discovery",
+    "development_split_order": 0,
+    "fixture_block": 1,
+    "gate": "all parity and cut closure pass; controls zero; nonzero alpha=0.25 true-head signal; nondecreasing true-head PEFA-R delta",
+    "scientific_claim": false
+  },
+  "a1": {
+    "controlled_gate_each_model_each_strength": {
+      "control_signal_max": "numeric_atol",
+      "decoy_same_thresholds": true,
+      "pefa_mean_percentile_min": 0.9,
+      "pefa_top1_min": 0.75,
+      "pefa_top_k_min": 0.875
+    },
+    "image_count": 8,
+    "incremental_gate_each_model_each_strength": {
+      "mean_percentile_advantage_over_every_baseline": 0.05,
+      "roles": [
+        "primary",
+        "decoy"
+      ],
+      "top1_rate_advantage_over_every_baseline": 0.125
+    },
+    "methods": [
+      "pefa_R_delta",
+      "pcia_delta",
+      "pcia_level",
+      "endpoint_delta",
+      "endpoint_level",
+      "gradient_delta",
+      "gradient_level",
+      "activation_delta",
+      "activation_level",
+      "random"
+    ],
+    "metrics": [
+      "top1",
+      "top_quarter",
+      "rank",
+      "reciprocal_rank",
+      "percentile_rank",
+      "paired_difference",
+      "delta_R_e",
+      "delta_G_direction"
+    ],
+    "split": "calibration",
+    "split_order_range": [
+      8,
+      16
+    ],
+    "statistical_unit": "image",
+    "task_count": 16
+  },
+  "authorization": "USER_REQUEST_EXECUTE_STEP_5_1_20260921",
+  "b1": {
+    "gated_on_a1": true,
+    "incremental_rank_correlation_margin": 0.05,
+    "lambdas": [
+      1.0,
+      0.5,
+      0.0
+    ],
+    "low_curvature_controls": [
+      "linear_projection",
+      "residual_add"
+    ],
+    "nonlinear_modules": [
+      "attention_softmax",
+      "qk_matmul",
+      "av_matmul",
+      "gelu",
+      "layernorm"
+    ]
+  },
+  "c1": {
+    "expected_failure": "FAIL_PORT_ID_SEMANTIC_MISMATCH",
+    "expected_location": {
+      "block": 5,
+      "category": "head",
+      "cut": "HEADS_WITH_BYPASS_FULL"
+    },
+    "gated_on_valid_a0": true,
+    "held_out_mutation": "consumer_head_slice_rotation",
+    "independent_decision": true
+  },
+  "canonical_digest": "22875123e24bf4f3bd23db592da50adb8581086d870631ea21b7400204721f26",
+  "claims": [
+    "CONTROLLED_CURVATURE_LOCALIZATION",
+    "NATURAL_NONLINEARITY_LOCALIZATION",
+    "ATTRIBUTION_ERROR_LOCALIZATION",
+    "INCREMENTAL_OVER_SIMPLE_BASELINES",
+    "NUMERICAL_VALIDITY_AND_COST"
+  ],
+  "cut_id": "HEADS_WITH_BYPASS_FULL",
+  "evaluation_access": false,
+  "failure_codes": [
+    "FAIL_SOURCE_BINDING",
+    "INVALID_INTERVENTION_CONSTRUCTION",
+    "FAIL_QUADRATURE_CLOSURE",
+    "FAIL_NONFINITE",
+    "FAIL_PORT_ID_SEMANTIC_MISMATCH",
+    "PAUSED_RESOURCE_CAP"
+  ],
+  "integration": {
+    "fixture_nodes": 64,
+    "nodes_sha256": "db2dfc33a84559cf4c092a0b506b14a6fd296c83fefd34e1ff109a87af338730",
+    "real_nodes": 512,
+    "rule": "Gauss-Legendre",
+    "weights_sha256": "7b7f5d0900ddc327cdcd8168de3add653f8bc82b2f9022676c2081448e351b9f"
+  },
+  "models": [
+    "deit_s16",
+    "vit_b16"
+  ],
+  "numeric": {
+    "fixture": {
+      "atol": 1e-09,
+      "dtype": "float64",
+      "near_zero": 1e-12,
+      "rtol": 1e-07
+    },
+    "real": {
+      "atol": 1e-05,
+      "autocast": false,
+      "forward_dtype": "float32",
+      "near_zero": 1e-06,
+      "reduction_dtype": "float64",
+      "rtol": 0.0001,
+      "tf32": false
+    }
+  },
+  "path": "straight",
+  "prior_results_immutable": {
+    "extension": "PARTIAL_NOT_SUPPORTED_WITH_E3_INVALID",
+    "step5": "NOT_SUPPORTED_EMPIRICAL_VALUE"
+  },
+  "real_block_index": 5,
+  "reference": "normalized_zero",
+  "resources": {
+    "cpu_rss_cap_bytes": 34359738368,
+    "cumulative_step5_h20_hours_cap": 64,
+    "gpu_memory_cap_bytes": 42949672960,
+    "max_attempts": 2,
+    "maximum_gpu_utilization_percent": 10,
+    "maximum_gpus": 4,
+    "minimum_free_gpu_mib": 32768,
+    "predecessor_h20_hours": 12.854291645377577,
+    "retained_bytes_cap": 137438953472,
+    "step5_1_h20_hours_cap": 32,
+    "task_timeout_seconds": 7200
+  },
+  "run_id": "step5_1_r3_20260921",
+  "schema_version": 1,
+  "stage": "ENDPOINT_PCIA_PEFA_STEP5_1",
+  "status": "FROZEN_PROSPECTIVE",
+  "step6_authorized": false,
+  "target": "ground_truth_raw_logit",
+  "wrapper": {
+    "a0_strengths": [
+      0.25,
+      0.5,
+      1.0
+    ],
+    "a1_strengths": [
+      0.5,
+      1.0
+    ],
+    "clean_jacobian_identity": true,
+    "clean_value_parity": true,
+    "controls": [
+      "decoy_port_same_strength_0.5",
+      "decoy_port_same_strength_1.0",
+      "linear_tangent_1.0",
+      "zero_strength"
+    ],
+    "formula": "z + alpha*s*tanh(((z-z_star)/s)^2)",
+    "scale": "selected_clean_head_rms_clamped_min_1e-6_detached",
+    "use_port": "attn.proj.input_slot_0_head_slice"
+  }
+}

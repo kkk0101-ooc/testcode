@@ -1,0 +1,169 @@
+{
+  "audited_root": "step5_1_r7_20260921",
+  "audited_terminal_digest": "ffa1ff01279503381add28870fab9feddc5e15c1063cee4512a4351f4a8daf44",
+  "boundaries": {
+    "b1_started": false,
+    "confirmation_experiment_authorized": false,
+    "evaluation_access": false,
+    "mainline_position": "ENDPOINT_EXTENSION_ONLY",
+    "natural_localization_evaluated": false,
+    "prior_step5_decision": "NOT_SUPPORTED_EMPIRICAL_VALUE",
+    "step6_authorized": false,
+    "step6_started": false
+  },
+  "canonical_digest": "0b6a46149dde4b18b82015643c09adbe38116450800079497aa2db75f73a6927",
+  "claims": {
+    "ATTRIBUTION_ERROR_LOCALIZATION": "SUPPORTED",
+    "CONTROLLED_CURVATURE_LOCALIZATION": "SUPPORTED",
+    "INCREMENTAL_OVER_SIMPLE_BASELINES": "NOT_SUPPORTED",
+    "NATURAL_NONLINEARITY_LOCALIZATION": "NOT_RUN_A1_GATE_CLOSED",
+    "NUMERICAL_VALIDITY_AND_COST": "SUPPORTED"
+  },
+  "completed_unix_ns": 1790006237483134194,
+  "prompt_to_artifact_checklist": [
+    {
+      "evidence": [
+        "protocol.json",
+        "source_binding.json",
+        "执行规划.md"
+      ],
+      "requirement": "5.1.1 independent prospective scope and immutable prior Step-5 result",
+      "status": "PASS"
+    },
+    {
+      "evidence": [
+        "src/step5_1_localization.py",
+        "src/vit_adapter.py"
+      ],
+      "requirement": "5.1.2 source-summed R_e only at a real consumer use-port",
+      "status": "PASS"
+    },
+    {
+      "evidence": [
+        "a0_decision.json",
+        "a1_analysis.json",
+        "16 raw A1 results"
+      ],
+      "requirement": "5.1.3 A0/A1 controlled nonlinearity localization and simple baselines",
+      "status": "PASS_CONTROLLED_NOT_INCREMENTAL"
+    },
+    {
+      "evidence": [
+        "claim_decisions.json",
+        "terminal_receipt.json"
+      ],
+      "requirement": "5.1.4 natural nonlinearity B1 only after all A1 gates",
+      "status": "PASS_NOT_RUN_GATE_CLOSED"
+    },
+    {
+      "evidence": [
+        "c1_result.json with original r3 provenance"
+      ],
+      "requirement": "5.1.5 independent held-out attribution-error localization",
+      "status": "PASS_SUPPORTED"
+    },
+    {
+      "evidence": [
+        "claim_decisions.json",
+        "terminal_receipt.json"
+      ],
+      "requirement": "5.1.6 ordered gates, five claim decisions, and stop rules",
+      "status": "PASS"
+    },
+    {
+      "evidence": [
+        "执行规划.md",
+        "claim_decisions.json"
+      ],
+      "requirement": "5.1.7 claim boundary and unchanged ENDPOINT_EXTENSION_ONLY mainline",
+      "status": "PASS"
+    },
+    {
+      "evidence": [
+        "task_manifest.json",
+        "a1_queue.sqlite3",
+        "evidence_index.json"
+      ],
+      "requirement": "task identity, first-attempt coverage, deterministic seed and byte-level result integrity",
+      "status": "PASS"
+    },
+    {
+      "evidence": [
+        "resource_ledger.json",
+        "prior Step-5 resource ledger"
+      ],
+      "requirement": "numeric, GPU, RSS, timeout, retained-byte and cumulative H20-hour caps",
+      "status": "PASS"
+    },
+    {
+      "evidence": [
+        "protocol.json",
+        "source_binding.json",
+        "terminal_receipt.json"
+      ],
+      "requirement": "no evaluation access, B1 start, confirmation experiment or Step 6",
+      "status": "PASS"
+    },
+    {
+      "evidence": [
+        "r1/r4 failure receipts",
+        "r2-r7 recovery amendments"
+      ],
+      "requirement": "failed roots preserved and recovered prospectively",
+      "status": "PASS"
+    },
+    {
+      "evidence": [
+        "23 pytest tests passed",
+        "PASS_STEP5_1_TERMINAL_COVERAGE before living-plan update"
+      ],
+      "requirement": "regression and terminal validation",
+      "status": "PASS"
+    }
+  ],
+  "protocol_digest": "aa44cc1d0cce64dcad6b17e5e439df098125af829524b5f4b0e67dc0bc634807",
+  "provenance_notes": {
+    "a0_internal_run_id": "step5_1_r2_20260921",
+    "a1_launch_internal_run_id": "step5_1_r5_20260921",
+    "c1_internal_run_id": "step5_1_r3_20260921",
+    "frozen_plan": "recovered from producer commit; current plan is a post-terminal living-record update",
+    "meaning": "byte-identical inherited artifacts retain their producing run_id"
+  },
+  "recomputed": {
+    "a0_tasks": 2,
+    "a1_tasks": 16,
+    "a1_worker_seconds": 3063.817106971983,
+    "accepted_first_attempt_tasks": 16,
+    "controlled_groups": 8,
+    "cumulative_step5_h20_hours_upper_bound": 14.182787541702375,
+    "max_a1_task_seconds": 219.35953334486112,
+    "pcia_delta_mean_percentile_all_groups": 1.0,
+    "pcia_delta_top1_rate_all_groups": 1.0,
+    "peak_a1_cpu_rss_bytes": 1905188864,
+    "peak_a1_reserved_gpu_bytes": 2277507072,
+    "pefa_advantage_over_pcia_delta": {
+      "mean_percentile": 0.0,
+      "top1_rate": 0.0
+    },
+    "pefa_mean_percentile_all_groups": 1.0,
+    "pefa_top1_rate_all_groups": 1.0,
+    "pefa_top_k_rate_all_groups": 1.0,
+    "prior_step5_h20_hours_upper_bound": 12.985504630010032,
+    "retained_step5_1_bytes": 6649486,
+    "step5_1_h20_hours": 1.1972829116923431
+  },
+  "run_id": "step5_1_completion_20260921",
+  "schema_version": 1,
+  "stage": "ENDPOINT_PCIA_PEFA_STEP5_1",
+  "status": "PASS_STEP5_1_PROMPT_TO_ARTIFACT_AUDIT",
+  "verification": {
+    "aggregate_gates_recomputed_from_raw_results": true,
+    "canonical_json_digests_recomputed": true,
+    "file_sha256_recomputed": true,
+    "pytest_passed": 23,
+    "queue_sqlite_recomputed": true,
+    "rank_metrics_recomputed_from_raw_results": true,
+    "resource_totals_recomputed": true,
+    "source_bindings_verified": 43
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "completed_deit_s16_tasks": 8,
+  "completed_vit_b16_tasks": 0,
+  "failure_code": "PAUSED_RESOURCE_CAP",
+  "immutable_evidence": true,
+  "interrupted_attempt_2_tasks": [
+    "vit_b16__00",
+    "vit_b16__01",
+    "vit_b16__02",
+    "vit_b16__03"
+  ],
+  "predecessor_h20_hours_upper_bound": 3.3772402016866663,
+  "r3_h20_hours_upper_bound": 1.1631394344397221,
+  "reason": "all first four ViT-B attempt-1 tasks completed their frozen computations but exceeded the frozen 24 GiB per-worker peak-reserved GPU-memory cap; attempt 2 was stopped before completion after prospective authorization to recover under a new 40 GiB cap",
+  "recovery_rule": "create a fresh r4 root, carry the eight immutable DeiT-S results by canonical digest, change only the per-worker GPU-memory cap from 24 GiB to 40 GiB, and recompute the eight missing ViT-B tasks without changing samples, algorithms, nodes, tolerances, statistics, or claims",
+  "r3_worker_seconds_upper_bound": 4187.301963983,
+  "run_id": "step5_pilot_r3_20260921",
+  "status": "TERMINAL_PAUSED_RESOURCE_CAP",
+  "step6_started": false,
+  "stop_evidence_unix_ns": 1789986793655811317
+}

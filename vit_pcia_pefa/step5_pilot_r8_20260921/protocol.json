@@ -1,0 +1,190 @@
+{
+  "authorization": "execute execution-plan step 5 frozen pilot",
+  "blocks": [
+    0,
+    5,
+    11
+  ],
+  "canonical_digest": "db17d253b82d9c10c6902c5989903c3e8da3f4142b80473a851e2f2d2cbe1b97",
+  "claim_rules": {
+    "cost": "SUPPORTED iff all caps pass",
+    "fallback": "NOT_SUPPORTED_EMPIRICAL_VALUE if valid closure but either empirical claim is not supported",
+    "incremental_value": "SUPPORTED iff utility_gate holds; else NOT_SUPPORTED when valid",
+    "intervention_prediction": "SUPPORTED iff intervention_prediction_gate holds; else NOT_SUPPORTED when valid",
+    "mathematical_closure": "SUPPORTED iff every task closure passes",
+    "negative_controls": "SUPPORTED iff every task detects every frozen control",
+    "promotion": "all five claims SUPPORTED",
+    "states": [
+      "SUPPORTED",
+      "NOT_SUPPORTED",
+      "INVALID"
+    ]
+  },
+  "closure": {
+    "atol": 1e-05,
+    "near_zero": 1e-06,
+    "rtol": 0.0001
+  },
+  "contribution": {
+    "endpoint_minus_ig_identity": true,
+    "input_group_count": 4,
+    "methods": [
+      "endpoint",
+      "ig",
+      "conductance_pcia",
+      "integrated_hessians",
+      "pefa_T",
+      "pefa_R",
+      "random",
+      "input_norm"
+    ],
+    "reference_conditions_reported_separately": true
+  },
+  "evaluation_access": false,
+  "failure_codes": [
+    "FAIL_SOURCE_BINDING",
+    "INVALID_OUTCOME_BLINDNESS",
+    "FAIL_QUADRATURE_CLOSURE",
+    "FAIL_NEGATIVE_CONTROL",
+    "FAIL_NONFINITE",
+    "PAUSED_RESOURCE_CAP",
+    "NOT_SUPPORTED_EMPIRICAL_VALUE"
+  ],
+  "forward_dtype": "float32",
+  "ih_nodes": 16,
+  "inherited_tasks": "14 canonical-valid r7 PASS_TASK results; rerun only vit_b16__02 and vit_b16__05; independently audit all 16 tasks in float64",
+  "integration": "Gauss-Legendre",
+  "integration_nodes": 512,
+  "interventions": {
+    "correlation_is_not_causal_effect": true,
+    "effects": [
+      "endpoint_change_l1",
+      "target_logit_abs_change",
+      "routing_total_variation"
+    ],
+    "input": "each frozen quadrant replaced by normalized-zero baseline",
+    "port": "each head slice zeroed immediately before attention projection",
+    "ranking_statistics": "within-image Spearman over all four groups or all heads"
+  },
+  "model_registry_path": "vitnns_rebuild/manifests/nns_vit_endpoint/ep0_r1_20260918/model_registry.json",
+  "models": [
+    "deit_s16",
+    "vit_b16"
+  ],
+  "negative_controls": [
+    "omit_residual_identity",
+    "duplicate_residual_identity",
+    "omit_attention_head",
+    "swap_residual_input_slots",
+    "duplicate_serial_mlp_cuts",
+    "detach_second_order_omega"
+  ],
+  "omega_scientific_score_dtype": "float32",
+  "omega_zero_sum_audit_dtype": "float64",
+  "omega_zero_sum_declared_equivalence": "identity + sum(heads) == identity + attention",
+  "omega_zero_sum_evaluation_components": [
+    "identity",
+    "attention"
+  ],
+  "omega_zero_sum_gate_source": "independent_float64_complete_cut",
+  "outcome_access_during_execution": false,
+  "paths": [
+    "straight_primary",
+    "quadrants_0_and_3_then_1_and_2_sensitivity"
+  ],
+  "pilot_images": 8,
+  "pilot_outcome_access_before_freeze": true,
+  "predecessor_run_id": "step5_pilot_r7_20260921",
+  "predecessor_status": "TERMINAL_MATHEMATICAL_CLOSURE_FAIL",
+  "primary_cut": "HEADS_WITH_BYPASS_FULL",
+  "primary_intervention_block": 5,
+  "prior_outcome_known": true,
+  "recovery_scope": "preserve float32 scientific Omega scores and move only the zero-field mathematical audit to a direct float64 complete-cut evaluation",
+  "recovery_trigger_outcome_independent": true,
+  "reduction_dtype": "float64",
+  "references": [
+    "normalized_zero_primary",
+    "raw_rgb_black_sensitivity"
+  ],
+  "replacement_allowed": false,
+  "representation": {
+    "families": [
+      "residual",
+      "attention_branch",
+      "query",
+      "key",
+      "value",
+      "head",
+      "projection",
+      "mlp"
+    ],
+    "quantities": [
+      "D",
+      "Q_as_T_endpoint",
+      "R",
+      "Omega_directional"
+    ],
+    "summaries": [
+      "signed_mass",
+      "absolute_mass",
+      "cancellation_rate",
+      "routing_concentration_hhi",
+      "worst_closure_sample"
+    ]
+  },
+  "resources": {
+    "cpu_rss_cap_bytes": 34359738368,
+    "dynamic_global_queue": true,
+    "gpu_memory_cap_bytes": 42949672960,
+    "h20_hours_cap": 64,
+    "heartbeat_seconds": 25,
+    "lease_seconds": 1800,
+    "max_attempts": 2,
+    "maximum_gpu_utilization_percent": 10,
+    "maximum_gpus": 4,
+    "minimum_free_disk_bytes": 53687091200,
+    "minimum_free_gpu_mib": 32768,
+    "retained_bytes_cap": 137438953472,
+    "static_modulo_sharding": false,
+    "task_timeout_seconds": 1800,
+    "wall_hours_cap": 72
+  },
+  "rng_derivation": {
+    "classifier_randomization_seed": "task_seed",
+    "noise_seed": "task_seed",
+    "omega_direction_seed": "task_seed + block_index",
+    "random_baseline_namespace": "decimal_task_seed + '|input' or '|head'",
+    "task_seed": "uint64_big_endian(SHA256(seed_namespace + '|' + task_id)[:8])"
+  },
+  "run_id": "step5_pilot_r8_20260921",
+  "schema_version": 1,
+  "seed_namespace": "ENDPOINT_PCIA_PEFA|step5",
+  "split": "calibration",
+  "split_order_prefix": [
+    0,
+    8
+  ],
+  "stability": {
+    "model_randomization": "classifier_only_matched_scale",
+    "noise_sigma_rgb": 0.01,
+    "path": "registered_piecewise_linear",
+    "reference": "raw_rgb_black",
+    "small_perturbation": "iid_rgb_Gaussian_then_clip",
+    "target": "clean_top1"
+  },
+  "stage": "ENDPOINT_PCIA_PEFA_STEP5",
+  "statistics": {
+    "aggregate_before_interval": true,
+    "interval": "exact_enumeration_percentile_bootstrap_10000_seeded_if_n_ge_2",
+    "intervention_prediction_gate": "same criterion on a true input or head intervention outcome",
+    "minimum_valid_fraction": 1.0,
+    "no_metric_switching_or_sample_removal": true,
+    "unit": "image",
+    "utility_gate": "PEFA_R mean within-image Spearman must exceed max(endpoint,IG,conductance-PCIA,Integrated-Hessians,random,input-norm) by 0.05 in both models for at least one preregistered causal outcome; descriptive only at n=8"
+  },
+  "status": "FROZEN_PROSPECTIVE",
+  "step4_predecessor_status": "PASS_VIT_PORT_FIDELITY_AND_COST_GATE",
+  "step6_authorized": false,
+  "target": "ground_truth_raw_logit",
+  "task_count": 16
+}

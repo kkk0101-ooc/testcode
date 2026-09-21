@@ -1,0 +1,38 @@
+{
+  "cumulative_h20_hours_after_diagnosis": 10.087391376632073,
+  "diagnosis_h20_hours": 0.08342486828177546,
+  "diagnosis_seconds": 300.3295258143917,
+  "failed_task_ids": [
+    "vit_b16__02",
+    "vit_b16__05"
+  ],
+  "float32_block0": {
+    "vit_b16__02": {
+      "direct_complete_cut_max_abs": 2.6702880859375e-05,
+      "full_gradient_max_abs": 3.0517578125e-05,
+      "streamed_component_sum_max_abs": 9.682774543762207e-05
+    },
+    "vit_b16__05": {
+      "direct_complete_cut_max_abs": 5.7220458984375e-06,
+      "full_gradient_max_abs": 3.814697265625e-06,
+      "streamed_component_sum_max_abs": 1.5826430171728134e-05
+    }
+  },
+  "float64_all_failed_task_blocks_pass": true,
+  "float64_blocks": [
+    0,
+    5,
+    11
+  ],
+  "float64_complete_cut_max_abs_worst": 2.5579538487363607e-13,
+  "float64_full_gradient_max_abs_worst": 7.815970093361102e-14,
+  "float64_low_memory_coarse_cut_block11_peak_reserved_bytes": 3045064704,
+  "float64_streamed_all_ports_block11_peak_reserved_bytes": 56212062208,
+  "interpretation": "The r7 failures are float32 second-order antisymmetric cancellation errors. They disappear at float64 without changing the 1e-5/1e-4 tolerance. Direct evaluation of the algebraically equivalent identity-plus-attention complete cut provides the same audit with less than 40 GiB peak memory.",
+  "original_tolerance_changed": false,
+  "r7_failure_receipt_sha256": "e41f07ec309ce8a7875a7beaffd781f883795aa657e6191b697934ad92a93a03",
+  "recovery_trigger_outcome_independent": true,
+  "run_id": "step5_r7_omega_diagnosis_20260921",
+  "status": "PASS_ROOT_CAUSE_FLOAT32_ANTISYMMETRIC_CANCELLATION",
+  "step6_started": false
+}

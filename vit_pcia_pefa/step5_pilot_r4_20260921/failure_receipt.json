@@ -1,0 +1,21 @@
+{
+  "completed_deit_s16_tasks": 8,
+  "completed_vit_b16_tasks": 0,
+  "failure_code": "FAIL_VALIDATOR_BINDING",
+  "immutable_evidence": true,
+  "interrupted_vit_b16_tasks": [
+    "vit_b16__00",
+    "vit_b16__01",
+    "vit_b16__02",
+    "vit_b16__03"
+  ],
+  "predecessor_h20_hours_upper_bound": 4.540379636126389,
+  "r4_h20_hours_upper_bound": 0.2205570854191667,
+  "reason": "the frozen independent validator hard-coded the obsolete preaccess test string '7 passed' while the r4 freeze receipt correctly recorded '8 passed'; this guaranteed a false validation failure and was detected before any new ViT-B result was committed",
+  "recovery_rule": "create a fresh r5 root with the same 40 GiB cap and unchanged scientific protocol; make the validator check successful preaccess test completion without hard-coding a stale test count; inherit the eight immutable DeiT-S results by canonical digest",
+  "r4_worker_seconds_upper_bound": 794.005507509,
+  "run_id": "step5_pilot_r4_20260921",
+  "status": "TERMINAL_INFRASTRUCTURE_FAIL",
+  "step6_started": false,
+  "stop_evidence_unix_ns": 1789987353021851858
+}
