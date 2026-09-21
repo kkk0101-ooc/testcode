@@ -1,0 +1,145 @@
+{
+  "namespace": "NNS_VIT_REVISION_V5_20260921_R1",
+  "scope": "prospective supplementary validation",
+  "plan": "papers/nns_vit_endpoint/thesis_blind_review_20260921/notes/revision_v5_plan.md",
+  "plan_sha256": "c7b6d12a1dbf5fbf7628229ba25d86991d9fa26e237ced905c5ac174d4c60218",
+  "cohorts_sha256": "cdd403534a0eb889e5587d4c30756f21dd5841289bed8a9114721c184322f7a3",
+  "targets_sha256": "a6b903b4c1415dfbd9b0b1ebcdde3945b2e2153c5f75661a401f27d5a65f6d6b",
+  "models": [
+    {
+      "model_id": "vit_b16",
+      "timm_name": "vit_base_patch16_224.augreg2_in21k_ft_in1k",
+      "checkpoint": "assets/models/vit_base_patch16_224_weights.semantic_candidate.pth",
+      "format": "pth",
+      "embedding_dim": 768,
+      "heads": 12,
+      "mean": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "std": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "role": "original",
+      "source": "vit_base_patch16_224.augreg2_in21k_ft_in1k",
+      "checkpoint_sha256": "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d",
+      "checkpoint_bytes": 346329934
+    },
+    {
+      "model_id": "deit_s16",
+      "timm_name": "deit_small_patch16_224.fb_in1k",
+      "checkpoint": "assets/models/stage_x_x2/deit_small_patch16_224.fb_in1k.pth",
+      "format": "pth",
+      "embedding_dim": 384,
+      "heads": 6,
+      "mean": [
+        0.485,
+        0.456,
+        0.406
+      ],
+      "std": [
+        0.229,
+        0.224,
+        0.225
+      ],
+      "role": "original",
+      "source": "deit_small_patch16_224.fb_in1k",
+      "checkpoint_sha256": "cd65a15597004d0ce19d7a9daef969903972db5b398e3a5febcd3c4df1d8f59f",
+      "checkpoint_bytes": 88251143
+    },
+    {
+      "model_id": "vit_b16_in1k",
+      "timm_name": "vit_base_patch16_224.augreg_in1k",
+      "checkpoint": "assets/models/revision_v5/vit_base_patch16_224.augreg_in1k.npz",
+      "format": "npz",
+      "embedding_dim": 768,
+      "heads": 12,
+      "mean": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "std": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "role": "training_recipe_replication_not_seed",
+      "source": "timm 0.9.16 pretrained cfg public Google AugReg archive",
+      "checkpoint_sha256": "69c9a2822a47838f57e522350b10ccc0d89d67fdcee07603e4ae3259b3350336",
+      "checkpoint_bytes": 346335542
+    },
+    {
+      "model_id": "vit_s16_augreg",
+      "timm_name": "vit_small_patch16_224.augreg_in21k_ft_in1k",
+      "checkpoint": "assets/models/stage_x_x2/vit_small_patch16_224.augreg_in21k_ft_in1k.npz",
+      "format": "npz",
+      "embedding_dim": 384,
+      "heads": 6,
+      "mean": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "std": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "role": "training_recipe_replication_not_seed",
+      "source": "timm 0.9.16 pretrained cfg public Google AugReg archive",
+      "checkpoint_sha256": "545815b4e770d2fa6ca4b3ccba7c16b035e474354e52d17ca197ea4efecbf4d3",
+      "checkpoint_bytes": 88267574
+    }
+  ],
+  "representative_blocks": [
+    0,
+    3,
+    7,
+    11
+  ],
+  "all_blocks": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+  ],
+  "alpha": [
+    0.1,
+    1.0
+  ],
+  "topk": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "random_repeats": 20,
+  "bootstrap_repeats": 10000,
+  "preprocessing": {
+    "resize": 248,
+    "crop": 224,
+    "interpolation": "bicubic",
+    "antialias": true,
+    "blur_kernel": 31,
+    "blur_sigma": 10.0,
+    "decode": "Pillow RGB no EXIF transpose"
+  },
+  "closure": {
+    "atol": 1e-05,
+    "rtol": 0.0001
+  },
+  "classification_policy": "all correctness retained",
+  "decision_policy": "negative utility does not imply implementation failure"
+}

@@ -39,7 +39,13 @@ FORMULA_CACHE = PACKAGE / "qc" / "formula_cache"
 RENDERED_MATH = []
 
 def math_path(formula, fontsize=13):
-    formula = re.sub(r'\\(mathcal|mathbb|mathrm|mathbf)\s+([A-Za-z0-9])', r'\\\1{\2}', formula)
+    formula = re.sub(r'\\(mathcal|mathbb|mathrm|mathbf|mathsf)\s+([A-Za-z0-9])', r'\\\1{\2}', formula)
+    # Matplotlib mathtext accepts the semantically equivalent command names below.
+    formula = re.sub(r'\\le(?![A-Za-z])', r'\\leq', formula)
+    formula = re.sub(r'\\ge(?![A-Za-z])', r'\\geq', formula)
+    formula = re.sub(r'\\log(?=\d)', r'\\log ', formula)
+    formula = re.sub(r'\\sqrt\s*(\d+)', r'\\sqrt{\1}', formula)
+    formula = formula.replace(r'\bigl', '').replace(r'\bigr', '')
     digest = hashlib.sha256((str(fontsize)+formula).encode()).hexdigest()[:20]
     FORMULA_CACHE.mkdir(parents=True, exist_ok=True)
     path = FORMULA_CACHE/(digest+'.png')

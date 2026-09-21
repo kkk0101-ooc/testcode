@@ -1,0 +1,43 @@
+{
+  "status": "FROZEN_BEFORE_E2_E3_E5_OUTCOMES",
+  "e5": {
+    "H1": "median over 32 post neurons entropy at b11 minus b00",
+    "H2": "routing share (norm1(Q+K)/(norm1(Q+K)+norm1(V))) b11 minus b00",
+    "H3": "(MLP carry/(carry+mlp) b11 minus b00) minus (attention identity/(identity+attention) b11 minus b00)",
+    "H4": "normalized_zero mean four-block Spearman(path head mass,abs effect) minus mean four-block Spearman(abs activation_gradient,abs effect)",
+    "missing": "each required term must be finite; H1 permits finite unit medians with explicit unit counts",
+    "tests": "two-sided sign tests, Holm four within checkpoint"
+  },
+  "e4": {
+    "total_features": "196 patch absolute mass normalized to sum1",
+    "structure_features": "4 blocks x (Q,K,V,identity,attention,carry,mlp_branch) x 196 normalized patch mass; concatenate total features",
+    "zero_mass_feature": "all zero vector, an explicit absence of input dependence; feature standardizer zero std replaced by1",
+    "shuffle": "per image and per block, independent fixed permutation of seven labels, same permutation algorithm in each checkpoint; total retained",
+    "target": "mean over 4 blocks of mean absolute normalized_zero complete head effects",
+    "split": "cohorts.json prediction_split, shared models",
+    "ridge_penalty": [
+      0.1,
+      1,
+      10,
+      100
+    ],
+    "fit": "fit train standardized features and centered unscaled target, primal if dimension small else dual solve, validation MAE picks lambda; no refit on validation",
+    "test": "paired absolute error total minus structure and shuffled minus structure, plus Spearman",
+    "pair": "all E5 test image pairs, lower 10th percentile total-distribution JS distance including threshold ties, report seven-edge mean JS and effect difference, no outcome filtering"
+  },
+  "e1": {
+    "visual_matching": "raw cropped RGB 8x8 area-pooling descriptor, deterministic nearest different class from E1; relation computed independently from output arrays",
+    "pairs": "for each image all4 same-class peers, nearest different class and hash-min random different class; average similarities over finite same units, then per image, then per class",
+    "activation": "eta squared of class labels on activation, descriptive per unit; paired class-level abs activation similarity normalized by each unit global SD",
+    "main": "same class JS similarity minus matched different class JS similarity, median class difference, 8 tests per model Holm"
+  },
+  "e3": {
+    "rank": "within layer and candidate family Spearman of absolute single replacement effects for each output (gt,high,random,margin); signed effect stored separately",
+    "capture": "effect magnitude of method top1 / max candidate absolute single effect",
+    "regret": "max candidate absolute single effect minus selected absolute single effect",
+    "main_comparison": "path minus activation_gradient paired at image level, report each layer/ref/k, Holm within model/family/output; signed margin topk comparison and capture/rank are separate families",
+    "random": "average20 repeats within image before image bootstrap",
+    "matching": "disjoint nearest log activation in same candidate set, no replacement; impossible equal budget becomes NA",
+    "selectivity": "target endpoint selected sets compared with high and random non-target endpoint sets at each fixed budget; gt/high/random logits and dynamic margin both signed and absolute"
+  }
+}

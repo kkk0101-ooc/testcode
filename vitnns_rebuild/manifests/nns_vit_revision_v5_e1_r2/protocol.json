@@ -1,0 +1,62 @@
+{
+  "namespace": "NNS_VIT_REVISION_V5_E1_R2_20260921",
+  "scope": "prospective E1 metadata-matched replication",
+  "models": [
+    {
+      "model_id": "vit_b16",
+      "timm_name": "vit_base_patch16_224.augreg2_in21k_ft_in1k",
+      "checkpoint": "assets/models/vit_base_patch16_224_weights.semantic_candidate.pth",
+      "format": "pth",
+      "embedding_dim": 768,
+      "heads": 12,
+      "mean": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "std": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "role": "original",
+      "source": "vit_base_patch16_224.augreg2_in21k_ft_in1k",
+      "checkpoint_sha256": "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d",
+      "checkpoint_bytes": 346329934
+    },
+    {
+      "model_id": "deit_s16",
+      "timm_name": "deit_small_patch16_224.fb_in1k",
+      "checkpoint": "assets/models/stage_x_x2/deit_small_patch16_224.fb_in1k.pth",
+      "format": "pth",
+      "embedding_dim": 384,
+      "heads": 6,
+      "mean": [
+        0.485,
+        0.456,
+        0.406
+      ],
+      "std": [
+        0.229,
+        0.224,
+        0.225
+      ],
+      "role": "original",
+      "source": "deit_small_patch16_224.fb_in1k",
+      "checkpoint_sha256": "cd65a15597004d0ce19d7a9daef969903972db5b398e3a5febcd3c4df1d8f59f",
+      "checkpoint_bytes": 88251143
+    }
+  ],
+  "representative_blocks": [
+    0,
+    3,
+    7,
+    11
+  ],
+  "bootstrap_repeats": 10000,
+  "matching": "frozen shortest undirected WordNet hierarchy distance, SHA256 tie break",
+  "primary": "same-class minus metadata-matched different-class JS similarity, class-level inference",
+  "cohorts_sha256": "3f59753a59427034e17d2145e99eb26753746a984160117a5b4638e9fea75158",
+  "matching_sha256": "24f154e33d570932bae64540d83f015f73c43af87b4a44fb46e8dff813e2b178",
+  "targets_sha256": "a6b903b4c1415dfbd9b0b1ebcdde3945b2e2153c5f75661a401f27d5a65f6d6b"
+}

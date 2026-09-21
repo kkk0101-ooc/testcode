@@ -1,0 +1,12 @@
+Published source: Dou, Shen, Zhao, and Mu, Neural Networks 168 (2023), 484-495.
+DOI: 10.1016/j.neunet.2023.09.030
+Local published PDF SHA-256: 33e323f8cb664864b12daad1f06b6ef0d3268bcafaea4e84ac695fd286f3855b
+Checked page: 5
+
+Equation (10) states that the layer-to-layer contribution coefficient is the weight multiplied by the destination neuron's piecewise-linear activation gate:
+    c_pq^(l-1,l) = S(x_q^l) w_pq^l.
+
+Equation (11) writes the input-to-target contribution matrix with the terminal weight row outside the product over earlier layer contribution matrices:
+    C_q^(0,l) = W_q^l product_{i=1}^{l-1} C^(i-1,i).
+
+Thesis interpretation: a pre-activation target excludes its terminal activation gate; a post-activation target includes it. This check binds equation identities and target semantics, not software-level parity with unavailable original-author code.

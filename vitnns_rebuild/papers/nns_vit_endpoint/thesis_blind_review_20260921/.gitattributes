@@ -3,3 +3,8 @@
 
 # csv.DictWriter emits standard CSV CRLF; preserve sealed byte hashes.
 *.csv whitespace=cr-at-eol
+
+# The compact v5 NPZ package is small and must remain pushable when the account
+# LFS quota is unavailable. Raw multi-gigabyte run roots stay ignored.
+evidence/revision_v5/*.npz -filter -diff -merge binary
+figures/revision_v5/*_arrays.npz -filter -diff -merge binary
