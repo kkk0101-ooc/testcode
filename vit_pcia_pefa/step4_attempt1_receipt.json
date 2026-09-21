@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "stage": "ENDPOINT_PCIA_PEFA_STEP4_ATTEMPT1",
+  "status": "TERMINAL_PARTIAL_FAIL_QUADRATURE_CLOSURE",
+  "immutable_evidence": true,
+  "source_binding": "step4_attempt1_source_binding.json",
+  "source_binding_canonical_digest": "d5894c33b8c9f498d40b5181c8e935609e6f01498605daa85878aa3d8128e9c3",
+  "deit_s16": {
+    "result": "step4_runtime/attempt1_deit_s16.json",
+    "status": "PASS",
+    "cuts_pass": "9/9",
+    "all_blocks_first_order_pass": "12/12",
+    "negative_controls_pass": "6/6"
+  },
+  "vit_b16": {
+    "result": "step4_runtime/attempt1_vit_b16.json",
+    "status": "FAIL_QUADRATURE_CLOSURE",
+    "cuts_pass": "0/9",
+    "all_blocks_first_order_pass": "12/12",
+    "negative_controls_pass": "6/6",
+    "failed_identity": "PCIA_to_independently_batched_IG",
+    "max_abs": 2.6331049156908676e-05,
+    "relative_l2": 3.5088982778934303e-05
+  },
+  "diagnosis": "The 512-node PCIA full-gradient channel and the separately batched Endpoint EP2 IG use identical nodes but different batch execution; their ViT-B float32 difference exceeds the frozen per-coordinate tolerance. Port closure, Endpoint closure, source-summed PEFA closure, product rule, omega probes, full-ViT first-order coverage, and negative controls pass.",
+  "recovery_boundary": "A fresh attempt may use the PCIA full-gradient channel as the path-IG reference because it is the same quadrature evaluation required by the identity; separately batched IG remains an independently measured cost baseline and numerical diagnostic. No nodes, thresholds, samples, models, ports, or cuts may change."
+}

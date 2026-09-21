@@ -1,0 +1,496 @@
+{
+  "dtype": "float64",
+  "finite_difference": {
+    "epsilon": 1e-06,
+    "evaluation_t": [
+      0.0,
+      0.37,
+      1.0
+    ]
+  },
+  "fixture_order": [
+    "LINEAR3",
+    "BILINEAR2",
+    "SATURATING3",
+    "FANOUT2",
+    "RESIDUAL2",
+    "MULTIINPUT3"
+  ],
+  "fixtures": [
+    {
+      "analytic_assertions": [
+        "R_ZERO",
+        "OMEGA_ZERO"
+      ],
+      "b": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "expression": "F=1.5*u0-2*u1+0.25*u2",
+      "fixture_id": "LINEAR3",
+      "parameters": {
+        "coefficient": [
+          1.5,
+          -2.0,
+          0.25
+        ]
+      },
+      "paths": [
+        "u0-linear-F",
+        "u1-linear-F",
+        "u2-linear-F"
+      ],
+      "ports": [
+        {
+          "identity": {
+            "block_index": -1,
+            "consumer_operator_id": "linear",
+            "graph_revision": "step2_frozen_v1",
+            "input_slot": 0,
+            "invocation_index": 0,
+            "model_id": "LINEAR3",
+            "producer_tensor_id": "u.ssa0",
+            "slice_spec": "ALL"
+          },
+          "intersects_paths": [
+            "u0-linear-F",
+            "u1-linear-F",
+            "u2-linear-F"
+          ],
+          "port_id": "linear.input"
+        }
+      ],
+      "structure": "linear",
+      "x": [
+        1.25,
+        -0.5,
+        2.0
+      ]
+    },
+    {
+      "analytic_assertions": [
+        "OFF_DIAGONAL_R_NONZERO",
+        "ENDPOINT_MINUS_IG=[-3,-3]"
+      ],
+      "b": [
+        0.0,
+        0.0
+      ],
+      "expression": "F=u0*u1+0.2*u0",
+      "fixture_id": "BILINEAR2",
+      "parameters": {
+        "linear_coefficient": 0.2
+      },
+      "paths": [
+        "u0-mul0-F",
+        "u1-mul1-F",
+        "u0-linear-F"
+      ],
+      "ports": [
+        {
+          "identity": {
+            "block_index": -1,
+            "consumer_operator_id": "mul",
+            "graph_revision": "step2_frozen_v1",
+            "input_slot": 0,
+            "invocation_index": 0,
+            "model_id": "BILINEAR2",
+            "producer_tensor_id": "u0.ssa0",
+            "slice_spec": "ALL"
+          },
+          "intersects_paths": [
+            "u0-mul0-F"
+          ],
+          "port_id": "mul.slot0"
+        },
+        {
+          "identity": {
+            "block_index": -1,
+            "consumer_operator_id": "mul",
+            "graph_revision": "step2_frozen_v1",
+            "input_slot": 1,
+            "invocation_index": 0,
+            "model_id": "BILINEAR2",
+            "producer_tensor_id": "u1.ssa0",
+            "slice_spec": "ALL"
+          },
+          "intersects_paths": [
+            "u1-mul1-F"
+          ],
+          "port_id": "mul.slot1"
+        },
+        {
+          "identity": {
+            "block_index": -1,
+            "consumer_operator_id": "scale_add",
+            "graph_revision": "step2_frozen_v1",
+            "input_slot": 0,
+            "invocation_index": 0,
+            "model_id": "BILINEAR2",
+            "producer_tensor_id": "u0.ssa0",
+            "slice_spec": "ALL"
+          },
+          "intersects_paths": [
+            "u0-linear-F"
+          ],
+          "port_id": "linear.slot0"
+        }
+      ],
+      "structure": "bilinear",
+      "x": [
+        2.0,
+        -3.0
+      ]
+    },
+    {
+      "analytic_assertions": [
+        "SMOOTH_SECOND_ORDER",
+        "QUADRATURE_CONVERGENCE"
+      ],
+      "b": [
+        0.1,
+        -0.2,
+        0.3
+      ],
+      "expression": "F=tanh(0.7*u0-1.1*u1+0.5*u2+0.2)",
+      "fixture_id": "SATURATING3",
+      "parameters": {
+        "bias": 0.2,
+        "coefficient": [
+          0.7,
+          -1.1,
+          0.5
+        ]
+      },
+      "paths": [
+        "u0-s-tanh-F",
+        "u1-s-tanh-F",
+        "u2-s-tanh-F"
+      ],
+      "ports": [
+        {
+          "identity": {
+            "block_index": -1,
+            "consumer_operator_id": "tanh",
+            "graph_revision": "step2_frozen_v1",
+            "input_slot": 0,
+            "invocation_index": 0,
+            "model_id": "SATURATING3",
+            "producer_tensor_id": "s.ssa0",
+            "slice_spec": "ALL"
+          },
+          "intersects_paths": [
+            "u0-s-tanh-F",
+            "u1-s-tanh-F",
+            "u2-s-tanh-F"
+          ],
+          "port_id": "preactivation.tanh.slot0"
+        }
+      ],
+      "structure": "smooth_saturating_nonlinearity",
+      "x": [
+        1.2,
+        0.7,
+        -0.4
+      ]
+    },
+    {
+      "analytic_assertions": [
+        "DISTINCT_CONSUMER_USES"
+      ],
+      "b": [
+        0.0,
+        0.0
+      ],
+      "expression": "h=0.6*u0-0.4*u1; a=2*h; c=tanh(h); F=a+0.7*c",
+      "fixture_id": "FANOUT2",
+      "parameters": {
+        "a_scale": 2.0,
+        "c_scale": 0.7,
+        "h_coefficient": [
+          0.6,
+          -0.4
+        ]
+      },
+      "paths": [
+        "u0-h-a-F",
+        "u1-h-a-F",
+        "u0-h-c-F",
+        "u1-h-c-F"
+      ],
+      "ports": [
+        {
+          "identity": {
+            "block_index": -1,
+            "consumer_operator_id": "scale_a",
+            "graph_revision": "step2_frozen_v1",
+            "input_slot": 0,
+            "invocation_index": 0,
+            "model_id": "FANOUT2",
+            "producer_tensor_id": "h.ssa0",
+            "slice_spec": "ALL"
+          },
+          "intersects_paths": [
+            "u0-h-a-F",
+            "u1-h-a-F"
+          ],
+          "port_id": "h.linear.slot0"
+        },
+        {
+          "identity": {
+            "block_index": -1,
+            "consumer_operator_id": "tanh_c",
+            "graph_revision": "step2_frozen_v1",
+            "input_slot": 0,
+            "invocation_index": 0,
+            "model_id": "FANOUT2",
+            "producer_tensor_id": "h.ssa0",
+            "slice_spec": "ALL"
+          },
+          "intersects_paths": [
+            "u0-h-c-F",
+            "u1-h-c-F"
+          ],
+          "port_id": "h.tanh.slot0"
+        }
+      ],
+      "structure": "fan_out",
+      "x": [
+        1.1,
+        -0.8
+      ]
+    },
+    {
+      "analytic_assertions": [
+        "IDENTITY_AND_BRANCH_COMPLETE_CUT"
+      ],
+      "b": [
+        0.0,
+        0.0
+      ],
+      "expression": "h=tanh(W@u+q); r=u+B@h; F=v@r",
+      "fixture_id": "RESIDUAL2",
+      "parameters": {
+        "B": [
+          [
+            0.7,
+            0.1
+          ],
+          [
+            -0.4,
+            0.6
+          ]
+        ],
+        "W": [
+          [
+            0.8,
+            -0.3
+          ],
+          [
+            0.2,
+            0.9
+          ]
+        ],
+        "q": [
+          0.1,
+          -0.2
+        ],
+        "v": [
+          1.2,
+          -0.5
+        ]
+      },
+      "paths": [
+        "u0-id-add-F",
+        "u1-id-add-F",
+        "u0-branch-add-F",
+        "u1-branch-add-F"
+      ],
+      "ports": [
+        {
+          "identity": {
+            "block_index": -1,
+            "consumer_operator_id": "residual_add",
+            "graph_revision": "step2_frozen_v1",
+            "input_slot": 0,
+            "invocation_index": 0,
+            "model_id": "RESIDUAL2",
+            "producer_tensor_id": "u.ssa0",
+            "slice_spec": "ALL"
+          },
+          "intersects_paths": [
+            "u0-id-add-F",
+            "u1-id-add-F"
+          ],
+          "port_id": "u.add.slot0"
+        },
+        {
+          "identity": {
+            "block_index": -1,
+            "consumer_operator_id": "residual_add",
+            "graph_revision": "step2_frozen_v1",
+            "input_slot": 1,
+            "invocation_index": 0,
+            "model_id": "RESIDUAL2",
+            "producer_tensor_id": "branch.ssa0",
+            "slice_spec": "ALL"
+          },
+          "intersects_paths": [
+            "u0-branch-add-F",
+            "u1-branch-add-F"
+          ],
+          "port_id": "branch.add.slot1"
+        }
+      ],
+      "structure": "residual",
+      "x": [
+        0.9,
+        -1.3
+      ]
+    },
+    {
+      "analytic_assertions": [
+        "INPUT_SLOTS_DISTINCT"
+      ],
+      "b": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "expression": "a=u0+2*u1; c=0.5*u1-u2; m=a*c; F=m+0.3*a-0.2*c",
+      "fixture_id": "MULTIINPUT3",
+      "parameters": {
+        "a_coefficient": [
+          1.0,
+          2.0,
+          0.0
+        ],
+        "c_coefficient": [
+          0.0,
+          0.5,
+          -1.0
+        ]
+      },
+      "paths": [
+        "u0-a-mul0-F",
+        "u1-a-mul0-F",
+        "u1-c-mul1-F",
+        "u2-c-mul1-F",
+        "u0-a-linear-F",
+        "u1-a-linear-F",
+        "u1-c-linear-F",
+        "u2-c-linear-F"
+      ],
+      "ports": [
+        {
+          "identity": {
+            "block_index": -1,
+            "consumer_operator_id": "mul",
+            "graph_revision": "step2_frozen_v1",
+            "input_slot": 0,
+            "invocation_index": 0,
+            "model_id": "MULTIINPUT3",
+            "producer_tensor_id": "a.ssa0",
+            "slice_spec": "ALL"
+          },
+          "intersects_paths": [
+            "u0-a-mul0-F",
+            "u1-a-mul0-F"
+          ],
+          "port_id": "a.mul.slot0"
+        },
+        {
+          "identity": {
+            "block_index": -1,
+            "consumer_operator_id": "mul",
+            "graph_revision": "step2_frozen_v1",
+            "input_slot": 1,
+            "invocation_index": 0,
+            "model_id": "MULTIINPUT3",
+            "producer_tensor_id": "c.ssa0",
+            "slice_spec": "ALL"
+          },
+          "intersects_paths": [
+            "u1-c-mul1-F",
+            "u2-c-mul1-F"
+          ],
+          "port_id": "c.mul.slot1"
+        },
+        {
+          "identity": {
+            "block_index": -1,
+            "consumer_operator_id": "scale_a",
+            "graph_revision": "step2_frozen_v1",
+            "input_slot": 0,
+            "invocation_index": 0,
+            "model_id": "MULTIINPUT3",
+            "producer_tensor_id": "a.ssa0",
+            "slice_spec": "ALL"
+          },
+          "intersects_paths": [
+            "u0-a-linear-F",
+            "u1-a-linear-F"
+          ],
+          "port_id": "a.linear.slot0"
+        },
+        {
+          "identity": {
+            "block_index": -1,
+            "consumer_operator_id": "scale_c",
+            "graph_revision": "step2_frozen_v1",
+            "input_slot": 0,
+            "invocation_index": 0,
+            "model_id": "MULTIINPUT3",
+            "producer_tensor_id": "c.ssa0",
+            "slice_spec": "ALL"
+          },
+          "intersects_paths": [
+            "u1-c-linear-F",
+            "u2-c-linear-F"
+          ],
+          "port_id": "c.linear.slot0"
+        }
+      ],
+      "structure": "multi_input_operator",
+      "x": [
+        0.8,
+        -1.1,
+        0.6
+      ]
+    }
+  ],
+  "nonsmooth_negative_controls": [
+    {
+      "b": [
+        -1.0
+      ],
+      "expression": "F=relu(u0)",
+      "fixture_id": "RELU_SAFE",
+      "kink": 0.0,
+      "x": [
+        1.0
+      ]
+    },
+    {
+      "b": [
+        -1.0
+      ],
+      "expression": "F=relu(u0-u_star)",
+      "fixture_id": "RELU_HIT",
+      "kink_construction": "u_star=-1.0+2.0*t64[31]",
+      "x": [
+        1.0
+      ]
+    }
+  ],
+  "path": "gamma(t)=b+t*(x-b)",
+  "schema_version": 1,
+  "stage": "ENDPOINT_PCIA_PEFA_STEP2",
+  "status": "FROZEN_BEFORE_OUTCOME",
+  "tolerance": {
+    "atol": 1e-09,
+    "near_zero": 1e-12,
+    "rtol": 1e-07
+  }
+}

@@ -1,0 +1,161 @@
+{
+  "archive": {
+    "bytes": 6744924160,
+    "path": "vitnns_rebuild/assets/imagenet/ILSVRC2012_img_val.tar",
+    "sha256": "c7e06a6c0baccf06d8dbeb6577d71efff84673a5dbdd50633ab44f8ea0456ae0"
+  },
+  "authorization": "USER_REQUEST_EXECUTE_STEP4_20260921",
+  "canonical_digest": "4cb2b11bc2f7ff7bf06ea32736b7d74658bc7c203ab36365011b56d14ee605c5",
+  "compute": {
+    "diagnostic_nodes": 256,
+    "materialize_input_hessian": false,
+    "materialize_port_by_input_by_input": false,
+    "patch_group_partition": "four exact 7x7 patch quadrants over 14x14 patches",
+    "path": "normalized-zero straight line",
+    "primary_nodes": 512
+  },
+  "cost_gate": {
+    "aggregate_h20_hours_cap": 16,
+    "max_attempts": 2,
+    "minimum_free_disk_gib": 50,
+    "production_projection_blocks": 12,
+    "production_projection_images": 64,
+    "production_projection_models": 2,
+    "production_projection_targets": 1,
+    "projection_rule": "observed primary 512-node block seconds times 64 images times 12 blocks for each model",
+    "retained_gib_cap": 32,
+    "task_seconds_cap": 1800,
+    "wall_hours_cap": 24,
+    "worker_cpu_rss_gib_cap": 32,
+    "worker_gpu_memory_gib_cap": 24
+  },
+  "dirty_tree_policy": "preserve unrelated user changes; bind every reused and new Step-4 file by bytes",
+  "failure_codes": [
+    "FAIL_SOURCE_BINDING",
+    "FAIL_PORT_ID_AMBIGUOUS",
+    "FAIL_CUT_NOT_LEGAL",
+    "FAIL_SECOND_ORDER_GRAPH_TRUNCATED",
+    "FAIL_QUADRATURE_CLOSURE",
+    "FAIL_NEGATIVE_CONTROL",
+    "FAIL_PORT_FIDELITY",
+    "NO_GO_COST",
+    "PAUSED_RESOURCE_CAP"
+  ],
+  "files": [
+    {
+      "bytes": 14925,
+      "mode": "source_or_registry",
+      "path": "vit_pcia_pefa/执行规划.md",
+      "sha256": "03ae681d9ddcadd7ab07b13592e92463775cfa55f81a914df68164689132809d"
+    },
+    {
+      "bytes": 18177,
+      "mode": "source_or_registry",
+      "path": "vit_pcia_pefa/method_contract.md",
+      "sha256": "9bd1f8718e37d44b17d6017a7c13c6d9fdbd6f8dc3da98121001afbf7b5ef601"
+    },
+    {
+      "bytes": 9192,
+      "mode": "source_or_registry",
+      "path": "vit_pcia_pefa/step3_decision.md",
+      "sha256": "b7ba1cd7eaaa9d4f165bfcdc2c4e12c7cd335e81ebbe21eb725f21aa01bec6b5"
+    },
+    {
+      "bytes": 12405,
+      "mode": "source_or_registry",
+      "path": "vit_pcia_pefa/quadrature_registry.json",
+      "sha256": "b26418d81d45ed8f17383f78d30b71288b4bac90adc34d3f6e374f38492ba268"
+    },
+    {
+      "bytes": 23100,
+      "mode": "source_or_registry",
+      "path": "vit_pcia_pefa/src/vit_adapter.py",
+      "sha256": "642bb4b33b3470840da35f3106714017d8e9d47de137193eda14af7ca4c8565a"
+    },
+    {
+      "bytes": 4451,
+      "mode": "source_or_registry",
+      "path": "vit_pcia_pefa/tests/test_step4_vit_adapter.py",
+      "sha256": "a0d107a017285021806219943c75ebbf665575724ade05298b9a2eef5a32ffcc"
+    },
+    {
+      "bytes": 26224,
+      "mode": "source_or_registry",
+      "path": "vitnns_rebuild/src/vitnns/endpoint_vit.py",
+      "sha256": "66a32cb7a236dcca25c916eaddc775afae516367f00ea0da91aa6585eb1ca4c7"
+    },
+    {
+      "bytes": 14657,
+      "mode": "source_or_registry",
+      "path": "vitnns_rebuild/tests/test_endpoint_vit.py",
+      "sha256": "0b6ff2c7139aa04b1ea7f36e788e544795d70791cb8af892afdd25e734805f9d"
+    },
+    {
+      "bytes": 3477,
+      "mode": "source_or_registry",
+      "path": "vitnns_rebuild/manifests/nns_vit_endpoint/ep0_r1_20260918/model_registry.json",
+      "sha256": "523b973c0f6f5df502af22f2c587ba10d6975c413776a1ef76beaaa5972e68fe"
+    },
+    {
+      "bytes": 446993,
+      "mode": "source_or_registry",
+      "path": "vitnns_rebuild/manifests/nns_vit_endpoint/ep0_r1_20260918/cohort_registry.json",
+      "sha256": "4d1e88d946c11af3fce9ca05c139007dc0991768ea224e2067ca33b337a7e0f2"
+    },
+    {
+      "bytes": 346329934,
+      "mode": "checkpoint_stream_hash_no_deserialization",
+      "path": "vitnns_rebuild/assets/models/vit_base_patch16_224_weights.semantic_candidate.pth",
+      "sha256": "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d"
+    },
+    {
+      "bytes": 88251143,
+      "mode": "checkpoint_stream_hash_no_deserialization",
+      "path": "vitnns_rebuild/assets/models/stage_x_x2/deit_small_patch16_224.fb_in1k.pth",
+      "sha256": "cd65a15597004d0ce19d7a9daef969903972db5b398e3a5febcd3c4df1d8f59f"
+    }
+  ],
+  "numeric": {
+    "atol": 1e-05,
+    "forward_dtype": "float32",
+    "near_zero": 1e-06,
+    "reduction_dtype": "float64",
+    "rtol": 0.0001
+  },
+  "outcome_access_before_freeze": {
+    "checkpoint_deserializations_for_outcome": 0,
+    "discovery_jpeg_reads": 0
+  },
+  "producer_commit": "966bde1827007506b19927e04494897f4cc497b6",
+  "quadrature": {
+    "256": {
+      "count": 256,
+      "generation": "numpy.polynomial.legendre.leggauss; t=(s+1)/2; w=w/2",
+      "nodes_sha256": "77a5bfc4b6fa72fb0b2661851c344cd0504a9c4a4859bd715c5ee640dfb041c2",
+      "weight_sum": 1.0,
+      "weights_sha256": "115b22f049d35570cb6264e18bf5befc2ee03b7fd9510c32f69af497e6ccd0c6"
+    },
+    "512": {
+      "count": 512,
+      "generation": "numpy.polynomial.legendre.leggauss; t=(s+1)/2; w=w/2",
+      "nodes_sha256": "db2dfc33a84559cf4c092a0b506b14a6fd296c83fefd34e1ff109a87af338730",
+      "weight_sum": 1.0,
+      "weights_sha256": "7b7f5d0900ddc327cdcd8168de3add653f8bc82b2f9022676c2081448e351b9f"
+    }
+  },
+  "schema_version": 1,
+  "stage": "ENDPOINT_PCIA_PEFA_STEP4",
+  "status": "FROZEN_BEFORE_VIT_OUTCOME",
+  "step5_authorized": false,
+  "validation_scope": {
+    "discovery_rows_per_model": 1,
+    "full_vit_check": "all 12 blocks first-order raw-coordinate cuts",
+    "models": [
+      "vit_b16",
+      "deit_s16"
+    ],
+    "omega_directional_probes": 2,
+    "primary_block": 0,
+    "target": "frozen EP0 ground-truth raw logit"
+  }
+}

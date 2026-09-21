@@ -1,0 +1,180 @@
+{
+  "aggregate_observed": {
+    "attempt0_seconds": 1324.5742600949015,
+    "attempt1_seconds": 66.86120708263479,
+    "attempt2_seconds": 67.89753032592125,
+    "frozen_h20_hours_cap": 16,
+    "h20_hours_upper_bound": 0.616192456468513,
+    "interactive_diagnostics_conservative_upper_bound_seconds": 600.0,
+    "pass": true,
+    "quadrature_diagnostic_seconds": 158.95984578318894
+  },
+  "attempt": "attempt2",
+  "canonical_digest": "7b6c376102a08c6c243b6e30225e3abb8b34efdc02f3eb4e6f2d11ea826fa90e",
+  "notes": [
+    "Counts are logical model/derivative evaluations, not CUDA kernel launches.",
+    "Independent IG uses alpha batch 8; PCIA uses per-node batch 1. Their ViT-B float32 difference is retained as a non-gating numerical diagnostic.",
+    "Aggregate observed usage includes both failed attempts, independent quadrature diagnostics, final attempt, and a conservative 600-second allowance for interactive GPU probes."
+  ],
+  "observed": [
+    {
+      "endpoint": {
+        "logical_forwards": 1,
+        "logical_reverse_products": 1,
+        "nodes": 0,
+        "peak_allocated_gpu_bytes": 1783142400,
+        "peak_reserved_gpu_bytes": 1906311168,
+        "wall_seconds": 0.2384315358940512
+      },
+      "ig": {
+        "execution": "independent alpha_batch=8 cost baseline",
+        "logical_forwards": 514,
+        "logical_reverse_products": 512,
+        "nodes": 512,
+        "peak_allocated_gpu_bytes": 1831854592,
+        "peak_reserved_gpu_bytes": 2701131776,
+        "result": {
+          "attribution_sum": 9.011795416634422,
+          "completeness_abs_residual": 0.09165419654164886,
+          "delta": 8.920141220092773,
+          "finite": true,
+          "map_sha256": "9fe7e71ab2279c1ae0a9a48320661055cbf78421ed91979fc1bacfd167e7e9ec"
+        },
+        "wall_seconds": 2.130157371982932
+      },
+      "model_id": "vit_b16",
+      "pcia": {
+        "logical_base_vjp_calls": 13312,
+        "logical_forwards": 512,
+        "nodes": 512,
+        "peak_allocated_gpu_bytes": 2111465472,
+        "peak_reserved_gpu_bytes": 3311403008,
+        "wall_seconds": 40.31776605104096
+      },
+      "peak_cpu_rss_bytes": 1746059264,
+      "projected_64_images_12_blocks_h20_hours": 8.618211713085572,
+      "relative_wall_cost": {
+        "vs_endpoint": 169.43172912764237,
+        "vs_ig": 18.964733749921415,
+        "vs_pcia": 1.0019867508022704
+      },
+      "source_summed_pefa": {
+        "components": {
+          "pcia": {
+            "logical_base_vjp_calls": 13312,
+            "logical_forwards": 512,
+            "nodes": 512,
+            "peak_allocated_gpu_bytes": 2111465472,
+            "peak_reserved_gpu_bytes": 3311403008,
+            "wall_seconds": 40.31776605104096
+          },
+          "terminal_port_endpoint": {
+            "logical_base_vjp_calls": 26,
+            "logical_forwards": 1,
+            "nodes": 0,
+            "peak_allocated_gpu_bytes": 2005329408,
+            "peak_reserved_gpu_bytes": 3248488448,
+            "wall_seconds": 0.08010135404765606
+          }
+        },
+        "logical_base_vjp_calls": 13338,
+        "logical_forwards": 513,
+        "nodes": 512,
+        "peak_allocated_gpu_bytes": 2111465472,
+        "peak_reserved_gpu_bytes": 3311403008,
+        "wall_seconds": 40.39786740508862
+      }
+    },
+    {
+      "endpoint": {
+        "logical_forwards": 1,
+        "logical_reverse_products": 1,
+        "nodes": 0,
+        "peak_allocated_gpu_bytes": 841126912,
+        "peak_reserved_gpu_bytes": 905969664,
+        "wall_seconds": 0.24101467290893197
+      },
+      "ig": {
+        "execution": "independent alpha_batch=8 cost baseline",
+        "logical_forwards": 514,
+        "logical_reverse_products": 512,
+        "nodes": 512,
+        "peak_allocated_gpu_bytes": 876516352,
+        "peak_reserved_gpu_bytes": 1306525696,
+        "result": {
+          "attribution_sum": 9.759606245114826,
+          "completeness_abs_residual": 0.005732420041583808,
+          "delta": 9.753873825073242,
+          "finite": true,
+          "map_sha256": "c72bea0c159c4db2e59d203db92d42c6b8f95e95259a86bfd90ec76bbc419cad"
+        },
+        "wall_seconds": 1.6039916609879583
+      },
+      "model_id": "deit_s16",
+      "pcia": {
+        "logical_base_vjp_calls": 9216,
+        "logical_forwards": 512,
+        "nodes": 512,
+        "peak_allocated_gpu_bytes": 1020434944,
+        "peak_reserved_gpu_bytes": 1604321280,
+        "wall_seconds": 23.23748794896528
+      },
+      "peak_cpu_rss_bytes": 1583595520,
+      "projected_64_images_12_blocks_h20_hours": 4.967694438199202,
+      "relative_wall_cost": {
+        "vs_endpoint": 96.61680510156103,
+        "vs_ig": 14.517574028231545,
+        "vs_pcia": 1.0020905758057916
+      },
+      "source_summed_pefa": {
+        "components": {
+          "pcia": {
+            "logical_base_vjp_calls": 9216,
+            "logical_forwards": 512,
+            "nodes": 512,
+            "peak_allocated_gpu_bytes": 1020434944,
+            "peak_reserved_gpu_bytes": 1604321280,
+            "wall_seconds": 23.23748794896528
+          },
+          "terminal_port_endpoint": {
+            "logical_base_vjp_calls": 18,
+            "logical_forwards": 1,
+            "nodes": 0,
+            "peak_allocated_gpu_bytes": 959572480,
+            "peak_reserved_gpu_bytes": 1604321280,
+            "wall_seconds": 0.048579730093479156
+          }
+        },
+        "logical_base_vjp_calls": 9234,
+        "logical_forwards": 513,
+        "nodes": 512,
+        "peak_allocated_gpu_bytes": 1020434944,
+        "peak_reserved_gpu_bytes": 1604321280,
+        "wall_seconds": 23.28606767905876
+      }
+    }
+  ],
+  "projected_production": {
+    "blocks_per_model": 12,
+    "frozen_h20_hours_cap": 16,
+    "h20_hours": 13.585906151284775,
+    "images": 64,
+    "models": 2,
+    "pass": true,
+    "targets": 1
+  },
+  "raw_hessian_materialized": false,
+  "raw_port_by_input_by_input_materialized": false,
+  "resource_caps": {
+    "cpu_rss_gib_per_worker": 32,
+    "gpu_memory_gib_per_worker": 24,
+    "retained_gib": 32,
+    "task_seconds": 1800,
+    "wall_hours": 24
+  },
+  "retained_bytes_at_finalize": 2132312,
+  "schema_version": 1,
+  "stage": "ENDPOINT_PCIA_PEFA_STEP4",
+  "status": "PASS_COST_GATE",
+  "temporary_bytes_at_finalize": 643032
+}

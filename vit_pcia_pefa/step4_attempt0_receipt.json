@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "stage": "ENDPOINT_PCIA_PEFA_STEP4_ATTEMPT0",
+  "status": "TERMINAL_FAIL_QUADRATURE_CLOSURE_AND_NO_GO_COST",
+  "immutable_evidence": true,
+  "scope": "four exact 7x7 patch-quadrant source groups with 512-node PEFA integration",
+  "source_binding": "step4_source_binding.json",
+  "source_binding_canonical_digest": "4cb2b11bc2f7ff7bf06ea32736b7d74658bc7c203ab36365011b56d14ee605c5",
+  "results": {
+    "deit_s16": {
+      "worker_result": "step4_runtime/deit_s16.json",
+      "quadrature_diagnostic": "step4_runtime/deit_s16_quadrature_diagnostic.json",
+      "pefa_to_endpoint_512_max_abs": 0.619430745219381,
+      "pefa_to_endpoint_512_relative_l2": 2.7972706813589117,
+      "pefa_wall_seconds_one_block_one_image": 550.5838799099438,
+      "peak_reserved_gpu_bytes": 2801795072,
+      "first_order_all_blocks_pass": "12/12",
+      "applicable_negative_controls_pass": "9/9"
+    },
+    "vit_b16": {
+      "worker_result": "step4_runtime/vit_b16.json",
+      "quadrature_diagnostic": "step4_runtime/vit_b16_quadrature_diagnostic.json",
+      "pefa_to_endpoint_512_max_abs": 11.684560885841769,
+      "pefa_to_endpoint_512_relative_l2": 52.33535299882697,
+      "pefa_wall_seconds_one_block_one_image": 707.4347708250862,
+      "peak_reserved_gpu_bytes": 5309988864,
+      "first_order_all_blocks_pass": "12/12",
+      "applicable_negative_controls_pass": "9/9"
+    }
+  },
+  "independent_diagnostic": "direct full-model Q(u)=u*gradF(u) JVP reproduces the same 512-node closure failures for both models",
+  "cost_projection_rule": "observed PEFA seconds times 64 discovery images times 12 blocks across both models",
+  "projected_h20_hours": 268.3779308237397,
+  "frozen_h20_hours_cap": 16,
+  "failure_codes": [
+    "FAIL_SOURCE_BINDING",
+    "FAIL_QUADRATURE_CLOSURE",
+    "NO_GO_COST"
+  ],
+  "recovery_boundary": "fresh attempt1 may only use the plan-authorized source-coordinate resolution contraction; no threshold, node, sample, target, or port change"
+}

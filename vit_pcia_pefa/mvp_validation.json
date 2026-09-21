@@ -1,0 +1,4732 @@
+{
+  "all_main_fixtures_passed": true,
+  "all_negative_controls_detected": true,
+  "contract": {
+    "diagnostic_quadrature_nodes": 128,
+    "dtype": "float64",
+    "finite_difference_epsilon": 1e-06,
+    "fixture_registry_sha256": "8555d13e4047163f9f20d46616b58b8f254c7fa0990dc6e25a459ffac2852459",
+    "method_contract_sha256": "9bd1f8718e37d44b17d6017a7c13c6d9fdbd6f8dc3da98121001afbf7b5ef601",
+    "primary_quadrature_nodes": 64,
+    "quadrature_registry_sha256": "b26418d81d45ed8f17383f78d30b71288b4bac90adc34d3f6e374f38492ba268",
+    "tolerance": {
+      "atol": 1e-09,
+      "near_zero": 1e-12,
+      "rtol": 1e-07
+    }
+  },
+  "coverage": {
+    "comparison_methods": [
+      "closed_form_analytic",
+      "torch_autodiff",
+      "central_finite_difference"
+    ],
+    "fixtures": 6,
+    "identity_families": [
+      "port_endpoint_closure",
+      "pcia_to_ig",
+      "pefa_to_endpoint",
+      "t_equals_delta_a_plus_r",
+      "curvature_cut_zero_sum"
+    ],
+    "negative_controls": 9,
+    "structures": [
+      "linear",
+      "bilinear",
+      "smooth_saturating_nonlinearity",
+      "fan_out",
+      "residual",
+      "multi_input_operator"
+    ]
+  },
+  "environment": {
+    "cuda_visible_devices": "",
+    "device": "cpu",
+    "numpy_version": "1.26.4",
+    "python_executable_realpath": "/data01/home/yeziqi.831/nxtrec_wksp/testcode/.conda/envs/vitnns/bin/python3.10",
+    "python_version": "3.10.21",
+    "torch_cuda_available": false,
+    "torch_default_dtype": "torch.float64",
+    "torch_version": "2.2.2+cu121"
+  },
+  "fixtures": {
+    "BILINEAR2": {
+      "analytic_assertions": {
+        "endpoint_minus_ig": {
+          "coordinates_checked": 2,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 4.242640687119285,
+          "relative_l2": 0.0
+        },
+        "off_diagonal_r_nonzero": true
+      },
+      "cut_legality": {
+        "passed": true,
+        "path_intersection_counts": {
+          "u0-linear-F": 1,
+          "u0-mul0-F": 1,
+          "u1-mul1-F": 1
+        }
+      },
+      "dimension": 2,
+      "passed": true,
+      "point_comparisons": [
+        {
+          "analytic_vs_autodiff": {
+            "gradient": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.2,
+              "relative_l2": 0.0
+            },
+            "omega": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.0,
+              "relative_l2": 0.0
+            },
+            "port_d": {
+              "coordinates_checked": 6,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.2,
+              "relative_l2": 0.0
+            },
+            "port_jac_d": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.4142135623730951,
+              "relative_l2": 0.0
+            },
+            "port_jac_q": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.2,
+              "relative_l2": 0.0
+            },
+            "port_q": {
+              "coordinates_checked": 6,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "value": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            }
+          },
+          "finite_difference": {
+            "gradient_vs_analytic": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.2,
+              "relative_l2": 0.0
+            },
+            "gradient_vs_autodiff": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.2,
+              "relative_l2": 0.0
+            },
+            "port_jac_d_vs_analytic": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.4142135623730951,
+              "relative_l2": 0.0
+            },
+            "port_jac_d_vs_autodiff": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.4142135623730951,
+              "relative_l2": 0.0
+            },
+            "port_jac_q_vs_analytic": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.2,
+              "relative_l2": 0.0
+            },
+            "port_jac_q_vs_autodiff": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.2,
+              "relative_l2": 0.0
+            }
+          },
+          "passed": true,
+          "t": 0.0
+        },
+        {
+          "analytic_vs_autodiff": {
+            "gradient": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.1729023829799305,
+              "relative_l2": 0.0
+            },
+            "omega": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.0,
+              "relative_l2": 0.0
+            },
+            "port_d": {
+              "coordinates_checked": 6,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.348962564343429,
+              "relative_l2": 0.0
+            },
+            "port_jac_d": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.4142135623730951,
+              "relative_l2": 0.0
+            },
+            "port_jac_q": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.8972084756293917,
+              "relative_l2": 0.0
+            },
+            "port_q": {
+              "coordinates_checked": 6,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.1710251577143846,
+              "relative_l2": 0.0
+            },
+            "value": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.6733999999999999,
+              "relative_l2": 0.0
+            }
+          },
+          "finite_difference": {
+            "gradient_vs_analytic": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 5.643641109998043e-11,
+              "passed": true,
+              "reference_l2": 1.1729023829799305,
+              "relative_l2": 5.122695709094196e-11
+            },
+            "gradient_vs_autodiff": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 5.643641109998043e-11,
+              "passed": true,
+              "reference_l2": 1.1729023829799305,
+              "relative_l2": 5.122695709094196e-11
+            },
+            "port_jac_d_vs_analytic": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 8.22666379463044e-11,
+              "passed": true,
+              "reference_l2": 1.4142135623730951,
+              "relative_l2": 6.162259310008474e-11
+            },
+            "port_jac_d_vs_autodiff": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 8.22666379463044e-11,
+              "passed": true,
+              "reference_l2": 1.4142135623730951,
+              "relative_l2": 6.162259310008474e-11
+            },
+            "port_jac_q_vs_analytic": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 5.643641109998043e-11,
+              "passed": true,
+              "reference_l2": 1.8972084756293917,
+              "relative_l2": 4.6532643827492505e-11
+            },
+            "port_jac_q_vs_autodiff": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 5.643641109998043e-11,
+              "passed": true,
+              "reference_l2": 1.8972084756293917,
+              "relative_l2": 4.6532643827492505e-11
+            }
+          },
+          "passed": true,
+          "t": 0.37
+        },
+        {
+          "analytic_vs_autodiff": {
+            "gradient": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.4409301068170506,
+              "relative_l2": 0.0
+            },
+            "omega": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.0,
+              "relative_l2": 0.0
+            },
+            "port_d": {
+              "coordinates_checked": 6,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.6110940170535577,
+              "relative_l2": 0.0
+            },
+            "port_jac_d": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.4142135623730951,
+              "relative_l2": 0.0
+            },
+            "port_jac_q": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 5.102940328869229,
+              "relative_l2": 0.0
+            },
+            "port_q": {
+              "coordinates_checked": 6,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 8.49470423263812,
+              "relative_l2": 0.0
+            },
+            "value": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 5.6,
+              "relative_l2": 0.0
+            }
+          },
+          "finite_difference": {
+            "gradient_vs_analytic": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 2.795559339574538e-10,
+              "passed": true,
+              "reference_l2": 3.4409301068170506,
+              "relative_l2": 9.106254133683462e-11
+            },
+            "gradient_vs_autodiff": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 2.795559339574538e-10,
+              "passed": true,
+              "reference_l2": 3.4409301068170506,
+              "relative_l2": 9.106254133683462e-11
+            },
+            "port_jac_d_vs_analytic": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 1.397779669787269e-10,
+              "passed": true,
+              "reference_l2": 1.4142135623730951,
+              "relative_l2": 1.0090780022990035e-10
+            },
+            "port_jac_d_vs_autodiff": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 1.397779669787269e-10,
+              "passed": true,
+              "reference_l2": 1.4142135623730951,
+              "relative_l2": 1.0090780022990035e-10
+            },
+            "port_jac_q_vs_analytic": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 2.795559339574538e-10,
+              "passed": true,
+              "reference_l2": 5.102940328869229,
+              "relative_l2": 7.778662533327764e-11
+            },
+            "port_jac_q_vs_autodiff": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 2.795559339574538e-10,
+              "passed": true,
+              "reference_l2": 5.102940328869229,
+              "relative_l2": 7.778662533327764e-11
+            }
+          },
+          "passed": true,
+          "t": 1.0
+        }
+      ],
+      "port_count": 3,
+      "port_identity_passed": true,
+      "port_ids": [
+        "mul.slot0",
+        "mul.slot1",
+        "linear.slot0"
+      ],
+      "quadrature": {
+        "128": {
+          "closed_form_comparison": {
+            "a": {
+              "coordinates_checked": 6,
+              "finite": true,
+              "max_abs": 8.881784197001252e-16,
+              "passed": true,
+              "reference_l2": 4.261455150532504,
+              "relative_l2": 2.9504006469825404e-16
+            },
+            "endpoint": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 8.207313811473277,
+              "relative_l2": 0.0
+            },
+            "gradient_x": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.4409301068170506,
+              "relative_l2": 0.0
+            },
+            "ig": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 8.881784197001252e-16,
+              "passed": true,
+              "reference_l2": 3.9698866482558417,
+              "relative_l2": 3.164004613327871e-16
+            },
+            "omega_x": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.0,
+              "relative_l2": 0.0
+            },
+            "output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 5.6,
+              "relative_l2": 0.0
+            },
+            "port_d_x": {
+              "coordinates_checked": 6,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.6110940170535577,
+              "relative_l2": 0.0
+            },
+            "port_q_x": {
+              "coordinates_checked": 6,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 8.49470423263812,
+              "relative_l2": 0.0
+            },
+            "r": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 8.881784197001252e-16,
+              "passed": true,
+              "reference_l2": 4.242640687119285,
+              "relative_l2": 2.960594732333751e-16
+            },
+            "t": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 8.881784197001252e-16,
+              "passed": true,
+              "reference_l2": 6.013318551349163,
+              "relative_l2": 2.955479531488639e-16
+            }
+          },
+          "identities": {
+            "curvature_cut_zero_sum": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "pcia_to_ig": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 1.7763568394002505e-15,
+              "passed": true,
+              "reference_l2": 3.9698866482558417,
+              "relative_l2": 4.474578235579315e-16
+            },
+            "pcia_to_output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 1.7763568394002505e-15,
+              "passed": true,
+              "reference_l2": 5.6,
+              "relative_l2": 3.1720657846433045e-16
+            },
+            "pefa_per_port_to_q": {
+              "coordinates_checked": 6,
+              "finite": true,
+              "max_abs": 1.7763568394002505e-15,
+              "passed": true,
+              "reference_l2": 8.49470423263812,
+              "relative_l2": 2.9580325666392025e-16
+            },
+            "pefa_to_endpoint": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 1.7763568394002505e-15,
+              "passed": true,
+              "reference_l2": 8.207313811473277,
+              "relative_l2": 3.060864969464461e-16
+            },
+            "port_endpoint_closure": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 8.207313811473277,
+              "relative_l2": 0.0
+            },
+            "port_gradient_closure": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.4409301068170506,
+              "relative_l2": 0.0
+            },
+            "r_to_endpoint_minus_ig": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 1.7763568394002505e-15,
+              "passed": true,
+              "reference_l2": 4.242640687119285,
+              "relative_l2": 4.315771366092625e-16
+            },
+            "t_equals_delta_a_plus_r": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 6.013318551349161,
+              "relative_l2": 0.0
+            }
+          },
+          "passed": true,
+          "role": "convergence_diagnostic"
+        },
+        "64": {
+          "closed_form_comparison": {
+            "a": {
+              "coordinates_checked": 6,
+              "finite": true,
+              "max_abs": 1.1102230246251565e-16,
+              "passed": true,
+              "reference_l2": 4.261455150532504,
+              "relative_l2": 2.605267415489343e-17
+            },
+            "endpoint": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 8.207313811473277,
+              "relative_l2": 0.0
+            },
+            "gradient_x": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.4409301068170506,
+              "relative_l2": 0.0
+            },
+            "ig": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 3.9698866482558417,
+              "relative_l2": 1.1186445588948287e-16
+            },
+            "omega_x": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.0,
+              "relative_l2": 0.0
+            },
+            "output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 5.6,
+              "relative_l2": 0.0
+            },
+            "port_d_x": {
+              "coordinates_checked": 6,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.6110940170535577,
+              "relative_l2": 0.0
+            },
+            "port_q_x": {
+              "coordinates_checked": 6,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 8.49470423263812,
+              "relative_l2": 0.0
+            },
+            "r": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 4.242640687119285,
+              "relative_l2": 0.0
+            },
+            "t": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 1.1102230246251565e-16,
+              "passed": true,
+              "reference_l2": 6.013318551349163,
+              "relative_l2": 1.846273426469423e-17
+            }
+          },
+          "identities": {
+            "curvature_cut_zero_sum": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "pcia_to_ig": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 3.9698866482558413,
+              "relative_l2": 1.118644558894829e-16
+            },
+            "pcia_to_output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 5.6,
+              "relative_l2": 0.0
+            },
+            "pefa_per_port_to_q": {
+              "coordinates_checked": 6,
+              "finite": true,
+              "max_abs": 1.1102230246251565e-16,
+              "passed": true,
+              "reference_l2": 8.49470423263812,
+              "relative_l2": 1.3069590114267757e-17
+            },
+            "pefa_to_endpoint": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 8.207313811473277,
+              "relative_l2": 0.0
+            },
+            "port_endpoint_closure": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 8.207313811473277,
+              "relative_l2": 0.0
+            },
+            "port_gradient_closure": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.4409301068170506,
+              "relative_l2": 0.0
+            },
+            "r_to_endpoint_minus_ig": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 4.242640687119285,
+              "relative_l2": 0.0
+            },
+            "t_equals_delta_a_plus_r": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 6.013318551349163,
+              "relative_l2": 0.0
+            }
+          },
+          "passed": true,
+          "role": "primary_gate"
+        }
+      },
+      "quadrature_64_vs_128": {
+        "a": {
+          "coordinates_checked": 6,
+          "finite": true,
+          "max_abs": 8.881784197001252e-16,
+          "passed": true,
+          "reference_l2": 4.261455150532502,
+          "relative_l2": 2.9733167244407734e-16
+        },
+        "endpoint": {
+          "coordinates_checked": 2,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 8.207313811473277,
+          "relative_l2": 0.0
+        },
+        "gradient_x": {
+          "coordinates_checked": 2,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 3.4409301068170506,
+          "relative_l2": 0.0
+        },
+        "ig": {
+          "coordinates_checked": 2,
+          "finite": true,
+          "max_abs": 1.3322676295501878e-15,
+          "passed": true,
+          "reference_l2": 3.9698866482558417,
+          "relative_l2": 4.033330316114101e-16
+        },
+        "omega_x": {
+          "coordinates_checked": 12,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 2.0,
+          "relative_l2": 0.0
+        },
+        "output_delta": {
+          "coordinates_checked": 1,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 5.6,
+          "relative_l2": 0.0
+        },
+        "port_d_x": {
+          "coordinates_checked": 6,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 3.6110940170535577,
+          "relative_l2": 0.0
+        },
+        "port_q_x": {
+          "coordinates_checked": 6,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 8.49470423263812,
+          "relative_l2": 0.0
+        },
+        "r": {
+          "coordinates_checked": 12,
+          "finite": true,
+          "max_abs": 8.881784197001252e-16,
+          "passed": true,
+          "reference_l2": 4.242640687119284,
+          "relative_l2": 2.960594732333752e-16
+        },
+        "t": {
+          "coordinates_checked": 12,
+          "finite": true,
+          "max_abs": 8.881784197001252e-16,
+          "passed": true,
+          "reference_l2": 6.013318551349161,
+          "relative_l2": 2.9669906930009153e-16
+        }
+      },
+      "structure": "bilinear"
+    },
+    "FANOUT2": {
+      "analytic_assertions": {},
+      "cut_legality": {
+        "passed": true,
+        "path_intersection_counts": {
+          "u0-h-a-F": 1,
+          "u0-h-c-F": 1,
+          "u1-h-a-F": 1,
+          "u1-h-c-F": 1
+        }
+      },
+      "dimension": 2,
+      "passed": true,
+      "point_comparisons": [
+        {
+          "analytic_vs_autodiff": {
+            "gradient": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 2.220446049250313e-16,
+              "passed": true,
+              "reference_l2": 1.9469976887505542,
+              "relative_l2": 1.1404461659506327e-16
+            },
+            "omega": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "port_d": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.5280052355931246,
+              "relative_l2": 0.0
+            },
+            "port_jac_d": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "port_jac_q": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.5280052355931246,
+              "relative_l2": 0.0
+            },
+            "port_q": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "value": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            }
+          },
+          "finite_difference": {
+            "gradient_vs_analytic": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 5.0182080713057076e-14,
+              "passed": true,
+              "reference_l2": 1.9469976887505542,
+              "relative_l2": 2.691549597888444e-14
+            },
+            "gradient_vs_autodiff": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 5.040412531798211e-14,
+              "passed": true,
+              "reference_l2": 1.9469976887505545,
+              "relative_l2": 2.7024724251535093e-14
+            },
+            "port_jac_d_vs_analytic": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "port_jac_d_vs_autodiff": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "port_jac_q_vs_analytic": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 1.5121237595394632e-13,
+              "passed": true,
+              "reference_l2": 1.5280052355931246,
+              "relative_l2": 1.0321207270609211e-13
+            },
+            "port_jac_q_vs_autodiff": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 1.5121237595394632e-13,
+              "passed": true,
+              "reference_l2": 1.5280052355931246,
+              "relative_l2": 1.0321207270609211e-13
+            }
+          },
+          "passed": true,
+          "t": 0.0
+        },
+        {
+          "analytic_vs_autodiff": {
+            "gradient": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.8860419436684002,
+              "relative_l2": 0.0
+            },
+            "omega": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "port_d": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.5089656937182936,
+              "relative_l2": 0.0
+            },
+            "port_jac_d": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 2.7755575615628914e-17,
+              "passed": true,
+              "reference_l2": 0.22243207099497492,
+              "relative_l2": 2.1612920719816147e-16
+            },
+            "port_jac_q": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 1.3877787807814457e-17,
+              "passed": true,
+              "reference_l2": 1.4925553008307875,
+              "relative_l2": 1.1622507219740694e-17
+            },
+            "port_q": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.5678982838812201,
+              "relative_l2": 0.0
+            },
+            "value": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 2.220446049250313e-16,
+              "passed": true,
+              "reference_l2": 0.9684514883340294,
+              "relative_l2": 2.2927798408054664e-16
+            }
+          },
+          "finite_difference": {
+            "gradient_vs_analytic": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 4.1671999184700326e-11,
+              "passed": true,
+              "reference_l2": 1.8860419436684002,
+              "relative_l2": 2.2629968586045933e-11
+            },
+            "gradient_vs_autodiff": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 4.1671999184700326e-11,
+              "passed": true,
+              "reference_l2": 1.8860419436684002,
+              "relative_l2": 2.2629968586045933e-11
+            },
+            "port_jac_d_vs_analytic": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 2.4156746047943045e-11,
+              "passed": true,
+              "reference_l2": 0.22243207099497492,
+              "relative_l2": 1.8382665293807152e-10
+            },
+            "port_jac_d_vs_autodiff": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 2.415677380351866e-11,
+              "passed": true,
+              "reference_l2": 0.22243207099497497,
+              "relative_l2": 1.838268686067825e-10
+            },
+            "port_jac_q_vs_analytic": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 2.1004309402883337e-11,
+              "passed": true,
+              "reference_l2": 1.4925553008307875,
+              "relative_l2": 2.2691497890235417e-11
+            },
+            "port_jac_q_vs_autodiff": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 2.1004309402883337e-11,
+              "passed": true,
+              "reference_l2": 1.4925553008307875,
+              "relative_l2": 2.2691504107600078e-11
+            }
+          },
+          "passed": true,
+          "t": 0.37
+        },
+        {
+          "analytic_vs_autodiff": {
+            "gradient": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.6607343828023364,
+              "relative_l2": 0.0
+            },
+            "omega": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "port_d": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.4586803325355304,
+              "relative_l2": 0.0
+            },
+            "port_jac_d": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 1.3877787807814457e-17,
+              "passed": true,
+              "reference_l2": 0.2373250968050643,
+              "relative_l2": 8.269734637322345e-17
+            },
+            "port_jac_q": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 2.7755575615628914e-17,
+              "passed": true,
+              "reference_l2": 1.4512545999389241,
+              "relative_l2": 2.3423525334006567e-17
+            },
+            "port_q": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.483711946008654,
+              "relative_l2": 0.0
+            },
+            "value": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.487146133408687,
+              "relative_l2": 0.0
+            }
+          },
+          "finite_difference": {
+            "gradient_vs_analytic": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 1.1877410166505342e-10,
+              "passed": true,
+              "reference_l2": 1.6607343828023364,
+              "relative_l2": 8.266527022009823e-11
+            },
+            "gradient_vs_autodiff": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 1.1877410166505342e-10,
+              "passed": true,
+              "reference_l2": 1.6607343828023364,
+              "relative_l2": 8.266527022009823e-11
+            },
+            "port_jac_d_vs_analytic": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 2.8238480997977433e-11,
+              "passed": true,
+              "reference_l2": 0.2373250968050643,
+              "relative_l2": 2.0190123747905693e-10
+            },
+            "port_jac_d_vs_autodiff": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 2.8238467120189625e-11,
+              "passed": true,
+              "reference_l2": 0.23732509680506433,
+              "relative_l2": 2.0190122783235573e-10
+            },
+            "port_jac_q_vs_analytic": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 1.8753776309665682e-10,
+              "passed": true,
+              "reference_l2": 1.4512545999389241,
+              "relative_l2": 1.3321641869276776e-10
+            },
+            "port_jac_q_vs_autodiff": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 1.8753776309665682e-10,
+              "passed": true,
+              "reference_l2": 1.4512545999389241,
+              "relative_l2": 1.332164185033992e-10
+            }
+          },
+          "passed": true,
+          "t": 1.0
+        }
+      ],
+      "port_count": 2,
+      "port_identity_passed": true,
+      "port_ids": [
+        "h.linear.slot0",
+        "h.tanh.slot0"
+      ],
+      "quadrature": {
+        "128": {
+          "closed_form_comparison": {
+            "a": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 6.661338147750939e-16,
+              "passed": true,
+              "reference_l2": 1.5191002039854666,
+              "relative_l2": 4.4002546769141804e-16
+            },
+            "endpoint": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.6892333350570605,
+              "relative_l2": 0.0
+            },
+            "gradient_x": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.6607343828023364,
+              "relative_l2": 0.0
+            },
+            "ig": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 6.661338147750939e-16,
+              "passed": true,
+              "reference_l2": 1.8615142509195948,
+              "relative_l2": 3.6278116115029167e-16
+            },
+            "omega_x": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.487146133408687,
+              "relative_l2": 0.0
+            },
+            "port_d_x": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.4586803325355304,
+              "relative_l2": 0.0
+            },
+            "port_q_x": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.483711946008654,
+              "relative_l2": 0.0
+            },
+            "r": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 1.3877787807814457e-17,
+              "passed": true,
+              "reference_l2": 0.12894432527776603,
+              "relative_l2": 1.6143930077480596e-16
+            },
+            "t": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 6.661338147750939e-16,
+              "passed": true,
+              "reference_l2": 1.4972355600386662,
+              "relative_l2": 4.679897309976847e-16
+            }
+          },
+          "identities": {
+            "curvature_cut_zero_sum": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "pcia_to_ig": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 1.1102230246251565e-15,
+              "passed": true,
+              "reference_l2": 1.8615142509195954,
+              "relative_l2": 5.99383179778267e-16
+            },
+            "pcia_to_output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 8.881784197001252e-16,
+              "passed": true,
+              "reference_l2": 2.487146133408687,
+              "relative_l2": 3.5710745250133644e-16
+            },
+            "pefa_per_port_to_q": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 6.661338147750939e-16,
+              "passed": true,
+              "reference_l2": 1.483711946008654,
+              "relative_l2": 4.680452172027186e-16
+            },
+            "pefa_to_endpoint": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 6.661338147750939e-16,
+              "passed": true,
+              "reference_l2": 1.6892333350570605,
+              "relative_l2": 4.1567181936509785e-16
+            },
+            "port_endpoint_closure": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.6892333350570605,
+              "relative_l2": 0.0
+            },
+            "port_gradient_closure": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.6607343828023364,
+              "relative_l2": 0.0
+            },
+            "r_to_endpoint_minus_ig": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 4.718447854656915e-16,
+              "passed": true,
+              "reference_l2": 0.17228091586253494,
+              "relative_l2": 2.7682672815153154e-15
+            },
+            "t_equals_delta_a_plus_r": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 1.3877787807814457e-16,
+              "passed": true,
+              "reference_l2": 1.4972355600386655,
+              "relative_l2": 1.1906170066127498e-16
+            }
+          },
+          "passed": true,
+          "role": "convergence_diagnostic"
+        },
+        "64": {
+          "closed_form_comparison": {
+            "a": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 1.5191002039854666,
+              "relative_l2": 2.9461203938819473e-16
+            },
+            "endpoint": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.6892333350570605,
+              "relative_l2": 0.0
+            },
+            "gradient_x": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.6607343828023364,
+              "relative_l2": 0.0
+            },
+            "ig": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 1.1102230246251565e-16,
+              "passed": true,
+              "reference_l2": 1.8615142509195948,
+              "relative_l2": 5.964085550656958e-17
+            },
+            "omega_x": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.487146133408687,
+              "relative_l2": 0.0
+            },
+            "port_d_x": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.4586803325355304,
+              "relative_l2": 0.0
+            },
+            "port_q_x": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.483711946008654,
+              "relative_l2": 0.0
+            },
+            "r": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 1.3877787807814457e-17,
+              "passed": true,
+              "reference_l2": 0.12894432527776603,
+              "relative_l2": 1.3181463710999185e-16
+            },
+            "t": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 2.220446049250313e-16,
+              "passed": true,
+              "reference_l2": 1.4972355600386662,
+              "relative_l2": 1.6690529009159145e-16
+            }
+          },
+          "identities": {
+            "curvature_cut_zero_sum": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "pcia_to_ig": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 1.8615142509195948,
+              "relative_l2": 2.4590554685578705e-16
+            },
+            "pcia_to_output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.487146133408687,
+              "relative_l2": 0.0
+            },
+            "pefa_per_port_to_q": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 2.220446049250313e-16,
+              "passed": true,
+              "reference_l2": 1.483711946008654,
+              "relative_l2": 1.6092240145530524e-16
+            },
+            "pefa_to_endpoint": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 2.220446049250313e-16,
+              "passed": true,
+              "reference_l2": 1.6892333350570605,
+              "relative_l2": 1.3144697083397948e-16
+            },
+            "port_endpoint_closure": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.6892333350570605,
+              "relative_l2": 0.0
+            },
+            "port_gradient_closure": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.6607343828023364,
+              "relative_l2": 0.0
+            },
+            "r_to_endpoint_minus_ig": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 1.6653345369377348e-16,
+              "passed": true,
+              "reference_l2": 0.17228091586253433,
+              "relative_l2": 1.0471922592142529e-15
+            },
+            "t_equals_delta_a_plus_r": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 2.220446049250313e-16,
+              "passed": true,
+              "reference_l2": 1.4972355600386666,
+              "relative_l2": 1.8630340487136355e-16
+            }
+          },
+          "passed": true,
+          "role": "primary_gate"
+        }
+      },
+      "quadrature_64_vs_128": {
+        "a": {
+          "coordinates_checked": 4,
+          "finite": true,
+          "max_abs": 1.1102230246251565e-15,
+          "passed": true,
+          "reference_l2": 1.519100203985466,
+          "relative_l2": 7.344876447198614e-16
+        },
+        "endpoint": {
+          "coordinates_checked": 2,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 1.6892333350570605,
+          "relative_l2": 0.0
+        },
+        "gradient_x": {
+          "coordinates_checked": 2,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 1.6607343828023364,
+          "relative_l2": 0.0
+        },
+        "ig": {
+          "coordinates_checked": 2,
+          "finite": true,
+          "max_abs": 6.661338147750939e-16,
+          "passed": true,
+          "reference_l2": 1.8615142509195954,
+          "relative_l2": 3.5784513303941734e-16
+        },
+        "omega_x": {
+          "coordinates_checked": 8,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 0.0,
+          "relative_l2": 0.0
+        },
+        "output_delta": {
+          "coordinates_checked": 1,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 2.487146133408687,
+          "relative_l2": 0.0
+        },
+        "port_d_x": {
+          "coordinates_checked": 4,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 1.4586803325355304,
+          "relative_l2": 0.0
+        },
+        "port_q_x": {
+          "coordinates_checked": 4,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 1.483711946008654,
+          "relative_l2": 0.0
+        },
+        "r": {
+          "coordinates_checked": 8,
+          "finite": true,
+          "max_abs": 2.7755575615628914e-17,
+          "passed": true,
+          "reference_l2": 0.12894432527776603,
+          "relative_l2": 2.3456586586441562e-16
+        },
+        "t": {
+          "coordinates_checked": 8,
+          "finite": true,
+          "max_abs": 8.881784197001252e-16,
+          "passed": true,
+          "reference_l2": 1.4972355600386658,
+          "relative_l2": 6.047229186398898e-16
+        }
+      },
+      "structure": "fan_out"
+    },
+    "LINEAR3": {
+      "analytic_assertions": {
+        "omega_exact_zero": true,
+        "r_exact_zero": true
+      },
+      "cut_legality": {
+        "passed": true,
+        "path_intersection_counts": {
+          "u0-linear-F": 1,
+          "u1-linear-F": 1,
+          "u2-linear-F": 1
+        }
+      },
+      "dimension": 3,
+      "passed": true,
+      "point_comparisons": [
+        {
+          "analytic_vs_autodiff": {
+            "gradient": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 0.0
+            },
+            "omega": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "port_d": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 0.0
+            },
+            "port_jac_d": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "port_jac_q": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 0.0
+            },
+            "port_q": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "value": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            }
+          },
+          "finite_difference": {
+            "gradient_vs_analytic": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 0.0
+            },
+            "gradient_vs_autodiff": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 0.0
+            },
+            "port_jac_d_vs_analytic": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "port_jac_d_vs_autodiff": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "port_jac_q_vs_analytic": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 0.0
+            },
+            "port_jac_q_vs_autodiff": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 0.0
+            }
+          },
+          "passed": true,
+          "t": 0.0
+        },
+        {
+          "analytic_vs_autodiff": {
+            "gradient": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 0.0
+            },
+            "omega": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "port_d": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 0.0
+            },
+            "port_jac_d": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "port_jac_q": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 0.0
+            },
+            "port_q": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.8077215253415004,
+              "relative_l2": 0.0
+            },
+            "value": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.2487500000000002,
+              "relative_l2": 0.0
+            }
+          },
+          "finite_difference": {
+            "gradient_vs_analytic": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 5.3510973430093145e-11,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 2.5909967837882583e-11
+            },
+            "gradient_vs_autodiff": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 5.3510973430093145e-11,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 2.5909967837882583e-11
+            },
+            "port_jac_d_vs_analytic": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "port_jac_d_vs_autodiff": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "port_jac_q_vs_analytic": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 6.788880568819877e-11,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 2.7183487020482976e-11
+            },
+            "port_jac_q_vs_autodiff": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 6.788880568819877e-11,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 2.7183487020482976e-11
+            }
+          },
+          "passed": true,
+          "t": 0.37
+        },
+        {
+          "analytic_vs_autodiff": {
+            "gradient": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 0.0
+            },
+            "omega": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "port_d": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 0.0
+            },
+            "port_jac_d": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "port_jac_q": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 0.0
+            },
+            "port_q": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.1830311495716224,
+              "relative_l2": 0.0
+            },
+            "value": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.375,
+              "relative_l2": 0.0
+            }
+          },
+          "finite_difference": {
+            "gradient_vs_analytic": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 2.3442225938197225e-10,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 9.707195752064568e-11
+            },
+            "gradient_vs_autodiff": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 2.3442225938197225e-10,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 9.707195752064568e-11
+            },
+            "port_jac_d_vs_analytic": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "port_jac_d_vs_autodiff": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "port_jac_q_vs_analytic": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 2.3442225938197225e-10,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 9.335080386049854e-11
+            },
+            "port_jac_q_vs_autodiff": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 2.3442225938197225e-10,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 9.335080386049854e-11
+            }
+          },
+          "passed": true,
+          "t": 1.0
+        }
+      ],
+      "port_count": 1,
+      "port_identity_passed": true,
+      "port_ids": [
+        "linear.input"
+      ],
+      "quadrature": {
+        "128": {
+          "closed_form_comparison": {
+            "a": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 5.551115123125783e-16,
+              "passed": true,
+              "reference_l2": 2.1830311495716224,
+              "relative_l2": 2.842989842053356e-16
+            },
+            "endpoint": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.1830311495716224,
+              "relative_l2": 0.0
+            },
+            "gradient_x": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 0.0
+            },
+            "ig": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 5.551115123125783e-16,
+              "passed": true,
+              "reference_l2": 2.1830311495716224,
+              "relative_l2": 2.842989842053356e-16
+            },
+            "omega_x": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.375,
+              "relative_l2": 0.0
+            },
+            "port_d_x": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 0.0
+            },
+            "port_q_x": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.1830311495716224,
+              "relative_l2": 0.0
+            },
+            "r": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "t": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 5.551115123125783e-16,
+              "passed": true,
+              "reference_l2": 2.1830311495716224,
+              "relative_l2": 3.0194640122043084e-16
+            }
+          },
+          "identities": {
+            "curvature_cut_zero_sum": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "pcia_to_ig": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.1830311495716224,
+              "relative_l2": 0.0
+            },
+            "pcia_to_output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 8.881784197001252e-16,
+              "passed": true,
+              "reference_l2": 3.375,
+              "relative_l2": 2.631639762074445e-16
+            },
+            "pefa_per_port_to_q": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 5.551115123125783e-16,
+              "passed": true,
+              "reference_l2": 2.1830311495716224,
+              "relative_l2": 3.0194640122043084e-16
+            },
+            "pefa_to_endpoint": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 5.551115123125783e-16,
+              "passed": true,
+              "reference_l2": 2.1830311495716224,
+              "relative_l2": 3.0194640122043084e-16
+            },
+            "port_endpoint_closure": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.1830311495716224,
+              "relative_l2": 0.0
+            },
+            "port_gradient_closure": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 0.0
+            },
+            "r_to_endpoint_minus_ig": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 5.551115123125783e-16,
+              "passed": true,
+              "reference_l2": 6.206335383118183e-16,
+              "relative_l2": 0.0006206335383118183
+            },
+            "t_equals_delta_a_plus_r": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 2.220446049250313e-16,
+              "passed": true,
+              "reference_l2": 2.1830311495716224,
+              "relative_l2": 1.017138967387631e-16
+            }
+          },
+          "passed": true,
+          "role": "convergence_diagnostic"
+        },
+        "64": {
+          "closed_form_comparison": {
+            "a": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 2.1830311495716224,
+              "relative_l2": 2.4914714676010757e-16
+            },
+            "endpoint": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.1830311495716224,
+              "relative_l2": 0.0
+            },
+            "gradient_x": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 0.0
+            },
+            "ig": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 2.1830311495716224,
+              "relative_l2": 2.4914714676010757e-16
+            },
+            "omega_x": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.375,
+              "relative_l2": 0.0
+            },
+            "port_d_x": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 0.0
+            },
+            "port_q_x": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.1830311495716224,
+              "relative_l2": 0.0
+            },
+            "r": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "t": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 2.1830311495716224,
+              "relative_l2": 3.051416902162893e-16
+            }
+          },
+          "identities": {
+            "curvature_cut_zero_sum": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "pcia_to_ig": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.183031149571623,
+              "relative_l2": 0.0
+            },
+            "pcia_to_output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 8.881784197001252e-16,
+              "passed": true,
+              "reference_l2": 3.375,
+              "relative_l2": 2.631639762074445e-16
+            },
+            "pefa_per_port_to_q": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 2.1830311495716224,
+              "relative_l2": 3.051416902162893e-16
+            },
+            "pefa_to_endpoint": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 2.1830311495716224,
+              "relative_l2": 3.051416902162893e-16
+            },
+            "port_endpoint_closure": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.1830311495716224,
+              "relative_l2": 0.0
+            },
+            "port_gradient_closure": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.5124689052802225,
+              "relative_l2": 0.0
+            },
+            "r_to_endpoint_minus_ig": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 5.438959822042073e-16,
+              "relative_l2": 0.0005438959822042073
+            },
+            "t_equals_delta_a_plus_r": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 2.220446049250313e-16,
+              "passed": true,
+              "reference_l2": 2.183031149571623,
+              "relative_l2": 1.0171389673876309e-16
+            }
+          },
+          "passed": true,
+          "role": "primary_gate"
+        }
+      },
+      "quadrature_64_vs_128": {
+        "a": {
+          "coordinates_checked": 3,
+          "finite": true,
+          "max_abs": 9.992007221626409e-16,
+          "passed": true,
+          "reference_l2": 2.1830311495716224,
+          "relative_l2": 5.217486684517607e-16
+        },
+        "endpoint": {
+          "coordinates_checked": 3,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 2.1830311495716224,
+          "relative_l2": 0.0
+        },
+        "gradient_x": {
+          "coordinates_checked": 3,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 2.5124689052802225,
+          "relative_l2": 0.0
+        },
+        "ig": {
+          "coordinates_checked": 3,
+          "finite": true,
+          "max_abs": 9.992007221626409e-16,
+          "passed": true,
+          "reference_l2": 2.1830311495716224,
+          "relative_l2": 5.217486684517607e-16
+        },
+        "omega_x": {
+          "coordinates_checked": 9,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 0.0,
+          "relative_l2": 0.0
+        },
+        "output_delta": {
+          "coordinates_checked": 1,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 3.375,
+          "relative_l2": 0.0
+        },
+        "port_d_x": {
+          "coordinates_checked": 3,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 2.5124689052802225,
+          "relative_l2": 0.0
+        },
+        "port_q_x": {
+          "coordinates_checked": 3,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 2.1830311495716224,
+          "relative_l2": 0.0
+        },
+        "r": {
+          "coordinates_checked": 9,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 0.0,
+          "relative_l2": 0.0
+        },
+        "t": {
+          "coordinates_checked": 9,
+          "finite": true,
+          "max_abs": 9.992007221626409e-16,
+          "passed": true,
+          "reference_l2": 2.1830311495716224,
+          "relative_l2": 5.217486684517607e-16
+        }
+      },
+      "structure": "linear"
+    },
+    "MULTIINPUT3": {
+      "analytic_assertions": {},
+      "cut_legality": {
+        "passed": true,
+        "path_intersection_counts": {
+          "u0-a-linear-F": 1,
+          "u0-a-mul0-F": 1,
+          "u1-a-linear-F": 1,
+          "u1-a-mul0-F": 1,
+          "u1-c-linear-F": 1,
+          "u1-c-mul1-F": 1,
+          "u2-c-linear-F": 1,
+          "u2-c-mul1-F": 1
+        }
+      },
+      "dimension": 3,
+      "passed": true,
+      "point_comparisons": [
+        {
+          "analytic_vs_autodiff": {
+            "gradient": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.6164414002968976,
+              "relative_l2": 0.0
+            },
+            "omega": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 4.58257569495584,
+              "relative_l2": 0.0
+            },
+            "port_d": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.7071067811865475,
+              "relative_l2": 0.0
+            },
+            "port_jac_d": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.5355339059327378,
+              "relative_l2": 0.0
+            },
+            "port_jac_q": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.7071067811865475,
+              "relative_l2": 0.0
+            },
+            "port_q": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "value": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            }
+          },
+          "finite_difference": {
+            "gradient_vs_analytic": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.6164414002968976,
+              "relative_l2": 0.0
+            },
+            "gradient_vs_autodiff": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.6164414002968976,
+              "relative_l2": 0.0
+            },
+            "port_jac_d_vs_analytic": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.5355339059327378,
+              "relative_l2": 0.0
+            },
+            "port_jac_d_vs_autodiff": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.5355339059327378,
+              "relative_l2": 0.0
+            },
+            "port_jac_q_vs_analytic": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.7071067811865475,
+              "relative_l2": 0.0
+            },
+            "port_jac_q_vs_autodiff": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.7071067811865475,
+              "relative_l2": 0.0
+            }
+          },
+          "passed": true,
+          "t": 0.0
+        },
+        {
+          "analytic_vs_autodiff": {
+            "gradient": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.9504600202007446,
+              "relative_l2": 0.0
+            },
+            "omega": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 4.58257569495584,
+              "relative_l2": 0.0
+            },
+            "port_d": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.3193393232978392,
+              "relative_l2": 0.0
+            },
+            "port_jac_d": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.5355339059327378,
+              "relative_l2": 0.0
+            },
+            "port_jac_q": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.0088410838092696,
+              "relative_l2": 0.0
+            },
+            "port_q": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.4809459228832281,
+              "relative_l2": 0.0
+            },
+            "value": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.150109,
+              "relative_l2": 0.0
+            }
+          },
+          "finite_difference": {
+            "gradient_vs_analytic": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 1.5765722061189535e-11,
+              "passed": true,
+              "reference_l2": 0.9504600202007446,
+              "relative_l2": 2.2889570617123642e-11
+            },
+            "gradient_vs_autodiff": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 1.5765722061189535e-11,
+              "passed": true,
+              "reference_l2": 0.9504600202007446,
+              "relative_l2": 2.2889570617123642e-11
+            },
+            "port_jac_d_vs_analytic": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 5.3510973430093145e-11,
+              "passed": true,
+              "reference_l2": 3.5355339059327378,
+              "relative_l2": 2.0734360678329276e-11
+            },
+            "port_jac_d_vs_autodiff": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 5.3510973430093145e-11,
+              "passed": true,
+              "reference_l2": 3.5355339059327378,
+              "relative_l2": 2.0734360678329276e-11
+            },
+            "port_jac_q_vs_analytic": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 2.4425017564055906e-11,
+              "passed": true,
+              "reference_l2": 2.0088410838092696,
+              "relative_l2": 2.182172363464858e-11
+            },
+            "port_jac_q_vs_autodiff": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 2.4425017564055906e-11,
+              "passed": true,
+              "reference_l2": 2.0088410838092696,
+              "relative_l2": 2.182172363464858e-11
+            }
+          },
+          "passed": true,
+          "t": 0.37
+        },
+        {
+          "analytic_vs_autodiff": {
+            "gradient": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.0874746962525865,
+              "relative_l2": 0.0
+            },
+            "omega": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 4.58257569495584,
+              "relative_l2": 0.0
+            },
+            "port_d": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.092329219213245,
+              "relative_l2": 0.0
+            },
+            "port_jac_d": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.5355339059327378,
+              "relative_l2": 0.0
+            },
+            "port_jac_q": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 5.130789412946121,
+              "relative_l2": 0.0
+            },
+            "port_q": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.0108968763476445,
+              "relative_l2": 0.0
+            },
+            "value": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.42,
+              "relative_l2": 0.0
+            }
+          },
+          "finite_difference": {
+            "gradient_vs_analytic": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 3.1668889732827665e-10,
+              "passed": true,
+              "reference_l2": 3.0874746962525865,
+              "relative_l2": 1.1606403514869319e-10
+            },
+            "gradient_vs_autodiff": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 3.1668889732827665e-10,
+              "passed": true,
+              "reference_l2": 3.0874746962525865,
+              "relative_l2": 1.1606403514869319e-10
+            },
+            "port_jac_d_vs_analytic": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 1.645332758926088e-10,
+              "passed": true,
+              "reference_l2": 3.5355339059327378,
+              "relative_l2": 6.626790420784827e-11
+            },
+            "port_jac_d_vs_autodiff": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 1.645332758926088e-10,
+              "passed": true,
+              "reference_l2": 3.5355339059327378,
+              "relative_l2": 6.626790420784827e-11
+            },
+            "port_jac_q_vs_analytic": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 2.3529755921458673e-10,
+              "passed": true,
+              "reference_l2": 5.130789412946121,
+              "relative_l2": 6.49087706644445e-11
+            },
+            "port_jac_q_vs_autodiff": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 2.3529755921458673e-10,
+              "passed": true,
+              "reference_l2": 5.130789412946121,
+              "relative_l2": 6.49087706644445e-11
+            }
+          },
+          "passed": true,
+          "t": 1.0
+        }
+      ],
+      "port_count": 4,
+      "port_identity_passed": true,
+      "port_ids": [
+        "a.mul.slot0",
+        "c.mul.slot1",
+        "a.linear.slot0",
+        "c.linear.slot0"
+      ],
+      "quadrature": {
+        "128": {
+          "closed_form_comparison": {
+            "a": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 3.3306690738754696e-16,
+              "passed": true,
+              "reference_l2": 1.6297699224123632,
+              "relative_l2": 3.0902017327488767e-16
+            },
+            "endpoint": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.991070042643602,
+              "relative_l2": 0.0
+            },
+            "gradient_x": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.0874746962525865,
+              "relative_l2": 0.0
+            },
+            "ig": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 1.2449899597988732,
+              "relative_l2": 4.0437317536616633e-16
+            },
+            "omega_x": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 4.58257569495584,
+              "relative_l2": 0.0
+            },
+            "output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.42,
+              "relative_l2": 0.0
+            },
+            "port_d_x": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.092329219213245,
+              "relative_l2": 0.0
+            },
+            "port_q_x": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.0108968763476445,
+              "relative_l2": 0.0
+            },
+            "r": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 3.3306690738754696e-16,
+              "passed": true,
+              "reference_l2": 1.3473121390383151,
+              "relative_l2": 4.2118234343833693e-16
+            },
+            "t": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 2.5432066372986686,
+              "relative_l2": 2.8191155776630603e-16
+            }
+          },
+          "identities": {
+            "curvature_cut_zero_sum": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "pcia_to_ig": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 6.661338147750939e-16,
+              "passed": true,
+              "reference_l2": 1.2449899597988727,
+              "relative_l2": 5.7835157352546675e-16
+            },
+            "pcia_to_output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 2.220446049250313e-16,
+              "passed": true,
+              "reference_l2": 1.42,
+              "relative_l2": 1.5636944008805023e-16
+            },
+            "pefa_per_port_to_q": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 3.0108968763476445,
+              "relative_l2": 2.455014319477067e-16
+            },
+            "pefa_to_endpoint": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 2.991070042643602,
+              "relative_l2": 2.2270752783386637e-16
+            },
+            "port_endpoint_closure": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 2.991070042643602,
+              "relative_l2": 1.5304111014653603e-16
+            },
+            "port_gradient_closure": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.0874746962525865,
+              "relative_l2": 0.0
+            },
+            "r_to_endpoint_minus_ig": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 3.3306690738754696e-16,
+              "passed": true,
+              "reference_l2": 1.7636609651517499,
+              "relative_l2": 2.2696913531463774e-16
+            },
+            "t_equals_delta_a_plus_r": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 2.5432066372986686,
+              "relative_l2": 2.1827228042397847e-16
+            }
+          },
+          "passed": true,
+          "role": "convergence_diagnostic"
+        },
+        "64": {
+          "closed_form_comparison": {
+            "a": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 1.6297699224123632,
+              "relative_l2": 3.335082826361331e-16
+            },
+            "endpoint": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.991070042643602,
+              "relative_l2": 0.0
+            },
+            "gradient_x": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.0874746962525865,
+              "relative_l2": 0.0
+            },
+            "ig": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 6.661338147750939e-16,
+              "passed": true,
+              "reference_l2": 1.2449899597988732,
+              "relative_l2": 5.369061593370759e-16
+            },
+            "omega_x": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 4.58257569495584,
+              "relative_l2": 0.0
+            },
+            "output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.42,
+              "relative_l2": 0.0
+            },
+            "port_d_x": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.092329219213245,
+              "relative_l2": 0.0
+            },
+            "port_q_x": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.0108968763476445,
+              "relative_l2": 0.0
+            },
+            "r": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 1.1102230246251565e-16,
+              "passed": true,
+              "reference_l2": 1.3473121390383151,
+              "relative_l2": 1.8310304278287066e-16
+            },
+            "t": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 8.881784197001252e-16,
+              "passed": true,
+              "reference_l2": 2.5432066372986686,
+              "relative_l2": 3.69535035220956e-16
+            }
+          },
+          "identities": {
+            "curvature_cut_zero_sum": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "pcia_to_ig": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 1.2449899597988738,
+              "relative_l2": 3.6835427365608313e-16
+            },
+            "pcia_to_output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 2.220446049250313e-16,
+              "passed": true,
+              "reference_l2": 1.42,
+              "relative_l2": 1.5636944008805023e-16
+            },
+            "pefa_per_port_to_q": {
+              "coordinates_checked": 12,
+              "finite": true,
+              "max_abs": 1.3322676295501878e-15,
+              "passed": true,
+              "reference_l2": 3.0108968763476445,
+              "relative_l2": 4.526869662604466e-16
+            },
+            "pefa_to_endpoint": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 8.881784197001252e-16,
+              "passed": true,
+              "reference_l2": 2.991070042643602,
+              "relative_l2": 3.0154741818731046e-16
+            },
+            "port_endpoint_closure": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 2.991070042643602,
+              "relative_l2": 1.5304111014653603e-16
+            },
+            "port_gradient_closure": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 3.0874746962525865,
+              "relative_l2": 0.0
+            },
+            "r_to_endpoint_minus_ig": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 8.881784197001252e-16,
+              "passed": true,
+              "reference_l2": 1.7636609651517487,
+              "relative_l2": 5.341477153627476e-16
+            },
+            "t_equals_delta_a_plus_r": {
+              "coordinates_checked": 36,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 2.543206637298669,
+              "relative_l2": 1.8649191814414698e-16
+            }
+          },
+          "passed": true,
+          "role": "primary_gate"
+        }
+      },
+      "quadrature_64_vs_128": {
+        "a": {
+          "coordinates_checked": 12,
+          "finite": true,
+          "max_abs": 6.661338147750939e-16,
+          "passed": true,
+          "reference_l2": 1.629769922412363,
+          "relative_l2": 5.450381805953975e-16
+        },
+        "endpoint": {
+          "coordinates_checked": 3,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 2.991070042643602,
+          "relative_l2": 0.0
+        },
+        "gradient_x": {
+          "coordinates_checked": 3,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 3.0874746962525865,
+          "relative_l2": 0.0
+        },
+        "ig": {
+          "coordinates_checked": 3,
+          "finite": true,
+          "max_abs": 1.1102230246251565e-15,
+          "passed": true,
+          "reference_l2": 1.2449899597988727,
+          "relative_l2": 9.096859943752659e-16
+        },
+        "omega_x": {
+          "coordinates_checked": 36,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 4.58257569495584,
+          "relative_l2": 0.0
+        },
+        "output_delta": {
+          "coordinates_checked": 1,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 1.42,
+          "relative_l2": 0.0
+        },
+        "port_d_x": {
+          "coordinates_checked": 12,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 3.092329219213245,
+          "relative_l2": 0.0
+        },
+        "port_q_x": {
+          "coordinates_checked": 12,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 3.0108968763476445,
+          "relative_l2": 0.0
+        },
+        "r": {
+          "coordinates_checked": 36,
+          "finite": true,
+          "max_abs": 3.3306690738754696e-16,
+          "passed": true,
+          "reference_l2": 1.3473121390383151,
+          "relative_l2": 4.26688228672885e-16
+        },
+        "t": {
+          "coordinates_checked": 36,
+          "finite": true,
+          "max_abs": 1.3322676295501878e-15,
+          "passed": true,
+          "reference_l2": 2.543206637298668,
+          "relative_l2": 5.906725783482901e-16
+        }
+      },
+      "structure": "multi_input_operator"
+    },
+    "RESIDUAL2": {
+      "analytic_assertions": {},
+      "cut_legality": {
+        "passed": true,
+        "path_intersection_counts": {
+          "u0-branch-add-F": 1,
+          "u0-id-add-F": 1,
+          "u1-branch-add-F": 1,
+          "u1-id-add-F": 1
+        }
+      },
+      "dimension": 2,
+      "passed": true,
+      "point_comparisons": [
+        {
+          "analytic_vs_autodiff": {
+            "gradient": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.210678991424325,
+              "relative_l2": 0.0
+            },
+            "omega": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "port_d": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.590151471182561,
+              "relative_l2": 0.0
+            },
+            "port_jac_d": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 1.3877787807814457e-17,
+              "passed": true,
+              "reference_l2": 0.16173460428953718,
+              "relative_l2": 8.580592798168567e-17
+            },
+            "port_jac_q": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.590151471182561,
+              "relative_l2": 0.0
+            },
+            "port_q": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "value": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.13918227205043676,
+              "relative_l2": 0.0
+            }
+          },
+          "finite_difference": {
+            "gradient_vs_analytic": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 2.1780133252491396e-11,
+              "passed": true,
+              "reference_l2": 2.210678991424325,
+              "relative_l2": 1.1160384050107461e-11
+            },
+            "gradient_vs_autodiff": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 2.1780133252491396e-11,
+              "passed": true,
+              "reference_l2": 2.210678991424325,
+              "relative_l2": 1.1160384050107461e-11
+            },
+            "port_jac_d_vs_analytic": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 8.642464521813054e-11,
+              "passed": true,
+              "reference_l2": 0.16173460428953718,
+              "relative_l2": 5.910461392743179e-10
+            },
+            "port_jac_d_vs_autodiff": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 8.642464521813054e-11,
+              "passed": true,
+              "reference_l2": 0.16173460428953718,
+              "relative_l2": 5.910461711878922e-10
+            },
+            "port_jac_q_vs_analytic": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 5.101474798152594e-13,
+              "passed": true,
+              "reference_l2": 1.590151471182561,
+              "relative_l2": 3.3241169770686023e-13
+            },
+            "port_jac_q_vs_autodiff": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 5.101474798152594e-13,
+              "passed": true,
+              "reference_l2": 1.590151471182561,
+              "relative_l2": 3.3241169770686023e-13
+            }
+          },
+          "passed": true,
+          "t": 0.0
+        },
+        {
+          "analytic_vs_autodiff": {
+            "gradient": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.015132524618495,
+              "relative_l2": 0.0
+            },
+            "omega": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 2.7755575615628914e-17,
+              "passed": true,
+              "reference_l2": 3.925231146709438e-17,
+              "relative_l2": 3.925231146709438e-05
+            },
+            "port_d": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.4857002855734707,
+              "relative_l2": 0.0
+            },
+            "port_jac_d": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 1.1102230246251565e-16,
+              "passed": true,
+              "reference_l2": 0.5703510852698638,
+              "relative_l2": 2.064639437752029e-16
+            },
+            "port_jac_q": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 5.551115123125783e-17,
+              "passed": true,
+              "reference_l2": 1.408505697889525,
+              "relative_l2": 5.660028324827176e-17
+            },
+            "port_q": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.5391684591520933,
+              "relative_l2": 0.0
+            },
+            "value": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.2216846668013963,
+              "relative_l2": 0.0
+            }
+          },
+          "finite_difference": {
+            "gradient_vs_analytic": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 7.58957341417954e-11,
+              "passed": true,
+              "reference_l2": 2.015132524618495,
+              "relative_l2": 3.845847904142944e-11
+            },
+            "gradient_vs_autodiff": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 7.58957341417954e-11,
+              "passed": true,
+              "reference_l2": 2.015132524618495,
+              "relative_l2": 3.845847904142944e-11
+            },
+            "port_jac_d_vs_analytic": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 4.6610687531867256e-11,
+              "passed": true,
+              "reference_l2": 0.5703510852698638,
+              "relative_l2": 9.633657141310744e-11
+            },
+            "port_jac_d_vs_autodiff": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 4.661065977629164e-11,
+              "passed": true,
+              "reference_l2": 0.5703510852698637,
+              "relative_l2": 9.633661092669482e-11
+            },
+            "port_jac_q_vs_analytic": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 2.2434276658600538e-11,
+              "passed": true,
+              "reference_l2": 1.408505697889525,
+              "relative_l2": 2.852862292946724e-11
+            },
+            "port_jac_q_vs_autodiff": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 2.243433216975177e-11,
+              "passed": true,
+              "reference_l2": 1.408505697889525,
+              "relative_l2": 2.8528645610195984e-11
+            }
+          },
+          "passed": true,
+          "t": 0.37
+        },
+        {
+          "analytic_vs_autodiff": {
+            "gradient": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.575924288583596,
+              "relative_l2": 0.0
+            },
+            "omega": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 2.7755575615628914e-17,
+              "passed": true,
+              "reference_l2": 3.925231146709438e-17,
+              "relative_l2": 3.925231146709438e-05
+            },
+            "port_d": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 2.7755575615628914e-17,
+              "passed": true,
+              "reference_l2": 1.329483383151606,
+              "relative_l2": 2.0876963162813626e-17
+            },
+            "port_jac_d": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 2.7755575615628914e-17,
+              "passed": true,
+              "reference_l2": 0.3906518841271369,
+              "relative_l2": 7.943562587680164e-17
+            },
+            "port_jac_q": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 5.551115123125783e-17,
+              "passed": true,
+              "reference_l2": 1.3130157242096174,
+              "relative_l2": 4.7267791761246016e-17
+            },
+            "port_q": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 2.7755575615628914e-17,
+              "passed": true,
+              "reference_l2": 1.2922466174330303,
+              "relative_l2": 2.1478543833036827e-17
+            },
+            "value": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.749650864976818,
+              "relative_l2": 0.0
+            }
+          },
+          "finite_difference": {
+            "gradient_vs_analytic": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 3.293050276909071e-10,
+              "passed": true,
+              "reference_l2": 1.575924288583596,
+              "relative_l2": 2.16828047537011e-10
+            },
+            "gradient_vs_autodiff": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 3.293050276909071e-10,
+              "passed": true,
+              "reference_l2": 1.575924288583596,
+              "relative_l2": 2.16828047537011e-10
+            },
+            "port_jac_d_vs_analytic": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 2.1573465236457423e-11,
+              "passed": true,
+              "reference_l2": 0.3906518841271369,
+              "relative_l2": 7.434329744815128e-11
+            },
+            "port_jac_d_vs_autodiff": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 2.1573437480881807e-11,
+              "passed": true,
+              "reference_l2": 0.3906518841271369,
+              "relative_l2": 7.434323641851467e-11
+            },
+            "port_jac_q_vs_analytic": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 4.11333189731522e-11,
+              "passed": true,
+              "reference_l2": 1.3130157242096174,
+              "relative_l2": 4.7816881541917535e-11
+            },
+            "port_jac_q_vs_autodiff": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 4.11333189731522e-11,
+              "passed": true,
+              "reference_l2": 1.3130157242096174,
+              "relative_l2": 4.7816863246770144e-11
+            }
+          },
+          "passed": true,
+          "t": 1.0
+        }
+      ],
+      "port_count": 2,
+      "port_identity_passed": true,
+      "port_ids": [
+        "u.add.slot0",
+        "branch.add.slot1"
+      ],
+      "quadrature": {
+        "128": {
+          "closed_form_comparison": {
+            "a": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 1.4068181160714728,
+              "relative_l2": 3.4624829577662224e-16
+            },
+            "endpoint": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.541571571015053,
+              "relative_l2": 0.0
+            },
+            "gradient_x": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.575924288583596,
+              "relative_l2": 0.0
+            },
+            "ig": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 2.220446049250313e-16,
+              "passed": true,
+              "reference_l2": 1.8797613665813606,
+              "relative_l2": 1.1812382617951876e-16
+            },
+            "omega_x": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 2.7755575615628914e-17,
+              "passed": true,
+              "reference_l2": 3.925231146709438e-17,
+              "relative_l2": 3.925231146709438e-05
+            },
+            "output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.6104685929263813,
+              "relative_l2": 0.0
+            },
+            "port_d_x": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 2.7755575615628914e-17,
+              "passed": true,
+              "reference_l2": 1.329483383151606,
+              "relative_l2": 2.0876963162813626e-17
+            },
+            "port_q_x": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 2.7755575615628914e-17,
+              "passed": true,
+              "reference_l2": 1.2922466174330303,
+              "relative_l2": 2.1478543833036827e-17
+            },
+            "r": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 2.220446049250313e-16,
+              "passed": true,
+              "reference_l2": 0.2523872600469371,
+              "relative_l2": 1.124193202060879e-15
+            },
+            "t": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 1.3282836407362866,
+              "relative_l2": 4.89381705985038e-16
+            }
+          },
+          "identities": {
+            "curvature_cut_zero_sum": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "pcia_to_ig": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 1.8797613665813608,
+              "relative_l2": 2.6413290509977324e-16
+            },
+            "pcia_to_output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 2.6104685929263813,
+              "relative_l2": 1.701185798800325e-16
+            },
+            "pefa_per_port_to_q": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 1.2922466174330303,
+              "relative_l2": 4.940065081598471e-16
+            },
+            "pefa_to_endpoint": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 1.541571571015053,
+              "relative_l2": 3.600945442624264e-16
+            },
+            "port_endpoint_closure": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.541571571015053,
+              "relative_l2": 0.0
+            },
+            "port_gradient_closure": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.575924288583596,
+              "relative_l2": 0.0
+            },
+            "r_to_endpoint_minus_ig": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 3.885780586188048e-16,
+              "passed": true,
+              "reference_l2": 0.34013012811542187,
+              "relative_l2": 1.1683744905948327e-15
+            },
+            "t_equals_delta_a_plus_r": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 1.3282836407362861,
+              "relative_l2": 3.942615396845042e-16
+            }
+          },
+          "passed": true,
+          "role": "convergence_diagnostic"
+        },
+        "64": {
+          "closed_form_comparison": {
+            "a": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 1.4068181160714728,
+              "relative_l2": 4.13845869045496e-16
+            },
+            "endpoint": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.541571571015053,
+              "relative_l2": 0.0
+            },
+            "gradient_x": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.575924288583596,
+              "relative_l2": 0.0
+            },
+            "ig": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 6.661338147750939e-16,
+              "passed": true,
+              "reference_l2": 1.8797613665813606,
+              "relative_l2": 3.543714785385563e-16
+            },
+            "omega_x": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 2.7755575615628914e-17,
+              "passed": true,
+              "reference_l2": 3.925231146709438e-17,
+              "relative_l2": 3.925231146709438e-05
+            },
+            "output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 2.6104685929263813,
+              "relative_l2": 0.0
+            },
+            "port_d_x": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 2.7755575615628914e-17,
+              "passed": true,
+              "reference_l2": 1.329483383151606,
+              "relative_l2": 2.0876963162813626e-17
+            },
+            "port_q_x": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 2.7755575615628914e-17,
+              "passed": true,
+              "reference_l2": 1.2922466174330303,
+              "relative_l2": 2.1478543833036827e-17
+            },
+            "r": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 5.551115123125783e-17,
+              "passed": true,
+              "reference_l2": 0.2523872600469371,
+              "relative_l2": 3.4776254830808243e-16
+            },
+            "t": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 1.3282836407362866,
+              "relative_l2": 4.3943367537956013e-16
+            }
+          },
+          "identities": {
+            "curvature_cut_zero_sum": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "pcia_to_ig": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 6.661338147750939e-16,
+              "passed": true,
+              "reference_l2": 1.8797613665813613,
+              "relative_l2": 3.543714785385562e-16
+            },
+            "pcia_to_output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 2.6104685929263813,
+              "relative_l2": 1.701185798800325e-16
+            },
+            "pefa_per_port_to_q": {
+              "coordinates_checked": 4,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 1.2922466174330303,
+              "relative_l2": 4.705713183887098e-16
+            },
+            "pefa_to_endpoint": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 6.661338147750939e-16,
+              "passed": true,
+              "reference_l2": 1.541571571015053,
+              "relative_l2": 4.380739202408602e-16
+            },
+            "port_endpoint_closure": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.541571571015053,
+              "relative_l2": 0.0
+            },
+            "port_gradient_closure": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.575924288583596,
+              "relative_l2": 0.0
+            },
+            "r_to_endpoint_minus_ig": {
+              "coordinates_checked": 2,
+              "finite": true,
+              "max_abs": 6.106226635438361e-16,
+              "passed": true,
+              "reference_l2": 0.3401301281154222,
+              "relative_l2": 1.8608304651966557e-15
+            },
+            "t_equals_delta_a_plus_r": {
+              "coordinates_checked": 8,
+              "finite": true,
+              "max_abs": 2.7755575615628914e-16,
+              "passed": true,
+              "reference_l2": 1.3282836407362868,
+              "relative_l2": 2.0921923281960504e-16
+            }
+          },
+          "passed": true,
+          "role": "primary_gate"
+        }
+      },
+      "quadrature_64_vs_128": {
+        "a": {
+          "coordinates_checked": 4,
+          "finite": true,
+          "max_abs": 8.881784197001252e-16,
+          "passed": true,
+          "reference_l2": 1.4068181160714723,
+          "relative_l2": 7.32911994887378e-16
+        },
+        "endpoint": {
+          "coordinates_checked": 2,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 1.541571571015053,
+          "relative_l2": 0.0
+        },
+        "gradient_x": {
+          "coordinates_checked": 2,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 1.575924288583596,
+          "relative_l2": 0.0
+        },
+        "ig": {
+          "coordinates_checked": 2,
+          "finite": true,
+          "max_abs": 6.661338147750939e-16,
+          "passed": true,
+          "reference_l2": 1.8797613665813608,
+          "relative_l2": 3.7354033666110494e-16
+        },
+        "omega_x": {
+          "coordinates_checked": 8,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 0.0,
+          "relative_l2": 0.0
+        },
+        "output_delta": {
+          "coordinates_checked": 1,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 2.6104685929263813,
+          "relative_l2": 0.0
+        },
+        "port_d_x": {
+          "coordinates_checked": 4,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 1.329483383151606,
+          "relative_l2": 0.0
+        },
+        "port_q_x": {
+          "coordinates_checked": 4,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 1.2922466174330303,
+          "relative_l2": 0.0
+        },
+        "r": {
+          "coordinates_checked": 8,
+          "finite": true,
+          "max_abs": 2.498001805406602e-16,
+          "passed": true,
+          "reference_l2": 0.2523872600469374,
+          "relative_l2": 1.3669324436813053e-15
+        },
+        "t": {
+          "coordinates_checked": 8,
+          "finite": true,
+          "max_abs": 8.881784197001252e-16,
+          "passed": true,
+          "reference_l2": 1.3282836407362864,
+          "relative_l2": 8.636447340371033e-16
+        }
+      },
+      "structure": "residual"
+    },
+    "SATURATING3": {
+      "analytic_assertions": {},
+      "cut_legality": {
+        "passed": true,
+        "path_intersection_counts": {
+          "u0-s-tanh-F": 1,
+          "u1-s-tanh-F": 1,
+          "u2-s-tanh-F": 1
+        }
+      },
+      "dimension": 3,
+      "passed": true,
+      "point_comparisons": [
+        {
+          "analytic_vs_autodiff": {
+            "gradient": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 1.1102230246251565e-16,
+              "passed": true,
+              "reference_l2": 0.9508090389931516,
+              "relative_l2": 1.4300873253691397e-16
+            },
+            "omega": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 1.1102230246251565e-16,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.00017554167342883505
+            },
+            "port_d": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 1.1102230246251565e-16,
+              "passed": true,
+              "reference_l2": 0.9508090389931516,
+              "relative_l2": 1.4300873253691397e-16
+            },
+            "port_jac_d": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 1.1102230246251565e-16,
+              "passed": true,
+              "reference_l2": 1.500071065245893,
+              "relative_l2": 1.1101704282688444e-16
+            },
+            "port_jac_q": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 1.1102230246251565e-16,
+              "passed": true,
+              "reference_l2": 0.9508090389931516,
+              "relative_l2": 1.4300873253691397e-16
+            },
+            "port_q": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 0.0
+            },
+            "value": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 1.1102230246251565e-16,
+              "passed": true,
+              "reference_l2": 0.5648995528462251,
+              "relative_l2": 1.965345908013805e-16
+            }
+          },
+          "finite_difference": {
+            "gradient_vs_analytic": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 4.199296466111946e-11,
+              "passed": true,
+              "reference_l2": 0.9508090389931516,
+              "relative_l2": 5.226343340029518e-11
+            },
+            "gradient_vs_autodiff": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 4.1992853638816996e-11,
+              "passed": true,
+              "reference_l2": 0.9508090389931517,
+              "relative_l2": 5.226336983977425e-11
+            },
+            "port_jac_d_vs_analytic": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 4.7980674988679084e-11,
+              "passed": true,
+              "reference_l2": 1.500071065245893,
+              "relative_l2": 4.2025493282573775e-11
+            },
+            "port_jac_d_vs_autodiff": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 4.798061947752785e-11,
+              "passed": true,
+              "reference_l2": 1.500071065245893,
+              "relative_l2": 4.2025470876456955e-11
+            },
+            "port_jac_q_vs_analytic": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 9.112322008064666e-12,
+              "passed": true,
+              "reference_l2": 0.9508090389931516,
+              "relative_l2": 9.62537040668786e-12
+            },
+            "port_jac_q_vs_autodiff": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 9.112377519215897e-12,
+              "passed": true,
+              "reference_l2": 0.9508090389931517,
+              "relative_l2": 9.625416495573684e-12
+            }
+          },
+          "passed": true,
+          "t": 0.0
+        },
+        {
+          "analytic_vs_autodiff": {
+            "gradient": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.1678629261233187,
+              "relative_l2": 0.0
+            },
+            "omega": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 2.7755575615628914e-17,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 3.925231146709438e-05
+            },
+            "port_d": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.1678629261233187,
+              "relative_l2": 0.0
+            },
+            "port_jac_d": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 1.1102230246251565e-16,
+              "passed": true,
+              "reference_l2": 1.3195676455752507,
+              "relative_l2": 8.672474681142054e-17
+            },
+            "port_jac_q": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 5.551115123125783e-17,
+              "passed": true,
+              "reference_l2": 1.3969538530975183,
+              "relative_l2": 4.686009779181565e-17
+            },
+            "port_q": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.4029259025455087,
+              "relative_l2": 0.0
+            },
+            "value": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 0.404568891245825,
+              "relative_l2": 0.0
+            }
+          },
+          "finite_difference": {
+            "gradient_vs_analytic": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 1.3056833392255385e-11,
+              "passed": true,
+              "reference_l2": 1.1678629261233187,
+              "relative_l2": 1.3347425685581616e-11
+            },
+            "gradient_vs_autodiff": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 1.3056833392255385e-11,
+              "passed": true,
+              "reference_l2": 1.1678629261233187,
+              "relative_l2": 1.3347425685581616e-11
+            },
+            "port_jac_d_vs_analytic": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 5.226566401894672e-11,
+              "passed": true,
+              "reference_l2": 1.3195676455752507,
+              "relative_l2": 5.6102548065108436e-11
+            },
+            "port_jac_d_vs_autodiff": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 5.226569177452234e-11,
+              "passed": true,
+              "reference_l2": 1.3195676455752507,
+              "relative_l2": 5.610256097831529e-11
+            },
+            "port_jac_q_vs_analytic": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 4.053535285208909e-11,
+              "passed": true,
+              "reference_l2": 1.3969538530975183,
+              "relative_l2": 3.8057809940967776e-11
+            },
+            "port_jac_q_vs_autodiff": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 4.053529734093786e-11,
+              "passed": true,
+              "reference_l2": 1.3969538530975183,
+              "relative_l2": 3.805778634257066e-11
+            }
+          },
+          "passed": true,
+          "t": 0.37
+        },
+        {
+          "analytic_vs_autodiff": {
+            "gradient": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.3896038169427605,
+              "relative_l2": 0.0
+            },
+            "omega": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 6.938893903907228e-18,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 9.813077866773595e-06
+            },
+            "port_d": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.3896038169427605,
+              "relative_l2": 0.0
+            },
+            "port_jac_d": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 1.3877787807814457e-17,
+              "passed": true,
+              "reference_l2": 0.2712238034838116,
+              "relative_l2": 1.199979386196159e-16
+            },
+            "port_jac_q": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 4.163336342344337e-17,
+              "passed": true,
+              "reference_l2": 1.4987795677896312,
+              "relative_l2": 3.789569571851006e-17
+            },
+            "port_q": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.2957540941225498,
+              "relative_l2": 0.0
+            },
+            "value": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 1.3877787807814457e-17,
+              "passed": true,
+              "reference_l2": 0.06988589031642897,
+              "relative_l2": 1.9857782085881257e-16
+            }
+          },
+          "finite_difference": {
+            "gradient_vs_analytic": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 8.607070611788004e-11,
+              "passed": true,
+              "reference_l2": 1.3896038169427605,
+              "relative_l2": 7.069371996211566e-11
+            },
+            "gradient_vs_autodiff": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 8.607070611788004e-11,
+              "passed": true,
+              "reference_l2": 1.3896038169427605,
+              "relative_l2": 7.069371996211566e-11
+            },
+            "port_jac_d_vs_analytic": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 7.60053131543259e-11,
+              "passed": true,
+              "reference_l2": 0.2712238034838116,
+              "relative_l2": 3.675177387323676e-10
+            },
+            "port_jac_d_vs_autodiff": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 7.60053131543259e-11,
+              "passed": true,
+              "reference_l2": 0.2712238034838116,
+              "relative_l2": 3.675178004233553e-10
+            },
+            "port_jac_q_vs_analytic": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 6.234590621545522e-11,
+              "passed": true,
+              "reference_l2": 1.4987795677896312,
+              "relative_l2": 5.008937712597269e-11
+            },
+            "port_jac_q_vs_autodiff": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 6.234590621545522e-11,
+              "passed": true,
+              "reference_l2": 1.4987795677896312,
+              "relative_l2": 5.008939131474151e-11
+            }
+          },
+          "passed": true,
+          "t": 1.0
+        }
+      ],
+      "port_count": 1,
+      "port_identity_passed": true,
+      "port_ids": [
+        "preactivation.tanh.slot0"
+      ],
+      "quadrature": {
+        "128": {
+          "closed_form_comparison": {
+            "a": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 2.220446049250313e-16,
+              "passed": true,
+              "reference_l2": 1.1308141315646896,
+              "relative_l2": 2.1953511934027832e-16
+            },
+            "endpoint": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.2957540941225498,
+              "relative_l2": 0.0
+            },
+            "gradient_x": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.3896038169427605,
+              "relative_l2": 0.0
+            },
+            "ig": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 2.220446049250313e-16,
+              "passed": true,
+              "reference_l2": 1.1308141315646896,
+              "relative_l2": 2.1953511934027832e-16
+            },
+            "omega_x": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 1.3877787807814457e-17,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 1.962615573354719e-05
+            },
+            "output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 5.551115123125783e-17,
+              "passed": true,
+              "reference_l2": 0.4950136625297961,
+              "relative_l2": 1.1214064465931074e-16
+            },
+            "port_d_x": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.3896038169427605,
+              "relative_l2": 0.0
+            },
+            "port_q_x": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.2957540941225498,
+              "relative_l2": 0.0
+            },
+            "r": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 8.881784197001252e-16,
+              "passed": true,
+              "reference_l2": 0.3767904901189516,
+              "relative_l2": 4.241752140484313e-15
+            },
+            "t": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 1.1102230246251565e-15,
+              "passed": true,
+              "reference_l2": 1.278893563671903,
+              "relative_l2": 1.4815640943634593e-15
+            }
+          },
+          "identities": {
+            "curvature_cut_zero_sum": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 1.3877787807814457e-17,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 1.962615573354719e-05
+            },
+            "pcia_to_ig": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.1308141315646896,
+              "relative_l2": 0.0
+            },
+            "pcia_to_output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 3.885780586188048e-16,
+              "passed": true,
+              "reference_l2": 0.49501366252979606,
+              "relative_l2": 7.849845126151752e-16
+            },
+            "pefa_per_port_to_q": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 5.551115123125783e-16,
+              "passed": true,
+              "reference_l2": 1.2957540941225498,
+              "relative_l2": 5.552803246105144e-16
+            },
+            "pefa_to_endpoint": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 5.551115123125783e-16,
+              "passed": true,
+              "reference_l2": 1.2957540941225498,
+              "relative_l2": 5.552803246105144e-16
+            },
+            "port_endpoint_closure": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.2957540941225498,
+              "relative_l2": 0.0
+            },
+            "port_gradient_closure": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.3896038169427605,
+              "relative_l2": 0.0
+            },
+            "r_to_endpoint_minus_ig": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 6.106226635438361e-16,
+              "passed": true,
+              "reference_l2": 0.16493996255786028,
+              "relative_l2": 4.422072334326396e-15
+            },
+            "t_equals_delta_a_plus_r": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 5.551115123125783e-16,
+              "passed": true,
+              "reference_l2": 1.2788935636719039,
+              "relative_l2": 5.356076448830929e-16
+            }
+          },
+          "passed": true,
+          "role": "convergence_diagnostic"
+        },
+        "64": {
+          "closed_form_comparison": {
+            "a": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 1.1102230246251565e-16,
+              "passed": true,
+              "reference_l2": 1.1308141315646896,
+              "relative_l2": 1.0976755967013916e-16
+            },
+            "endpoint": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.2957540941225498,
+              "relative_l2": 0.0
+            },
+            "gradient_x": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.3896038169427605,
+              "relative_l2": 0.0
+            },
+            "ig": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 1.1102230246251565e-16,
+              "passed": true,
+              "reference_l2": 1.1308141315646896,
+              "relative_l2": 1.0976755967013916e-16
+            },
+            "omega_x": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 1.3877787807814457e-17,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 1.962615573354719e-05
+            },
+            "output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 5.551115123125783e-17,
+              "passed": true,
+              "reference_l2": 0.4950136625297961,
+              "relative_l2": 1.1214064465931074e-16
+            },
+            "port_d_x": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.3896038169427605,
+              "relative_l2": 0.0
+            },
+            "port_q_x": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.2957540941225498,
+              "relative_l2": 0.0
+            },
+            "r": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 1.1102230246251565e-16,
+              "passed": true,
+              "reference_l2": 0.3767904901189516,
+              "relative_l2": 3.3605660132566084e-16
+            },
+            "t": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 3.3306690738754696e-16,
+              "passed": true,
+              "reference_l2": 1.278893563671903,
+              "relative_l2": 3.2249847415339974e-16
+            }
+          },
+          "identities": {
+            "curvature_cut_zero_sum": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 1.3877787807814457e-17,
+              "passed": true,
+              "reference_l2": 0.0,
+              "relative_l2": 1.962615573354719e-05
+            },
+            "pcia_to_ig": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.1308141315646896,
+              "relative_l2": 0.0
+            },
+            "pcia_to_output_delta": {
+              "coordinates_checked": 1,
+              "finite": true,
+              "max_abs": 1.1102230246251565e-16,
+              "passed": true,
+              "reference_l2": 0.49501366252979606,
+              "relative_l2": 2.2428128931862147e-16
+            },
+            "pefa_per_port_to_q": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 1.2957540941225498,
+              "relative_l2": 3.5327434574860777e-16
+            },
+            "pefa_to_endpoint": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 4.440892098500626e-16,
+              "passed": true,
+              "reference_l2": 1.2957540941225498,
+              "relative_l2": 3.5327434574860777e-16
+            },
+            "port_endpoint_closure": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.2957540941225498,
+              "relative_l2": 0.0
+            },
+            "port_gradient_closure": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 0.0,
+              "passed": true,
+              "reference_l2": 1.3896038169427605,
+              "relative_l2": 0.0
+            },
+            "r_to_endpoint_minus_ig": {
+              "coordinates_checked": 3,
+              "finite": true,
+              "max_abs": 2.7755575615628914e-16,
+              "passed": true,
+              "reference_l2": 0.16493996255786034,
+              "relative_l2": 2.060961962195072e-15
+            },
+            "t_equals_delta_a_plus_r": {
+              "coordinates_checked": 9,
+              "finite": true,
+              "max_abs": 2.220446049250313e-16,
+              "passed": true,
+              "reference_l2": 1.278893563671903,
+              "relative_l2": 2.6402599896877667e-16
+            }
+          },
+          "passed": true,
+          "role": "primary_gate"
+        }
+      },
+      "quadrature_64_vs_128": {
+        "a": {
+          "coordinates_checked": 3,
+          "finite": true,
+          "max_abs": 1.6653345369377348e-16,
+          "passed": true,
+          "reference_l2": 1.1308141315646896,
+          "relative_l2": 1.7699487169248054e-16
+        },
+        "endpoint": {
+          "coordinates_checked": 3,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 1.2957540941225498,
+          "relative_l2": 0.0
+        },
+        "gradient_x": {
+          "coordinates_checked": 3,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 1.3896038169427605,
+          "relative_l2": 0.0
+        },
+        "ig": {
+          "coordinates_checked": 3,
+          "finite": true,
+          "max_abs": 1.6653345369377348e-16,
+          "passed": true,
+          "reference_l2": 1.1308141315646896,
+          "relative_l2": 1.7699487169248054e-16
+        },
+        "omega_x": {
+          "coordinates_checked": 9,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 1.962615573354719e-17,
+          "relative_l2": 0.0
+        },
+        "output_delta": {
+          "coordinates_checked": 1,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 0.49501366252979606,
+          "relative_l2": 0.0
+        },
+        "port_d_x": {
+          "coordinates_checked": 3,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 1.3896038169427605,
+          "relative_l2": 0.0
+        },
+        "port_q_x": {
+          "coordinates_checked": 3,
+          "finite": true,
+          "max_abs": 0.0,
+          "passed": true,
+          "reference_l2": 1.2957540941225498,
+          "relative_l2": 0.0
+        },
+        "r": {
+          "coordinates_checked": 9,
+          "finite": true,
+          "max_abs": 8.881784197001252e-16,
+          "passed": true,
+          "reference_l2": 0.37679049011895316,
+          "relative_l2": 4.036293820660476e-15
+        },
+        "t": {
+          "coordinates_checked": 9,
+          "finite": true,
+          "max_abs": 1.2212453270876722e-15,
+          "passed": true,
+          "reference_l2": 1.2788935636719039,
+          "relative_l2": 1.507144070239901e-15
+        }
+      },
+      "structure": "smooth_saturating_nonlinearity"
+    }
+  },
+  "git_head_at_execution": "966bde1827007506b19927e04494897f4cc497b6",
+  "negative_controls": [
+    {
+      "control_id": "OMIT_RESIDUAL_IDENTITY",
+      "expected_failure": "FAIL_CUT_NOT_LEGAL",
+      "observed_failure": "FAIL_CUT_NOT_LEGAL",
+      "passed": true
+    },
+    {
+      "control_id": "DUPLICATE_RESIDUAL_IDENTITY",
+      "expected_failure": "FAIL_CUT_NOT_LEGAL",
+      "observed_failure": "FAIL_CUT_NOT_LEGAL",
+      "passed": true
+    },
+    {
+      "control_id": "MERGE_FANOUT_COTANGENTS",
+      "expected_failure": "FAIL_PORT_ID_AMBIGUOUS",
+      "observed_failure": "FAIL_PORT_ID_AMBIGUOUS",
+      "passed": true
+    },
+    {
+      "control_id": "SWAP_MULTIINPUT_SLOTS",
+      "expected_failure": "FAIL_PORT_ID_AMBIGUOUS",
+      "observed_failure": "FAIL_PORT_ID_AMBIGUOUS",
+      "passed": true
+    },
+    {
+      "control_id": "DUPLICATE_SERIAL_CUTS",
+      "expected_failure": "FAIL_CUT_NOT_LEGAL",
+      "observed_failure": "FAIL_CUT_NOT_LEGAL",
+      "passed": true
+    },
+    {
+      "control_id": "DETACH_SECOND_ORDER_D",
+      "expected_failure": "FAIL_SECOND_ORDER_GRAPH_TRUNCATED",
+      "observed_failure": "FAIL_SECOND_ORDER_GRAPH_TRUNCATED",
+      "passed": true
+    },
+    {
+      "control_id": "HESSIAN_DIAGONAL_ONLY",
+      "expected_failure": "FAIL_QUADRATURE_CLOSURE",
+      "observed_failure": "FAIL_QUADRATURE_CLOSURE",
+      "passed": true
+    },
+    {
+      "control_id": "RELU_SAFE_CROSSES_KINK_BETWEEN_NODES",
+      "expected_failure": "FAIL_QUADRATURE_CLOSURE",
+      "observed_failure": "FAIL_QUADRATURE_CLOSURE",
+      "passed": true
+    },
+    {
+      "control_id": "RELU_HIT_FROZEN_NODE",
+      "expected_failure": "FAIL_NONSMOOTH_NODE_HIT",
+      "observed_failure": "FAIL_NONSMOOTH_NODE_HIT",
+      "passed": true
+    }
+  ],
+  "negative_receipt_sha256": {
+    "vit_pcia_pefa/negative_control_receipts/detach_second_order_d.json": "59d405f3aa4fa7fc1b525cb56c54fd15a2fe705bb04e80dcda7f0fd7495e7888",
+    "vit_pcia_pefa/negative_control_receipts/duplicate_residual_identity.json": "1c1d7b7a257e4483401557922255ed6fd2e841adcb312fc1e875446d2279d414",
+    "vit_pcia_pefa/negative_control_receipts/duplicate_serial_cuts.json": "d359ffec3d3c654d62459137ce985e3ed6eb775eebf00b463c4b892279fd5369",
+    "vit_pcia_pefa/negative_control_receipts/hessian_diagonal_only.json": "cc29e74d8ab3d10147aec9ea7653344bf897145c7b8fe402bdf66f6ca3b77da8",
+    "vit_pcia_pefa/negative_control_receipts/merge_fanout_cotangents.json": "f89390ff73085721e93be610ce9a3a6492c51fd447b201ac41f1974d9962fe89",
+    "vit_pcia_pefa/negative_control_receipts/omit_residual_identity.json": "b1a8d8e4f3600fc2e5420e935090d2d9e3dde8f44ffb2faf291d53e3a9464f62",
+    "vit_pcia_pefa/negative_control_receipts/relu_hit_frozen_node.json": "88402ad200abfb33a6b754054c876b7a522798e28f87d1356d079e771aae0310",
+    "vit_pcia_pefa/negative_control_receipts/relu_safe_crosses_kink_between_nodes.json": "5b3e9fc8bbec7b845bce1856090c433ae00f8796d12b7a65c26b08a0a92eaa62",
+    "vit_pcia_pefa/negative_control_receipts/swap_multiinput_slots.json": "5f266c752ef9bf0bc75a11e022e6c0487655e9c124cca1691fe3bd8e57d3e5d0"
+  },
+  "novelty_position": "COMPOSITIONAL_SYSTEMATIZATION_CANDIDATE",
+  "predecessor": {
+    "status": "PASS_STEP1_CONTRACT_AND_COLLISION_AUDIT",
+    "validation_command_run_before_step2": "CUDA_VISIBLE_DEVICES='' .conda/envs/vitnns/bin/python vit_pcia_pefa/validate_step1.py"
+  },
+  "schema_version": 1,
+  "scope": "CPU_REFERENCE_ONLY_STEP3_TO_STEP6_NOT_AUTHORIZED",
+  "source_sha256": {
+    "vit_pcia_pefa/freeze_step2.py": "c795ad2894eb5fecaec5f914070c9cac1f63614b104e4cd1320d46144c4ec0b0",
+    "vit_pcia_pefa/run_step2.py": "64d9323024c9541c99f97f9a9abf8fb8fe66d1ae8c3d2885eb0408cd543c5467",
+    "vit_pcia_pefa/src/analytic_fixtures.py": "664427f53bdec13d17211ffe73cc8ec6920ca56aef74f6bca99a56cade847e25",
+    "vit_pcia_pefa/src/reference.py": "0815421b5ce3c541ff0d2001435968c492dddb72d1b6d382b66d1ea33fca368e",
+    "vit_pcia_pefa/tests/test_step2_reference.py": "536821c93848e0dfe546901745231cfcc20b196191011f3e8042fbe070f71e46",
+    "vit_pcia_pefa/validate_step2.py": "3fde37f43230876a9fd5a0a7de984e7853a498228e4ddd5984df70eee8c77a39"
+  },
+  "stage": "ENDPOINT_PCIA_PEFA_STEP2",
+  "status": "PASS_STEP2_CPU_FLOAT64_REFERENCE"
+}
