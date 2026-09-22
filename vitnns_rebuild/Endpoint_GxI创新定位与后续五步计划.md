@@ -587,6 +587,10 @@ Registry 中每项主张只属于一个主类别。方法边界若同时影响�
 - 本文结构分项依赖指定图、切面和参数化。
 - 经验贡献限于两个固定 checkpoint、冻结样本和注册目标。
 
+#### Repeated phrase audit
+
+现役中文与英文主稿逐份扫描，下列 reviewer-facing 构式的计数均为 0：`We emphasize that`、`It should be noted that`、`We do not claim`、`To avoid misunderstanding`、`Taken together`、`需要强调的是`、`应当指出`、`为避免误解`、`我们不声称`。
+
 ### 9.8 第二步 prompt-to-artifact 验收表
 
 | 显式要求 | 直接产物 | 覆盖证据 | 状态 |
