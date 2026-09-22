@@ -20,6 +20,7 @@ from vitnns.stage_c_plan import (
     StageCEstimate,
     UnitKey,
     ValueCandidate,
+    _resolved_workspace_path,
     build_execution_plan,
     enforce_stage_c_budget,
     estimate_stage_c_run,
@@ -54,6 +55,13 @@ PAIR = {"block_index": 0, "head_index": 0}
 @pytest.fixture(scope="module")
 def registry():
     return load_stage_c_registry(CONFIG)
+
+
+def test_frozen_workspace_paths_follow_legacy_directory_rename(tmp_path: Path):
+    resolved = _resolved_workspace_path(
+        tmp_path, "49_vit /datas/ILSVRC2012_val", "test path"
+    )
+    assert resolved == (tmp_path / "49_vit/datas/ILSVRC2012_val").resolve()
 
 
 def _spec(
@@ -141,7 +149,7 @@ def test_registry_strict_load_hash_types_and_optional_live_assets(registry):
     assert all(type(row.size_bytes) is int and type(row.audit) is bool for row in registry.rows)
     live = load_stage_c_registry(CONFIG, verify_live_assets=True)
     assert live.live_assets_verified is True
-    assert Path(live.data_root).resolve() == (WORKSPACE_ROOT / "49_vit /datas/ILSVRC2012_val").resolve()
+    assert Path(live.data_root).resolve() == (WORKSPACE_ROOT / "49_vit/datas/ILSVRC2012_val").resolve()
     assert type(live.to_dict()["rows"][0]["audit"]) is bool
 
 

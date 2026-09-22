@@ -15,8 +15,8 @@ VALIDATION_SYNSET_LABELS_URL = (
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORKSPACE_ROOT = REPO_ROOT.parent
-DEFAULT_STATE_DICT = WORKSPACE_ROOT / "49_vit " / "model" / "vit_base_patch16_224_weights.pth"
-DEFAULT_FULL_MODEL = WORKSPACE_ROOT / "49_vit " / "model" / "vit_base_patch16_224_full.pth"
-DEFAULT_SCANNER_ROOT = WORKSPACE_ROOT / "49_vit " / "datas" / "imagenet-scanner"
-DEFAULT_VAL_ROOT = WORKSPACE_ROOT / "49_vit " / "datas" / "ILSVRC2012_val"
+DEFAULT_STATE_DICT = WORKSPACE_ROOT / "49_vit" / "model" / "vit_base_patch16_224_weights.pth"
+DEFAULT_FULL_MODEL = WORKSPACE_ROOT / "49_vit" / "model" / "vit_base_patch16_224_full.pth"
+DEFAULT_SCANNER_ROOT = WORKSPACE_ROOT / "49_vit" / "datas" / "imagenet-scanner"
+DEFAULT_VAL_ROOT = WORKSPACE_ROOT / "49_vit" / "datas" / "ILSVRC2012_val"
 

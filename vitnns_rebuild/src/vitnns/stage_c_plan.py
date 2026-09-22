@@ -41,6 +41,8 @@ FROZEN_REGISTRY_SCHEMA_SHA256 = (
 FROZEN_SELECTION_SCHEMA_SHA256 = (
     "867a3cf22519b2a045d81751a20c5cd52570ddeadede26a2da2bb79973f0b59d"
 )
+LEGACY_WORKSPACE_DIRECTORY = "49_vit "
+CURRENT_WORKSPACE_DIRECTORY = "49_vit"
 
 REGISTRY_COLUMNS = (
     "schema_version", "sample_id", "image_id", "relative_path",
@@ -237,6 +239,16 @@ def _resolved_under(base: Path, raw: str, context: str) -> Path:
     if not target.is_relative_to(base_resolved):
         raise StageCPlanError(f"{context} escapes its base directory")
     return target
+
+
+def _resolved_workspace_path(base: Path, raw: str, context: str) -> Path:
+    """Resolve paths from frozen metadata after the legacy directory rename."""
+
+    relative = _safe_relative(raw, context)
+    parts = list(relative.parts)
+    if parts and parts[0] == LEGACY_WORKSPACE_DIRECTORY:
+        parts[0] = CURRENT_WORKSPACE_DIRECTORY
+    return _resolved_under(base, PurePosixPath(*parts).as_posix(), context)
 
 
 def _strict_csv_int(
@@ -752,7 +764,7 @@ def load_stage_c_registry(
         ("legacy_list_path", "legacy_list_sha256"),
         ("legacy_script_path", "legacy_script_sha256"),
     ):
-        legacy_asset = _resolved_under(
+        legacy_asset = _resolved_workspace_path(
             workspace, metadata["selection"][path_key],
             f"registry metadata.selection.{path_key}",
         )
@@ -791,7 +803,7 @@ def load_stage_c_registry(
     )
     if sha256_file(devkit_path) != config.registry.official_devkit_sha256:
         raise RegistryContractError("official devkit SHA-256 disagrees with config")
-    live_root = Path(data_root).resolve() if data_root is not None else _resolved_under(
+    live_root = Path(data_root).resolve() if data_root is not None else _resolved_workspace_path(
         workspace, configured_data_root, "registry metadata runtime data root"
     )
     snapshot = RegistrySnapshot(

@@ -36,7 +36,7 @@ mapping, never directory enumeration order:
 
 ```bash
 vitnns-stage-a manifest \
-  --data-root '../49_vit /datas/imagenet-scanner' \
+  --data-root '../49_vit/datas/imagenet-scanner' \
   --output-dir artifacts/imagenet-scanner
 ```
 
@@ -45,7 +45,7 @@ they can only be emitted with explicit null labels:
 
 ```bash
 vitnns-stage-a manifest \
-  --data-root '../49_vit /datas/ILSVRC2012_val' \
+  --data-root '../49_vit/datas/ILSVRC2012_val' \
   --devkit /path/to/ILSVRC2012_devkit_t12.tar.gz \
   --output-dir artifacts/imagenet-val-subset
 ```

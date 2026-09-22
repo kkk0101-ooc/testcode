@@ -50,7 +50,7 @@ REGISTRY_METADATA_PATH = REPO_ROOT / "manifests/stage_c_sample_registry_metadata
 SOURCE_MANIFEST_PATH = REPO_ROOT / "manifests/stage_c_flat_val_500/manifest.csv"
 SOURCE_METADATA_PATH = REPO_ROOT / "manifests/stage_c_flat_val_500/manifest_metadata.json"
 DEVKIT_PATH = REPO_ROOT / "artifacts/sources/ILSVRC2012_devkit_t12.tar.gz"
-DATA_ROOT = WORKSPACE_ROOT / "49_vit /datas/ILSVRC2012_val"
+DATA_ROOT = WORKSPACE_ROOT / "49_vit/datas/ILSVRC2012_val"
 STAGE_B_ROOT = REPO_ROOT / "outputs/stage_b_formal_30732c9"
 FULL_LIVE_ASSET_SCOPE = "full"
 CALIBRATION_ONLY_NO_HOLDOUT_SCOPE = "calibration-only-no-holdout"
@@ -169,6 +169,14 @@ def _safe_relative_path(base: Path, raw: str, context: str) -> Path:
     return target
 
 
+def _relocated_workspace_path(raw: str, context: str) -> Path:
+    pure = PurePosixPath(raw)
+    parts = list(pure.parts)
+    if parts and parts[0] == "49_vit ":
+        parts[0] = "49_vit"
+    return _safe_relative_path(WORKSPACE_ROOT, PurePosixPath(*parts).as_posix(), context)
+
+
 def _contract_paths(config: dict[str, Any]) -> dict[str, Path]:
     registry_cfg = config["registry"]
     registry_metadata_path = _safe_relative_path(
@@ -189,8 +197,8 @@ def _contract_paths(config: dict[str, Any]) -> dict[str, Path]:
             REPO_ROOT, metadata["official_labels"]["devkit_relative_path"],
             "registry_metadata.official_labels.devkit_relative_path",
         ),
-        "data_root": _safe_relative_path(
-            WORKSPACE_ROOT, metadata["dataset"]["runtime_root_relative_to_workspace"],
+        "data_root": _relocated_workspace_path(
+            metadata["dataset"]["runtime_root_relative_to_workspace"],
             "registry_metadata.dataset.runtime_root_relative_to_workspace",
         ),
     }
@@ -646,10 +654,14 @@ def _validate_registry(
     )
     assert metadata["selection"]["source_selection_indices_zero_based"] == SOURCE_INDICES
     assert metadata["selection"]["legacy_source_read_only"] is True
-    assert sha256_file(WORKSPACE_ROOT / metadata["selection"]["legacy_list_path"]) == (
+    assert sha256_file(_relocated_workspace_path(
+        metadata["selection"]["legacy_list_path"], "selection.legacy_list_path"
+    )) == (
         metadata["selection"]["legacy_list_sha256"]
     )
-    assert sha256_file(WORKSPACE_ROOT / metadata["selection"]["legacy_script_path"]) == (
+    assert sha256_file(_relocated_workspace_path(
+        metadata["selection"]["legacy_script_path"], "selection.legacy_script_path"
+    )) == (
         metadata["selection"]["legacy_script_sha256"]
     )
 
