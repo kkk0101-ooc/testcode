@@ -1,6 +1,6 @@
 # Endpoint 与 Gradient × Input 等价下的创新定位与后续五步计划
 
-> 执行状态（2026-09-22）：第一步已完成内容冻结，验收记录见第八节；第二步已完成联合能力的新颖性差分审计并通过 1,734 项发布校验，验收记录见第九节；第三步未启动。
+> 执行状态（2026-09-22）：第一步已完成内容冻结，验收记录见第八节；第二步已完成联合能力的新颖性差分审计并通过 1,734 项发布校验，验收记录见第九节；第三步已完成方法章节和核心概念图重构，验收记录见第十节；第四步未启动。
 
 ## 一、结论
 
@@ -705,3 +705,63 @@ Registry 中每项主张只属于一个主类别。方法边界若同时影响�
 - `python3 -m py_compile .../validate_publication_r2.py` 与 `git diff --check`：`PASS`。
 - 封存证据复核：E3-R2 记录 76,800 项正向闭合和 28,800 项负控；源码确认三类负控为 `omit_largest_nonzero_head_from_A_F`、`omit_nonzero_routing_from_A_F`、`duplicate_identity_in_residual1`。本轮据此删除了未被封存证据支持的 wrong-slot、fan-out 和 detach mutation 表述。
 - 当前步骤只更新定位计划、现役双语 Related Work 及镜像、引用表、发布校验器和其报告；未启动第三步方法章节重构，未运行新实验。
+
+## 十、第三步执行记录：方法章节与核心概念图重构
+
+执行日期：2026-09-22。现役入口仍为 `papers/nns_vit_endpoint/publication_r2_20260920/{zh,en}/manuscript.md` 及外层双语镜像。本步没有启动第四步的结果重排、E5 四检查点审计或新实验。
+
+### 10.1 正式方法对象
+
+方法章节先保留总量原语 $x\odot\nabla_xs(x)$，再将实际使用边定义为 producer、consumer、input slot 和 invocation 的四元组 $e=(p_e,c_e,q_e,\nu_e)$。对 target registry 中固定的标量目标 $s$，正式定义
+
+$$
+\mathcal L_{e,i}(s;x)
+=x_i\left[J_{z_e,x}(x)^{\mathsf T}\bar z_e^{(s)}\right]_i.
+$$
+
+自由索引为 consumer-use edge $e$ 和输入坐标 $i$；$s$ 是目标条件。$z_e$、Jacobian 与 use-specific cotangent 在同一观测输入和同一前向状态求值。同一 producer 的多个 consumer、slot 或 invocation 不按 tensor name 合并。正文以 `NOV-ID-1` 标识基础身份澄清，以 `NOV-JOINT-1` 标识双索引对象和合法切面合同。
+
+### 10.2 合法切面、实例与证明
+
+重写后的命题 2 将合法 differential cut 定义为每条当前点有效 input-to-target path 恰好穿过一个已登记 use 的边集合，并证明
+
+$$
+\sum_{e\in C}\mathcal L_{e,i}(s;x)
+=x_i\frac{\partial s(x)}{\partial x_i}.
+$$
+
+证明按唯一穿越的 use edge 将 Jacobian path products 分为互不相交且穷尽的组，再将每组因式分解为上游 $J_{z_e,x}$ 与 use-specific downstream cotangent。正文同时给出 $C_{\mathrm{QKV}}$、$C_{\mathrm{RV}}$、$C_{\mathrm{head}}$ 和 $C_{\mathrm{res}}$，并分别回链 `NOV-ATTN-1` 与 `NOV-RES-1`。命题明确来自链式法则，不将证明本身作为新颖性。
+
+### 10.3 索引必要性与审计合同
+
+方法消融表逐项说明四类退化：删除 $i$ 得到 edge scalar，删除 $e$ 得到总 Gradient × Input，删除 target registry 失去固定目标语义，删除 valid-cut contract 得到不可核验的 component list。统一审计协议表将证据分为公式身份、正向闭合、结构 mutation、独立方向 oracle、CPU 独立重算和未封存 mutation 边界。
+
+结构 mutation 只报告已经封存的三类：9,600 项 omit-head、9,600 项 omit-routing 和 9,600 项 duplicate-identity。384 项 attention-detach 是独立一致性检查，不计作 mutation。Wrong-slot、fan-out merge 与 detach mutation 没有封存结果，不列为已验证检出能力。该边界回链 `NOV-AUD-1`。
+
+### 10.4 核心概念图
+
+Figure 1 按“总 Gradient × Input → $[e,i]$ 双索引展开 → 合法切面重构 → 层深机制问题”组织，并在底部直接显示无 $i$、无 $e$、无 cut contract 和无 registry 的退化。Figure 2 将 consumer-use 四元组、attention/head/residual 三类切面、signed closure 和已封存漏项/重复失败模式放在同一图中。两图均由 `render_publication_r2.py` 生成 PNG、PDF 和 SVG；原分辨率检查发现并修正了 Figure 1 closure 公式与 residual 行的重叠，终版两图无文字或公式遮挡。
+
+### 10.5 第三步 prompt-to-artifact 验收表
+
+| 显式要求 | 直接产物 | 覆盖证据 | 状态 |
+| --- | --- | --- | --- |
+| G×I 作为总量测量原语 | 双语 Section 3.1；Figure 1 | 命题 1 与总图入口 | PASS |
+| $\mathcal L_{e,i}(s;x)$ 正式定义 | 双语 Section 4.1 | 自由索引、目标条件、$z_e$、cotangent、current-point 条件齐全 | PASS |
+| producer/consumer/slot/invocation | 双语 Section 4.1；Figure 2A | 四元组与 shared-producer 两次 use | PASS |
+| 合法切面命题和证明 | 双语 Section 4.3 | 条件、闭合等式、path partition 证明与 bypass 反例齐全 | PASS |
+| 四类 ViT 切面实例 | 双语 Section 4.2；Figure 2B | Q/K/V、routing/value、multi-head、identity/branch | PASS |
+| 索引必要性/退化表 | 双语方法消融表；Figure 1 底部 | no $i$、no $e$、no registry、no cut contract | PASS |
+| 统一审计协议表 | 双语审计协议表 | 正向闭合、三类 mutation、JVP/VJP、中心有限差分、CPU 独立重算与未封存边界 | PASS |
+| 双索引方法总览图 | Figure 1 的 PNG/PDF/SVG | 四阶段方法关系及退化同图呈现 | PASS |
+| 结构切面与闭合关系图 | Figure 2 的 PNG/PDF/SVG | use identity、切面、闭合与失败模式同图呈现 | PASS |
+| 五项 `NOV-*` 逐句回链 | 双语 Sections 4.1–4.3 | `NOV-ID-1`、`NOV-JOINT-1`、`NOV-ATTN-1`、`NOV-RES-1`、`NOV-AUD-1` 全部出现 | PASS |
+| mutation 主张与封存证据一致 | 双语审计表；`qc/gxi_step3_writing_audit.md` | 三类负控各 9,600；wrong-slot、fan-out merge、detach mutation 明确未封存 | PASS |
+| 扩展发布校验器与专项复核 | `validate_publication_r2.py`、`validate_gxi_step3.py`、`qc/gxi_step3_completion_audit.md` | 覆盖正文、公式、切面、表格、图件、镜像、哈希与边界 | PASS |
+| 停在第三步 | Git diff 与执行记录 | 未改 Results 结构，未审计 E5 四检查点，未运行新实验 | PASS |
+
+### 10.6 完成门结论
+
+第三步完成门通过。读者可在不依赖实验结果的情况下回答四个问题：基础算子是同目标 Gradient × Input；新增对象是目标条件化的 $[e,i]$ 局部微分图组；合法切面重构同一 current-point signed local differential；审计排除已测切面中的漏项、重复和对应数值实现错误。图和正文同时显示无 $i$、无 $e$、无 cut contract 的三种核心退化。
+
+验证记录见 `papers/nns_vit_endpoint/publication_r2_20260920/qc/gxi_step3_completion_audit.md`。第四步需要显式后续请求，本轮未启动。

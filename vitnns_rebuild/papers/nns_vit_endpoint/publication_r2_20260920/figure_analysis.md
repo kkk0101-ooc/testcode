@@ -1,14 +1,14 @@
 # 图件逐图说明
 
-**Image #1 — Seeing a Vision Transformer through learning images**
+**Image #1 — From total Gradient × Input to auditable dual-indexed maps**
 
-同一输入经过正常前向计算得到预测；NNS-ViT 为内部目标与输出目标提供保留输入位置的学习图像。虚线表示目标与学习图像的对应关系。
+已有总 Gradient × Input 先按 consumer-use edge 展开为 $[e,i]$ 图组，再由合法 attention、head 或 residual 切面重构同一 signed 总量。最后一列列出该联合对象支持的机制问题；底部直接显示去掉 $i$、$e$、cut contract 或 target registry 后的退化。
 
 [打开图片](figures/png/fig_01_concept_overview.png)
 
-**Image #2 — A neuron value and its learning image are computed together**
+**Image #2 — Valid differential cuts partition live paths exactly once**
 
-上半区为四坐标网络的 scalar values，下半区为对应 learning images；同色虚线连接节点与图像，灰线只画真实非零连接。下方保留输入位置并沿相同局部系数组合。
+左栏用 producer、consumer、input slot 与 invocation 区分同一 producer tensor 的两次实际使用；中栏对齐 Q/K/V、multi-head 与 residual 切面；右栏给出 $\mathcal L_{e,i}$、signed closure 和已封存漏项/重复失败模式。红色虚线标记切面及 residual 的完整路径要求。
 
 [打开图片](figures/png/fig_02_neuron_learning_image.png)
 

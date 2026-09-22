@@ -20,7 +20,7 @@ Neural Network Scanner（NNS）为神经元关联一张保留输入位置的 lea
 
 ![Figure 1](../publication_r2_20260920/figures/png/fig_01_concept_overview.png)
 
-**Figure 1.** 同一输入经过正常前向计算得到预测；NNS-ViT 为内部目标与输出目标提供保留输入位置的学习图像。虚线表示目标与学习图像的对应关系。
+**Figure 1.** 对每个注册目标，已有的总 Gradient × Input 被展开为同时保留 consumer-use edge 与输入坐标的局部微分图组。合法 attention、head 或 residual 切面在 signed 输入坐标上重构同一总量；路径身份与空间位置共同支持层深机制比较。下方列出删除输入索引、边索引、切面合同或目标 registry 后的退化。
 
 本文的总体问题是：如何在 NNS 框架下，将 ViT 内部目标对输入的局部依赖表示为可计算、可分解和可验证的结构路径图，并评价其层深规律及在规定有限替换任务中的排序能力？具体研究四个问题：
 
@@ -84,11 +84,7 @@ Grad-CAM 通过梯度加权特征图获得类别相关定位（Selvaraju et al.,
 
 ### 3.1 NNS 的一般计算图表示
 
-设网络为有向无环计算图 $G=(V,E)$，输入为 $x$，目标为标量 $s(x)$。一个神经元输出标量值，学习图像则保留该标量所依赖的输入坐标。Figure 2 用四坐标网络说明正常计算、输入坐标图与局部导数组合的对应关系；展开的坐标初始化与传播步骤移至补充图件。本文将最终标量图记为 $E_s(x)$，并称为 NNS 局部输入图。
-
-![Figure 2](../publication_r2_20260920/figures/png/fig_02_neuron_learning_image.png)
-
-**Figure 2.** 同一四坐标网络的正常数值计算与 NNS-ViT 学习图像传播。节点与对应学习图像使用同色标记；下方矩阵保留各输入项的位置，并按上方网络的局部系数组合。
+设网络为有向无环计算图 $G=(V,E)$，输入为 $x$，目标为标量 $s(x)$。一个神经元输出标量值，学习图像则保留该标量所依赖的输入坐标。Figure 1 先区分总 Gradient × Input 与本文的双索引展开；坐标初始化和原始 NNS 逐层传播示意保留在补充图件。本文将最终标量图记为 $E_s(x)$，并称为 NNS 局部输入图。
 
 设图像输入为列向量 $x\in\mathbb R^d$，标量梯度 $\nabla_xs\in\mathbb R^d$ 也按列向量记。对 $u(x)\in\mathbb R^m$，learning-image 矩阵为 $\mathcal L(u;x)\in\mathbb R^{m\times d}$。初始化与传播规则为
 
@@ -123,13 +119,11 @@ $$
 
 因此 Endpoint 不需要外部选择的 intervention reference，但依赖模型输入坐标及 normalization origin。
 
-## 4. ViT 内部目标的结构化 NNS
+## 4. ViT 内部目标的双索引局部微分
 
-### 4.1 从输入 patch 到内部标量
+### 4.1 Target registry 与双索引对象
 
-ViT 的 patch embedding 将每个局部图像块映射到 token 向量。线性投影改变响应维度，而学习图像仍位于输入像素网格；对应的稀疏投影示意移至补充图件。
-
-本文区分原生 token-channel 单元、聚合响应、结构路径和输出目标（Figure 5）。对通道 $c$ 的 patch activations，定义
+Target registry 为每个键固定标量读出 $s$、图中位置和聚合规则。注册对象包括 token-channel、通道聚合、attention head 与 Q/K/V 项、routing/value 项、residual identity/branch、MLP branch 和类别 logit。Registry 规定可比较的目标语义，但不表示穷举全部神经元。对于通道 $c$ 的 patch activations，聚合目标可定义为
 
 $$
 s_{\mathrm{energy}}=\frac12\sum_{t=1}^{196}h_{t,c}^2,\qquad
@@ -139,7 +133,30 @@ $$
 
 这给出原始 NNS activation-weighted filter aggregation 的 Jacobian 形式；energy 是聚合标量而非单个神经元。目标还包括 patch sum、head 内部坐标、final CLS channel、ground-truth logit 和 frozen clean-top1 logit。跨模型同编号 channel 不视为同语义单元。
 
-### 4.2 Attention、multi-head 与 residual 的路径分解
+令实际使用边
+
+$$
+e=(p_e,c_e,q_e,\nu_e),
+$$
+
+由 producer $p_e$、consumer $c_e$、consumer input slot $q_e$ 与 invocation $\nu_e$ 联合确定。$z_e(x)$ 是 producer 输出进入该 consumer use 时的张量。$\bar z_e^{(s)}$ 是在该 input slot 处、尚未与同一 producer 的其他 fan-out uses 合并的 target cotangent。本文定义
+
+$$
+\boxed{
+\mathcal L_{e,i}(s;x)
+=x_i\left[J_{z_e,x}(x)^{\mathsf T}\bar z_e^{(s)}\right]_i.
+}
+$$
+
+$i$ 与 $e$ 是自由索引，$s$ 是 registry 选定的目标条件。Jacobian、cotangent 和 $z_e$ 均在同一观测输入 $x$ 和同一前向状态求值。固定 $e$ 得到一张保留输入位置的图；固定 $i$ 可比较同一输入坐标经不同实际使用边的局部项；对 $e$ 求和则回到总量。该目标条件化的 $[e,i]$ 表示是 `NOV-JOINT-1` 的方法对象。基础 $x\odot\nabla_xs(x)$ 仍按 `NOV-ID-1` 作为已有测量原语和 NNS 身份澄清。
+
+同一 producer tensor 可同时进入多个 consumer，也可进入同一 consumer 的不同 slot，或在重复调用中被多次使用。此时 $J_{z_e,x}$ 可以共享上游数值，但 $\bar z_e^{(s)}$ 对应不同下游 use。按 tensor name 合并这些 cotangent 会提前丢失路径身份，因此 edge identity 必须包含 consumer、slot 与 invocation。Figure 2 将这一合同与 ViT 切面实例并列。
+
+![Figure 2](../publication_r2_20260920/figures/png/fig_02_neuron_learning_image.png)
+
+**Figure 2.** 左栏用 producer、consumer、input slot 与 invocation 区分同一张量的两次实际使用。中栏给出 attention Q/K/V、multi-head 与 residual identity/branch 的合法切面；每条有效输入到目标路径在一个切面上恰好穿过一次。右栏给出双索引定义、signed closure 以及已封存的漏项和重复记账失败模式。
+
+### 4.2 Attention、multi-head 与 residual 切面
 
 Figure 3 将内容传递与权重变化分开，Figure 4 则将 residual 的 identity 与 branch 并列。
 
@@ -164,7 +181,7 @@ $$
 E^{\mathrm{attn}}=E^Q+E^K+E^V=E^{\mathrm{routing}}+E^{\mathrm{value}}.
 $$
 
-这些量是当前输入和目标下的局部微分路径图，而不是 Q/K/V 激活或前向输出值的组成比例。Head 边位于拼接和 output projection 之前：$O=\operatorname{concat}_h(O_h)W_O+b_O$。每个 head 的下游 cotangent 包含 $W_O$ 及目标之后的全部导数，因而在 output projection 后满足 $E^{\mathrm{MHA}}=\sum_hE_h$。偏置没有直接输入微分项；Q/K/V 路径共享上游输入，允许在输入空间重叠。路径 norm 比例描述局部尺度，不能解释为互斥因果百分比。
+这些量是 $\mathcal L_{e,i}$ 在 attention 切面上的实例，而不是 Q/K/V 激活或前向输出值的组成比例。$C_{\mathrm{QKV}}=\{e_Q,e_K,e_V\}$ 与 $C_{\mathrm{RV}}=\{e_{\mathrm{routing}},e_{\mathrm{value}}\}$ 是同一完整 attention differential 的两种分组。Head 边位于拼接和 output projection 之前：$O=\operatorname{concat}_h(O_h)W_O+b_O$；$C_{\mathrm{head}}=\{e_{h_1},\ldots,e_{h_H}\}$ 中每个 use-specific cotangent 均包含 $W_O$ 及目标之后的全部导数。偏置没有直接输入微分项；Q/K/V 路径共享上游输入，允许在输入空间重叠。路径 norm 比例描述局部尺度，不能解释为互斥因果百分比。这些联合索引切面对应 `NOV-ATTN-1`；Q/K/V 分析本身已有直接先例。
 
 对 residual $y=u+f(u)$，令 $g_y=\nabla_yF$。正确的两项为
 
@@ -173,21 +190,51 @@ E^{\mathrm{id}}=\operatorname{diag}(x)J_{u,x}^\top g_y,\qquad
 E^{\mathrm{branch}}=\operatorname{diag}(x)J_{u,x}^\top J_{f,u}^\top g_y.
 $$
 
-Identity 使用 residual 输出处的 $g_y$；直接使用已包含 branch 的 $\nabla_uF$ 会重复记账。相加恢复 Endpoint，但不产生 $F=F_{\mathrm{id}}+F_{\mathrm{branch}}$ 的函数值分解。
+Identity 使用 residual 输出处的 $g_y$；直接使用已包含 branch 的 $\nabla_uF$ 会重复记账。$C_{\mathrm{res}}=\{e_{\mathrm{id}},e_{\mathrm{branch}}\}$ 相加恢复 residual output differential，但不产生 $F=F_{\mathrm{id}}+F_{\mathrm{branch}}$ 的函数值分解。该 input-coordinate map pair 对应 `NOV-RES-1`；residual 分解本身已有直接先例。
 
 
 
 ### 4.3 完整计算切面上的组合关系
 
-对目标 $F$ 的切面边 $\{z_k\}$，定义
+对固定目标 $s$，若实际使用边集合 $C$ 使每条具有非零当前点局部导数的 input-to-target path 恰好穿过一个已登记 use，则称 $C$ 为合法 differential cut。
+
+**命题 2（合法 differential cut 的闭合）。** 设计算图在 $x$ 处按固定导数约定可微，各成分使用同一前向状态，$\bar z_e^{(s)}$ 位于对应的 consumer input slot，并且 bypass 和 fan-out uses 不漏不重，则对每个输入坐标 $i$，
 
 $$
-E^C_{k,i}=x_i\left\langle g_{z_k},\frac{\partial z_k}{\partial x_i}\right\rangle.
+\boxed{
+\sum_{e\in C}\mathcal L_{e,i}(s;x)
+=x_i\frac{\partial s(x)}{\partial x_i}.
+}
 $$
 
-**命题 2（合法计算切面的闭合）。** 若每条相关 input-to-target differential path 恰好穿过切面一次，各成分使用同一前向状态，cotangent 位于相应真实使用边，且没有遗漏 bypass 或重复路径，则 $\sum_kE^C_{k,i}=x_i\partial F/\partial x_i$。多输入算子的输入边分别计入；同一张量被多次使用时按计算边而非张量名区分。
+多输入算子的输入边分别计入；同一张量被多次使用时按四元组 $e$ 而不是 tensor name 区分。
 
-**证明。** 展开链式法则为各输入到目标路径的 Jacobian 乘积。合法切面把路径不重不漏地分组；每组可因式分解为到达 $z_k$ 的上游 Jacobian 与该边的下游 cotangent。对所有组求和，再乘输入坐标 $x_i$，即得结论。只切 $f(u)$ 会遗漏 $y=u+f(u)$ 的 identity bypass；以完整 $\nabla_uF$ 作为 identity 项后再加入 branch 项则会重复分支。分支内部的 cut 只重构该分支，完整 residual 或目标还需纳入其余路径。
+**证明。** 将 $\partial s/\partial x_i$ 展开为所有当前点有效输入到目标路径的 Jacobian 乘积。合法切面按路径穿过的唯一 use edge 将这些项分成互不相交且穷尽的组。每组共同的上游因子为 $\partial z_e/\partial x_i$，其余下游乘积之和正是 use-specific cotangent $\bar z_e^{(s)}$，因此该组等于 $[J_{z_e,x}^{\mathsf T}\bar z_e^{(s)}]_i$。对 $e\in C$ 求和并乘 $x_i$ 即得结论。只切 $f(u)$ 会遗漏 $y=u+f(u)$ 的 identity bypass；以完整 $\nabla_uF$ 作为 identity 项后再加入 branch 项则会重复分支。分支内部 cut 只重构该分支，完整 residual 或目标还需纳入其他有效路径。命题来自链式法则；`NOV-JOINT-1` 的增量是将它落实为目标条件化双索引对象和可审计 cut contract，而不是把证明本身写成创新。
+
+**方法消融表：索引必要性与对象退化**
+
+| Retained structure | Observable | Lost when removed | Degeneration |
+| --- | --- | --- | --- |
+| $[e,i]$ with registered $s$ and valid $C$ | Path-specific spatial maps that reconstruct one total local differential | Nothing in the declared object | Auditable dual-indexed map family |
+| no $i$ | Per-edge aggregate magnitude or score | Spatial allocation and signed spatial cancellation | Edge scalar |
+| no $e$ | Total input-coordinate dependence | Routing/value, head, and identity/branch identity | Total Gradient × Input |
+| no registered $s$ | Maps from ad hoc scalar readouts | Comparable target semantics and reproducible atlas coverage | Unregistered target collection |
+| no valid-cut contract | Named component maps | Detection of omitted or duplicated live paths | Unverified component list |
+
+该表给出结构消融而非经验性能消融。删除 $i$ 后，空间扩展和同一路径的空间重分配不可见；删除 $e$ 后，不同路径在总图中相加；删除 $s$ 的 registry 后，跨目标比较失去固定语义；删除合法切面后，图组即使外观合理也不能证明不漏不重。
+
+**审计协议表：验证层、直接证据与封存边界**
+
+| Audit layer | Question | Executed evidence | What it establishes |
+| --- | --- | --- | --- |
+| Formula identity | Does original compatible NNS equal same-target G×I? | 5,000 regressions; 88 float64 operator directions | Identity under the declared local-derivative rules |
+| Positive closure | Do registered valid cuts reconstruct the same signed differential? | 76,800 closure checks | Accounting on the tested cuts and frozen graphs |
+| Structural mutations | Can the checker reject prescribed omission or duplication? | 9,600 omit-head; 9,600 omit-routing; 9,600 duplicate-identity controls | Detection of these three error classes |
+| Independent direction oracles | Do component sums agree with local directional derivatives? | 6,144 analytic JVP checks; JVP/VJP duality and nine-step central differences over 88 operator directions; 384 attention-detach consistency checks | Local numerical correctness under the tested directions and operators |
+| Independent recomputation | Can a separate CPU validator reproduce stored summaries from raw arrays? | 384 raw blocks and 230,400 E3 summary fields | Agreement independent of the producer summaries |
+| Unsealed mutations | Can it detect wrong-slot, merged fan-out, or detach mutations? | No sealed mutation result | Not an established capability |
+
+该协议对应 `NOV-AUD-1`。正向闭合检查可加记账；三类已封存 mutation 检查具体漏项或重复；JVP/VJP、中心有限差分和独立 CPU 重算提供不同数值 oracle。Attention detach 的 384 项是独立一致性检查，不计作第四类 mutation。Wrong-slot、fan-out merge 与 detach mutation 尚无封存结果，因此不写成已验证检出能力。
 
 ### 4.4 计算图依赖与分解非唯一性
 

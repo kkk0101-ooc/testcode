@@ -101,46 +101,74 @@ def main():
     for r in receipt['tasks']:
         p=bind(ROOT/'assets'/f"{r['task_id']}.npz");assert sha(p)==r['array_sha256'];data[r['task_id']]=np.load(p);meta[r['task_id']]=r
     bear=data['deit_s16__014'];photo=bear['input_rgb'];parts=e3('deit_s16',5)
-    # 1. Conceptual overview: ordinary forward computation above and input-coordinate scanner below.
-    fig,ax=canvas((12,6.6));title(fig,'Seeing a Vision Transformer through learning images')
-    inset(fig,.025,.36,.16,.30,photo,'Input image','photo')
-    box(ax,.25,.62,.17,.16,'Patch tokens');box(ax,.48,.62,.20,.16,'Transformer blocks');box(ax,.75,.62,.19,.16,'Class prediction')
-    for x0,x1 in [(.19,.24),(.43,.47),(.69,.74)]:arrow(ax,(x0,.7),(x1,.7))
-    ax.text(.26,.84,'Model computation',fontsize=12,color=BLUE,weight='bold')
-    ax.text(.25,.39,'NNS-ViT: retain the image coordinates of each target',fontsize=12,color=TEAL,weight='bold')
-    for i,(name,key) in enumerate([('Patch embedding','patch.energy.endpoint'),('Intermediate unit','b5.energy.endpoint'),('Class output','class_endpoint')]):
-        x=.25+i*.245;inset(fig,x,.08,.19,.24,bear[key],name,source='deit_s16__014/'+key);arrow(ax,(x+.095,.61),(x+.095,.36),TEAL,'--')
-    finish(fig,1,'concept_overview','同一输入经过正常前向计算得到预测；NNS-ViT 为内部目标与输出目标提供保留输入位置的学习图像。虚线表示目标与学习图像的对应关系。','The same input produces a prediction through the ordinary forward computation. NNS-ViT associates internal and output targets with learning images in the original input coordinates. Dashed lines link targets to their images.','concept')
-    # 2. Reference-paper-style paired forward/scanner workflow.
-    x=np.array([1.,2.,3.,4.]);W=np.array([[1.,.5,0.,0.],[0.,0.,.5,1.]]);h=W@x;v=np.array([1.,.5]);E=x*(v@W)
-    colors=['#E67E22','#2E8B57','#8E44AD','#D4A017'];fig,ax=canvas((12,7.4));title(fig,'A neuron value and its learning image are computed together','Same graph · same local coefficients · learning images retain input positions')
-    dashed_panel(ax,.025,.51,.95,.37,'Neural network: scalar values');dashed_panel(ax,.025,.075,.95,.37,'NNS-ViT: input-coordinate learning images')
-    ax.text(.075,.70,'Input',ha='center',fontsize=12,weight='bold');ax.text(.48,.86,'Hidden layer',ha='center',fontsize=12,style='italic');ax.text(.86,.76,'Output',ha='center',fontsize=12,style='italic')
-    inputs=[(.17,.80),(.17,.71),(.17,.62),(.17,.53)];hidden=[(.50,.76),(.50,.61)];output=(.86,.685)
-    for i,(pos,val,c) in enumerate(zip(inputs,x,colors)):node(ax,*pos,fr'$x_{i+1}={val:g}$',c,.027)
-    node(ax,*hidden[0],fr'$h_1={h[0]:g}$',TEAL,.032,'#E9F7F5');node(ax,*hidden[1],fr'$h_2={h[1]:g}$',TEAL,.032,'#E9F7F5');node(ax,*output,fr'$s={v@h:g}$',ORANGE,.038,'#FFF3E4')
-    for i in range(4):
-        for j in range(2):
-            if W[j,i]:arrow(ax,(inputs[i][0]+.03,inputs[i][1]),(hidden[j][0]-.035,hidden[j][1]),GRAY,lw=1.05)
-    for j in range(2):arrow(ax,(hidden[j][0]+.035,hidden[j][1]),(output[0]-.043,output[1]),GRAY,lw=1.2)
-    ax.text(.32,.815,r'$1$',fontsize=9);ax.text(.33,.735,r'$0.5$',fontsize=9);ax.text(.32,.61,r'$0.5$',fontsize=9);ax.text(.32,.535,r'$1$',fontsize=9)
-    ax.text(.68,.76,r'$1$',fontsize=9);ax.text(.68,.61,r'$0.5$',fontsize=9)
-    matrix_positions=[]
-    for i,(val,c) in enumerate(zip(x,colors)):
-        a=np.zeros(4);a[i]=val;xx=.105+i*.105;matrix(ax,xx,.245,.074,.115,a.reshape(2,2),fr'$I_{i+1}^{0}$',c);matrix_positions.append((xx+.037,.302))
-        dotted_link(ax,(inputs[i][0],inputs[i][1]-.03),(xx+.037,.375),c)
-    matrix(ax,.55,.30,.09,.115,(x*W[0]).reshape(2,2),r'$I_1^{1}$',TEAL);matrix(ax,.55,.135,.09,.115,(x*W[1]).reshape(2,2),r'$I_2^{1}$',TEAL)
-    matrix(ax,.80,.215,.105,.135,E.reshape(2,2),r'$I_s$',ORANGE)
-    # Only structurally nonzero connections are drawn, matching the upper graph.
-    arrow(ax,(matrix_positions[0][0]+.04,matrix_positions[0][1]),(.545,.355),'#B8C0C8',lw=.95)
-    arrow(ax,(matrix_positions[1][0]+.04,matrix_positions[1][1]),(.545,.355),'#B8C0C8',lw=.95)
-    arrow(ax,(matrix_positions[2][0]+.04,matrix_positions[2][1]),(.545,.19),'#B8C0C8',lw=.95)
-    arrow(ax,(matrix_positions[3][0]+.04,matrix_positions[3][1]),(.545,.19),'#B8C0C8',lw=.95)
-    arrow(ax,(.65,.355),(.792,.29),TEAL,lw=1.25);arrow(ax,(.65,.19),(.792,.255),TEAL,lw=1.25)
-    dotted_link(ax,(hidden[0][0],hidden[0][1]-.034),(.595,.43),TEAL);dotted_link(ax,(hidden[1][0],hidden[1][1]-.034),(.595,.265),TEAL);dotted_link(ax,(output[0],output[1]-.04),(.852,.37),ORANGE)
-    ax.text(.12,.095,'Step 1 · Initialization',fontsize=12,style='italic',weight='bold',color=BLUE);ax.text(.56,.095,'Step 2 · Generation',fontsize=12,style='italic',weight='bold',color=TEAL)
-    finish(fig,2,'neuron_learning_image','同一四坐标网络的正常数值计算与 NNS-ViT 学习图像传播。节点与对应学习图像使用同色标记；下方矩阵保留各输入项的位置，并按上方网络的局部系数组合。','Ordinary scalar computation and NNS-ViT learning-image propagation in the same four-coordinate network. Matching colors link nodes to learning images; lower matrices preserve input positions and combine with the graph coefficients.','concept')
-    # 3. Reference Fig. 3 style: split at left, distribute to nodes at right.
+    # 1. Step-3 method overview: primitive -> dual index -> valid cut -> mechanism question.
+    fig,ax=canvas((14,6.8));title(fig,'From total Gradient × Input to auditable dual-indexed maps','One registered scalar target s · one observed input x · one frozen computational graph')
+    panels=[(.02,'1 · Total primitive'),(.265,'2 · Expand by use edge'),(.51,'3 · Reconstruct by a valid cut'),(.755,'4 · Ask structural questions')]
+    for xx,label in panels:dashed_panel(ax,xx,.16,.225,.68,label)
+    # Total map: the established Gradient × Input primitive.
+    grid=np.array([[.05,.20,.45,.10],[.15,.75,1.0,.25],[.08,.55,.68,.16],[.03,.12,.30,.06]])
+    inset(fig,.055,.39,.15,.27,grid,r'$x\odot\nabla_xs(x)$','score','concept-total')
+    ax.text(.132,.29,'one input-indexed map',ha='center',fontsize=10,color=GRAY)
+    ax.text(.132,.225,r'$i$ retained · $e$ summed out',ha='center',fontsize=11,color=INK)
+    # Edge-indexed stack: same input coordinates, concrete use-edge identities.
+    maps=[grid*np.array([[1,.7,.4,.2]]).T,grid*np.array([[.2,.5,.9,.6]]),grid*np.array([[.6,.3,.2,.8]])]
+    labels=[r'$\mathcal{L}_{e_Q,i}$',r'$\mathcal{L}_{e_K,i}$',r'$\mathcal{L}_{e_V,i}$']
+    for j,(value,label0,color) in enumerate(zip(maps,labels,(BLUE,TEAL,ORANGE))):
+        yy=.615-j*.145;inset(fig,.292,yy-.055,.085,.105,value,'','score','concept-edge-'+str(j));ax.text(.392,yy,label0,fontsize=12,color=color,va='center')
+    ax.text(.377,.225,r'joint index $[e,i]$ · conditioned on $s$',ha='center',fontsize=11,color=INK)
+    # Three concrete cuts all reconstruct the same signed local differential.
+    for j,(label0,terms,color) in enumerate([
+        (r'$C_{\mathrm{attn}}$','Q + K + V',TEAL),
+        (r'$C_{\mathrm{head}}$','head 1 + ··· + head H',BLUE),
+        (r'$C_{\mathrm{res}}$','identity + branch',ORANGE),
+    ]):
+        yy=.66-j*.125;box(ax,.535,yy-.039,.055,.070,label0,color,'#F7FAFC',10);ax.text(.605,yy,terms,fontsize=10.5,va='center',color=INK)
+    ax.text(.622,.265,r'$\sum_{e\in C}\mathcal{L}_{e,i}$',ha='center',fontsize=13,color=INK)
+    ax.text(.622,.205,r'$=\;x_i\,\partial_i s(x)$',ha='center',fontsize=13,color='#C62828',weight='bold')
+    # Mechanism questions require the joint edge-by-input structure.
+    for j,(label0,color) in enumerate([('routing ↔ value',TEAL),('identity ↔ branch',ORANGE),('space × path × depth',BLUE)]):
+        box(ax,.79,.62-j*.14,.155,.095,label0,color,'#F7FAFC',10.5)
+    ax.text(.867,.225,'mechanistic comparisons',ha='center',fontsize=10,color=GRAY)
+    for a,b in [((.245,.50),(.26,.50)),((.49,.50),(.505,.50)),((.735,.50),(.75,.50))]:arrow(ax,a,b,'#C62828',style=(0,(5,3)),lw=1.8)
+    # Explicit degenerations: each deletion removes one class of answer.
+    ax.text(.035,.075,r'drop $i$ → edge scalar',fontsize=10.5,color=GRAY)
+    ax.text(.286,.075,r'drop $e$ → total G×I',fontsize=10.5,color=GRAY)
+    ax.text(.527,.075,'drop cut contract → unverified accounting',fontsize=10.5,color=GRAY)
+    ax.text(.784,.075,r'drop registry $s$ → no target atlas',fontsize=10.5,color=GRAY)
+    finish(fig,1,'concept_overview','对每个注册目标，已有的总 Gradient × Input 被展开为同时保留 consumer-use edge 与输入坐标的局部微分图组。合法 attention、head 或 residual 切面在 signed 输入坐标上重构同一总量；路径身份与空间位置共同支持层深机制比较。下方列出删除输入索引、边索引、切面合同或目标 registry 后的退化。','For each registered target, the established total Gradient × Input map is expanded into local differential maps jointly indexed by consumer-use edge and input coordinate. Valid attention, head, or residual cuts reconstruct the same signed total, while joint path and spatial identity support depth-wise mechanistic comparisons. The bottom row shows the loss caused by removing the input index, edge index, cut contract, or target registry.','concept')
+    # 2. Consumer-use identity and the structural-cut closure contract.
+    fig,ax=canvas((14,7.2));title(fig,'Valid differential cuts partition live paths exactly once','Consumer-use identity prevents shared producers, input slots and repeated invocations from being merged')
+    dashed_panel(ax,.02,.12,.265,.75,'A · One producer, two concrete uses')
+    node(ax,.075,.59,r'$z$',BLUE,.035,'#EEF5FB');ax.text(.075,.665,'producer tensor',ha='center',fontsize=10,color=GRAY)
+    box(ax,.155,.64,.105,.105,'consumer A\nslot 0 · call 1',TEAL,'#EAF7F6',9.5);box(ax,.155,.38,.105,.105,'consumer B\nslot 1 · call 2',ORANGE,'#FFF2E3',9.5)
+    arrow(ax,(.112,.60),(.15,.68),TEAL);arrow(ax,(.112,.575),(.15,.43),ORANGE)
+    ax.text(.045,.29,r'$e=(\mathrm{producer},\mathrm{consumer},$',fontsize=10.5)
+    ax.text(.065,.245,r'$\mathrm{input\ slot},\mathrm{invocation})$',fontsize=10.5)
+    ax.text(.052,.18,'same tensor ≠ same use edge',fontsize=10.5,color='#C62828',weight='bold')
+    dashed_panel(ax,.31,.12,.455,.75,'B · Registered cuts through a ViT block')
+    # Schematic live graph. Red dashed paths stress complete input-to-target routes.
+    node(ax,.345,.50,r'$x$',BLUE,.028,'#EEF5FB')
+    for yy,lab,color in [(.70,'Q',TEAL),(.56,'K',TEAL),(.42,'V',ORANGE)]:box(ax,.405,yy-.035,.07,.07,lab,color,'#F7FAFC',11);arrow(ax,(.373,.50),(.40,yy),color,lw=1.1)
+    box(ax,.51,.58,.09,.13,'routing\nQ + K',TEAL,'#EAF7F6',9.5);box(ax,.51,.38,.09,.11,'value\nV',ORANGE,'#FFF2E3',9.5)
+    arrow(ax,(.48,.70),(.505,.66),TEAL,lw=1.1);arrow(ax,(.48,.56),(.505,.62),TEAL,lw=1.1);arrow(ax,(.48,.42),(.505,.435),ORANGE,lw=1.1)
+    box(ax,.63,.52,.08,.12,'heads\n$1…H$',BLUE,'#EEF5FB',10);arrow(ax,(.605,.64),(.625,.595),TEAL,lw=1.1);arrow(ax,(.605,.435),(.625,.555),ORANGE,lw=1.1)
+    node(ax,.70,.34,'id',BLUE,.025,'#EEF5FB');node(ax,.735,.49,'+',ORANGE,.028,'#FFF2E3');node(ax,.735,.72,r'$s$',TEAL,.03,'#EAF7F6')
+    arrow(ax,(.713,.575),(.73,.525),ORANGE,lw=1.1);arrow(ax,(.37,.475),(.695,.34),BLUE,lw=1.1);arrow(ax,(.72,.35),(.735,.455),BLUE,lw=1.1);arrow(ax,(.735,.52),(.735,.685),TEAL,lw=1.3)
+    ax.plot([.492,.492],[.27,.78],color='#C62828',lw=1.35,linestyle=(0,(5,3)));ax.text(.492,.80,r'$C_{attn}$',ha='center',fontsize=9.5,color='#C62828')
+    ax.plot([.615,.615],[.27,.78],color='#C62828',lw=1.35,linestyle=(0,(5,3)));ax.text(.615,.80,r'$C_{head}$',ha='center',fontsize=9.5,color='#C62828')
+    ax.plot([.685,.755],[.35,.50],color='#C62828',lw=1.35,linestyle=(0,(5,3)));ax.text(.682,.285,r'$C_{res}={id,branch}$',fontsize=9.5,color='#C62828')
+    ax.text(.335,.195,r'$C_{attn}=\{Q,K,V\}=\{routing,value\}$',fontsize=9.5)
+    ax.text(.335,.155,r'$C_{head}=\{h_1,\ldots,h_H\}$',fontsize=9.5)
+    dashed_panel(ax,.79,.12,.19,.75,'C · Closure and audit')
+    ax.text(.885,.70,r'$\mathcal{L}_{e,i}=x_i[J_{z_e,x}^{\mathsf{T}}\bar z_e^{(s)}]_i$',ha='center',fontsize=10.5)
+    ax.text(.885,.61,r'$\sum_{e\in C}\mathcal{L}_{e,i}=x_i\partial_i s$',ha='center',fontsize=12,color='#C62828',weight='bold')
+    for j,(mark,label0,color) in enumerate([('✓','each live path once',TEAL),('×','omit nonzero edge','#C62828'),('×','duplicate identity','#C62828')]):
+        yy=.48-j*.105;ax.text(.82,yy,mark,fontsize=17,color=color,weight='bold',va='center');ax.text(.85,yy,label0,fontsize=10,va='center')
+    ax.text(.81,.19,'closed on raw signed\ninput coordinates',fontsize=10,color=GRAY,linespacing=1.35)
+    finish(fig,2,'neuron_learning_image','左栏用 producer、consumer、input slot 与 invocation 区分同一张量的两次实际使用。中栏给出 attention Q/K/V、multi-head 与 residual identity/branch 的合法切面；每条有效输入到目标路径在一个切面上恰好穿过一次。右栏给出双索引定义、signed closure 以及已封存的漏项和重复记账失败模式。','The left panel distinguishes two concrete uses of the same tensor by producer, consumer, input slot, and invocation. The middle panel shows valid attention Q/K/V, multi-head, and residual identity/branch cuts; every live input-to-target path crosses a cut exactly once. The right panel states the dual-indexed definition, signed closure, and the sealed omission and duplicate-accounting failure modes.','concept')
+    # 3. Reference-paper-style coordinate initialization.
+    x=np.array([1.,2.,3.,4.]);W=np.array([[1.,.5,0.,0.],[0.,0.,.5,1.]]);v=np.array([1.,.5]);E=x*(v@W)
+    colors=['#E67E22','#2E8B57','#8E44AD','#D4A017']
     fig,ax=canvas((12,6.6));title(fig,'Initialization: split the input, then assign one image to each coordinate')
     dashed_panel(ax,.025,.075,.51,.795,'1 · Split the input');dashed_panel(ax,.58,.075,.395,.795,'2 · Assign learning images')
     matrix(ax,.065,.37,.15,.31,x.reshape(2,2),r'$x$',INK);ax.text(.24,.50,'=',fontsize=25)
@@ -323,7 +351,16 @@ def main():
     finish(fig,22,'signed_and_blue','同一原始图的蓝底正部、signed 与 RGB absolute mass 三种视图。正部用于读取空间细节，signed 保留方向，absolute 保留通道抵消前的总幅值。','Blue positive, signed and RGB absolute-mass views of the same original arrays. The positive view displays spatial detail, signed maps retain direction, and absolute maps preserve magnitude before channel cancellation.')
     FIGS.sort(key=lambda r:r['number'])
     for row in DISPLAYS:row['figure']=NUMBERING.get(row['figure'],row['figure'])
-    write(ROOT/'figure_manifest.json',dict(revision='PUBLICATION-R2',figure_count=len(FIGS),figures=FIGS))
+    main_map=[dict(main_number=i+1,package_number=n) for i,n in enumerate((1,2,6,7,8,12,15,16,17,18,21))]
+    manifest=dict(revision='PUBLICATION-R2-STEP3',figure_count=len(FIGS),main_text_figure_count=11,main_text_figure_map=main_map,figures=FIGS)
+    write(ROOT/'figure_manifest.json',manifest)
+    root_relative=ROOT.relative_to(REPO).as_posix()
+    binding={'source_revision':'PUBLICATION-R2-STEP3','figure_count':len(FIGS),'package':root_relative,'figures':[]}
+    for row in FIGS:
+        bound={'figure':row['number'],'slug':row['slug']}
+        for extension,record in row['files'].items():bound[extension]={'path':f"{root_relative}/{record['path']}",'sha256':record['sha256']}
+        binding['figures'].append(bound)
+    write(ROOT.parent/'figure_manifest.json',binding)
     write(ROOT/'evidence/display_receipt.json',dict(policy='positive RGB sum; positive-value P99; blue high-intensity palette; no smoothing for pixel Endpoint',panels=DISPLAYS))
     write(ROOT/'evidence/figure_sources.json',SOURCES)
     cards=''.join(f'<article><h2>Figure {r["number"]}. {r["title"]}</h2><img src="{r["files"]["png"]["path"]}"><p>{r["caption_zh"]}</p><p>{r["caption_en"]}</p><a href="{r["files"]["pdf"]["path"]}">PDF</a> · <a href="{r["files"]["svg"]["path"]}">SVG</a></article>' for r in FIGS)

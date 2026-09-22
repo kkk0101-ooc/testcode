@@ -20,7 +20,7 @@ Neural Network Scanner (NNS) associates a neuron with a learning image that pres
 
 ![Figure 1](../publication_r2_20260920/figures/png/fig_01_concept_overview.png)
 
-**Figure 1.** The same input produces a prediction through the ordinary forward computation. NNS-ViT associates internal and output targets with learning images in the original input coordinates. Dashed lines link targets to their images.
+**Figure 1.** For each registered target, the established total Gradient × Input map is expanded into local differential maps jointly indexed by consumer-use edge and input coordinate. Valid attention, head, or residual cuts reconstruct the same signed total, while joint path and spatial identity support depth-wise mechanistic comparisons. The bottom row shows the loss caused by removing the input index, edge index, cut contract, or target registry.
 
 The overarching question is how NNS can represent the local input dependence of an internal ViT target as computable, decomposable, and verifiable structural-path maps, and how these maps vary with depth and rank candidates in prescribed finite-replacement tasks. We address four questions:
 
@@ -84,11 +84,7 @@ Every individual ingredient in the final row has a precedent: internal attributi
 
 ### 3.1 General computational-graph representation of NNS
 
-Let the network be a directed acyclic computational graph $G=(V,E)$, with input $x$ and scalar target $s(x)$. A neuron produces a scalar value, whereas its learning image retains the input coordinates on which that scalar depends. Figure 2 relates ordinary computation, input-coordinate images, and local-derivative composition in a four-coordinate network; expanded initialization and propagation diagrams are moved to the supplementary figure bank. We denote the final scalar map by $E_s(x)$ and call it the NNS local input map.
-
-![Figure 2](../publication_r2_20260920/figures/png/fig_02_neuron_learning_image.png)
-
-**Figure 2.** Ordinary scalar computation and NNS-ViT learning-image propagation in the same four-coordinate network. Matching colors link nodes to learning images; lower matrices preserve input positions and combine with the graph coefficients.
+Let the network be a directed acyclic computational graph $G=(V,E)$, with input $x$ and scalar target $s(x)$. A neuron produces a scalar value, whereas its learning image retains the input coordinates on which that scalar depends. Figure 1 first separates total Gradient × Input from our dual-indexed expansion; coordinate initialization and original NNS layerwise propagation diagrams remain in the supplementary figure bank. We denote the final scalar map by $E_s(x)$ and call it the NNS local input map.
 
 Let the image input $x\in\mathbb R^d$ and scalar gradient $\nabla_xs\in\mathbb R^d$ be column vectors. For $u(x)\in\mathbb R^m$, the learning-image matrix is $\mathcal L(u;x)\in\mathbb R^{m\times d}$. Initialization and propagation are
 
@@ -123,13 +119,11 @@ $$
 
 Endpoint therefore requires no externally selected intervention reference, while depending on the model's input coordinates and normalization origin.
 
-## 4. Structured NNS for Internal ViT Targets
+## 4. Dual-Indexed Local Differentials for Internal ViT Targets
 
-### 4.1 From input patches to internal scalars
+### 4.1 Target registry and the dual-indexed object
 
-Patch embedding maps a local image block to a token vector. Linear projection changes response dimensions while the learning image remains on the input-pixel grid; the corresponding sparse-projection diagram is moved to the supplementary figure bank.
-
-We distinguish native token-channel units, aggregate responses, structural paths, and output targets (Figure 5). For patch activations in channel $c$, define
+The target registry fixes a scalar readout $s$, graph location, and aggregation rule for each key. Registered objects include token-channel units, channel aggregates, attention heads and Q/K/V terms, routing/value terms, residual identity/branch terms, MLP branches, and class logits. The registry specifies comparable target semantics; it does not enumerate every neuron. For patch activations in channel $c$, an aggregate target can be defined as
 
 $$
 s_{\mathrm{energy}}=\frac12\sum_{t=1}^{196}h_{t,c}^2,\qquad
@@ -139,7 +133,30 @@ $$
 
 This is the Jacobian form of original NNS activation-weighted filter aggregation; energy is an aggregate scalar rather than one neuron. Targets also include patch sums, internal head coordinates, final CLS channels, ground-truth logits, and frozen clean-top1 logits. Equal channel indices across models do not imply semantic correspondence.
 
-### 4.2 Attention, multi-head, and residual path decomposition
+Define a concrete use edge as
+
+$$
+e=(p_e,c_e,q_e,\nu_e),
+$$
+
+where $p_e$ is the producer, $c_e$ the consumer, $q_e$ the consumer input slot, and $\nu_e$ the invocation. Let $z_e(x)$ be the producer output as it enters that consumer use. Let $\bar z_e^{(s)}$ be the target cotangent at that input slot before it is merged with other fan-out uses of the same producer. We define
+
+$$
+\boxed{
+\mathcal L_{e,i}(s;x)
+=x_i\left[J_{z_e,x}(x)^{\mathsf T}\bar z_e^{(s)}\right]_i.
+}
+$$
+
+Here $i$ and $e$ are free indices and $s$ is the target condition selected by the registry. The Jacobian, cotangent, and $z_e$ are evaluated at the same observed input $x$ and forward state. Fixing $e$ yields one input-position-preserving map; fixing $i$ compares local terms from one input coordinate across concrete uses; summing over $e$ returns the total. This target-conditioned $[e,i]$ representation is the method object of `NOV-JOINT-1`. The base $x\odot\nabla_xs(x)$ remains the established primitive and the NNS identity clarification under `NOV-ID-1`.
+
+One producer tensor may enter several consumers, different slots of one consumer, or repeated invocations. Their upstream $J_{z_e,x}$ values may coincide, but $\bar z_e^{(s)}$ belongs to a different downstream use. Merging these cotangents by tensor name discards path identity before measurement, so edge identity includes the consumer, slot, and invocation. Figure 2 places this contract beside concrete ViT cuts.
+
+![Figure 2](../publication_r2_20260920/figures/png/fig_02_neuron_learning_image.png)
+
+**Figure 2.** The left panel distinguishes two concrete uses of the same tensor by producer, consumer, input slot, and invocation. The middle panel shows valid attention Q/K/V, multi-head, and residual identity/branch cuts; every live input-to-target path crosses a cut exactly once. The right panel states the dual-indexed definition, signed closure, and the sealed omission and duplicate-accounting failure modes.
+
+### 4.2 Attention, multi-head, and residual cuts
 
 Figure 3 separates content transmission from weight changes, and Figure 4 relates residual identity and branch paths.
 
@@ -164,7 +181,7 @@ $$
 E^{\mathrm{attn}}=E^Q+E^K+E^V=E^{\mathrm{routing}}+E^{\mathrm{value}}.
 $$
 
-These quantities are local differential path maps for the current input and target, not Q/K/V activations or shares of the forward output value. The head edges precede concatenation and output projection: $O=\operatorname{concat}_h(O_h)W_O+b_O$. Each head's downstream cotangent includes $W_O$ and all subsequent target derivatives, yielding $E^{\mathrm{MHA}}=\sum_hE_h$ after output projection. The bias has no direct input-differential term. Q/K/V paths share upstream inputs and can overlap in input space. Path-norm ratios describe local scales, not mutually exclusive causal percentages.
+These quantities instantiate $\mathcal L_{e,i}$ on an attention cut; they are not Q/K/V activations or shares of the forward output value. $C_{\mathrm{QKV}}=\{e_Q,e_K,e_V\}$ and $C_{\mathrm{RV}}=\{e_{\mathrm{routing}},e_{\mathrm{value}}\}$ are two groupings of the same complete attention differential. The head edges precede concatenation and output projection: $O=\operatorname{concat}_h(O_h)W_O+b_O$; every use-specific cotangent in $C_{\mathrm{head}}=\{e_{h_1},\ldots,e_{h_H}\}$ includes $W_O$ and all subsequent target derivatives. The bias has no direct input-differential term. Q/K/V paths share upstream inputs and can overlap in input space. Path-norm ratios describe local scales, not mutually exclusive causal percentages. These joint-indexed cuts instantiate `NOV-ATTN-1`; they do not claim priority for Q/K/V analysis itself.
 
 For a residual $y=u+f(u)$, let $g_y=\nabla_yF$. Its two terms are
 
@@ -173,21 +190,51 @@ E^{\mathrm{id}}=\operatorname{diag}(x)J_{u,x}^\top g_y,\qquad
 E^{\mathrm{branch}}=\operatorname{diag}(x)J_{u,x}^\top J_{f,u}^\top g_y.
 $$
 
-The identity path uses $g_y$ at the residual output. Using $\nabla_uF$, which already includes the branch, would double-count paths. Their sum reconstructs Endpoint without implying a function-value decomposition $F=F_{\mathrm{id}}+F_{\mathrm{branch}}$.
+The identity path uses $g_y$ at the residual output. Using $\nabla_uF$, which already includes the branch, would double-count paths. $C_{\mathrm{res}}=\{e_{\mathrm{id}},e_{\mathrm{branch}}\}$ reconstructs the residual-output differential without implying a function-value decomposition $F=F_{\mathrm{id}}+F_{\mathrm{branch}}$. This input-coordinate map pair instantiates `NOV-RES-1`; it does not claim priority for residual decomposition itself.
 
 
 
-### 4.3 Combination over a complete computational cut
+### 4.3 Closure over a valid differential cut
 
-For cut edges $\{z_k\}$ and target $F$, define
+For fixed target $s$, a set $C$ of concrete use edges is a valid differential cut when every input-to-target path with nonzero local derivative at the current point crosses exactly one registered use in $C$.
+
+**Proposition 2 (closure of a valid differential cut).** Suppose the graph is differentiable at $x$ under a fixed derivative convention, all components use the same forward state, $\bar z_e^{(s)}$ is attached to the corresponding consumer input slot, and bypass and fan-out uses are neither omitted nor duplicated. Then, for every input coordinate $i$,
 
 $$
-E^C_{k,i}=x_i\left\langle g_{z_k},\frac{\partial z_k}{\partial x_i}\right\rangle.
+\boxed{
+\sum_{e\in C}\mathcal L_{e,i}(s;x)
+=x_i\frac{\partial s(x)}{\partial x_i}.
+}
 $$
 
-**Proposition 2 (closure of a valid computational cut).** If each relevant input-to-target differential path crosses the cut exactly once, all components use the same forward state, cotangents are attached to the corresponding actual use edges, and no bypass is omitted or path duplicated, then $\sum_kE^C_{k,i}=x_i\partial F/\partial x_i$. Inputs to a multi-input operator are counted separately; repeated uses of a shared tensor are distinguished by graph edge rather than tensor name.
+Inputs to a multi-input operator are counted separately; repeated uses of a shared tensor are distinguished by the tuple $e$ rather than tensor name.
 
-**Proof.** Expand the chain rule into Jacobian products over input-to-target paths. A valid cut partitions these paths without omission or duplication. Each group factors into its upstream Jacobian to $z_k$ and the downstream cotangent at that edge. Summing all groups and multiplying by $x_i$ gives the result. Cutting only $f(u)$ omits the identity bypass in $y=u+f(u)$; using the complete $\nabla_uF$ as an identity term and then adding the branch duplicates the branch path. A cut internal to one branch reconstructs only that branch; a full residual or target also requires the remaining paths.
+**Proof.** Expand $\partial s/\partial x_i$ into Jacobian products over all current-point live input-to-target paths. A valid cut partitions these terms into disjoint, exhaustive groups according to the unique use edge crossed by each path. The common upstream factor in one group is $\partial z_e/\partial x_i$; the sum of its downstream products is exactly the use-specific cotangent $\bar z_e^{(s)}$. The group therefore equals $[J_{z_e,x}^{\mathsf T}\bar z_e^{(s)}]_i$. Summing over $e\in C$ and multiplying by $x_i$ proves the claim. Cutting only $f(u)$ omits the identity bypass in $y=u+f(u)$; using the complete $\nabla_uF$ as an identity term and then adding the branch duplicates the branch path. A cut internal to one branch reconstructs only that branch; a full residual or target also requires the remaining live paths. The proposition follows from the chain rule. The increment in `NOV-JOINT-1` is its realization as a target-conditioned dual-indexed object and auditable cut contract, not the proof itself.
+
+**Method ablation table: index necessity and object degeneration**
+
+| Retained structure | Observable | Lost when removed | Degeneration |
+| --- | --- | --- | --- |
+| $[e,i]$ with registered $s$ and valid $C$ | Path-specific spatial maps that reconstruct one total local differential | Nothing in the declared object | Auditable dual-indexed map family |
+| no $i$ | Per-edge aggregate magnitude or score | Spatial allocation and signed spatial cancellation | Edge scalar |
+| no $e$ | Total input-coordinate dependence | Routing/value, head, and identity/branch identity | Total Gradient × Input |
+| no registered $s$ | Maps from ad hoc scalar readouts | Comparable target semantics and reproducible atlas coverage | Unregistered target collection |
+| no valid-cut contract | Named component maps | Detection of omitted or duplicated live paths | Unverified component list |
+
+This is a structural rather than empirical ablation. Removing $i$ hides spatial broadening and within-path redistribution; removing $e$ adds different paths into one total map; removing the registry for $s$ removes fixed cross-target semantics; and removing the valid-cut contract leaves visually plausible maps without evidence against omitted or duplicated paths.
+
+**Audit protocol table: validation layers, direct evidence, and sealed boundaries**
+
+| Audit layer | Question | Executed evidence | What it establishes |
+| --- | --- | --- | --- |
+| Formula identity | Does original compatible NNS equal same-target G×I? | 5,000 regressions; 88 float64 operator directions | Identity under the declared local-derivative rules |
+| Positive closure | Do registered valid cuts reconstruct the same signed differential? | 76,800 closure checks | Accounting on the tested cuts and frozen graphs |
+| Structural mutations | Can the checker reject prescribed omission or duplication? | 9,600 omit-head; 9,600 omit-routing; 9,600 duplicate-identity controls | Detection of these three error classes |
+| Independent direction oracles | Do component sums agree with local directional derivatives? | 6,144 analytic JVP checks; JVP/VJP duality and nine-step central differences over 88 operator directions; 384 attention-detach consistency checks | Local numerical correctness under the tested directions and operators |
+| Independent recomputation | Can a separate CPU validator reproduce stored summaries from raw arrays? | 384 raw blocks and 230,400 E3 summary fields | Agreement independent of the producer summaries |
+| Unsealed mutations | Can it detect wrong-slot, merged fan-out, or detach mutations? | No sealed mutation result | Not an established capability |
+
+This protocol instantiates `NOV-AUD-1`. Positive closure checks additive accounting; the three sealed mutations test specific omissions and duplication; and JVP/VJP, central finite differences, and independent CPU recomputation provide distinct numerical oracles. The 384 attention-detach checks are independent consistency checks, not a fourth mutation class. Wrong-slot, merged-fan-out, and detach mutations have no sealed result and are not reported as established detection capabilities.
 
 ### 4.4 Computational-graph dependence and non-uniqueness
 

@@ -1,6 +1,6 @@
 # 从 NNS 到视觉 Transformer：内部目标的可审计 Jacobian 扫描与结构分解
 
-这个目录包含可独立阅读和复制的论文版本：11 张正文图、8 张正文表、22 张完整渲染图件、双语补充材料，以及 92 页历史补充图。
+这个目录包含可独立阅读和复制的论文版本：11 张正文图、8 张编号正文表、2 张方法合同表、22 张完整渲染图件、双语补充材料，以及 92 页历史补充图。
 
 - [中文论文](zh/manuscript.md)
 - [English manuscript](en/manuscript.md)
@@ -11,6 +11,7 @@
 - [修改意见 v3 第一步完成审计](qc/revision_v3_step1_completion_audit.md)
 - [修改意见 v3 第二步可信度实验](zh/revision_v3_step2_experiments.md) / [Credibility experiments](en/revision_v3_step2_experiments.md)
 - [修改意见 v3 第二步后继主张](../notes/revision_v3_step2_claims.md)
+- [G×I 五步计划第三步专项审计](qc/gxi_step3_completion_audit.md)
 - [Endpoint 与 Gradient × Input 等价下的创新定位及五步计划](../../../Endpoint_GxI创新定位与后续五步计划.md)（第八节为 2026-09-22 第一步冻结记录）
 - [图件清单](figure_manifest.json)
 - [逐图阅读说明](figure_analysis.md)
@@ -28,9 +29,11 @@ figures/png、figures/pdf、figures/svg 保存正文图的三种格式。supplem
 
 Figures 2–5 和 7 进一步采用参考论文的概念图视觉语法：虚线步骤分区、计算节点与 learning image 同色对应、正常计算在上/输入坐标图在下、关键合成路径以红色虚线强调。图中公式和真实 ViT 路径仍使用本文定义。
 
+第三步已重构现役方法章节和前两张核心概念图。Figure 1 按“总 Gradient × Input → $[e,i]$ 双索引展开 → 合法切面重构 → 层深机制问题”组织；Figure 2 绑定 consumer-use 四元组、attention/head/residual 切面与已封存漏项/重复审计。方法正文另含索引退化表和统一审计协议表。
+
 对比使用相同输入与冻结模型；Endpoint/Grad-CAM 使用同一 GT logit，attention 方法为 class-agnostic。Figure 20 的狒狒、听诊器和海上钻井平台三例按预先封存的 Endpoint/输入细节可读性规则选定，比较方法未参与排序。图片说明表示对象和空间形态，不用于宣称方法普遍优越。原群体统计与 C4a/C4b 判定保留在补充材料。
 
 修改意见 v3 第二步新增 1000 个 image-model 任务：800 个任务完成五幅度 head-output replacement 和 Q/K/V 全 block 统计，200 个任务各执行 5 组独立 channel/token 抽样。双语结果报告位于 `zh/en/revision_v3_step2_experiments.md`，汇总数据、收据和三张结果图位于 `evidence/revision_v3_step2/`。替代训练 checkpoint 与同目标机制桥接仍不在当前证据范围。
 
-复现入口位于上级 scripts/：compute_publication_r2.py、render_publication_r2.py、verify_publication_r2_methods.py、validate_publication_r2.py；v3 第一步与第二步专项审计分别为 validate_revision_v3_step1.py 和 validate_revision_v3_step2.py。write_publication_r2.py 是旧 v1 生成器，默认拒绝覆盖当前手工审校稿。实际阅读和图件复制只需本目录。
+复现入口位于上级 scripts/：compute_publication_r2.py、render_publication_r2.py、verify_publication_r2_methods.py、validate_publication_r2.py；v3 第一步、第二步及 G×I 第三步专项审计分别为 validate_revision_v3_step1.py、validate_revision_v3_step2.py 和 validate_gxi_step3.py。write_publication_r2.py 是旧 v1 生成器，默认拒绝覆盖当前手工审校稿。实际阅读和图件复制只需本目录。
 补充实验入口为 `prepare_endpoint_supplement_v1.py`、`run_endpoint_supplement_v1.py`、`analyze_endpoint_supplement_*.py`、`render_endpoint_supplement_v1.py`、`write_endpoint_supplement_v1.py` 与 `validate_endpoint_supplement_v1.py`。

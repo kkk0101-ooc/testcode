@@ -35,12 +35,12 @@ def main():
         check('11_main_figures:'+lang,re.findall(r'!\[Figure (\d+)\]',text)==[str(i) for i in range(1,12)])
         check('main_figure_paths:'+lang,{int(n):path for n,path in re.findall(r'!\[Figure (\d+)\]\(\.\./([^)]*)\)',text)}==main_paths)
         check('main_figure_caption_order:'+lang,re.findall(r'\*\*Figure (\d+)\.',text)==[str(i) for i in range(1,12)])
-        check('8_tables:'+lang,re.findall(r'\*\*Table (\d+)\.',text)==[str(i) for i in range(1,9)])
+        check('8_numbered_tables:'+lang,re.findall(r'\*\*Table (\d+)\.',text)==[str(i) for i in range(1,9)])
         check('no_historical_report_states:'+lang,not re.search(r'RQ4[a-c]|RQ5|NOT_SUPPORTED|PASS_|reports/|registry-complete|C4[ab]',text))
         check('balanced_math:'+lang,text.count('$$')%2==0)
         check('no_placeholders:'+lang,'{{' not in text and '\x00' not in text)
         check('four_research_questions:'+lang,all(f'RQ{i}' in text for i in range(1,5)) and 'RQ5' not in text)
-        check('required_method_terms:'+lang,all(term in text for term in ('Input × Gradient','valid computational cut' if lang=='en' else '合法计算切面','Q-induced','K-induced','V-induced','identity','branch')))
+        check('required_method_terms:'+lang,all(term in text for term in ('Input × Gradient','valid differential cut' if lang=='en' else '合法 differential cut','Q-induced','K-induced','V-induced','identity','branch')))
         check('corrected_random_estimator:'+lang,('Each random repetition takes the absolute effect before integration' if lang=='en' else '随机基线对每次重复先取 absolute effect 并积分') in text)
         check('v3_eight_chapters:'+lang,all(re.search(rf'^## {i}\.',text,re.M) for i in range(1,9)))
         check('v3_result_structure:'+lang,all(f'### 6.{i}' in text for i in range(1,10)) and '### 7.1' in text and all(f'### 8.{i}' in text for i in (1,2)))
@@ -70,7 +70,7 @@ def main():
     plan=(REPO/'Endpoint_GxI创新定位与后续五步计划.md').read_text()
     categories=('数学身份','结构方法','实现正确性','经验发现','解释边界')
     check('gxi_claim_registry',all(plan.count('| '+term+' |')>=1 for term in categories) and all(claim in plan for claim in ('MI-1','SM-1','IC-1','EF-1','IB-1')))
-    check('gxi_scope_separation',all(term in plan for term in ('PCIA–PEFA 仅作为独立扩展研究或附录材料','CST aquatic-context 研究及其 `NO_GO_NOT_IDENTIFIABLE` 历史结果保持独立','第二步已完成联合能力的新颖性差分审计','第三步未启动')))
+    check('gxi_scope_separation',all(term in plan for term in ('PCIA–PEFA 仅作为独立扩展研究或附录材料','CST aquatic-context 研究及其 `NO_GO_NOT_IDENTIFIABLE` 历史结果保持独立','第二步已完成联合能力的新颖性差分审计','第三步已完成方法章节和核心概念图重构','第四步未启动')))
     step2=plan.split('## 九、第二步执行记录：联合能力的新颖性差分审计',1)[1]
     source_ids=tuple(f'S{i}' for i in range(1,14))
     check('gxi_step2_source_registry',all(f'| {source_id} |' in step2 for source_id in source_ids))
@@ -91,6 +91,20 @@ def main():
     check('gxi_no_extension_evidence_in_main',not re.search(r'PCIA|PEFA|aquatic-context|NNS-CST',active_only,re.I))
     prohibited=re.compile(r'Endpoint.{0,24}(新基础归因|新的基础归因|普遍优于)|Endpoint.{0,40}(new base attribution|novel base attribution|universally superior)',re.I)
     check('gxi_no_prohibited_claims',not prohibited.search(active_only))
+    step3_required={
+        'zh':('## 4. ViT 内部目标的双索引局部微分','Target registry 与双索引对象','producer $p_e$','consumer $c_e$','consumer input slot $q_e$',r'invocation $\nu_e$','use-specific cotangent','在同一观测输入 $x$ 和同一前向状态求值','合法 differential cut','方法消融表：索引必要性与对象退化','审计协议表：验证层、直接证据与封存边界'),
+        'en':('## 4. Dual-Indexed Local Differentials for Internal ViT Targets','Target registry and the dual-indexed object','producer','consumer input slot','invocation','use-specific cotangent','same observed input $x$ and forward state','valid differential cut','Method ablation table: index necessity and object degeneration','Audit protocol table: validation layers, direct evidence, and sealed boundaries'),
+    }
+    for lang,text in texts.items():
+        check('gxi_step3_method_contract:'+lang,all(term in text for term in step3_required[lang]))
+        check('gxi_step3_claim_links:'+lang,all(text.count(term)>=1 for term in ('NOV-ID-1','NOV-JOINT-1','NOV-ATTN-1','NOV-RES-1','NOV-AUD-1')))
+        check('gxi_step3_degenerations:'+lang,all(term in text for term in ('no $i$','no $e$','no registered $s$','no valid-cut contract')))
+        check('gxi_step3_audit_boundary:'+lang,all(term in text for term in ('9,600 omit-head','9,600 omit-routing','9,600 duplicate-identity','384 attention-detach','wrong-slot','merged fan-out')))
+    expected_definition='\\mathcal L_{e,i}(s;x)\n=x_i\\left[J_{z_e,x}(x)^{\\mathsf T}\\bar z_e^{(s)}\\right]_i.'
+    expected_closure='\\sum_{e\\in C}\\mathcal L_{e,i}(s;x)\n=x_i\\frac{\\partial s(x)}{\\partial x_i}.'
+    check('gxi_step3_bilingual_definition',all(expected_definition in texts[lang] for lang in ('zh','en')))
+    check('gxi_step3_bilingual_closure',all(expected_closure in texts[lang] for lang in ('zh','en')))
+    check('gxi_step3_figure_contract',all(all(term in texts[lang] for term in ('consumer-use edge','Figure 1','Figure 2')) for lang in ('zh','en')))
     check('bilingual_main_figure_paths',[path for _,path in re.findall(r'!\[Figure (\d+)\]\(\.\./([^)]*)\)',texts['zh'])]==[path for _,path in re.findall(r'!\[Figure (\d+)\]\(\.\./([^)]*)\)',texts['en'])])
     refs=(ROOT/'references.md').read_text()
     check('bibliography_complete',all(name in refs for name in ('Achtibat, R., Hatefi','Buratti, C., Marchetti','Chen, P.-K., Plaat','Ferrando, J., Gállego','Izadi, A., Banayeeanzade','Mehri, F., Soleymani Baghshah','Nishankar, S., Sanjeewani','Shrikumar, A., Greenside','Srinivas, S., & Fleuret','Modarressi, A., Fayyaz','Syed, A., Rager','Wróbel, A., Gairola','Zhang, F., & Nanda','Żukowska, N., Stammer')) and 'TO VERIFY' not in refs)
@@ -101,7 +115,7 @@ def main():
     check('same_table_data',[l for l in texts['zh'].splitlines() if l.startswith('|')]==[l for l in texts['en'].splitlines() if l.startswith('|')])
     paper=ROOT.parent
     active=load(paper/'figure_manifest.json')
-    check('active_binding',active['figure_count']==22 and active['source_revision']=='PUBLICATION-R2')
+    check('active_binding',active['figure_count']==22 and active['source_revision']=='PUBLICATION-R2-STEP3')
     for source,bound in zip(f['figures'],active['figures']):
         check('active_figure_number:'+str(source['number']),source['number']==bound['figure'])
         for extension in ('png','pdf','svg'):
@@ -161,12 +175,15 @@ def main():
     if qc.exists():
         q=load(qc);check('visual_review_all',q['reviewed_figures']==list(range(1,23)))
         check('visual_review_current',q['png_hashes']=={str(r['number']):r['files']['png']['sha256'] for r in f['figures']})
+        check('step3_visual_review',q.get('status')=='PASS_VISUAL_REVIEW_STEP3' and q.get('step3_concept_figures')==[1,2])
     # The original inventory binds publication R2 before the v1 supplemental
     # experiments.  Preserve and verify every historical entry except the
     # documents prospectively superseded by this supplement.
     inventory=load(ROOT/'artifact_inventory.json')
     superseded={'README.md','references.md','figure_manifest.json','en/manuscript.md','en/supplement.md','zh/manuscript.md','zh/supplement.md',
-                'qc/completion_audit.md','qc/writing_audit.md'}
+                'figures/png/fig_01_concept_overview.png','figures/pdf/fig_01_concept_overview.pdf','figures/svg/fig_01_concept_overview.svg',
+                'figures/png/fig_02_neuron_learning_image.png','figures/pdf/fig_02_neuron_learning_image.pdf','figures/svg/fig_02_neuron_learning_image.svg',
+                'gallery.html','figure_analysis.md','evidence/display_receipt.json','qc/visual_review.json','qc/completion_audit.md','qc/writing_audit.md'}
     for record in inventory['files']:
         if record['path'] not in superseded:
             check('inventory_hash:'+record['path'],sha(ROOT/record['path'])==record['sha256'])

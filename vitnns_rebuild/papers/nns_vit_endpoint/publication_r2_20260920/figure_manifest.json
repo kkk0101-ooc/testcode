@@ -1,41 +1,74 @@
 {
-  "revision": "PUBLICATION-R2-REVIEW-V2",
+  "revision": "PUBLICATION-R2-STEP3",
   "figure_count": 22,
   "main_text_figure_count": 11,
   "main_text_figure_map": [
-    {"main_number": 1, "package_number": 1},
-    {"main_number": 2, "package_number": 2},
-    {"main_number": 3, "package_number": 6},
-    {"main_number": 4, "package_number": 7},
-    {"main_number": 5, "package_number": 8},
-    {"main_number": 6, "package_number": 12},
-    {"main_number": 7, "package_number": 15},
-    {"main_number": 8, "package_number": 16},
-    {"main_number": 9, "package_number": 17},
-    {"main_number": 10, "package_number": 18},
-    {"main_number": 11, "package_number": 21}
+    {
+      "main_number": 1,
+      "package_number": 1
+    },
+    {
+      "main_number": 2,
+      "package_number": 2
+    },
+    {
+      "main_number": 3,
+      "package_number": 6
+    },
+    {
+      "main_number": 4,
+      "package_number": 7
+    },
+    {
+      "main_number": 5,
+      "package_number": 8
+    },
+    {
+      "main_number": 6,
+      "package_number": 12
+    },
+    {
+      "main_number": 7,
+      "package_number": 15
+    },
+    {
+      "main_number": 8,
+      "package_number": 16
+    },
+    {
+      "main_number": 9,
+      "package_number": 17
+    },
+    {
+      "main_number": 10,
+      "package_number": 18
+    },
+    {
+      "main_number": 11,
+      "package_number": 21
+    }
   ],
   "figures": [
     {
       "number": 1,
       "original_number": 1,
       "slug": "concept_overview",
-      "title": "Seeing a Vision Transformer through learning images",
-      "caption_zh": "同一输入经过正常前向计算得到预测；NNS-ViT 为内部目标与输出目标提供保留输入位置的学习图像。虚线表示目标与学习图像的对应关系。",
-      "caption_en": "The same input produces a prediction through the ordinary forward computation. NNS-ViT associates internal and output targets with learning images in the original input coordinates. Dashed lines link targets to their images.",
+      "title": "From total Gradient × Input to auditable dual-indexed maps",
+      "caption_zh": "对每个注册目标，已有的总 Gradient × Input 被展开为同时保留 consumer-use edge 与输入坐标的局部微分图组。合法 attention、head 或 residual 切面在 signed 输入坐标上重构同一总量；路径身份与空间位置共同支持层深机制比较。下方列出删除输入索引、边索引、切面合同或目标 registry 后的退化。",
+      "caption_en": "For each registered target, the established total Gradient × Input map is expanded into local differential maps jointly indexed by consumer-use edge and input coordinate. Valid attention, head, or residual cuts reconstruct the same signed total, while joint path and spatial identity support depth-wise mechanistic comparisons. The bottom row shows the loss caused by removing the input index, edge index, cut contract, or target registry.",
       "role": "concept",
       "files": {
         "png": {
           "path": "figures/png/fig_01_concept_overview.png",
-          "sha256": "7a9dc21a8c8577e2dde8e8b433cb276610b680bb6257d03bf2baba7b4e50f186"
+          "sha256": "f0c058046adcd8cd6c8bd122c76d53fea9df6f8926b915b14384a7ba2ae8bee0"
         },
         "pdf": {
           "path": "figures/pdf/fig_01_concept_overview.pdf",
-          "sha256": "898c5862a0c682645d83fffc57f0842f79db8af47eae4a84d96a6c22e0c7bf54"
+          "sha256": "9877915029af840484058cb1af5cb3aa725a957a2fa0ccceed6637417e2b2c66"
         },
         "svg": {
           "path": "figures/svg/fig_01_concept_overview.svg",
-          "sha256": "74914b4562eaf319904a8024fc56a19b416baa287f2f4dc43d88c91e2d0d365d"
+          "sha256": "07027c136c37b6c4e99f4677817afaaf3c210dd914659e25b2188fe3ac7eba84"
         }
       }
     },
@@ -43,22 +76,22 @@
       "number": 2,
       "original_number": 2,
       "slug": "neuron_learning_image",
-      "title": "A neuron value and its learning image are computed together",
-      "caption_zh": "同一四坐标网络的正常数值计算与 NNS-ViT 学习图像传播。节点与对应学习图像使用同色标记；下方矩阵保留各输入项的位置，并按上方网络的局部系数组合。",
-      "caption_en": "Ordinary scalar computation and NNS-ViT learning-image propagation in the same four-coordinate network. Matching colors link nodes to learning images; lower matrices preserve input positions and combine with the graph coefficients.",
+      "title": "Valid differential cuts partition live paths exactly once",
+      "caption_zh": "左栏用 producer、consumer、input slot 与 invocation 区分同一张量的两次实际使用。中栏给出 attention Q/K/V、multi-head 与 residual identity/branch 的合法切面；每条有效输入到目标路径在一个切面上恰好穿过一次。右栏给出双索引定义、signed closure 以及已封存的漏项和重复记账失败模式。",
+      "caption_en": "The left panel distinguishes two concrete uses of the same tensor by producer, consumer, input slot, and invocation. The middle panel shows valid attention Q/K/V, multi-head, and residual identity/branch cuts; every live input-to-target path crosses a cut exactly once. The right panel states the dual-indexed definition, signed closure, and the sealed omission and duplicate-accounting failure modes.",
       "role": "concept",
       "files": {
         "png": {
           "path": "figures/png/fig_02_neuron_learning_image.png",
-          "sha256": "6414022a5a3a9d06ae53089d49de43a03f481982ef1f09448b0fe915a0f96d1c"
+          "sha256": "58286a47e67f32915aee335f33429394c8db44566738210e3b842ac2eb6a48df"
         },
         "pdf": {
           "path": "figures/pdf/fig_02_neuron_learning_image.pdf",
-          "sha256": "757f19a8ebefb2dac482171ac539219b201346e5a22302a91c07f8ef518acc52"
+          "sha256": "c3ea953cde85c795c297f8b0bfb4b9e03846a3fa6cca7a9006c1d79268d2bb99"
         },
         "svg": {
           "path": "figures/svg/fig_02_neuron_learning_image.svg",
-          "sha256": "38753cd0880f6f1990f41c9208f6d521fa9bcf56d574c1f237d11b7c6521750c"
+          "sha256": "26b5dd2b011dd389a96f4a32b6e6bf25bbd38b430b3f236284191397936073e7"
         }
       }
     },
