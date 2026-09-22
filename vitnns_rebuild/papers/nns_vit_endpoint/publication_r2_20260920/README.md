@@ -1,4 +1,4 @@
-# 视觉 Transformer 计算图上的 NNS 结构路径分解与系统验证
+# 从 NNS 到视觉 Transformer：内部目标的可审计 Jacobian 扫描与结构分解
 
 这个目录包含可独立阅读和复制的论文版本：11 张正文图、8 张正文表、22 张完整渲染图件、双语补充材料，以及 92 页历史补充图。
 
@@ -11,6 +11,7 @@
 - [修改意见 v3 第一步完成审计](qc/revision_v3_step1_completion_audit.md)
 - [修改意见 v3 第二步可信度实验](zh/revision_v3_step2_experiments.md) / [Credibility experiments](en/revision_v3_step2_experiments.md)
 - [修改意见 v3 第二步后继主张](../notes/revision_v3_step2_claims.md)
+- [Endpoint 与 Gradient × Input 等价下的创新定位及五步计划](../../../Endpoint_GxI创新定位与后续五步计划.md)（第八节为 2026-09-22 第一步冻结记录）
 - [图件清单](figure_manifest.json)
 - [逐图阅读说明](figure_analysis.md)
 - [逐项修改验收](qc/completion_audit.md)
@@ -20,6 +21,8 @@
 figures/png、figures/pdf、figures/svg 保存正文图的三种格式。supplement 保存所有补充图的本地副本；正文和补充材料的图片链接均位于这个目录内。assets 保存本轮真实展示计算的数组，evidence 保存来源、显示规则和计算记录。作者及单位信息仍由作者填写。
 
 修改意见 v3 第一步已落实到当前双语稿：核心贡献限定为 NNS 在指定 ViT 计算图上的结构化实现、图相对路径分解和系统验证；相关工作及方法定位表覆盖 Gradient × Input、conductance、FullGrad、GlobEnc、DecompX、AttnLRP、LibraGrad、activation patching 和 edge attribution。Section 4.4 给出等价重参数化反例并明确分解不具有一般实现不变性。RQ4 收窄为规定有限替换任务中的成分与区域排序，训练结果表述为训练参数状态与随机参数状态的差异。冻结主张与证据边界见 `../notes/revision_v3_frozen_claims.md`。
+
+2026-09-22 的定位冻结进一步把全文统一为一个中心论点：以 Gradient × Input 为局部测量原语，构建面向 ViT 异构内部目标的结构化、可闭合、可审计扫描框架，并研究局部输入依赖如何随层深、attention 路径和 residual 分支重新组织。现役双语题目、摘要中心句、三项贡献、讨论和结论已同步；当前五类 claim registry、禁用扩展及 PCIA–PEFA/CST 隔离边界位于五步计划第八节。
 
 完整图件库沿用原 publication-R2 编号：1–7 讲解学习图像与 ViT 分解；8–11 展示内部目标、逐层学习图像及实际前向特征；12–18 结合总体空间轨迹和路径示例；19–20 比较实际计算的 Endpoint、Grad-CAM、attention rollout 与 raw attention；21–22 说明有限干预与 signed/positive 显示的关系。正文通过 figure_manifest.json 的 main_text_figure_map 重新连续编号为 Figures 1–11。
 

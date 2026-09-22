@@ -1,4 +1,4 @@
-# 视觉 Transformer 计算图上的 NNS 结构路径分解与系统验证
+# 从 NNS 到视觉 Transformer：内部目标的可审计 Jacobian 扫描与结构分解
 
 - 作者：[AUTHOR REQUIRED]
 - 单位：[AFFILIATION REQUIRED]
@@ -6,7 +6,7 @@
 
 ## 摘要
 
-神经网络扫描器（Neural Network Scanner，NNS）通过逐层传播局部尺度，为网络内部目标生成保留输入位置的学习图像。本文研究 NNS 在视觉 Transformer（ViT）指定计算图上的结构化实现、路径分解和系统验证。当各层使用实际前向状态下的精确局部导数，且不加入归一化、截断或相关性重分配时，标量 NNS 学习图像等于 $x\odot\nabla_xs(x)$，即同目标的 Gradient × Input；这一关系用于界定基础量，而不是作为主要创新。本文在此基础上注册 ViT 异构内部目标，定义合法计算切面，将 attention differential 分为 Q-induced、K-induced 与 V-induced 路径，将 residual differential 分为 identity 与 branch 路径，并检验各切面是否加和闭合。该分解相对于指定计算图、切面和参数化定义，不具有一般实现不变性。两个固定 ImageNet 预训练 checkpoint——ViT-B/16 与 DeiT-S/16——上的实验覆盖数值正确性、路径层深统计、训练参数状态与随机参数状态的差异，以及规定有限替换任务中的排序能力。抽样目标的局部输入依赖随深度扩展到更广、更远的 patch；深层 attention 的 routing 相对范数和 Value-only 近似误差提高，attention 与 MLP residual 呈现不同的层深变化。局部路径图与有限成分效应存在广泛但非普遍的关联；给定 reference 的区域替换中，显式使用实际位移的 Taylor 排序优于 clean-only Endpoint。本文的贡献落在 ViT 真实计算边上的统一实现、图相对路径分解和系统证据，而非新的基础输入归因量。
+神经网络扫描器（Neural Network Scanner，NNS）通过逐层传播局部尺度，为网络内部目标生成保留输入位置的学习图像。当各层使用实际前向状态下的精确局部导数，且不加入归一化、截断或相关性重分配时，标量 NNS 学习图像等于 $x\odot\nabla_xs(x)$，即同目标的 Gradient × Input。以 Gradient × Input 为局部测量原语，本文构建面向 ViT 异构内部目标的结构化、可闭合、可审计扫描框架，并用它系统研究局部输入依赖如何随层深、attention 路径和 residual 分支重新组织。该框架注册异构内部目标，在真实计算边上定义合法 differential cuts，将 attention differential 分为 Q-induced、K-induced 与 V-induced 路径，将 residual differential 分为 identity 与 branch 路径，并检验各切面的加和闭合。分项相对于指定计算图、切面和参数化定义。ViT-B/16 与 DeiT-S/16 两个固定 ImageNet 预训练 checkpoint 上的实验覆盖数值正确性、路径层深统计、训练参数状态与随机参数状态的差异，以及规定有限替换任务中的排序能力。冻结抽样目标的局部输入依赖随深度扩展到更广、更远的 patch；深层 attention 的 routing 相对范数和 Value-only 近似误差提高，attention 与 MLP residual 呈现不同的层深变化。局部路径图与有限成分效应存在广泛但非普遍的关联；给定 reference 的区域替换中，显式使用实际位移的 Taylor 排序优于 clean-only Endpoint。
 
 关键词：视觉 Transformer；Neural Network Scanner；学习图像；局部 Jacobian；结构路径分解
 
@@ -16,7 +16,7 @@
 
 现有可视化通常展示特征图、注意力权重或类别相关区域。这些视图各有用途，但其空间分辨率、目标和传播规则不同。前向特征图说明一个通道在 token 网格上的响应，attention 权重说明 token 间的分配关系；它们与某个内部标量关于原始图像的依赖并不是同一个对象。将内部目标映射回统一输入坐标，可以为跨模块比较提供共同的观察基础。
 
-Neural Network Scanner（NNS）为神经元关联一张保留输入位置的 learning image（Dou et al., 2023）。原方法的逐层尺度传播在使用实际局部导数时可以写成 Jacobian 链式法则；对标量目标，其终点学习图像就是 Input × Gradient。ViT 带来的新问题不是重新定义这一基础量，而是普通总梯度无法区分局部响应经过 Q、K、V、不同 heads，还是 residual 的 identity 与 branch。本文所称的 NNS 推广因而包含两个层次：表示层面统一其 Jacobian 数学位置，结构层面把完整局部输入依赖分解到 ViT 的真实计算边。
+Neural Network Scanner（NNS）为神经元关联一张保留输入位置的 learning image（Dou et al., 2023）。原方法的逐层尺度传播在使用实际局部导数时可以写成 Jacobian 链式法则；对标量目标，其终点学习图像就是 Input × Gradient。这个恒等式确定了本文的局部测量原语。普通总梯度不能区分局部响应经过 Q、K、V、不同 heads，还是 residual 的 identity 与 branch。本文据此构建面向 ViT 异构内部目标的结构化、可闭合、可审计扫描框架，将完整局部输入依赖分解到真实计算边，并研究这些依赖如何随层深和结构路径重新组织。
 
 ![Figure 1](../figures/png/fig_01_concept_overview.png)
 
@@ -29,7 +29,7 @@ Neural Network Scanner（NNS）为神经元关联一张保留输入位置的 lea
 3. **RQ3：结构路径如何随深度变化？** 在两个固定预训练 checkpoint 的冻结抽样目标上分析空间扩展、routing/value 与 identity/branch 的层深规律，并比较训练参数状态和随机参数状态以及目标与抽样控制。
 4. **RQ4：局部路径图能否在规定的有限替换任务中排序成分和空间区域？** 对固定模型、样本、层、head、reference、替换算子和区域预算，比较 clean-only 局部路径图与 reference-aware 位移估计的成分排序和区域选择。
 
-本文作出三项贡献。第一，已有 NNS、Gradient × Input 和 conductance 分别提供学习图像、局部输入加权梯度和隐藏单元路径归因；本文新增面向 ViT token-channel、通道聚合、attention head、residual edge 与类别目标的统一目标注册和输入坐标实现，直接证据是 Table 2 的 457/385 个注册目标、Table 3 的 5,000 个公式回归及 88 个算子方向检查。第二，已有 GlobEnc、DecompX、AttnLRP 和 LibraGrad 已传播 Transformer token contribution 或 relevance；本文新增相对于指定 ViT 计算图与合法切面的 Q/K/V、multi-head 和 identity/branch 局部微分记账，直接证据是 76,800 项正向闭合、28,800 项遗漏/重复负控和 6,144 项解析 JVP 检查。第三，已有 activation patching 与 edge attribution 研究内部有限效应；本文在两个固定 ViT checkpoint 上把结构路径的层深统计、参数状态对照和规定有限替换任务纳入同一套验证，直接证据是 Figures 6–11 与 Tables 4–8 的图像级结果。链式法则及 $x\odot\nabla_xs(x)$ 身份用于界定方法，不列为主要创新。
+本文作出三项贡献。第一，**数学身份与对象定义**。我们给出原始 NNS learning-image propagation 等于同目标 Gradient × Input 的条件，并区分 Endpoint、Path IG、模型常数和 reference-specific finite replacement；Table 3 的 5,000 项公式回归及 88 个算子方向检查验证了该对象定义。第二，**结构化扫描与审计框架**。我们建立面向 ViT token-channel、通道聚合、attention head、residual edge 与类别目标的 registry，在真实计算边上定义合法 differential cuts，并对 Q/K/V、multi-head 和 identity/branch 局部微分进行可加记账；Table 2 的 457/385 个注册目标以及 76,800 项正向闭合、28,800 项遗漏/重复负控和 6,144 项解析 JVP 构成直接证据。第三，**机制观察与解释边界**。我们在两个固定 ViT checkpoint 的冻结样本上测量层深、attention 和 residual 的局部输入依赖规律，并以规定有限替换实验区分观测点局部表示与 reference-specific intervention estimator；Figures 6–11 与 Tables 4–8 给出图像级结果。
 
 下文先界定相关方法与本文定位，再给出 NNS 的一般 Jacobian 表示和 ViT 结构分解。实验按等价性与闭合、层深规律、结构路径和有限干预组织，最后讨论证据范围。
 
@@ -428,7 +428,7 @@ Endpoint 保留像素尺度的局部项，Grad-CAM 和 attention 类方法提供
 
 ### 8.1 讨论
 
-本文在计算图局部 Jacobian 传播的既有数学基础上，实现了面向 ViT 真实结构边的 NNS 输入坐标表示。命题 1 界定其与 Gradient × Input 的身份，命题 2 界定指定图与切面上的闭合条件；经验结果来自两个固定 ImageNet 预训练 checkpoint 及其预定目标样本。
+本文的唯一定位是以 Gradient × Input 为局部测量原语，对 ViT 异构内部目标进行结构化 Jacobian 扫描，并在指定真实计算边上实现可闭合、可审计的 differential accounting。命题 1 界定数学身份，命题 2 界定指定图与切面上的闭合条件；机制结论来自两个固定 ImageNet 预训练 checkpoint 及其冻结目标样本。
 
 结构闭合、局部路径尺度和有限替换排序对应三个不同问题。Q/K/V、multi-head 与 identity/branch 的加和闭合说明各项重构指定目标的局部微分；routing 或 identity scale 比较路径图的相对范数；activation replacement 测量指定 reference 和替换算子下的有限效应。本文的 RQ4 只评价完整替换与固定面积预算下的成分排序和区域选择，不估计 Taylor 误差随干预幅度变化的边界。
 
@@ -440,7 +440,7 @@ Endpoint 保留像素尺度的局部项，Grad-CAM 和 attention 类方法提供
 
 ### 8.2 结论
 
-本文得到四点结论。第一，使用精确当前点局部导数且无额外重分配时，NNS 标量学习图像等于 Input × Gradient；这一身份界定基础量而非主要创新。第二，指定 ViT 计算图上的 attention differential 可分为 Q-induced、K-induced 与 V-induced 路径，residual differential 可分为 identity 与 branch 路径；合法切面上的各项加和恢复完整局部输入依赖，但分项随图、切面和参数化而变。第三，在 ViT-B/16 与 DeiT-S/16 两个固定 checkpoint 中，冻结抽样目标总体呈空间扩展，深层 attention 的 routing 相对尺度和 Value-only 误差提高，attention 与 MLP residual 呈不同趋势；训练参数状态与随机参数状态存在报告的差异。第四，局部路径图在规定成分替换任务中与有限效应具有广泛但非普遍的关联；给定 reference 的规定区域替换更适合使用显式位移的 Taylor 排序。NNS-ViT 的贡献是 NNS 在 ViT 真实计算边上的统一实现、图相对路径分解和系统验证。
+本文得到四点结论。第一，使用精确当前点局部导数且无额外重分配时，NNS 标量学习图像等于 Input × Gradient，因而 Gradient × Input 是框架的基础测量原语。第二，本文在指定 ViT 计算图上建立异构内部目标 registry 和真实边 differential cuts；attention 的 Q-induced、K-induced 与 V-induced 路径以及 residual 的 identity 与 branch 路径在合法切面上加和恢复完整局部输入依赖，分项随图、切面和参数化而变。第三，在 ViT-B/16 与 DeiT-S/16 两个固定 checkpoint 中，冻结抽样目标总体呈空间扩展，深层 attention 的 routing 相对尺度和 Value-only 误差提高，attention 与 MLP residual 呈不同趋势；训练参数状态与随机参数状态存在报告的差异。第四，局部路径图在规定成分替换任务中与有限效应具有广泛但非普遍的关联；给定 reference 的规定区域替换更适合使用显式位移的 Taylor 排序。本文由此形成结构化局部 Jacobian 扫描、可验证记账和两模型机制研究的统一框架。
 
 ## 参考文献与补充材料
 

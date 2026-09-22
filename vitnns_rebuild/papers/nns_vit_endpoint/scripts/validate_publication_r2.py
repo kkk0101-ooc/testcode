@@ -51,7 +51,30 @@ def main():
         check('parameter_state_not_training_cause:'+lang,parameter_state_boundary)
         check('positioning_methods:'+lang,all(term in text for term in ('Gradient × Input','conductance','FullGrad','GlobEnc','DecompX','AttnLRP','LibraGrad','Activation patching','Edge attribution patching')))
         check('no_defensive_stock_phrases:'+lang,not re.search(r'We emphasize that|It should be noted that|We do not claim|To avoid misunderstanding|Taken together|需要强调的是|应当指出|为避免误解|我们不声称',text,re.I))
-    check('v3_titles',texts['zh'].startswith('# 视觉 Transformer 计算图上的 NNS 结构路径分解与系统验证') and texts['en'].startswith('# NNS Structural Path Decomposition and Systematic Validation on Vision Transformer Computational Graphs'))
+    title_zh='# 从 NNS 到视觉 Transformer：内部目标的可审计 Jacobian 扫描与结构分解'
+    title_en='# From NNS to Vision Transformers: Auditable Jacobian Scanning and Structural Decomposition of Internal Targets'
+    central_zh='以 Gradient × Input 为局部测量原语，本文构建面向 ViT 异构内部目标的结构化、可闭合、可审计扫描框架，并用它系统研究局部输入依赖如何随层深、attention 路径和 residual 分支重新组织。'
+    central_en='We turn Gradient × Input into a structure-aware and auditable scanner for heterogeneous internal targets in Vision Transformers, enabling exact differential accounting and systematic analysis of how local input dependence is reorganized across depth, attention paths, and residual branches.'
+    check('gxi_frozen_titles',texts['zh'].startswith(title_zh) and texts['en'].startswith(title_en))
+    check('gxi_abstract_central_sentences',central_zh in texts['zh'].split('## 1.')[0] and central_en in texts['en'].split('## 1.')[0])
+    check('gxi_introduction_positioning','本文据此构建面向 ViT 异构内部目标的结构化、可闭合、可审计扫描框架' in texts['zh'].split('## 2.')[0] and 'structure-aware, closable, and auditable scanner for heterogeneous internal ViT targets' in texts['en'].split('## 2.')[0])
+    contribution_terms={
+        'zh':('数学身份与对象定义','结构化扫描与审计框架','机制观察与解释边界'),
+        'en':('mathematical identity and object definition','a structured scanning and audit framework','mechanistic observations and an interpretation boundary'),
+    }
+    for lang,text in texts.items():
+        intro=text.split('## 2.')[0]
+        check('gxi_three_contributions:'+lang,all(term in intro for term in contribution_terms[lang]))
+    check('gxi_discussion_positioning','本文的唯一定位是以 Gradient × Input 为局部测量原语' in texts['zh'] and 'This paper has one position: Gradient × Input is the local measurement primitive' in texts['en'])
+    check('gxi_conclusion_positioning','结构化局部 Jacobian 扫描、可验证记账和两模型机制研究的统一框架' in texts['zh'] and 'structured local-Jacobian scanning, verifiable accounting, and two-model mechanistic analysis' in texts['en'])
+    plan=(REPO/'Endpoint_GxI创新定位与后续五步计划.md').read_text()
+    categories=('数学身份','结构方法','实现正确性','经验发现','解释边界')
+    check('gxi_claim_registry',all(plan.count('| '+term+' |')>=1 for term in categories) and all(claim in plan for claim in ('MI-1','SM-1','IC-1','EF-1','IB-1')))
+    check('gxi_scope_separation',all(term in plan for term in ('PCIA–PEFA 仅作为独立扩展研究或附录材料','CST aquatic-context 研究及其 `NO_GO_NOT_IDENTIFIABLE` 历史结果保持独立','第二步未启动')))
+    active_only=texts['zh']+texts['en']
+    check('gxi_no_extension_evidence_in_main',not re.search(r'PCIA|PEFA|aquatic-context|NNS-CST',active_only,re.I))
+    prohibited=re.compile(r'Endpoint.{0,24}(新基础归因|新的基础归因|普遍优于)|Endpoint.{0,40}(new base attribution|novel base attribution|universally superior)',re.I)
+    check('gxi_no_prohibited_claims',not prohibited.search(active_only))
     check('bilingual_main_figure_paths',[path for _,path in re.findall(r'!\[Figure (\d+)\]\(\.\./([^)]*)\)',texts['zh'])]==[path for _,path in re.findall(r'!\[Figure (\d+)\]\(\.\./([^)]*)\)',texts['en'])])
     refs=(ROOT/'references.md').read_text()
     check('bibliography_complete',all(name in refs for name in ('Achtibat, R., Hatefi','Mehri, F., Soleymani Baghshah','Shrikumar, A., Greenside','Srinivas, S., & Fleuret','Modarressi, A., Fayyaz','Syed, A., Rager','Zhang, F., & Nanda')) and 'TO VERIFY' not in refs)
