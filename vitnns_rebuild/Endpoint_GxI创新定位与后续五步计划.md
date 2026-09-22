@@ -1,6 +1,6 @@
 # Endpoint 与 Gradient × Input 等价下的创新定位与后续五步计划
 
-> 执行状态（2026-09-22）：第一步已完成内容冻结，验收记录见第八节；第二步已完成联合能力的新颖性差分审计，验收记录见第九节；第三步未启动。
+> 执行状态（2026-09-22）：第一步已完成内容冻结，验收记录见第八节；第二步已完成联合能力的新颖性差分审计并通过 1,734 项发布校验，验收记录见第九节；第三步未启动。
 
 ## 一、结论
 
@@ -10,17 +10,46 @@ $$
 L_s^{\mathrm{Endpoint}}(x)=x\odot\nabla_x s(x),
 $$
 
-因此它与观测输入点上的 Gradient × Input 数学等价。这个等价关系是本文的方法起点，而不是需要回避的问题。本文的创新不建立在新的基础归因算子上，而建立在以下问题上：如何把这一局部测量原语扩展为面向 Vision Transformer 内部目标的结构化扫描器，如何对 attention 和 residual 的真实计算路径进行可闭合记账，以及这种测量能够揭示哪些可复现的 ViT 内部规律。
+因此它与观测输入点上的 Gradient × Input 数学等价。这个等价关系确定了本文的测量原语。对固定目标 $s$，本文进一步定义一个同时保留原始输入坐标与具体 consumer-use edge 的目标条件化双索引局部微分对象。设 $e$ 表示由 producer、consumer、input slot 与 invocation 联合确定的实际使用边，$z_e(x)$ 表示进入该 consumer use 的张量，$\bar z_e^{(s)}$ 表示在该 consumer input slot 处、尚未与同一 producer 的其他 fan-out use 合并的 use-specific target cotangent，则
 
-本文的中心定位为：
+$$
+\boxed{
+\mathcal L_{e,i}(s;x)
+=
+x_i
+\left[
+J_{z_e,x}(x)^{\mathsf T}\bar z_e^{(s)}
+\right]_i
+}.
+$$
 
-> **以 Gradient × Input 为局部测量原语，构建面向 ViT 异构内部目标的结构化、可闭合、可审计扫描框架，并利用该框架研究局部输入依赖如何随层深、attention 路径和 residual 分支重新组织。**
+其中 $i$ 是原始输入坐标，$e$ 是具体 consumer-use edge，$s$ 是预注册的内部或输出标量目标条件。自由索引为 $(e,i)$；不同 $s$ 通过 target registry 分别实例化。所有 Jacobian 和 cotangent 均在同一个观测输入 $x$ 上求值。若 $C$ 是合法切面，即每条从输入到目标的有效路径恰好穿过一个已登记 use，则
 
-相应的英文中心论点为：
+$$
+\boxed{
+\sum_{e\in C}\mathcal L_{e,i}(s;x)
+=
+x_i\frac{\partial s(x)}{\partial x_i}
+}.
+$$
 
-> **We turn Gradient × Input into a structure-aware and auditable scanner for heterogeneous internal targets in Vision Transformers, enabling exact differential accounting and systematic analysis of how local input dependence is reorganized across depth, attention paths, and residual branches.**
+右侧是已有的 Gradient × Input，左侧则把总图展开为 $[\text{edge},\text{input coordinate}]$ 结构图组。本文的方法增量位于这个双索引对象、合法切面合同、结构审计和由此支持的机制问题，而不是右侧算子或链式法则。
 
-这里的技术贡献是完整框架及其经验用途，不是对标准算子重新命名。
+本文的中心定位及论文摘要入口为：
+
+> **对每个注册目标，本文将总 Gradient × Input 展开为同时索引原始输入坐标与具体 consumer-use edge 的局部微分图组；合法切面恢复同一总局部微分，并支持 attention 与 residual 路径的空间化层深分析。**
+
+> **For each registered target, we expand total Gradient × Input into local differential maps jointly indexed by original input coordinates and concrete consumer-use edges. Valid cuts reconstruct the same total local differential and enable spatially resolved analyses of attention and residual paths across depth.**
+
+这里的技术贡献是目标条件化双索引表示及其完整框架和经验用途，不是对标准算子重新命名。当前有来源边界的新颖性主张为 `NOV-JOINT-1`：在本轮核查来源中，未发现一个方法同时保留输入坐标与具体 consumer-use edge 身份，对同一当前点真实局部微分执行合法切面上的 attention/residual 分项闭合，并以结构负控和独立数值 oracle 审计后用于层深机制分析。
+
+该创新主张需要三层证据共同成立：
+
+1. **对象成立。** $\mathcal L_{e,i}(s;x)$ 的 edge、input 和 target 索引均有明确计算图语义；
+2. **合同成立。** 合法切面、signed closure 和已封存故障检出共同检查结构图组在已测切面与故障类型中没有遗漏或重复记账；
+3. **用途成立。** 至少一项主要机制结论必须依赖 $[e,i]$ 联合信息，而不能由总 G×I 图、纯 edge score 或 token-only decomposition 单独恢复。
+
+只有第一层时，贡献是链式法则的工程实现；前两层成立时，贡献是可验证的结构化测量框架；三层共同成立时，论文才具有实质的方法与经验创新。
 
 ## 二、不能作为创新主张的内容
 
@@ -50,9 +79,9 @@ $$
 
 这项贡献属于数学统一和方法身份澄清。它为后续 ViT 结构扫描提供定义基础，但不被表述为新归因公式。现有依据见 `docs/endpoint_nns_vit_method_identity_20260917.md` 和 `docs/NNS_ViT_Endpoint_Scanner数学分析与方法对比_20260918.md`。
 
-### 3.2 从输出热图扩展到异构内部目标扫描
+### 3.2 目标条件化双索引局部微分对象与异构内部目标扫描
 
-普通输出级 Gradient × Input 通常回答：某个输出分数对输入坐标具有怎样的局部依赖。本文进一步建立统一的内部目标空间，测量不同 ViT 内部标量目标对输入坐标的局部依赖。注册对象包括：
+普通输出级 Gradient × Input 只保留输入索引 $i$，回答某个输出分数对哪些输入坐标具有局部依赖。普通 edge score 只保留边索引 $e$，回答某条边在指定评价量下有多大总体作用。本文保留联合索引 $[e,i]$，使同一输入位置的局部依赖可以按实际计算路径展开，也使同一计算边的作用保留输入空间分布。统一 target registry 再引入目标索引 $s$，测量不同 ViT 内部标量目标的局部输入依赖。注册对象包括：
 
 - token-channel；
 - attention head；
@@ -62,18 +91,26 @@ $$
 - MLP branch；
 - 类别 logit 和其他预注册标量读出。
 
-这些对象共享统一输入坐标和目标接口，使不同层、模块和分支能够在同一测量语义下比较。创新对象因此是异构内部目标的统一测量空间，而不是单个热图公式。
+这些对象共享统一输入坐标、edge identity 和目标接口，使不同层、模块和分支能够在同一测量语义下比较。创新对象因此是 $\mathcal L_{e,i}(s;x)$ 所定义的目标条件化双索引测量空间，而不是单个热图公式。
 
 仅增加目标数量仍然偏向工程实现。该目标空间必须与结构切面、闭合验证和经验问题共同构成论文的方法贡献。
 
+两个索引缺一不可：
+
+- 删除输入坐标 $i$，只能得到 edge-level scalar，不能研究各路径的空间扩展、位置重分配和 signed spatial cancellation；
+- 删除 edge 身份 $e$，只剩总 G×I 图，不能区分 routing/value、Q/K/V、multi-head 或 identity/branch；
+- 删除目标 $s$ 的注册合同，跨内部对象的数值将缺少共同语义，无法形成可复现的 target atlas；
+- 删除合法切面和 signed closure，结构分项可能漏掉或重复有效路径，绝对值图仍可能显得合理；
+- 删除结构负控和数值 oracle，无法排除 hook、edge identity 与局部微分实现错误。
+
 ### 3.3 结构化 differential cuts 与可验证记账
 
-本文方法的核心是对真实 ViT 计算图定义结构切面，并对局部 Jacobian 进行可验证的分项记账。对于合法切面 $C$，要求每条有效的输入到目标路径恰好穿过一次，并满足
+本文方法的核心是对真实 ViT 计算图定义结构切面，并对 $\mathcal L_{e,i}(s;x)$ 进行可验证的分项记账。对于合法切面 $C$，要求每条有效的输入到目标路径恰好穿过一次，并满足
 
 $$
-L_s^{\mathrm{Endpoint}}(x)
+\sum_{e\in C}\mathcal L_{e,i}(s;x)
 =
-\sum_{e\in C}L_{s,e}^{\mathrm{Endpoint}}(x).
+x_i\frac{\partial s(x)}{\partial x_i}.
 $$
 
 结构合同包括：
@@ -95,11 +132,11 @@ $$
 - 原始 NNS 与 Endpoint 的数值等价复现；
 - 独立验证器、覆盖率审计和不可变结果根。
 
-结构错误应通过负控或独立 oracle 被检出。当前封存负控覆盖遗漏非零 head、遗漏非零 routing 和重复 identity；attention detach 由独立一致性检查覆盖。错误 input slot 与错误 fan-out 合并尚无封存 mutation 证据，不得写成已验证能力。这里的新颖性候选是结构化局部 Jacobian 扫描、真实计算边切面和自动审计合同的联合能力。论文需要通过相关工作矩阵核实这一联合能力未被既有方法完整覆盖。
+结构错误应通过负控或独立 oracle 被检出。当前封存负控覆盖遗漏非零 head、遗漏非零 routing 和重复 identity；attention detach 由独立一致性检查覆盖。错误 input slot 与错误 fan-out 合并尚无封存 mutation 证据，不得写成已验证能力。`NOV-JOINT-1` 的新颖性不来自“闭合”一词，而来自同一对象上同时保留输入坐标、consumer-use edge 与目标身份，并用合法切面和审计合同把结构分项绑定回同一个 current-point local differential。
 
 ### 3.4 基于统一测量框架的 ViT 机制观察
 
-方法价值最终体现在它能够回答哪些结构问题。现有封存证据支持以下经验结论：
+方法价值最终体现在双索引对象能够回答哪些总图或纯 edge score 无法回答的结构问题。现有封存证据支持以下经验结论：
 
 - 在 ViT-B/16 和 DeiT-S/16 的冻结 token-channel 样本中，局部输入依赖随层深发生空间扩展；
 - late attention 的局部 differential 更依赖 routing，Value-only 近似的偏差随深度增加；
@@ -119,6 +156,8 @@ $$
 
 Endpoint 适合表示和审计观测输入处的局部依赖。Taylor 或其他显式使用 replacement displacement 的方法更适合预测特定 reference 下的有限替换。两者回答不同问题，不应组织成跨任务的统一方法排行榜。
 
+后续论文必须把这些结果组织为“双索引对象的必要性证据”：总 G×I 只能给出完整 attention 或 residual 图，而 $\mathcal L_{e,i}$ 才能同时保留路径身份与空间位置，进而比较 routing/value 和 identity/branch 的层深重组。若某项结论可由总图、单一激活统计或现有 edge scalar 同等得到，则该结果不能承担 `NOV-JOINT-1` 的经验支撑。
+
 ## 四、建议采用的三项论文贡献
 
 ### 贡献一：数学统一与对象定义
@@ -127,11 +166,11 @@ Endpoint 适合表示和审计观测输入处的局部依赖。Taylor 或其他�
 
 ### 贡献二：结构化扫描与审计框架
 
-建立 ViT 内部目标 registry、真实计算边切面、attention routing/value 与 Q/K/V 分解、residual identity/branch 分解，并通过闭合、mutation controls、JVP/VJP、有限差分和独立验证器审计。
+定义对固定目标同时保留输入坐标与 consumer-use edge 的 $\mathcal L_{e,i}(s;x)$，建立 ViT 内部目标 registry 和真实计算边切面，将 attention routing/value、Q/K/V 与 residual identity/branch 表示为同一局部微分的可加 input-coordinate 分项，并通过闭合、已封存的遗漏/重复结构负控、JVP/VJP、有限差分和独立验证器审计。
 
 ### 贡献三：机制观察与解释边界
 
-在两个 ViT 上系统测量层深、attention 和 residual 的局部输入依赖规律，并通过有限干预标定 Endpoint 表示与 reference-specific intervention estimator 的区别。
+使用同一双索引测量族比较层深、attention routing/value 与 residual identity/branch 的空间化局部输入依赖；以现役双语稿已封存的两 checkpoint 结果为最低证据，并在第四步审计后将 E5 的四公开检查点前瞻复现作为优先增强证据。有限替换实验用于标定该表示与 reference-specific intervention estimator 的区别。
 
 三项贡献各自承担不同作用：第一项定义数学身份，第二项构成方法核心，第三项构成科学核心。
 
@@ -155,17 +194,17 @@ Endpoint 与 Taylor 的比较不应成为论文开篇主线。该比较用于界
 
 中文首选：
 
-> **从 NNS 到视觉 Transformer：内部目标的可审计 Jacobian 扫描与结构分解**
+> **面向视觉 Transformer 内部目标的双索引局部 Jacobian 扫描与结构审计**
 
 英文首选：
 
-> **From NNS to Vision Transformers: Auditable Jacobian Scanning and Structural Decomposition of Internal Targets**
+> **Dual-Indexed Local Jacobian Scanning and Structural Auditing of Internal Targets in Vision Transformers**
 
 备选标题：
 
-> **Structure-Aware Gradient × Input for Auditing Internal Targets in Vision Transformers**
+> **从 NNS 到视觉 Transformer：内部目标的可审计 Jacobian 扫描与结构分解**
 
-首选标题更能覆盖数学统一、结构方法和经验研究。备选标题更直接地公开基础算子身份，但摘要必须立即说明目标 registry、differential cuts、闭合审计和机制研究，避免被理解为简单地将 Gradient × Input 应用于 ViT。
+首选标题直接呈现新增对象的双索引性质，降低被理解为普通 G×I 热图包装的风险。备选标题保留 NNS 的历史连续性。两种标题下，摘要都必须立即定义 $\mathcal L_{e,i}(s;x)$、合法切面、闭合审计和机制用途。
 
 ## 六、接下来怎么做：五步执行计划
 
@@ -221,91 +260,134 @@ Endpoint 与 Taylor 的比较不应成为论文开篇主线。该比较用于界
 
 **目标**
 
-让读者在方法章节中清楚看到从测量原语到结构化框架的技术增量。
+把 `NOV-JOINT-1` 写成可检验的方法对象，而不是组件清单。读者应能明确区分已有的 G×I 原语与本文新增的双索引表示，并理解为什么 input coordinate、consumer-use edge、target registry、合法切面和审计合同缺一不可。
 
 **具体工作**
 
-1. 先给出 Endpoint 与 Gradient × Input 的恒等式；
-2. 定义内部标量目标 registry 和统一输入坐标；
-3. 定义 computational edge、consumer use 和合法 differential cut；
-4. 给出 attention Q/K/V、routing/value 与 residual identity/branch 的闭合式；
-5. 将正向闭合、负向 mutation、JVP/VJP、有限差分和独立验证组织为统一审计协议；
-6. 重绘核心概念图，使“测量原语—内部目标—结构切面—机制分析”的关系一图可见。
+1. 先给出 Endpoint 与 Gradient × Input 的恒等式，明确它是总量测量原语；
+2. 正式定义目标条件化的 $\mathcal L_{e,i}(s;x)$，给出自由索引 $i/e$、目标条件 $s$、$z_e$、use-specific consumer cotangent 和 current-point 求值条件；
+3. 区分 producer tensor、consumer operator、input slot 与 invocation，说明同一 producer 的不同 use 为什么不能共享 edge identity；
+4. 定义合法 differential cut，并给出 $\sum_{e\in C}\mathcal L_{e,i}=x_i\partial_i s$ 的命题、适用条件与证明；
+5. 把 attention Q/K/V、routing/value、multi-head 和 residual identity/branch 写成 $\mathcal L_{e,i}$ 的具体切面实例；
+6. 增加“去掉一个索引会失去什么”的方法消融表：无 $i$ 退化为 edge scalar，无 $e$ 退化为总 G×I，无 valid cut 失去可核验记账；
+7. 将正向闭合、现有三类结构负控、JVP/VJP、有限差分和独立验证组织为统一审计协议；未封存的 wrong-slot、fan-out 和 detach mutation 不写成已验证结果；
+8. 重绘核心概念图，按“总 G×I → $[e,i]$ 双索引展开 → 合法切面重构 → 层深机制问题”的顺序呈现；
+9. 逐句回链 `NOV-ID-1`、`NOV-JOINT-1`、`NOV-ATTN-1`、`NOV-RES-1` 与 `NOV-AUD-1`，不产生新的单项首次主张。
 
 **交付物**
 
 - 重构后的方法章节；
-- 一张方法总览图；
+- $\mathcal L_{e,i}(s;x)$ 的正式定义、合法切面命题与证明；
+- 一张双索引方法总览图；
 - 一张结构切面与闭合关系图；
+- 一张索引必要性/退化对照表；
 - 一张审计协议表。
+- 扩展后的发布校验器及第三步专项复核记录。
 
 **完成门**
 
-读者无需依赖实验结果即可回答三个问题：基础算子是什么，本文增加了什么结构对象，当前实现如何证明没有漏项或重复记账。
+同时满足以下条件才通过：
+
+1. 读者无需依赖实验结果即可回答：基础算子是什么、双索引对象新增了什么、合法切面闭合什么、审计能排除哪些错误；
+2. 方法章节明确证明 $\mathcal L_{e,i}$ 在合法切面上恢复总 G×I，但不将链式法则本身写成创新；
+3. 图和正文能直观看出无 $i$、无 $e$、无 cut contract 三种退化；
+4. 所有 mutation 主张与已封存负控逐项一致；
+5. `validate_publication_r2.py` 可执行并通过第二步与第三步新增检查，`git diff --check` 通过。
 
 ### 第四步：重排实验结果并绑定封存证据
 
 **目标**
 
-让实验直接服务于三项贡献，不再围绕 Endpoint 是否击败其他归因方法组织全文。
+证明双索引对象不是形式上的字段叠加，而是产生不可由总 G×I、纯 edge scalar 或单一激活统计直接恢复的机制证据；同时把跨检查点复现和阴性干预边界纳入同一证据结构。
 
 **具体工作**
 
 1. 先报告原始 NNS 等价复现、算子验证、结构闭合和 mutation 检出；
-2. 再报告 registry coverage 与分层 token-channel atlas；
-3. 将层深空间扩展、attention routing/value 和 residual identity/branch 作为主要科学结果；
-4. 将 Endpoint–Taylor 和有限替换实验放在行为标定与解释边界部分；
-5. 每项结论绑定对应封存 JSON、统计单位、效应量、区间和适用模型；
-6. 将 PCIA–PEFA 和 CST 的 NO_GO 作为研究边界或未来设计依据，不混入主方法有效性证据。
+2. 增加“联合索引必要性”结果：用现有封存数组比较总图、edge scalar 和 $[e,i]$ 结构图组分别能回答什么，至少给出一个 attention 和一个 residual 的预注册或现有冻结汇总；
+3. 把层深空间扩展作为背景规律，把 routing/value 与 identity/branch 的空间化层深重组作为 `NOV-JOINT-1` 的核心经验结果；
+4. 对每项核心结果执行替代解释审计：总 absolute mass、activation norm、总 G×I 或 edge-only scale 是否已经足以解释观察到的趋势；若足以解释，则降级为描述性结果；
+5. 审计 thesis-blind-review 中 E5 的来源、无重叠 cohort、四 checkpoint binding、统计合同和 sealed JSON。通过后将 H1–H3 四检查点方向复现同步到现役中英文稿；未通过则继续按两个固定 checkpoint 报告，不复制数字；
+6. 将 H4 在四检查点均为负的结果作为解释边界：结构路径图不提供稳定的头排序增量，不能用外部复现只保留正结果；
+7. 将 Endpoint–Taylor 和有限替换实验放在行为标定部分，明确 local representation 与 reference-aware intervention prediction 的 estimand 差异；
+8. 每项结论绑定对应封存 JSON、统计单位、效应量、区间、检查点和适用 target；
+9. 将 PCIA–PEFA 和 CST 保持为独立研究，不混入 Endpoint 主方法的有效性证据。
 
 **交付物**
 
 - 重排后的 Results 章节；
+- 一张“总图/edge scalar/双索引图组”信息差异与结果必要性表；
+- attention 与 residual 各一项双索引必要性结果或图；
+- E5 四检查点证据审计与同步决定；
 - 逐主张 evidence index；
 - 主文图表与补充材料分配表；
 - 所有关键数字的机器重算校验报告。
 
 **完成门**
 
-每个主结果都有直接证据和明确统计单位；失败或局部结果不被总 PASS 覆盖；行为结果统一写为“广泛但非普遍”。
+同时满足以下条件才通过：
+
+1. 至少一个 attention 结论和一个 residual 结论明确依赖 $[e,i]$ 联合信息，且正文说明总 G×I 或纯 edge scalar 为什么不能直接恢复该结论；
+2. 每个主结果都有直接封存证据、明确统计单位、效应量、区间和检查点范围；
+3. E5 四检查点结果只有在 source binding、无重叠、统计合同和数字重算全部通过后进入现役稿；
+4. 正结果、`NOT_SUPPORTED` 和相反模型趋势均完整保留，行为结果继续写为“广泛但非普遍”；
+5. 不新增为了证明 Endpoint 胜出的搜索性实验；现有证据不足以回答必要性时，只允许提出一项前瞻、低成本且有停止门的补充实验。
 
 ### 第五步：同步重写中英文论文并进行对抗式终审
 
 **目标**
 
-形成一套数学身份诚实、贡献集中、数字一致且能够回答主要审稿质疑的投稿版本。
+形成一套以 `NOV-JOINT-1` 为唯一方法新颖性主轴、以双索引必要性和跨检查点机制结果为经验支撑、数字与边界一致的投稿版本。
 
 **具体工作**
 
 1. 同步改写中英文标题、摘要、引言、贡献、相关工作、讨论和结论；
-2. 使用“主张—证据—简洁边界”的句式，删除 reviewer-facing 预辩解和重复免责声明；
-3. 核对所有样本量、覆盖率、效应量、区间、任务数和模型范围；
-4. 从审稿人视角集中检查三项风险：G×I 公式新颖性、与既有 Transformer 分解方法的差异、抽样覆盖对外推范围的限制；
-5. 验证正文、附录、图注、表格和 evidence index 的中英文一致性；
-6. 只有现有数据无法回答核心研究问题时才新增实验，不为改变既有阴性结论追加搜索。
+2. 摘要和贡献二直接定义双索引对象的技术增量，避免用“全面、严格、新颖”等形容词替代对象、合同与结果；
+3. 使用“主张—证据—简洁边界”的句式，删除 reviewer-facing 预辩解和重复免责声明；
+4. 核对所有样本量、覆盖率、效应量、区间、任务数、检查点和模型范围；
+5. 从审稿人视角执行四项对抗性检查：是否只是 G×I 加 hooks、是否只是多个已有组件的拼装、结构闭合是否被误写成因果正确、经验结果是否真的需要双索引对象；
+6. 对 `NOV-JOINT-1` 做逐字段反例检查，使用 Conductance、DecompX/LRP、EAP/Vi-CD 和 Unpack 作为最强近邻，不使用弱基线制造差异；
+7. 验证正文、附录、图注、表格、related-work matrix 和 evidence index 的中英文一致性；
+8. 只有现有数据无法回答“联合索引是否必要”时才新增实验，不为改变既有阴性结论追加搜索。
 
 **交付物**
 
 - 中英文同步终稿；
+- 一段可独立阅读的 `NOV-JOINT-1` 方法定位及双索引定义；
 - claim-to-evidence 对照表；
 - 数字与引用自动校验报告；
-- 一份模拟审稿意见及逐项修订记录。
+- 一份以最强近邻方法为对象的模拟审稿意见及逐项修订记录；
+- 一页“创新性成立条件与失效条件”清单。
 
 **完成门**
 
-全文能够用一句话回答“既然 Endpoint 等于 G×I，本文新增了什么”，且答案稳定落在异构内部目标、结构化 differential cuts、自动审计和机制发现四个方面。
+全文必须同时通过以下问题：
+
+1. 能用一句话回答“既然 Endpoint 等于 G×I，本文新增了什么”，答案固定为目标条件化双索引局部微分对象、合法切面合同、结构审计和机制用途；
+2. 能用一张图回答“为什么不是 G×I 加 hooks”，并用数据说明至少一个 attention 和一个 residual 结论依赖 $[e,i]$ 联合信息；
+3. 能明确说明与 Conductance、DecompX/LRP、EAP/Vi-CD 和 Unpack 的 estimand、索引和闭合对象差异；
+4. 中英文所有方法新颖性句子均回链 `NOV-JOINT-1`，不出现任何单项首次主张；
+5. 四检查点复现若进入主稿，所有数字与 sealed artifacts 一致；若未通过审计，则全文保持两 checkpoint 口径；
+6. 发布校验器、数字重算、引用检查、双语一致性和 Markdown/LaTeX 检查全部通过。
 
 ## 七、最终判断
 
 如果论文定位为新的 attribution formula，现有证据不支持其新颖性。如果论文仅展示 ViT 上的 Gradient × Input 热图，技术增量也不足。当前可成立的完整定位是：
 
-> **原始 NNS 数学统一 + ViT 异构内部目标扫描 + exact structural differential cuts + fail-closed 审计 + 两模型机制研究 + 有限干预边界。**
+> **原始 NNS 数学统一 + 目标条件化的 $[\text{consumer-use edge},\text{input coordinate}]$ 双索引局部微分对象 + exact structural differential cuts + fail-closed 审计 + 跨检查点机制研究 + 有限干预边界。**
 
-这是一项测量框架与经验机制研究。其方法价值来自结构化局部 Jacobian 记账和验证体系，其科学价值来自对 ViT 局部输入依赖重组规律的系统测量。后续工作的重点是收紧论文叙事、完成相关工作差分审计并建立逐主张证据索引，而不是继续寻找一个新的基础公式。
+这是一项测量框架与经验机制研究。其方法创新来自 $\mathcal L_{e,i}(s;x)$ 同时保留输入空间和实际使用边身份，并在合法切面上恢复同一 current-point local differential；其可信性来自结构负控与独立数值 oracle；其科学价值来自该联合对象对 routing/value 和 identity/branch 空间化层深重组的测量。后续工作的重点是证明双索引的必要性、审计四检查点复现并建立逐主张证据索引，而不是继续寻找新的基础公式。
+
+创新性是否成立按以下规则判定：
+
+- 若只有 G×I 恒等式，判为 `IDENTITY_CLARIFICATION`；
+- 若定义 $\mathcal L_{e,i}$ 并通过切面闭合，判为 `STRUCTURED_MEASUREMENT_FRAMEWORK`；
+- 若审计合同还能检出结构错误，判为 `AUDITED_STRUCTURED_MEASUREMENT`；
+- 若至少一个 attention 和一个 residual 主结论必须依赖 $[e,i]$ 联合信息，并在独立检查点保持方向，才允许把 `NOV-JOINT-1` 作为论文的主要方法与经验创新；
+- 若联合对象未产生超出总图或 edge scalar 的实质结果，论文应降级为 NNS 数学澄清与高质量系统实现，不用“联合创新”补偿经验不足。
 
 ## 八、第一步执行记录：唯一论文定位与主张边界冻结
 
-冻结日期：2026-09-22。适用入口为 `papers/nns_vit_endpoint/publication_r2_20260920/{zh,en}/manuscript.md` 及其 `papers/nns_vit_endpoint/{zh,en}/full_draft.md` 镜像。后续步骤可以补充证据或收缩主张，不得静默改变本节的基础算子身份、证据层级和外推边界。`notes/revision_v3_frozen_claims.md` 保留为上一轮修订快照，不由本次冻结覆盖。
+冻结日期：2026-09-22。适用入口为 `papers/nns_vit_endpoint/publication_r2_20260920/{zh,en}/manuscript.md` 及其 `papers/nns_vit_endpoint/{zh,en}/full_draft.md` 镜像。本节保留第一步完成时的历史快照；第二步后的双索引形式化和第三至第五步修订见本文前七节与第九节，不倒写本节当时的标题、中心句和验收记录。`notes/revision_v3_frozen_claims.md` 保留为上一轮修订快照，不由本次冻结覆盖。
 
 ### 8.1 一页论文定位说明
 
@@ -542,7 +624,7 @@ Registry 中每项主张只属于一个主类别。方法边界若同时影响�
 | --- | --- | --- | --- | --- |
 | NOV-ID-1 | 原始 NNS 的指定传播规则可统一为 same-target Gradient × Input。 | G×I 已有 [S1]；差异是对 Dou et al. 规则的条件等价与边界澄清，见 9.4 第一行。 | 方法身份、附录 | 新归因公式或 Gradient × Input 首创 |
 | NOV-SYS-1 | 本文把异构 ViT 内部标量目标组织到同一预注册测量空间。 | Conductance/AttnLRP 已有 hidden/latent targets [S2, S6]；差异为 registry 与共同结构合同，见 9.4 第二行。 | 方法、实现 | 首次内部神经元或 latent attribution |
-| NOV-JOINT-1 | 本文联合保留输入坐标与指定实际使用边身份，并在合法切面上闭合相同的当前点 local differential。 | Conductance 有输入坐标和 layer completeness [S2]；EAP/Vi-CD 有 edges [S8, S10]；DecompX/LRP 有其他闭合对象 [S5–S7]；没有一个核查来源覆盖三者组合，见 9.3 全矩阵。 | 摘要中心句、引言、方法贡献、讨论、结论 | 首次 edge attribution、首次完整性或实现不变的唯一分解 |
+| NOV-JOINT-1 | 对每个固定目标，本文以 $\mathcal L_{e,i}(s;x)$ 联合保留输入坐标与指定实际使用边身份，并在合法切面上闭合相同的当前点 local differential。 | Conductance 有输入坐标和 layer completeness [S2]；EAP/Vi-CD 有 edges [S8, S10]；DecompX/LRP 有其他闭合对象 [S5–S7]；没有一个核查来源覆盖三者组合，见 9.3 全矩阵。 | 摘要中心句、引言、方法贡献、讨论、结论 | 首次 edge attribution、首次完整性或实现不变的唯一分解 |
 | NOV-ATTN-1 | 在 `NOV-JOINT-1` 合同内，Q/K/V 与 routing/value 是同一 attention local differential 的可加 input-coordinate 分项。 | AttnLRP/HiLRP、AtP*、Unpack 已覆盖 Q/K/V primitives、修正或 labels [S6–S8, S12]；差异是 true-Jacobian input maps 与 cut closure，见 9.4 第五行。 | 方法、结构结果 | 首次分析 Q/K/V、routing 等同因果贡献 |
 | NOV-RES-1 | 在 `NOV-JOINT-1` 合同内，identity 与 branch input-coordinate maps 恢复同一 residual output differential。 | GlobEnc、ALTI、DecompX、AttnLRP、GradSkip 已覆盖 residual/skip [S3–S7]；差异是 local-differential map pair 与闭合，见 9.4 第六行。 | 方法、结构结果 | 首次考虑 residual 或普遍的 branch dominance |
 | NOV-AUD-1 | 结构合同除正向闭合外，还由三类遗漏/重复负控和独立数值 oracle 审计。 | HiLRP 已有 machine-precision conservation，EAP/AtP* 已有 patching 对照和 diagnostics [S7–S8]；本文差异是 omission-head、omission-routing、duplicate-identity 负控，见 9.4 第九行。 | 方法验证、实现贡献 | 负控证明解释具有因果正确性、跨实现唯一性，或覆盖尚未执行的错误类型 |
@@ -610,7 +692,7 @@ Registry 中每项主张只属于一个主类别。方法边界若同时影响�
 
 ### 9.9 完成门结论与后续写作约束
 
-第二步完成门通过。审计不支持任何单项“首次”主张，也不支持把本文描述为首个 ViT edge、Q/K/V、residual、conservation 或 activation-patching 方法。当前可用的新颖性主张只有 `NOV-JOINT-1`：在本轮核查的来源中，未发现一个方法同时保留输入坐标与指定实际使用边身份，对同一当前点真实局部微分执行合法切面上的 attention/residual 分项闭合，并以遗漏/重复结构负控和独立数值 oracle 审计后用于层深机制分析。
+第二步完成门通过。审计不支持任何单项“首次”主张，也不支持把本文描述为首个 ViT edge、Q/K/V、residual、conservation 或 activation-patching 方法。当前可用的新颖性主张只有 `NOV-JOINT-1`：对每个固定目标，$\mathcal L_{e,i}(s;x)$ 同时保留输入坐标与指定实际使用边身份；在本轮核查的来源中，未发现一个方法对这一目标条件化双索引对象执行合法切面上的 attention/residual 分项闭合，并以遗漏/重复结构负控和独立数值 oracle 审计后用于层深机制分析。
 
 后续第三至第五步必须引用 9.6 的 `NOV-*` ID 收缩或重写相关句子。若新增文献覆盖 `NOV-JOINT-1` 的全部字段，应修改矩阵和主张，而不是通过改名、增加形容词或只强调视觉应用维持原表述。
 
