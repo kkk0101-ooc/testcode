@@ -1,6 +1,6 @@
 # Endpoint 与 Gradient × Input 等价下的创新定位与后续五步计划
 
-> 执行状态（2026-09-22）：第一步已完成内容冻结，验收记录见第八节；第二步未启动。
+> 执行状态（2026-09-22）：第一步已完成内容冻结，验收记录见第八节；第二步已完成联合能力的新颖性差分审计，验收记录见第九节；第三步未启动。
 
 ## 一、结论
 
@@ -95,7 +95,7 @@ $$
 - 原始 NNS 与 Endpoint 的数值等价复现；
 - 独立验证器、覆盖率审计和不可变结果根。
 
-漏边、重复边、错误 input slot、错误 fan-out 合并和错误 detach 必须触发预期失败。这里的新颖性候选是结构化局部 Jacobian 扫描、真实计算边切面和自动审计合同的联合能力。论文需要通过相关工作矩阵核实这一联合能力未被既有方法完整覆盖。
+结构错误应通过负控或独立 oracle 被检出。当前封存负控覆盖遗漏非零 head、遗漏非零 routing 和重复 identity；attention detach 由独立一致性检查覆盖。错误 input slot 与错误 fan-out 合并尚无封存 mutation 证据，不得写成已验证能力。这里的新颖性候选是结构化局部 Jacobian 扫描、真实计算边切面和自动审计合同的联合能力。论文需要通过相关工作矩阵核实这一联合能力未被既有方法完整覆盖。
 
 ### 3.4 基于统一测量框架的 ViT 机制观察
 
@@ -449,3 +449,173 @@ Registry 中每项主张只属于一个主类别。方法边界若同时影响�
 - `git diff --check`：`PASS`。
 - 当前改动范围审计：仅涉及本计划、现役中英文主稿及镜像、便携包 README、现役发布校验器和其生成的验证报告；未运行新实验，未生成第二步 related-work difference matrix。
 - 历史 `validate_revision_v3_step2.py` 仍绑定旧 `修改意见v3.md` SHA `5e39a5...`，而仓库当前该文件在 HEAD 即为 `6a9863...`。该历史专项校验会仅在 `opinion_source_sha` 项失败；本轮未修改其源意见、历史合同或科学结果，也不将该旧校验作为第一步完成代理。
+
+## 九、第二步执行记录：联合能力的新颖性差分审计
+
+审计日期与检索截止日均为 **2026-09-22**。本节比较方法论文中明确界定的对象、等式和验证，不根据相似名称推断能力。表中的“未见”表示本轮核查的正式来源未报告该项，不表示对全部文献作绝对不存在断言。预印本按实际核查版本标记；后续版本或未收录工作可能改变结论。
+
+### 9.1 审计问题、字段和判定规则
+
+本轮要检验的候选联合能力为：
+
+> **在同一观测输入点，对预注册的 ViT 异构内部标量目标保留原始输入坐标，将同一真实局部 Jacobian 在指定实际使用边构成的合法切面上分解为 Q/K/V、routing/value、multi-head 与 residual identity/branch 项，并用正向闭合、遗漏/重复负控和独立数值 oracle 审计后开展层深机制分析。**
+
+统一比较字段严格对应第二步要求：`被解释对象`、`内部目标类型`、`真实 consumer edge`、`合法切面`、`attention routing/value`、`residual identity/branch`、`精确闭合`、`mutation 检出`和`经验用途`。其中：
+
+- `真实 consumer edge`要求 cotangent 绑定到具体张量使用边；只有节点、层、component 或抽象 token relation 不计为完整覆盖。本文现有实现已验证多输入算子的输入分别计数、共享张量按 graph edge 而非张量名区分；更一般的 producer–consumer–slot–invocation registry 属于后续扩展，不写成已完成能力。
+- `合法切面`要求从输入到同一目标的每条有效路径恰好穿过一次；稀疏回路、候选边集合、逐层矩阵或单个中间层只有在来源明确给出相同切面条件时才计为覆盖。
+- `精确闭合`必须标注闭合的数学对象。输出差、函数值 relevance、前向 token decomposition 和当前点 local differential 不是同一个对象。
+- `mutation 检出`专指对错误实现进行预期失败测试；消融、参数随机化、输入扰动和与 patching 的相关性评价不计为 mutation 检出。本文已封存的 28,800 项负控只覆盖遗漏非零 head、遗漏非零 routing 和重复 identity；attention detach 另有一致性检查，不计入 mutation suite。错误 input slot 与错误 fan-out 合并尚无封存 mutation 证据。
+- `是`表示正式来源明确报告该能力；`部分`表示覆盖相关结构但对象或合同不同；`未见`表示核查来源没有报告；`不适用`表示该字段不属于方法定义。
+
+### 9.2 正式来源登记
+
+| ID | 正式来源与本轮核查范围 | 直接支持的事实 |
+| --- | --- | --- |
+| S1 | Sundararajan, Taly, and Yan, *Axiomatic Attribution for Deep Networks*, ICML 2017, [PMLR](https://proceedings.mlr.press/v70/sundararajan17a.html)；Ancona et al., *Towards Better Understanding of Gradient-based Attribution Methods*, ICLR 2018, [OpenReview](https://openreview.net/forum?id=Sy21R9JAW) | Gradient × Input 是当前点输入加权梯度；IG 沿 baseline 到输入的路径积分，并以输出差为 completeness 对象。 |
+| S2 | Dhamdhere, Sundararajan, and Yan, *How Important Is a Neuron?*, arXiv:1805.12233, [全文](https://arxiv.org/html/1805.12233) | Conductance 以输入坐标分辨 IG 流经隐藏单元；同一完整隐藏层的 conductance 加和为输出差，并用 ablation 与 feature selection 评价。 |
+| S3 | Modarressi et al., *GlobEnc*, NAACL 2022, [ACL Anthology](https://aclanthology.org/2022.naacl-main.19/) | 将 attention、residual、normalization 等 encoder 组件纳入逐层 token attribution，并跨层聚合。 |
+| S4 | Ferrando, Gállego, and Costa-jussà, *Measuring the Mixing of Contextual Information in the Transformer*, EMNLP 2022, [ACL Anthology](https://aclanthology.org/2022.emnlp-main.595/) | ALTI 分解整个 attention block 的 token-to-token interaction，再用 rollout 聚合；原文明确未纳入 classifier，因而不生成逐类别解释。 |
+| S5 | Modarressi et al., *DecompX*, ACL 2023, [ACL Anthology](https://aclanthology.org/2023.acl-long.149/) | 将输入 token 分量连续传播过全部 encoder 组件、非线性 FFN 与分类头，并把 bias 分配进可重组的 representation/logit decomposition。 |
+| S6 | Bach et al., *Layer-Wise Relevance Propagation*, PLOS ONE 2015, [DOI](https://doi.org/10.1371/journal.pone.0130140)；Achtibat et al., *AttnLRP*, ICML 2024, [PMLR](https://proceedings.mlr.press/v235/achtibat24a.html) | LRP 的核心对象是逐层 relevance 守恒；AttnLRP 为 softmax、双线性 attention、normalization 等 Transformer 算子定义 relevance rule，并支持输入与 latent attribution。 |
+| S7 | Nishankar et al., *HiLRP*, arXiv:2609.01282v1, [全文](https://arxiv.org/html/2609.01282v1)；Buratti et al., *GradSkip*, arXiv:2607.10365v1, [全文](https://arxiv.org/html/2607.10365v1) | HiLRP 将 ViT attention/降采样归约为四类守恒 primitive，并对多种架构验证 conservation；GradSkip 已显式对 attention 与 residual/skip 路径动态分配 relevance。 |
+| S8 | Syed, Rager, and Conmy, *Attribution Patching Outperforms Automated Circuit Discovery*, BlackboxNLP 2024, [ACL Anthology](https://aclanthology.org/2024.blackboxnlp-1.25/)；Kramár et al., *AtP\**, arXiv:2403.00745v1, [全文](https://arxiv.org/html/2403.00745v1) | EAP 用 activation displacement 与目标梯度的一阶内积估计具体计算边的 replacement effect；AtP* 分析 attention Q/K 饱和与直接/间接效应抵消，并给出 edge variant。 |
+| S9 | Zhang and Nanda, *Towards Best Practices of Activation Patching*, arXiv:2309.16042v2, [全文](https://arxiv.org/html/2309.16042v2)；Izadi et al., *CAAP*, arXiv:2603.13652v1, [全文](https://arxiv.org/html/2603.13652v1) | Activation patching 直接替换内部状态并测量有限输出变化；CAAP 已把内部 activation insertion 用于 ViT patch attribution。 |
+| S10 | Żukowska et al., *Seeing Through Circuits*, arXiv:2604.14477v1, [全文](https://arxiv.org/html/2604.14477v1) | Vi-CD 已在 ViT/OpenCLIP 上把 attention heads 与 MLP blocks 组织为 residual-stream edge graph，以 activation patching 发现和验证稀疏视觉回路。 |
+| S11 | Wróbel et al., *DAVE*, arXiv:2602.06613v1, [全文](https://arxiv.org/html/2602.06613v1) | 已有 ViT-specific input-gradient decomposition，将 effective input-output mapping 分为 direct transformation 与 local variation，并以分布聚合形成空间归因。 |
+| S12 | Chen, Plaat, and van Stein, *Every Component is a Lookup*, arXiv:2605.23393v2, [全文](https://arxiv.org/html/2605.23393v2) | Unpack 已通过非梯度 backward recursion 给出 component interaction、带 K/Q/V composition label 的命名端到端路径和逐 token attribution。 |
+| S13 | 本项目冻结协议与结果：`docs/NNS_ViT_Endpoint_Scanner_EP0协议冻结_20260918.md`、`docs/阶段M_endpointnnsvit.md`、`src/vitnns/endpoint_vit.py`、`src/vitnns/endpoint_e3_closure.py`、E3-R2 `validation_report.json` 与现役双语稿 Sections 3–7 | 定义本文 target registry、实际使用边、合法切面和局部微分分项；封存 76,800 项正向闭合、28,800 项遗漏/重复负控与独立 JVP/有限差分验证。 |
+
+上述来源覆盖用户指定的 Gradient × Input、IG、conductance、GlobEnc、DecompX、ALTI、LRP、edge attribution 与 activation patching。S7、S10–S12 是为避免旧文献集合造成虚假新颖性而追加的截至检索日近邻。
+
+### 9.3 统一字段的 related-work difference matrix
+
+| 方法族 | 被解释对象 | 内部目标类型 | 真实 consumer edge | 合法切面 | attention routing/value | residual identity/branch | 精确闭合 | mutation 检出 | 经验用途 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Gradient × Input [S1] | 当前点 $x\odot\nabla_xs(x)$ | 可选可微标量；无统一 target registry | 未见 | 未见 | 未见 | 未见 | 一般无函数值 completeness | 未见 | 输入敏感性与显著图 |
+| Integrated Gradients [S1] | baseline 到输入的路径归因 | 原始定义面向输出标量；可由接口选择目标 | 未见 | 未见 | 未见 | 未见 | **是：**各输入归因加和为 $F(x)-F(x')$ | 未见 | 输入归因、调试与规则提取 |
+| Conductance [S2] | IG attribution 流经隐藏单元的份额，并可保留输入坐标 | neuron、filter 或隐藏层单元集合 | 未见 | **部分：**完整隐藏层是 layer-wise cut，不是任意 consumer-edge cut | 未见 | 未见 | **是：**同层 conductance 加和为 $F(x)-F(x')$ | 未见 | hidden-unit 分析、ablation、feature selection |
+| GlobEnc [S3] | 跨 encoder 的 token attribution | token 与 encoder-block components | 未见 | 未见 | 未显式分开 routing/value differential | **部分：**纳入 residual 与 normalization，但不输出本文的两张局部微分图 | 未报告 class-score 或 local-differential 精确闭合 | 未见 | token attribution 与 erasure/correlation 评价 |
+| ALTI [S4] | attention block 的 token mixing 及其 rollout | token-to-token interaction；原文未纳入 classifier | 未见 | 未见 | 未显式分开 routing/value differential | **部分：**attention block 包含 residual 与 LayerNorm | **部分：**局部前向向量可分解；最终量不是类别目标的局部微分闭合 | 未见 | contextual mixing、sufficiency/comprehensiveness |
+| DecompX [S5] | 输入 token 对 representation 与预测 logit 的前向分量 | 全 encoder token components、FFN、分类头 | 未见具体 consumer-use 端口 | 未见本文的合法 edge-cut 条件 | attention 权重参与前向分解，但未把 Q/K routing differential 与 V differential 分开 | **部分：**传播 residual/FFN 分量，未把 identity/branch 作为本文式局部微分对 | **是：**在其 bias 规则下重组 hidden representation/logit；对象不是 current-point Jacobian | 未见 | prediction-level token attribution 与 token erasure |
+| LRP 家族：LRP、AttnLRP、HiLRP、GradSkip [S6–S7] | 输出 relevance 向输入或 latent variables 的反向分配 | input、tokens、latent neurons；覆盖多类 Transformer primitives | **部分：**按算子连接传播 relevance，未见 producer–consumer–slot–invocation 端口注册 | **部分：**逐层 conservation，不等于本文 true-Jacobian valid cut | **部分：**已有 softmax、双线性 attention 及 Q/K/V primitive；未见本文同目标 routing/value 局部微分对 | **是/部分：**已有 skip-aware relevance 与 attention/residual 动态分配 | **是：**relevance conservation；HiLRP 还报告 machine-precision 验证，但闭合对象不是 local differential | 未见遗漏/重复/错 slot/detach 的 mutation suite | input/latent attribution、localization、perturbation 与跨架构评价 |
+| Edge attribution：EAP、AtP*、Vi-CD [S8, S10] | reference-specific component/edge replacement effect 或其一阶估计；稀疏任务回路 | heads、MLPs、Q/K/V nodes 与 residual-stream edges | **是：**计算边或 residual-stream connection 已有明确先例 | 未见对全部输入到目标路径恰好一次的 additive cut 合同 | **部分：**AtP* 有 Q/K saturation fix 和 Q/K/V edge types；未保留逐像素 routing/value 局部图 | **部分：**显式使用 residual-stream edges，但目标是 effect/circuit，不是 identity+branch map closure | 未见 local-differential additive closure；以 patching effect 或 circuit fidelity 为对象 | 未见本文式结构故障注入；以 direct patching、diagnostics 或 circuit recovery 验证 | LLM/ViT circuit discovery、行为恢复与 steering |
+| Activation patching、causal tracing、CAAP [S9] | 指定 reference 和替换算子下的有限内部效应 | layer、head、MLP、token/patch activation 等被干预变量 | **部分：**vanilla patching 主要定位变量；edge patching 属上一行 | 不适用 | 可分别干预 attention 变量，但不形成 routing/value 加和分解 | 可分别干预分支，但不形成 identity+branch 局部闭合 | 不适用；单项 finite effect 通常不可加 | 未见 | localization、机制定位、事实关联与 ViT patch attribution |
+| DAVE [S11] | ViT 类别输出的分布感知空间归因 | effective input-output mapping | 未见 | 未见 | 未见 | 未见 | 未见本文的结构切面闭合 | 未见 | 稳定、局部等变的 ViT 像素归因 |
+| Unpack [S12] | component interaction、命名端到端路径与 token credit | attention、MLP、token 与带 K/Q/V label 的路径 | **部分：**保留 component interaction/path，但未见本文 consumer-use 端口合同 | 未见本文的输入到同目标合法切面条件 | **部分：**已提供 K/Q/V composition labels；不是 current-point true-Jacobian routing/value 图 | **部分：**路径递归经过 residual computation，但未见本文 identity/branch 局部图对 | 方法自身给出 credit decomposition；未见原始输入坐标上的 local-differential cut closure | 未见本文式结构故障注入 | LLM component composition、token attribution 与 IOI 机制分析 |
+| NNS–ViT Endpoint Scanner [S13] | 同一当前点局部微分的总图、内部目标图和结构边图 | 预注册 token-channel、aggregate、head、Q/K/V、attention output、residual/MLP branch 与 logit | **是：**cotangent 绑定实际使用边；多输入与共享张量使用按 graph edge 区分 | **是：**每条有效输入到目标路径恰好穿过一次 | **是：**Q+K routing、V value 与 Q/K/V 分项均恢复完整 attention differential | **是：**identity+branch 恢复 residual output differential | **是：**原始 signed input coordinates 上恢复同一 Endpoint local differential | **是：**遗漏非零 head、遗漏非零 routing、重复 identity 三类负控全部被拒绝；另有 JVP 与有限差分 oracle | 两模型 target atlas、层深/路径机制统计与分开的有限替换标定 |
+
+### 9.4 已有能力、降级项与联合差异
+
+| 审计项 | 最近邻工作 | 已被覆盖的能力 | 本文允许保留的差异 | 结论标签 |
+| --- | --- | --- | --- | --- |
+| 基础公式与路径版本 | Gradient × Input、IG [S1] | 当前点输入加权梯度与 baseline-path 完整归因均是既有方法 | 对原 NNS 规则给出条件等价和坐标/estimand 澄清 | `IDENTITY_CLARIFICATION_NOT_NEW_FORMULA` |
+| 输入分辨的内部目标 | Conductance [S2]、AttnLRP [S6]、原 NNS | hidden neuron、latent attribution 和输入坐标图均已有 | 统一注册 ViT 异构目标并绑定同一结构合同；registry 本身是系统设计，不单独主张算法首创 | `SYSTEMATIZATION_INCREMENT` |
+| Transformer token 与组件分解 | GlobEnc、ALTI、DecompX [S3–S5] | attention block、residual、normalization、FFN、分类头和 token decomposition 已被覆盖 | 研究对象改为同一当前点 true Jacobian 的 input-coordinate structural terms | `DIFFERENT_ESTIMAND_AND_INDEX_SET` |
+| relevance 守恒与 ViT 算子覆盖 | AttnLRP、HiLRP、GradSkip [S6–S7] | attention primitives、latent relevance、skip-aware 分配与 machine-precision conservation 均已有 | 不修改 backward rule；闭合的是指定切面上的真实 local differential，并保留每个分项的输入坐标 | `DIFFERENT_CLOSURE_OBJECT` |
+| Q/K/V 与命名路径 | AtP*、Unpack、AttnLRP/HiLRP [S6–S8, S12] | Q/K/V 不是未研究对象；已有 Q/K 修正、attention primitive 和带 K/Q/V label 的路径 | 同一输出 differential 同时给出 Q-induced、K-induced、V-induced 与 routing/value input maps，并逐项闭合 | `JOINT_DIFFERENTIAL_ACCOUNTING_CANDIDATE` |
+| residual identity/branch | GlobEnc、ALTI、DecompX、AttnLRP、GradSkip [S3–S7] | residual/skip contribution 与动态 relevance 分配已有 | identity 与 branch 是真实 Jacobian 的 input-coordinate 分项，且两项重构 residual output differential | `JOINT_DIFFERENTIAL_ACCOUNTING_CANDIDATE` |
+| 真实计算边与 ViT 回路 | EAP、AtP*、Vi-CD [S8, S10] | edge scoring、edge intervention 和 ViT residual-stream circuit discovery 已有 | 不主张首次研究真实边；差异是对指定实际使用边生成 input-coordinate map，并要求合法完整切面 | `EDGE_NOVELTY_DOWNGRADED` |
+| 精确闭合 | IG、Conductance、DecompX、LRP/HiLRP [S1–S2, S5–S7] | 输出差、前向 representation/logit 与 relevance conservation 都有精确加和先例 | 闭合对象是未修改模型在观测点的同一 local differential；不得以“精确闭合”三个字单独主张新颖性 | `CLOSURE_OBJECT_SPECIFIC` |
+| 自动审计 | HiLRP [S7]、EAP/AtP* [S8] | machine-precision conservation、与直接 patching 对照及 false-negative diagnostics 已有 | 在正向数值 oracle 外，加入 omission-head、omission-routing 与 duplicate-identity 三类结构负控 | `AUDIT_CONTRACT_INCREMENT` |
+| 机制与干预用途 | Raghu et al. 的 ViT receptive-field 结果；activation patching/CAAP、Vi-CD [S9–S10] | 深层空间范围扩大、ViT 内部干预和 edge-circuit 行为验证均已有 | 用同一注册测量族比较 routing/value、identity/branch 的层深重组，并把 local map 与 reference-specific finite effect 分开标定 | `EMPIRICAL_SYNTHESIS_NOT_UNIVERSAL_LAW` |
+
+据此，以下表述被直接降级：
+
+- 不写“首次把 Gradient × Input 用于 ViT 或内部目标”；S1、S2、S6 与现有软件接口已覆盖基础量和内部 selector。
+- 不写“首次分解 Transformer attention、Q/K/V 或 residual”；S3–S7、S8 与 S12 已分别覆盖这些对象。
+- 不写“首次在 ViT 上研究真实计算边或内部干预”；Vi-CD 与 CAAP 已直接覆盖视觉 Transformer 的 edge circuits 和 activation patching [S9–S10]。
+- 不把“守恒”“完整性”或“闭合”本身作为新颖性；IG、Conductance、DecompX、LRP 与 HiLRP 均已有各自的精确加和对象。
+- 不把空间扩展写成首次发现；本文只报告在冻结样本和自身指标下的复现及结构分项增量。
+
+### 9.5 研究缺口说明（三段）
+
+现有方法已覆盖本研究的多数单项部件。Gradient × Input 和 IG 定义当前点及路径输入归因，Conductance 将路径归因分配到隐藏单元；GlobEnc、ALTI 与 DecompX 解释 Transformer 的 token mixing、encoder components 和预测分量；AttnLRP、HiLRP 与 GradSkip 提供 attention primitive、latent relevance、skip-aware 分配和守恒；EAP、AtP*、Vi-CD 与 activation patching 已覆盖真实边、有限效应与视觉回路。因此，单凭内部目标、Q/K/V、residual、真实边、闭合或 ViT 应用中的任何一项，均不足以构成本文的新颖性主张。
+
+这些工作闭合和保留的索引不同。Conductance 闭合 reference-path attribution，DecompX 重组 forward representation 或 logit，LRP 家族守恒 relevance，EAP/Vi-CD 评分或筛选 reference-specific edges。本文处理的是未修改模型在观测点的同一 true local differential，并同时保留输入坐标和指定实际使用边身份；合法切面要求所有输入到同一目标的有效路径恰好计数一次。该差异是 estimand、索引集合和验证合同的组合，不是术语差异。
+
+截至 2026-09-22，本轮核查的正式来源中未发现一个方法同时提供：ViT 异构内部目标 registry、原始输入坐标上的实际使用边图、Q/K/V 与 routing/value 以及 identity/branch 的同目标 local-differential cut closure、针对遗漏和重复记账的结构负控，以及使用同一已审计测量族开展层深机制分析。本文可将这组**联合能力**作为有来源边界的新颖性主张；表述必须限定为“在所核查来源中未见完整联合覆盖”，不能写成无范围的世界首次。
+
+### 9.6 可回链的新颖性主张注册表
+
+| ID | 可使用的主张 | 最近邻与差异证据 | 允许位置 | 禁止扩大为 |
+| --- | --- | --- | --- | --- |
+| NOV-ID-1 | 原始 NNS 的指定传播规则可统一为 same-target Gradient × Input。 | G×I 已有 [S1]；差异是对 Dou et al. 规则的条件等价与边界澄清，见 9.4 第一行。 | 方法身份、附录 | 新归因公式或 Gradient × Input 首创 |
+| NOV-SYS-1 | 本文把异构 ViT 内部标量目标组织到同一预注册测量空间。 | Conductance/AttnLRP 已有 hidden/latent targets [S2, S6]；差异为 registry 与共同结构合同，见 9.4 第二行。 | 方法、实现 | 首次内部神经元或 latent attribution |
+| NOV-JOINT-1 | 本文联合保留输入坐标与指定实际使用边身份，并在合法切面上闭合相同的当前点 local differential。 | Conductance 有输入坐标和 layer completeness [S2]；EAP/Vi-CD 有 edges [S8, S10]；DecompX/LRP 有其他闭合对象 [S5–S7]；没有一个核查来源覆盖三者组合，见 9.3 全矩阵。 | 摘要中心句、引言、方法贡献、讨论、结论 | 首次 edge attribution、首次完整性或实现不变的唯一分解 |
+| NOV-ATTN-1 | 在 `NOV-JOINT-1` 合同内，Q/K/V 与 routing/value 是同一 attention local differential 的可加 input-coordinate 分项。 | AttnLRP/HiLRP、AtP*、Unpack 已覆盖 Q/K/V primitives、修正或 labels [S6–S8, S12]；差异是 true-Jacobian input maps 与 cut closure，见 9.4 第五行。 | 方法、结构结果 | 首次分析 Q/K/V、routing 等同因果贡献 |
+| NOV-RES-1 | 在 `NOV-JOINT-1` 合同内，identity 与 branch input-coordinate maps 恢复同一 residual output differential。 | GlobEnc、ALTI、DecompX、AttnLRP、GradSkip 已覆盖 residual/skip [S3–S7]；差异是 local-differential map pair 与闭合，见 9.4 第六行。 | 方法、结构结果 | 首次考虑 residual 或普遍的 branch dominance |
+| NOV-AUD-1 | 结构合同除正向闭合外，还由三类遗漏/重复负控和独立数值 oracle 审计。 | HiLRP 已有 machine-precision conservation，EAP/AtP* 已有 patching 对照和 diagnostics [S7–S8]；本文差异是 omission-head、omission-routing、duplicate-identity 负控，见 9.4 第九行。 | 方法验证、实现贡献 | 负控证明解释具有因果正确性、跨实现唯一性，或覆盖尚未执行的错误类型 |
+| NOV-EMP-1 | 同一测量族用于比较层深、attention 和 residual 的局部输入依赖，并与规定 finite replacement 分开标定。 | receptive-field、token mixing、circuit/patching 研究已有 [S3–S12]；差异是统一 audited path-map family 下的联合经验设计。 | 结果、讨论 | 空间扩展首见、全 ViT 规律或普遍干预有效 |
+
+现役主稿中的新颖性相关句子回链如下：
+
+| 位置 | 当前句子功能 | 回链 | 门检结论 |
+| --- | --- | --- | --- |
+| 双语摘要中心句 | 从 G×I 原语到 structure-aware auditable scanner | `NOV-JOINT-1` | 可保留；未声称基础公式首创 |
+| 双语引言首段 | 总梯度不能区分 Q/K/V、heads、identity/branch，本文构建结构框架 | `NOV-JOINT-1`、`NOV-ATTN-1`、`NOV-RES-1` | 可保留；相关工作须紧邻承认 Q/K/V、residual 与 edge 先例 |
+| 双语贡献一 | 数学身份与对象定义 | `NOV-ID-1` | 降级为 identity clarification |
+| 双语贡献二 | registry、actual edges、valid cuts 与 audit | `NOV-SYS-1`、`NOV-JOINT-1`、`NOV-AUD-1` | 联合主张成立；单项不得写“首次” |
+| 双语贡献三 | 两模型结构趋势和 intervention boundary | `NOV-EMP-1` | 经验综合；不得写成普遍规律 |
+| 双语讨论与结论 | 统一框架总结 | `NOV-JOINT-1`、`NOV-EMP-1` | 可保留；使用限定范围的正面表述 |
+
+### 9.7 防御性写作审计
+
+| Location | Original | Type | Severity | Necessary caveat? | Why it feels defensive | Likely reviewer reaction | Recommended action | Rewrite |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 研究缺口 | “我们不是简单地把 G×I 用于 ViT” | D1 / D14 | Major | 否 | 以否认式句子代替可核查技术差异 | 会要求逐字段先例，而非接受自我辩护 | 删除否认句，直接写联合对象 | 本文同时保留输入坐标与实际使用边身份，并在合法切面上闭合同一 local differential |
+| edge 主张 | “不同于所有已有 edge attribution” | D13 | Critical | 是 | 无限定全集断言超出检索能力 | 会以 EAP、Vi-CD 或新工作反例推翻 | 限定检索截止日与核查集合 | 截至 2026-09-22，核查来源未见完整覆盖 `NOV-JOINT-1` 的方法 |
+| closure 主张 | “首次实现精确闭合” | D14 | Critical | 是 | 忽略 IG、Conductance、DecompX 与 LRP 的不同闭合对象 | 会认为相关工作比较失实 | 明确 estimand 后再比较 | 本文闭合 current-point local differential；既有工作分别闭合输出差、前向分量或 relevance |
+| Q/K/V 与 residual | “首次分解 Q/K/V 和残差” | D14 | Critical | 否 | 单项已有直接先例 | 近邻文献会立即否定主张 | 删除首次表述 | Q/K/V 与 residual 分项属于 `NOV-JOINT-1` 的联合合同 |
+| 审计 | “严格测试保证解释正确” | D13 / D10 | Major | 是 | mutation 和 oracle 只检验实现合同，不能证明解释语义或因果有效性 | 会质疑从软件正确性跳到解释有效性 | 分开 correctness 与 utility | mutation controls 检验漏项、重复和端口错误；有限替换另行评价 |
+
+#### Paper-level defensive-writing score
+
+第二步修订后为 **2/10**。研究缺口按“已有覆盖—联合差异—检索边界”组织，没有用重复否认或性能形容词补偿新颖性。
+
+#### Highest-priority removals
+
+1. 删除任何“首次 ViT edge attribution”“首次 Q/K/V 或 residual 分解”“首次精确闭合”表述。
+2. 不使用“仅仅”“简单应用”“本质不同”等反驳式措辞；直接陈述 estimand、保留索引和验证合同。
+3. 不把 mutation controls 写成科学有效性或因果解释的保证。
+4. 不遗漏 2026 年的 Vi-CD、CAAP、DAVE、Unpack、GradSkip 和 HiLRP。
+
+#### Necessary caveats to preserve
+
+- 新颖性结论只覆盖截至 2026-09-22 实际核查的来源。
+- 各方法的 completeness、conservation、decomposition 与 closure 必须按各自数学对象解释。
+- 本文结构分项依赖指定图、切面和参数化。
+- 经验贡献限于两个固定 checkpoint、冻结样本和注册目标。
+
+### 9.8 第二步 prompt-to-artifact 验收表
+
+| 显式要求 | 直接产物 | 覆盖证据 | 状态 |
+| --- | --- | --- | --- |
+| 系统比较 9 类指定方法 | 9.2、9.3 | 指定方法全部有独立行或明确方法族行；另补 6 个近邻 | PASS |
+| 统一检查 9 个字段 | 9.1、9.3 | 矩阵表头逐字覆盖被解释对象、内部目标、consumer edge、合法切面、routing/value、identity/branch、闭合、mutation、经验用途 | PASS |
+| 区分单项已有与联合能力 | 9.4 | 10 个审计项逐项给出最近邻、已覆盖能力、剩余差异与结论标签 | PASS |
+| 已覆盖部分直接引用并降级 | 9.4；现役双语稿 Section 2 | G×I、Q/K/V、residual、edge、closure、空间扩展五类越界表述均有来源和降级规则 | PASS |
+| 只在正式来源未见完整覆盖时保留联合主张 | 9.2、9.5 | 正式来源台账加三段研究缺口；使用“核查来源未见完整联合覆盖”的有界表述 | PASS |
+| related-work difference matrix | 9.3 | 12 个方法族的统一字段矩阵 | PASS |
+| 不超过三段的研究缺口 | 9.5 | 恰为三段 | PASS |
+| 每项方法贡献的最近邻与差异证据 | 9.4、9.6 | 7 个可用主张均绑定 source ID、最近邻、差异与禁用扩大项 | PASS |
+| 每个“首次/提出/不同于既有工作”句子可回链 | 9.6；双语现役稿扫描 | 现役稿无 `first/首次/novel/新颖/不同于既有工作` 宣称；贡献句逐条回链 `NOV-*` | PASS |
+| 应用场景或命名差异不能过门 | 9.1、9.4 | 判定基于 estimand、索引、切面与验证合同；ViT 应用和“Endpoint”命名均未作为新颖性 | PASS |
+| 中英文入口同步且验证覆盖本步骤 | 现役双语主稿、镜像与 `validate_publication_r2.py` | related-work 文本与表格同步；新增 `gxi_step2_*` 覆盖检查 | PASS |
+| 停在第二步 | Git diff 与执行记录 | 未重构方法章节、未重绘图、未运行新实验 | PASS |
+
+### 9.9 完成门结论与后续写作约束
+
+第二步完成门通过。审计不支持任何单项“首次”主张，也不支持把本文描述为首个 ViT edge、Q/K/V、residual、conservation 或 activation-patching 方法。当前可用的新颖性主张只有 `NOV-JOINT-1`：在本轮核查的来源中，未发现一个方法同时保留输入坐标与指定实际使用边身份，对同一当前点真实局部微分执行合法切面上的 attention/residual 分项闭合，并以遗漏/重复结构负控和独立数值 oracle 审计后用于层深机制分析。
+
+后续第三至第五步必须引用 9.6 的 `NOV-*` ID 收缩或重写相关句子。若新增文献覆盖 `NOV-JOINT-1` 的全部字段，应修改矩阵和主张，而不是通过改名、增加形容词或只强调视觉应用维持原表述。
+
+验证记录：
+
+- 17 个正式来源 URL 均在 2026-09-22 返回 HTTP 200；方法事实由对应论文正文、摘要或出版页核对。
+- `.conda/envs/vitnns/bin/python3.10 vitnns_rebuild/papers/nns_vit_endpoint/scripts/validate_publication_r2.py`：`PASS`，1,734 项检查，0 errors；新增 8 项第二步专项检查，并重算 165 个真实显示面板。
+- 第二步独立结构检查：12 个方法族、每行 10 列、三段研究缺口、7 个 `NOV-*` 主张均通过；12 项 prompt-to-artifact 验收均为 `PASS`。
+- 双语入口镜像重算：`zh MIRROR_PASS`、`en MIRROR_PASS`；中英文数据表逐行一致。
+- `python3 -m py_compile .../validate_publication_r2.py` 与 `git diff --check`：`PASS`。
+- 封存证据复核：E3-R2 记录 76,800 项正向闭合和 28,800 项负控；源码确认三类负控为 `omit_largest_nonzero_head_from_A_F`、`omit_nonzero_routing_from_A_F`、`duplicate_identity_in_residual1`。本轮据此删除了未被封存证据支持的 wrong-slot、fan-out 和 detach mutation 表述。
+- 当前步骤只更新定位计划、现役双语 Related Work 及镜像、引用表、发布校验器和其报告；未启动第三步方法章节重构，未运行新实验。

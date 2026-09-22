@@ -43,34 +43,42 @@ Neural Network Scanner（NNS）为神经元关联一张保留输入位置的 lea
 
 Gradient × Input 是观测点上的输入加权梯度（Shrikumar et al., 2017）；Integrated Gradients 沿 reference 到输入的路径平均梯度并满足相应完整性公理（Sundararajan et al., 2017），conductance 将该路径归因扩展到隐藏单元（Dhamdhere et al., 2018）。FullGrad 将输入梯度项与各层 bias-gradient 项共同组成完整表示，再聚合为显著图（Srinivas and Fleuret, 2019）。本文的 Endpoint 使用当前点的真实 Jacobian，不进行路径积分，也不把 bias 项加入输入图。因此 conductance 的路径完整性、FullGrad 的函数值完整表示和本文合法切面的局部微分闭合是三个不同对象。
 
+DAVE 将 ViT 输入梯度分为直接 effective input-output transformation 与 local-variation 项，再跨输入分布聚合保留项（Wróbel et al., 2026）。它是 ViT 梯度结构分解和空间归因的直接先例，但不保留按内部 consumer use 索引的一组输入坐标图。
+
 ### 2.3 Transformer token contribution 与 relevance 传播
 
-GlobEnc 把 encoder block 的 attention、residual 与 normalization 纳入逐层 token attribution，并跨层聚合（Modarressi et al., 2022）。DecompX 传播不混合的 token representation 分量，覆盖非线性前馈层和分类头，将 token decomposition 连接到预测（Modarressi et al., 2023）。AttnLRP 为 attention 与 skip connection 定义 relevance 传播并支持输入和 latent attribution（Achtibat et al., 2024）；LibraGrad 通过剪枝和缩放反向路径校正 ViT 的 gradient-flow imbalance，以满足其 FullGrad-completeness 目标（Mehri et al., 2025）。这些方法已经覆盖 Transformer 内部贡献传播。本文保留模型真实局部导数，研究的是指定计算图切面上各真实边对同一局部微分的可加记账。
+GlobEnc 把 encoder block 的 attention、residual 与 normalization 纳入逐层 token attribution，并跨层聚合（Modarressi et al., 2022）。ALTI 分解包含 residual 与 LayerNorm 的整个 attention block 的 token interaction，再用 rollout 聚合；其发表版本未纳入 classifier（Ferrando et al., 2022）。DecompX 传播 token representation 分量，覆盖非线性前馈层和分类头，并按其 bias 分配规则重组 representation 与 logit（Modarressi et al., 2023）。
+
+AttnLRP 为 softmax、双线性 attention、normalization 与 latent attribution 定义 relevance rule（Achtibat et al., 2024）。LibraGrad 在 FullGrad-completeness 目标下剪枝和缩放反向路径，用于 ViT attribution（Mehri et al., 2025）。HiLRP 将多类 ViT attention 和分辨率变化模块归约为四类守恒 primitive，并以机器精度验证 conservation；GradSkip 则显式在 attention 与 residual 路径之间动态分配 relevance（Nishankar et al., 2026; Buratti et al., 2026）。Unpack 不依赖梯度即可生成 component interaction、带 K/Q/V composition label 的命名端到端路径和 token attribution（Chen et al., 2026）。这些工作已经为 Transformer 组件传播、Q/K/V 分析、skip-aware 分配和精确守恒提供直接先例。本文比较的差异因此是保留的索引与闭合对象：不修改模型的真实局部导数、具体 consumer use 的输入坐标分项，以及这些分项在合法切面上对同一局部微分的加和重构。
 
 ### 2.4 Activation patching 与 edge attribution
 
-Activation patching 以 clean/corrupted reference 替换真实内部变量并测量有限输出变化；结果依赖 corruption、替换位置和评价指标（Zhang and Nanda, 2023）。Attribution patching 以 activation displacement 与局部梯度的内积近似单个组件的 patching effect；edge attribution patching 将这一近似用于计算图边（Syed et al., 2023）。AtP* 进一步处理 attention saturation 与抵消造成的近似误差（Kramár et al., 2024）。这些方法直接评价或近似 reference-specified finite effect。本文分别报告 clean-only 路径图、reference-aware Taylor 量和真实替换效应，不用结构闭合代替有限干预效用。
+Activation patching 以 clean/corrupted reference 替换真实内部变量并测量有限输出变化；结果依赖 corruption、替换位置和评价指标（Zhang and Nanda, 2023）。Attribution patching 以 activation displacement 与局部梯度的内积近似单个组件的 patching effect；Edge attribution patching 将这一近似用于计算图边（Syed et al., 2024）。AtP* 进一步处理 attention saturation 与抵消造成的近似误差（Kramár et al., 2024）。这些方法直接评价或近似 reference-specified finite effect。本文分别报告 clean-only 路径图、reference-aware Taylor 量和真实替换效应，不用结构闭合代替有限干预效用。
+
+边分析和内部干预也已经进入视觉领域。Vi-CD 通过 activation patching 在 ViT 与 OpenCLIP 中发现并验证稀疏 residual-stream edge circuits（Żukowska et al., 2026）；CAAP 将源图像 activation 插入中性上下文以构造 ViT patch attribution（Izadi et al., 2026）。因此，真实边和 ViT activation patching 都是本文的先例，不是新颖性主张。
 
 ### 2.5 视觉归因与本文定位
 
-Grad-CAM 通过梯度加权特征图获得类别相关定位（Selvaraju et al., 2017），attention rollout 组合跨层 attention flow（Abnar and Zuidema, 2020），Chefer et al.（2021）则为 Transformer 设计 relevance 传播。它们与 Gradient × Input、token decomposition、LRP 和有限替换面向不同解释对象。本文的方法位置汇总于 Table 1。
+Grad-CAM 通过梯度加权特征图获得类别相关定位（Selvaraju et al., 2017），attention rollout 组合跨层 attention flow（Abnar and Zuidema, 2020），Chefer et al.（2021）则为 Transformer 设计 relevance 传播。它们与 Gradient × Input、token decomposition、LRP 和有限替换面向不同解释对象。Table 1 用相同的九个字段比较最近邻方法族。“未见”只表示所引来源未报告该能力，不构成对全部文献的绝对不存在断言。本轮文献截止日为 2026 年 9 月 22 日。
 
-**Table 1. 方法定位：完整性指各方法自身声明的函数值、归因或局部微分闭合对象**
+**Table 1. 新颖性差分矩阵：精确闭合均指对应单元格标明的方法自身对象**
 
-| Method | Primary object | External reference | Internal-path decomposition | Completeness / closure | Finite-intervention evaluation |
-| --- | --- | --- | --- | --- | --- |
-| Gradient × Input | Input coordinates at one point | No | No | No, except under homogeneity conditions | Not intrinsic |
-| Conductance | Hidden-unit attribution along an input path | Yes | Hidden units, not graph-edge cuts | Yes, for its path-attribution object | Neuron ablation |
-| FullGrad | Input and bias-gradient components | No | Layerwise bias components, not graph paths | Yes, for the full-gradient representation | Input perturbation, not internal replacement |
-| GlobEnc | Token attribution through encoder blocks | No | Token/component propagation | No formal class-score closure | Input-token evaluation |
-| DecompX | Token contributions to a prediction | No | Token decomposition through encoder components | Specified token decomposition, not this work's Jacobian-cut closure | Input-token erasure |
-| AttnLRP | Input and latent relevance | No | Attention/skip relevance propagation | Yes, relevance conservation | Input perturbation |
-| LibraGrad | ViT input attribution | No | Modified backward paths, not an additive edge cut | Targets FullGrad completeness | Input perturbation |
-| Activation patching | Finite effects of internal variables | Yes | Nodes or edges selected for replacement | Not an additive completeness objective | Yes, direct replacement |
-| Edge attribution patching | First-order finite-effect estimates on edges | Yes | Yes, computational edges | Not an additive completeness objective | Yes, checked against patching |
-| NNS–ViT (this work) | Local input maps for ViT targets and edges | No for maps; yes for replacement evaluation | Yes, on specified Q/K/V, head and residual cuts | Yes, local-differential closure on a valid cut; no function-value completeness | Yes, prescribed replacement tasks |
+| Method family | Explained object | Internal targets | Consumer edge | Valid cut | Routing/value | Identity/branch | Exact closure | Mutation detection | Empirical use |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Gradient × Input | Current-point input-weighted gradient | Any differentiable scalar; no registry | Not found | Not found | Not found | Not found | Generally no function-value completeness | Not found | Input saliency |
+| Integrated Gradients | Baseline-to-input path attribution | Output scalar; selectable targets in software | Not found | Not found | Not found | Not found | Output difference | Not found | Input attribution |
+| Conductance | Path attribution through hidden units, optionally input-resolved | Neurons or unit sets | Not found | Whole hidden layer only | Not found | Not found | Output difference across a layer | Not found | Unit analysis and ablation |
+| GlobEnc | Cross-layer token attribution | Tokens and encoder components | Not found | Not found | Not separated | Residual included, not paired local maps | Not reported for class score/local differential | Not found | Token attribution |
+| ALTI | Attention-block token mixing and rollout | Token interactions; classifier excluded | Not found | Not found | Not separated | Residual and LayerNorm included | Local forward decomposition, not target local differential | Not found | Context mixing and token erasure |
+| DecompX | Token components of representations and logits | Encoder, FFN, classifier | Not found at consumer-use granularity | Not found | Not separated as local differentials | Residual components, not paired local maps | Representation/logit under its bias rule | Not found | Prediction token attribution |
+| LRP family | Conserved relevance to input or latent variables | Inputs, tokens, latent neurons | Operator links, not registered consumer uses | Layerwise conservation, not a true-Jacobian cut | Attention primitives; no paired routing/value local maps | Skip-aware relevance exists | Relevance conservation | No structural mutant suite found | Attribution and localization |
+| EAP / AtP* / Vi-CD | Reference-specific edge effects, approximations, or sparse circuits | Heads, MLPs, Q/K/V nodes and residual edges | Yes | No complete additive cut found | Q/K fixes and Q/K/V edge types, not input maps | Residual-stream edges, not paired local maps | Patching effect or circuit fidelity, not local differential | Patching checks/diagnostics, not structural mutants | Circuit discovery and steering |
+| Activation patching / CAAP | Finite internal replacement effect | Layers, components, tokens or patch activations | Node-level; edge variants above | Not applicable | Intervenable, not additively decomposed | Intervenable, not additively decomposed | Not additive in general | Not found | Localization and mechanism tests |
+| DAVE | Distribution-aware ViT spatial attribution | Effective input-output mapping | Not found | Not found | Not found | Not found | No structural-cut closure found | Not found | Stable ViT pixel attribution |
+| Unpack | Component interactions, named paths, token credit | Attention, MLP, tokens, K/Q/V-labelled paths | Component/path identity | No input-to-target valid-cut contract found | K/Q/V labels, not true-Jacobian routing/value maps | Paths traverse residual computation | Method-specific credit decomposition | No structural mutant suite found | LLM composition and IOI analysis |
+| NNS–ViT (this work) | Same current-point local differential indexed by input and edge | Registered ViT scalar targets and structural terms | Cotangent at actual use edges; multi-input/shared-tensor uses distinguished | Each live input-target path crosses once | Q+K routing and V value; Q/K/V maps | Identity plus branch maps | Same signed local differential | Omit-head, omit-routing and duplicate-identity controls | Two-model depth/path analysis and separate replacement calibration |
 
-本文的增量由后三个环节共同构成：把 NNS learning-image 表示实现到 ViT 异构目标与真实计算边；在指定图、切面和参数化下进行不遗漏、不重复的路径记账；以数值闭合、层深统计和有限替换分别评价正确性、结构规律与任务效用。
+最后一行的每个单项均有先例：内部归因、Transformer 组件分解、Q/K/V 分析、residual 分配、计算边、守恒和 ViT 干预都不是空白。截至检索日，所核查来源中未发现一个方法同时保留输入坐标与具体 consumer-use 身份，在合法切面上重构同一当前点局部微分，输出 attention 与 residual 的成对结构图，并使用结构 mutation 测试。本文的贡献主张是这一有边界的组合及其层深机制分析，不延伸到单项能力或新的基础归因公式。
 
 ## 3. NNS 的 Jacobian 解释
 

@@ -70,14 +70,30 @@ def main():
     plan=(REPO/'Endpoint_GxI创新定位与后续五步计划.md').read_text()
     categories=('数学身份','结构方法','实现正确性','经验发现','解释边界')
     check('gxi_claim_registry',all(plan.count('| '+term+' |')>=1 for term in categories) and all(claim in plan for claim in ('MI-1','SM-1','IC-1','EF-1','IB-1')))
-    check('gxi_scope_separation',all(term in plan for term in ('PCIA–PEFA 仅作为独立扩展研究或附录材料','CST aquatic-context 研究及其 `NO_GO_NOT_IDENTIFIABLE` 历史结果保持独立','第二步未启动')))
+    check('gxi_scope_separation',all(term in plan for term in ('PCIA–PEFA 仅作为独立扩展研究或附录材料','CST aquatic-context 研究及其 `NO_GO_NOT_IDENTIFIABLE` 历史结果保持独立','第二步已完成联合能力的新颖性差分审计','第三步未启动')))
+    step2=plan.split('## 九、第二步执行记录：联合能力的新颖性差分审计',1)[1]
+    source_ids=tuple(f'S{i}' for i in range(1,14))
+    check('gxi_step2_source_registry',all(f'| {source_id} |' in step2 for source_id in source_ids))
+    required_methods=('Gradient × Input','Integrated Gradients','Conductance','GlobEnc','ALTI','DecompX','LRP 家族','EAP','Activation patching','DAVE','Unpack','NNS–ViT Endpoint Scanner')
+    check('gxi_step2_required_methods',all(method in step2 for method in required_methods))
+    matrix_header='| 方法族 | 被解释对象 | 内部目标类型 | 真实 consumer edge | 合法切面 | attention routing/value | residual identity/branch | 精确闭合 | mutation 检出 | 经验用途 |'
+    check('gxi_step2_matrix_fields',matrix_header in step2)
+    novelty_ids=('NOV-ID-1','NOV-SYS-1','NOV-JOINT-1','NOV-ATTN-1','NOV-RES-1','NOV-AUD-1','NOV-EMP-1')
+    check('gxi_step2_novelty_registry',all(step2.count(novelty_id)>=2 for novelty_id in novelty_ids))
+    gap=step2.split('### 9.5 研究缺口说明（三段）',1)[1].split('### 9.6',1)[0].strip()
+    check('gxi_step2_three_paragraph_gap',len([p for p in gap.split('\n\n') if p.strip()])==3)
+    audit_table=step2.split('### 9.8 第二步 prompt-to-artifact 验收表',1)[1].split('### 9.9',1)[0]
+    check('gxi_step2_prompt_artifact_audit',audit_table.count('| PASS |')==12)
+    check('gxi_step2_paper_nearest_neighbors',all(all(term in texts[lang] for term in ('ALTI','HiLRP','GradSkip','Unpack','Vi-CD','CAAP','DAVE')) for lang in ('zh','en')))
+    novelty_overclaim=re.compile(r'for the first time|\bfirst (?:method|framework|approach|study|to)\b|\bnovel(?:ty)?\b|首次|首创|不同于既有工作',re.I)
     active_only=texts['zh']+texts['en']
+    check('gxi_step2_no_unlinked_priority_claims',not novelty_overclaim.search(active_only))
     check('gxi_no_extension_evidence_in_main',not re.search(r'PCIA|PEFA|aquatic-context|NNS-CST',active_only,re.I))
     prohibited=re.compile(r'Endpoint.{0,24}(新基础归因|新的基础归因|普遍优于)|Endpoint.{0,40}(new base attribution|novel base attribution|universally superior)',re.I)
     check('gxi_no_prohibited_claims',not prohibited.search(active_only))
     check('bilingual_main_figure_paths',[path for _,path in re.findall(r'!\[Figure (\d+)\]\(\.\./([^)]*)\)',texts['zh'])]==[path for _,path in re.findall(r'!\[Figure (\d+)\]\(\.\./([^)]*)\)',texts['en'])])
     refs=(ROOT/'references.md').read_text()
-    check('bibliography_complete',all(name in refs for name in ('Achtibat, R., Hatefi','Mehri, F., Soleymani Baghshah','Shrikumar, A., Greenside','Srinivas, S., & Fleuret','Modarressi, A., Fayyaz','Syed, A., Rager','Zhang, F., & Nanda')) and 'TO VERIFY' not in refs)
+    check('bibliography_complete',all(name in refs for name in ('Achtibat, R., Hatefi','Buratti, C., Marchetti','Chen, P.-K., Plaat','Ferrando, J., Gállego','Izadi, A., Banayeeanzade','Mehri, F., Soleymani Baghshah','Nishankar, S., Sanjeewani','Shrikumar, A., Greenside','Srinivas, S., & Fleuret','Modarressi, A., Fayyaz','Syed, A., Rager','Wróbel, A., Gairola','Zhang, F., & Nanda','Żukowska, N., Stammer')) and 'TO VERIFY' not in refs)
     claims=REPO/'papers/nns_vit_endpoint/notes/revision_v3_frozen_claims.md'
     check('v3_frozen_claims',claims.is_file() and all(term in claims.read_text() for term in ('K1','K2','K3','C1 数学身份','C7 区域排序','RQ4 冻结合同')))
     check('same_display_equations',re.findall(r'\$\$(.*?)\$\$',texts['zh'],re.S)==re.findall(r'\$\$(.*?)\$\$',texts['en'],re.S))
