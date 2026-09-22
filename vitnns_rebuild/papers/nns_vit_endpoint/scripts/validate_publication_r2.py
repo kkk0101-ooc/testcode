@@ -35,7 +35,8 @@ def main():
         check('11_main_figures:'+lang,re.findall(r'!\[Figure (\d+)\]',text)==[str(i) for i in range(1,12)])
         check('main_figure_paths:'+lang,{int(n):path for n,path in re.findall(r'!\[Figure (\d+)\]\(\.\./([^)]*)\)',text)}==main_paths)
         check('main_figure_caption_order:'+lang,re.findall(r'\*\*Figure (\d+)\.',text)==[str(i) for i in range(1,12)])
-        check('8_numbered_tables:'+lang,re.findall(r'\*\*Table (\d+)\.',text)==[str(i) for i in range(1,9)])
+        table_numbers=re.findall(r'\*\*Table (\d+)\.',text)
+        check('10_numbered_tables:'+lang,table_numbers==[str(i) for i in range(1,11)],table_numbers)
         check('no_historical_report_states:'+lang,not re.search(r'RQ4[a-c]|RQ5|NOT_SUPPORTED|PASS_|reports/|registry-complete|C4[ab]',text))
         check('balanced_math:'+lang,text.count('$$')%2==0)
         check('no_placeholders:'+lang,'{{' not in text and '\x00' not in text)
@@ -43,7 +44,7 @@ def main():
         check('required_method_terms:'+lang,all(term in text for term in ('Input × Gradient','valid differential cut' if lang=='en' else '合法 differential cut','Q-induced','K-induced','V-induced','identity','branch')))
         check('corrected_random_estimator:'+lang,('Each random repetition takes the absolute effect before integration' if lang=='en' else '随机基线对每次重复先取 absolute effect 并积分') in text)
         check('v3_eight_chapters:'+lang,all(re.search(rf'^## {i}\.',text,re.M) for i in range(1,9)))
-        check('v3_result_structure:'+lang,all(f'### 6.{i}' in text for i in range(1,10)) and '### 7.1' in text and all(f'### 8.{i}' in text for i in (1,2)))
+        check('v3_result_structure:'+lang,all(f'### 6.{i}' in text for i in range(1,12)) and all(f'### 7.{i}' in text for i in (1,2)) and all(f'### 8.{i}' in text for i in (1,2)))
         check('rq4_prescribed_replacement_scope:'+lang,('规定有限替换任务中的排序能力' if lang=='zh' else 'Ranking in Prescribed Finite-Replacement Tasks') in text)
         check('no_unexecuted_amplitude_claim:'+lang,'0.05,0.1,0.25,0.5,1.0' not in text)
         check('graph_relative_nonuniqueness:'+lang,all(term in text for term in (('计算图依赖与分解非唯一性','一般实现不变性',r'R^{-\top}') if lang=='zh' else ('Computational-graph dependence and non-uniqueness','implementation invariant',r'R^{-\top}'))))
@@ -51,6 +52,11 @@ def main():
         check('parameter_state_not_training_cause:'+lang,parameter_state_boundary)
         check('positioning_methods:'+lang,all(term in text for term in ('Gradient × Input','conductance','FullGrad','GlobEnc','DecompX','AttnLRP','LibraGrad','Activation patching','Edge attribution patching')))
         check('no_defensive_stock_phrases:'+lang,not re.search(r'We emphasize that|It should be noted that|We do not claim|To avoid misunderstanding|Taken together|需要强调的是|应当指出|为避免误解|我们不声称',text,re.I))
+        check('gxi_step4_results:'+lang,all(term in text for term in ((
+            '联合索引必要性','E5 四检查点外部复现','广泛但非普遍','0.1136–0.1862'
+        ) if lang=='zh' else (
+            'Joint-index necessity','E5 four-checkpoint external replication','broad but non-universal','0.1136–0.1862'
+        ))))
     title_zh='# 从 NNS 到视觉 Transformer：内部目标的可审计 Jacobian 扫描与结构分解'
     title_en='# From NNS to Vision Transformers: Auditable Jacobian Scanning and Structural Decomposition of Internal Targets'
     central_zh='以 Gradient × Input 为局部测量原语，本文构建面向 ViT 异构内部目标的结构化、可闭合、可审计扫描框架，并用它系统研究局部输入依赖如何随层深、attention 路径和 residual 分支重新组织。'
@@ -66,11 +72,11 @@ def main():
         intro=text.split('## 2.')[0]
         check('gxi_three_contributions:'+lang,all(term in intro for term in contribution_terms[lang]))
     check('gxi_discussion_positioning','本文的唯一定位是以 Gradient × Input 为局部测量原语' in texts['zh'] and 'This paper has one position: Gradient × Input is the local measurement primitive' in texts['en'])
-    check('gxi_conclusion_positioning','结构化局部 Jacobian 扫描、可验证记账和两模型机制研究的统一框架' in texts['zh'] and 'structured local-Jacobian scanning, verifiable accounting, and two-model mechanistic analysis' in texts['en'])
+    check('gxi_conclusion_positioning','结构化局部 Jacobian 扫描、可验证记账和跨 checkpoint 机制研究的统一框架' in texts['zh'] and 'structured local-Jacobian scanning, verifiable accounting, and cross-checkpoint mechanistic analysis' in texts['en'])
     plan=(REPO/'Endpoint_GxI创新定位与后续五步计划.md').read_text()
     categories=('数学身份','结构方法','实现正确性','经验发现','解释边界')
     check('gxi_claim_registry',all(plan.count('| '+term+' |')>=1 for term in categories) and all(claim in plan for claim in ('MI-1','SM-1','IC-1','EF-1','IB-1')))
-    check('gxi_scope_separation',all(term in plan for term in ('PCIA–PEFA 仅作为独立扩展研究或附录材料','CST aquatic-context 研究及其 `NO_GO_NOT_IDENTIFIABLE` 历史结果保持独立','第二步已完成联合能力的新颖性差分审计','第三步已完成方法章节和核心概念图重构','第四步未启动')))
+    check('gxi_scope_separation',all(term in plan for term in ('PCIA–PEFA 仅作为独立扩展研究或附录材料','CST aquatic-context 研究及其 `NO_GO_NOT_IDENTIFIABLE` 历史结果保持独立','第二步已完成联合能力的新颖性差分审计','第三步已完成方法章节和核心概念图重构','第四步已完成实验结果重排与封存证据绑定')))
     step2=plan.split('## 九、第二步执行记录：联合能力的新颖性差分审计',1)[1]
     source_ids=tuple(f'S{i}' for i in range(1,14))
     check('gxi_step2_source_registry',all(f'| {source_id} |' in step2 for source_id in source_ids))
@@ -106,6 +112,8 @@ def main():
     check('gxi_step3_bilingual_closure',all(expected_closure in texts[lang] for lang in ('zh','en')))
     check('gxi_step3_figure_contract',all(all(term in texts[lang] for term in ('consumer-use edge','Figure 1','Figure 2')) for lang in ('zh','en')))
     check('bilingual_main_figure_paths',[path for _,path in re.findall(r'!\[Figure (\d+)\]\(\.\./([^)]*)\)',texts['zh'])]==[path for _,path in re.findall(r'!\[Figure (\d+)\]\(\.\./([^)]*)\)',texts['en'])])
+    step4=load(ROOT/'qc/gxi_step4_validation.json')
+    check('gxi_step4_evidence_audit',step4['status']=='PASS' and not step4['errors'] and step4['e5_audit']['decision']=='SYNC_FOUR_CHECKPOINT_E5' and step4['new_experiments']==0)
     refs=(ROOT/'references.md').read_text()
     check('bibliography_complete',all(name in refs for name in ('Achtibat, R., Hatefi','Buratti, C., Marchetti','Chen, P.-K., Plaat','Ferrando, J., Gállego','Izadi, A., Banayeeanzade','Mehri, F., Soleymani Baghshah','Nishankar, S., Sanjeewani','Shrikumar, A., Greenside','Srinivas, S., & Fleuret','Modarressi, A., Fayyaz','Syed, A., Rager','Wróbel, A., Gairola','Zhang, F., & Nanda','Żukowska, N., Stammer')) and 'TO VERIFY' not in refs)
     claims=REPO/'papers/nns_vit_endpoint/notes/revision_v3_frozen_claims.md'

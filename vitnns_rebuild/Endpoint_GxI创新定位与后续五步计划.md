@@ -1,6 +1,6 @@
 # Endpoint 与 Gradient × Input 等价下的创新定位与后续五步计划
 
-> 执行状态（2026-09-22）：第一步已完成内容冻结，验收记录见第八节；第二步已完成联合能力的新颖性差分审计并通过 1,734 项发布校验，验收记录见第九节；第三步已完成方法章节和核心概念图重构，验收记录见第十节；第四步未启动。
+> 执行状态（2026-09-22）：第一步已完成内容冻结，验收记录见第八节；第二步已完成联合能力的新颖性差分审计并通过 1,734 项发布校验，验收记录见第九节；第三步已完成方法章节和核心概念图重构，验收记录见第十节；第四步已完成实验结果重排与封存证据绑定，验收记录见第十一节；第五步未启动。
 
 ## 一、结论
 
@@ -427,7 +427,7 @@ $$
 | EF-3 | 经验发现 | attention 与 MLP residual 呈不同层深变化，且 MLP cancellation 的部分方向具有模型依赖性。 | M4 封存结果 | 分模型报告的 residual 机制观察 | 合并为所有模型共同规律 |
 | EF-4 | 经验发现 | 训练参数状态与三个随机参数状态存在报告的空间扩展幅度和路径趋势差异。 | supplement-v1 `training_analysis.json` | 参数状态差异 | 训练强化、训练导致或训练过程因果效应 |
 | EF-5 | 经验发现 | 局部路径图与规定成分替换效应的关联广泛但非普遍；原 all-family omnibus 保持 `NOT_SUPPORTED`。 | E6 `family_decisions.json`；11/12 family | 规定任务中的分层关联 | 普遍有效、普遍优于或局部图等于有限因果效应 |
-| EF-6 | 经验发现 | 给定 reference 的规定区域替换中，displacement-aware Taylor 的排序优于 clean-only Endpoint。 | `m2_inherited.json` 与正文 Tables 6–8 | 指定 reference、区域、预算和替换算子下的任务比较 | Taylor 或 Endpoint 的无条件方法排行榜 |
+| EF-6 | 经验发现 | 给定 reference 的规定区域替换中，displacement-aware Taylor 的排序优于 clean-only Endpoint。 | `m2_inherited.json` 与正文 Tables 8–10 | 指定 reference、区域、预算和替换算子下的任务比较 | Taylor 或 Endpoint 的无条件方法排行榜 |
 | IB-1 | 解释边界 | local differential closure、path scale 与 finite replacement 分别回答正确性、局部尺度和规定干预效应问题。 | 方法定义与 RQ1–RQ4 分层 | 三类证据分别陈述 | 用任一证据替代另外两类 |
 | IB-2 | 解释边界 | registry-complete 只表示全部预注册目标已执行；经验外推限于两个固定 checkpoint、冻结样本与抽样单元。 | registry 与 cohort 合同 | checkpoint- and sample-scoped inference | 模型全集、架构全集或全体神经元结论 |
 | IB-3 | 解释边界 | routing/value 与 identity/branch 分项是局部 differential accounting。 | 结构定义、闭合与讨论 | 比较 signed/absolute local differential scale | 前向输出或因果贡献百分比 |
@@ -765,3 +765,65 @@ Figure 1 按“总 Gradient × Input → $[e,i]$ 双索引展开 → 合法切�
 第三步完成门通过。读者可在不依赖实验结果的情况下回答四个问题：基础算子是同目标 Gradient × Input；新增对象是目标条件化的 $[e,i]$ 局部微分图组；合法切面重构同一 current-point signed local differential；审计排除已测切面中的漏项、重复和对应数值实现错误。图和正文同时显示无 $i$、无 $e$、无 cut contract 的三种核心退化。
 
 验证记录见 `papers/nns_vit_endpoint/publication_r2_20260920/qc/gxi_step3_completion_audit.md`。第四步需要显式后续请求，本轮未启动。
+
+## 十一、第四步执行记录：结果重排与封存证据绑定
+
+执行日期：2026-09-22。现役入口仍为 `papers/nns_vit_endpoint/publication_r2_20260920/{zh,en}/manuscript.md` 及外层双语镜像。本步只重排和审计已有结果，没有运行新实验，也没有把 PCIA–PEFA 或 CST 纳入 Endpoint 主证据。
+
+### 11.1 结果叙事与联合索引必要性
+
+Results 已按“数学身份与实现正确性 → 总图层深背景 → attention/residual 双索引机制结果 → E5 跨 checkpoint 复现 → 有限替换行为标定”重排。新增 Table 4 明确区分三种表示：
+
+- 总 G×I 图保留输入坐标但消去边身份，可支持总体空间扩展；
+- edge scalar 保留路径身份但消去输入坐标，可支持 routing/identity 相对尺度；
+- $[e,i]$ 图组同时保留路径和位置，可计算 Full–Value 与 output–identity 的归一化空间差异。
+
+Attention 必要性主结果使用每模型 400 图的 Q/K/V normalized spatial entropy。K 与 V 在两模型中均降低，Q 在 ViT-B/16 为 +0.0268 [0.0217, 0.0314]、在 DeiT-S/16 为 −0.0038 [−0.0080, 0.0005]，相反模型趋势完整保留；每模型 16 个事前保留 class-logit map 的 Full–Value patch TV 提供独立描述性支持。Residual 必要性结果使用每模型、每 residual 类型 400 图的 output–identity patch TV late-minus-early 对比：attention 为 +0.0520 [0.0488, 0.0547] / +0.0282 [0.0257, 0.0300]，MLP 为 −0.0187 [−0.0220, −0.0150] / −0.0462 [−0.0516, −0.0412]。两项均在归一化 patch distribution 上比较，不能由总 absolute mass、activation norm、总图或 edge-only scale 直接恢复。
+
+### 11.2 E5 四检查点证据审计与同步决定
+
+E5 审计结论为 `SYNC_FOUR_CHECKPOINT_E5`：
+
+1. `cohorts.json` 由冻结 EP0 cohort registry 派生，选择不读取 outcome 或选中图像字节；E5 的 400 图与原排除集合及同轮 E1 的 500 图均零重叠；
+2. 四个 checkpoint 的文件大小和 SHA-256 均与 `protocol.json` 一致；两个新增权重标为不同训练方案下的参数状态，不称独立种子；
+3. `analysis_estimands.json` 在 E5 输出前冻结 H1–H4、缺失值、两侧符号检验和 checkpoint 内四项 Holm 合同；
+4. 1,600/1,600 个 image–checkpoint 任务有效，25,600 项结构闭合的最大误差为 $1.812\times10^{-5}$；
+5. 第四步专项校验逐字节复核 3,200 个源 JSON/NPZ，重新计算 6,400 个图像级 H1–H4 值，和封存 `e5_image_values.csv` 的最大差为 0；median、10,000 次 bootstrap CI、符号检验与 Holm 决策和封存 `e5_summary.csv` 全部一致。专项校验共 68 项，0 errors。
+
+H1–H3 在四个 checkpoint 中均保持正方向。H4 在四个 checkpoint 中均为负，路径图相对 activation × gradient 的图内 head 排序相关差为 −0.1136 至 −0.1862。现役中英文稿同步报告全部四项，不从外部复现中只保留正结果。
+
+### 11.3 第四步交付物
+
+- 重排后的现役中英文 Results：`publication_r2_20260920/{zh,en}/manuscript.md`，并同步至 `{zh,en}/full_draft.md`；
+- 信息差异与必要性表：正文 Table 4；
+- attention 与 residual 双索引必要性结果：Sections 6.4–6.5；
+- E5 审计及同步决定：`evidence/gxi_step4_e5_audit.json`；
+- 逐主张 evidence index：`evidence/gxi_step4_evidence_index.md`；
+- 主文与补充材料分配表：`evidence/gxi_step4_figure_allocation.md`；
+- 机器重算报告：`evidence/gxi_step4_numeric_recalculation.json`；
+- 第四步校验器与复核记录：`scripts/validate_gxi_step4.py`、`qc/gxi_step4_validation.json`、`qc/gxi_step4_writing_audit.md` 与 `qc/gxi_step4_completion_audit.md`。
+
+### 11.4 第四步 prompt-to-artifact 验收表
+
+| 显式要求 | 直接产物 | 覆盖证据 | 状态 |
+| --- | --- | --- | --- |
+| 先报告等价、算子、闭合与 mutation | 双语 Section 6.1；Table 3 | 5,000 项公式回归、88 项算子方向、76,800 项闭合、28,800 项负控 | PASS |
+| 总图/edge scalar/双索引信息差异 | 双语 Section 6.3；Table 4 | retained-index 对照和替代解释审计 | PASS |
+| Attention 双索引必要性结果 | 双语 Section 6.4 | 400 图/模型 Q/K/V spatial entropy，另有 16 图/模型 Full–Value patch TV 支持 | PASS |
+| Residual 双索引必要性结果 | 双语 Section 6.5 | 400 图/模型/类型 output–identity patch TV 与区间 | PASS |
+| 背景规律与核心结果分层 | Sections 6.2–6.5 | 总图空间扩展降为背景，空间化路径重组作为核心 | PASS |
+| 替代解释审计 | Section 6.3；evidence index | 总 mass、activation norm、总图和 edge scalar 的信息边界逐项说明 | PASS |
+| E5 来源、零重叠与 checkpoint binding | `gxi_step4_e5_audit.json` | 400 图零重叠，四权重 byte/hash 校验通过 | PASS |
+| E5 统计合同与 sealed JSON | `analysis_estimands.json`、`e5_receipt.json`、`e5_summary.csv` | 冻结 H1–H4、图像级统计、10,000 bootstrap、符号检验和 Holm | PASS |
+| E5 数字重算后同步 | 双语 Section 6.6；Table 5 | 3,200 源文件、6,400 图像级值，最大差 0 | PASS |
+| H4 阴性结果完整保留 | 摘要、Section 6.6、结论 | 四 checkpoint 均为相反方向 | PASS |
+| Endpoint–Taylor estimand 边界 | 双语 Section 7.2 | clean-only representation 与 displacement-aware prediction 分开 | PASS |
+| 逐主张证据索引 | `gxi_step4_evidence_index.md` | 统计单位、效应、区间、checkpoint、target 与 SHA 入口 | PASS |
+| 主文/补充分配 | `gxi_step4_figure_allocation.md` | Figures/Tables/补充材料与角色逐项映射 | PASS |
+| 数字与发布校验 | `gxi_step4_numeric_recalculation.json`、`gxi_step4_validation.json` | 原始数组复算、双语、镜像、链接、图哈希和格式检查 | PASS |
+| 不新增胜负导向实验 | 第四步审计元数据 | `new_experiments=0`；仅重算已有封存数据 | PASS |
+| PCIA–PEFA/CST 隔离 | 现役稿与专项校验 | 主稿不含 PCIA、PEFA、aquatic-context 或 NNS-CST | PASS |
+
+### 11.5 完成门结论
+
+第四步完成门通过。至少一项 attention 和一项 residual 结论明确依赖 $[e,i]$ 联合信息；核心结果均给出统计单位、效应量、区间、checkpoint 与适用 target。E5 只有在全部绑定和重算通过后才进入现役稿。正结果、未获支持、H4 相反方向和既有跨模型相反趋势均保留，行为结果继续表述为“广泛但非普遍”。第五步需要显式后续请求，本轮不启动。
