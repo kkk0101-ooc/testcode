@@ -1,0 +1,87 @@
+{
+  "activation_layout": {
+    "cross_topology_policy": "EXPLICIT_BIJECTIVE_TOKEN_MAP_OR_FAIL",
+    "default": "BATCH_TOKEN_CHANNEL",
+    "dtype": "float32_production_float64_reduction",
+    "missing_token_policy": "MISSING_TOKEN",
+    "shape_symbol": [
+      "B",
+      "T_l",
+      "D_l"
+    ],
+    "token_sets": [
+      "CLS_ONLY",
+      "PATCH_ONLY",
+      "CLS_PLUS_PATCH_14X14"
+    ]
+  },
+  "basis_invariants": {
+    "distance": "frobenius(P_A-P_B)/sqrt(max(r_A,r_B))",
+    "individual_basis_vector_claims_allowed": false,
+    "projection": "P=U U^T for row-orthonormal U",
+    "similarity": "trace(P_A P_B)/r"
+  },
+  "control_covariance": {
+    "operation": "project semantic differences onto orthogonal complement of nuisance span",
+    "semantic_removed_policy": "NO_SEMANTIC_AFTER_CONTROL",
+    "singular_policy": "NEAR_SINGULAR_CONTROL_COVARIANCE",
+    "source": "intensity_matched_null_pair_differences",
+    "span_tolerance": 1e-10
+  },
+  "dimension_and_topology": {
+    "different_D_l": "independent native-dimensional projectors plus registered transport map",
+    "different_topology": "frozen_bijective_token_map_required",
+    "implicit_resize_or_token_drop_allowed": false,
+    "same_topology": "token_id_exact_match"
+  },
+  "document_type": "nns_cst_subspace_contract",
+  "estimator": {
+    "formula": "top-r eigenspace of sum_i w_i r_i r_i^T / sum_i w_i after nuisance projection",
+    "name": "RESIDUALIZED_PAIRED_SECOND_MOMENT_EIGENSPACE",
+    "production_reduction": "float64_math_fsum",
+    "rank_candidates": [
+      1,
+      2,
+      4,
+      8,
+      16
+    ],
+    "ridge_candidates": [
+      0.0,
+      1e-08,
+      1e-06
+    ],
+    "selection_stage": "N2_PILOT_ONLY"
+  },
+  "frozen_readout": {
+    "confirmation_refit_allowed": false,
+    "fit_split": "probe_train_or_N2_pilot_discovery_only",
+    "method": "projected_class_mean_difference",
+    "serialization": "closed_json_float64_decimal_with_contract_hash",
+    "validation_role": "selection_only_no_refit"
+  },
+  "paired_difference": {
+    "centering": "WITHIN_PAIR_SUBTRACTION_NO_ACROSS_PAIR_MEAN_REMOVAL",
+    "formula": "delta_a[i,t]=a_semantic_plus[i,t]-a_semantic_minus[i,t]",
+    "pairing_unit": "source_group_id",
+    "source_weight_formula": "equal weight per source after token aggregation",
+    "token_weight_formula": "sum_t w[i,t]*delta_a[i,t] with sum_t w[i,t]=1 per source"
+  },
+  "schema_version": 1,
+  "stage_id": "N1",
+  "status": "FROZEN_BEFORE_N1_TEST_EXECUTION",
+  "typed_failures": [
+    "RANK_EXCEEDS_DIMENSION",
+    "RANK_DEFICIENT",
+    "ZERO_PAIR_DIFFERENCE",
+    "NO_SEMANTIC_AFTER_CONTROL",
+    "NEAR_SINGULAR_CONTROL_COVARIANCE",
+    "NONFINITE_VALUE",
+    "MISSING_TOKEN",
+    "TOKEN_ALIGNMENT_ERROR",
+    "PORT_IDENTITY_MISMATCH",
+    "DUPLICATE_PORT",
+    "CUT_MISSING_EDGE",
+    "OFF_MANIFOLD_INTERVENTION"
+  ]
+}

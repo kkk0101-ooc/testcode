@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "stage_id", "attempt_id", "authorized_stage", "n3_authorized", "semantic_axis", "data_boundary", "recipients", "aquatic_donors", "non_aquatic_donors", "producer", "identifiability_gate", "model", "behavior_gate", "subspace", "path_nns", "transport", "intervention", "resource_limits", "terminal_statuses"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "stage_id": {"const": "N2"},
+    "attempt_id": {"const": "N2_R1C_20260922"},
+    "authorized_stage": {"const": "N2_ONLY"},
+    "n3_authorized": {"const": false},
+    "semantic_axis": {"$ref": "#/definitions/semantic_axis"},
+    "data_boundary": {"$ref": "#/definitions/data_boundary"},
+    "recipients": {"$ref": "#/definitions/file_roster"},
+    "aquatic_donors": {"$ref": "#/definitions/file_roster"},
+    "non_aquatic_donors": {"$ref": "#/definitions/file_roster"},
+    "producer": {"$ref": "#/definitions/producer"},
+    "identifiability_gate": {"$ref": "#/definitions/identifiability_gate"},
+    "model": {"$ref": "#/definitions/model"},
+    "behavior_gate": {"$ref": "#/definitions/behavior_gate"},
+    "subspace": {"$ref": "#/definitions/subspace"},
+    "path_nns": {"$ref": "#/definitions/path_nns"},
+    "transport": {"$ref": "#/definitions/transport"},
+    "intervention": {"$ref": "#/definitions/intervention"},
+    "resource_limits": {"$ref": "#/definitions/resource_limits"},
+    "terminal_statuses": {"type": "array", "minItems": 6, "maxItems": 6, "uniqueItems": true, "items": {"type": "string"}}
+  },
+  "definitions": {
+    "file_roster": {"type": "array", "minItems": 8, "maxItems": 8, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9_]+\\.JPEG$"}},
+    "semantic_axis": {"type": "object", "additionalProperties": false, "required": ["axis_id", "recipient_concept", "positive_context", "negative_context", "target_output"], "properties": {"axis_id": {"type": "string"}, "recipient_concept": {"type": "string"}, "positive_context": {"type": "string"}, "negative_context": {"type": "string"}, "target_output": {"type": "string"}}},
+    "data_boundary": {"type": "object", "additionalProperties": false, "required": ["allowed_split", "allowed_use_policy", "forbidden_splits", "recipient_count", "arms", "donor_mask_fraction_max", "donor_max_reuse"], "properties": {"allowed_split": {"const": "pilot"}, "allowed_use_policy": {"const": "S1_PILOT_ONLY"}, "forbidden_splits": {"type": "array", "items": {"type": "string"}}, "recipient_count": {"const": 8}, "arms": {"type": "array", "minItems": 4, "maxItems": 4, "uniqueItems": true, "items": {"type": "string"}}, "donor_mask_fraction_max": {"type": "number", "exclusiveMinimum": 0, "maximum": 0.25}, "donor_max_reuse": {"type": "integer", "minimum": 1}}},
+    "producer": {"type": "object", "additionalProperties": false, "required": ["resize_shorter_side", "crop_size", "image_interpolation", "mask_interpolation", "donor_foreground_removal", "alpha_gaussian_radius", "render_null_beta_candidates", "low_level_metrics", "selection_objective", "tie_break"], "properties": {"resize_shorter_side": {"type": "integer"}, "crop_size": {"type": "integer"}, "image_interpolation": {"type": "string"}, "mask_interpolation": {"type": "string"}, "donor_foreground_removal": {"type": "string"}, "alpha_gaussian_radius": {"type": "number"}, "render_null_beta_candidates": {"type": "array", "items": {"type": "number"}}, "low_level_metrics": {"type": "array", "items": {"type": "string"}}, "selection_objective": {"type": "string"}, "tie_break": {"type": "string"}}},
+    "identifiability_gate": {"type": "object", "additionalProperties": false, "required": ["max_per_metric_ratio", "max_aggregate_log_ratio_distance", "max_unmatched_rate", "required_semantic_roster_agreement", "required_source_lineage_intersection_count"], "properties": {"max_per_metric_ratio": {"type": "number"}, "max_aggregate_log_ratio_distance": {"type": "number"}, "max_unmatched_rate": {"type": "number"}, "required_semantic_roster_agreement": {"type": "number"}, "required_source_lineage_intersection_count": {"type": "integer"}}},
+    "model": {"type": "object", "additionalProperties": false, "required": ["model_id", "timm_name", "checkpoint_path", "checkpoint_bytes", "checkpoint_sha256", "mean", "std"], "properties": {"model_id": {"type": "string"}, "timm_name": {"type": "string"}, "checkpoint_path": {"type": "string"}, "checkpoint_bytes": {"type": "integer"}, "checkpoint_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "mean": {"$ref": "#/definitions/triple"}, "std": {"$ref": "#/definitions/triple"}}},
+    "triple": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "number"}},
+    "behavior_gate": {"type": "object", "additionalProperties": false, "required": ["minimum_median_incremental_logit", "minimum_positive_sources", "source_count"], "properties": {"minimum_median_incremental_logit": {"type": "number"}, "minimum_positive_sources": {"type": "integer"}, "source_count": {"type": "integer"}}},
+    "subspace": {"type": "object", "additionalProperties": false, "required": ["blocks", "token_summaries", "ranks", "ridge", "eligible_centering", "diagnostic_centering", "control_covariance_required_for_selection", "minimum_projector_stability", "minimum_signal_control_ratio", "basis_rotation_max_abs", "independent_recompute_max_abs"], "properties": {"blocks": {"type": "array", "items": {"type": "integer"}}, "token_summaries": {"type": "array", "items": {"type": "string"}}, "ranks": {"type": "array", "items": {"type": "integer"}}, "ridge": {"type": "array", "items": {"type": "number"}}, "eligible_centering": {"type": "string"}, "diagnostic_centering": {"type": "string"}, "control_covariance_required_for_selection": {"type": "boolean"}, "minimum_projector_stability": {"type": "number"}, "minimum_signal_control_ratio": {"type": "number"}, "basis_rotation_max_abs": {"type": "number"}, "independent_recompute_max_abs": {"type": "number"}}},
+    "path_nns": {"type": "object", "additionalProperties": false, "required": ["quadrature_steps", "references", "max_relative_l1_16_to_32", "max_completeness_relative_error"], "properties": {"quadrature_steps": {"type": "array", "items": {"type": "integer"}}, "references": {"type": "array", "items": {"type": "string"}}, "max_relative_l1_16_to_32": {"type": "number"}, "max_completeness_relative_error": {"type": "number"}}},
+    "transport": {"type": "object", "additionalProperties": false, "required": ["finite_difference_epsilon", "max_relative_error", "branches"], "properties": {"finite_difference_epsilon": {"type": "number"}, "max_relative_error": {"type": "number"}, "branches": {"type": "array", "items": {"type": "string"}}}},
+    "intervention": {"type": "object", "additionalProperties": false, "required": ["doses", "controls", "off_manifold_ratio_max", "random_seed"], "properties": {"doses": {"type": "array", "items": {"type": "number"}}, "controls": {"type": "array", "items": {"type": "string"}}, "off_manifold_ratio_max": {"type": "number"}, "random_seed": {"type": "integer"}}},
+    "resource_limits": {"type": "object", "additionalProperties": false, "required": ["gpu_count_max", "wall_seconds_max", "gpu_hours_max", "evidence_bytes_max"], "properties": {"gpu_count_max": {"type": "integer"}, "wall_seconds_max": {"type": "integer"}, "gpu_hours_max": {"type": "number"}, "evidence_bytes_max": {"type": "integer"}}}
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "stage_id": "N2",
+  "attempt_id": "N2_R1C_20260922",
+  "status": "FAIL_ARTIFACT_PARITY_AND_SEMANTIC_RELIABILITY",
+  "review_boundary": {
+    "model_checkpoint_deserializations_before_review": 0,
+    "model_outcomes_visible": false,
+    "review_inputs": ["PAIR_IMAGES", "EXTERNAL_MASKS", "FROZEN_CONTEXT_ROSTER"],
+    "forbidden_inputs_used": []
+  },
+  "semantic_label_reliability": {
+    "required_independent_reviewers": 2,
+    "completed_independent_reviewers": 1,
+    "agreement_estimated": false,
+    "status": "FAIL_DOUBLE_ANNOTATION_NOT_ESTABLISHED"
+  },
+  "pair_reviews": [
+    {"pair_id": "n2_pair_00", "artifact_free": false, "codes": ["NON_BACKGROUND_OBJECT_REMAINS_IN_NULL_DONOR"]},
+    {"pair_id": "n2_pair_01", "artifact_free": false, "codes": ["DONOR_REMOVAL_REMNANT_IN_NULL_DONOR"]},
+    {"pair_id": "n2_pair_02", "artifact_free": false, "codes": ["DONOR_REMOVAL_REMNANT_IN_BASE_AND_NULL"]},
+    {"pair_id": "n2_pair_03", "artifact_free": false, "codes": ["DONOR_REMOVAL_REMNANT_IN_BASE_AND_NULL"]},
+    {"pair_id": "n2_pair_04", "artifact_free": true, "codes": []},
+    {"pair_id": "n2_pair_05", "artifact_free": false, "codes": ["NON_BACKGROUND_OBJECT_REMAINS_IN_BASE_AND_NULL"]},
+    {"pair_id": "n2_pair_06", "artifact_free": false, "codes": ["NON_BACKGROUND_OBJECT_REMAINS_IN_BASE"]},
+    {"pair_id": "n2_pair_07", "artifact_free": false, "codes": ["DONOR_REMOVAL_REMNANT_IN_BASE"]}
+  ],
+  "quality_gate": {
+    "reviewed_pair_count": 8,
+    "artifact_free_pair_count": 1,
+    "artifact_failed_pair_count": 7,
+    "artifact_failed_rate": 0.875,
+    "double_annotation_required": true,
+    "double_annotation_passed": false,
+    "artifact_parity_passed": false,
+    "overall_identifiability_passed": false
+  },
+  "decision": "NO_GO_NOT_IDENTIFIABLE",
+  "downstream_execution": {
+    "behavior_gate": "NOT_RUN_PRECEDING_IDENTIFIABILITY_FAILURE",
+    "subspace_readout_pilot": "NOT_RUN_PRECEDING_IDENTIFIABILITY_FAILURE",
+    "nns_transport_intervention_pilot": "NOT_RUN_PRECEDING_IDENTIFIABILITY_FAILURE"
+  }
+}

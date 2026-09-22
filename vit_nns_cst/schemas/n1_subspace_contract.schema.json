@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "activation_layout": {"type": "object", "additionalProperties": false, "required": ["cross_topology_policy", "default", "dtype", "missing_token_policy", "shape_symbol", "token_sets"], "properties": {"cross_topology_policy": {"type": "string"}, "default": {"const": "BATCH_TOKEN_CHANNEL"}, "dtype": {"type": "string"}, "missing_token_policy": {"const": "MISSING_TOKEN"}, "shape_symbol": {"type": "array", "items": {"type": "string"}, "minItems": 3, "maxItems": 3}, "token_sets": {"type": "array", "items": {"type": "string"}, "minItems": 3}}},
+    "basis_invariants": {"type": "object", "additionalProperties": false, "required": ["distance", "individual_basis_vector_claims_allowed", "projection", "similarity"], "properties": {"distance": {"type": "string"}, "individual_basis_vector_claims_allowed": {"const": false}, "projection": {"type": "string"}, "similarity": {"type": "string"}}},
+    "control_covariance": {"type": "object", "additionalProperties": false, "required": ["operation", "semantic_removed_policy", "singular_policy", "source", "span_tolerance"], "properties": {"operation": {"type": "string"}, "semantic_removed_policy": {"const": "NO_SEMANTIC_AFTER_CONTROL"}, "singular_policy": {"const": "NEAR_SINGULAR_CONTROL_COVARIANCE"}, "source": {"type": "string"}, "span_tolerance": {"type": "number", "exclusiveMinimum": 0}}},
+    "dimension_and_topology": {"type": "object", "additionalProperties": false, "required": ["different_D_l", "different_topology", "implicit_resize_or_token_drop_allowed", "same_topology"], "properties": {"different_D_l": {"type": "string"}, "different_topology": {"type": "string"}, "implicit_resize_or_token_drop_allowed": {"const": false}, "same_topology": {"type": "string"}}},
+    "document_type": {"const": "nns_cst_subspace_contract"},
+    "estimator": {"type": "object", "additionalProperties": false, "required": ["formula", "name", "production_reduction", "rank_candidates", "ridge_candidates", "selection_stage"], "properties": {"formula": {"type": "string"}, "name": {"const": "RESIDUALIZED_PAIRED_SECOND_MOMENT_EIGENSPACE"}, "production_reduction": {"type": "string"}, "rank_candidates": {"const": [1, 2, 4, 8, 16]}, "ridge_candidates": {"const": [0.0, 1e-08, 1e-06]}, "selection_stage": {"const": "N2_PILOT_ONLY"}}},
+    "frozen_readout": {"type": "object", "additionalProperties": false, "required": ["confirmation_refit_allowed", "fit_split", "method", "serialization", "validation_role"], "properties": {"confirmation_refit_allowed": {"const": false}, "fit_split": {"type": "string"}, "method": {"type": "string"}, "serialization": {"type": "string"}, "validation_role": {"type": "string"}}},
+    "paired_difference": {"type": "object", "additionalProperties": false, "required": ["centering", "formula", "pairing_unit", "source_weight_formula", "token_weight_formula"], "properties": {"centering": {"type": "string"}, "formula": {"type": "string"}, "pairing_unit": {"const": "source_group_id"}, "source_weight_formula": {"type": "string"}, "token_weight_formula": {"type": "string"}}},
+    "schema_version": {"const": 1},
+    "stage_id": {"const": "N1"},
+    "status": {"const": "FROZEN_BEFORE_N1_TEST_EXECUTION"},
+    "typed_failures": {"type": "array", "items": {"type": "string"}, "minItems": 12, "uniqueItems": true}
+  },
+  "required": ["activation_layout", "basis_invariants", "control_covariance", "dimension_and_topology", "document_type", "estimator", "frozen_readout", "paired_difference", "schema_version", "stage_id", "status", "typed_failures"],
+  "title": "NNS-CST N1 subspace contract",
+  "type": "object"
+}

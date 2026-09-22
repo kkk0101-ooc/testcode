@@ -1,0 +1,83 @@
+{
+  "access_accounting": {
+    "activation_extractions": 0,
+    "behavior_outcome_reads": 0,
+    "checkpoint_deserializations": 0,
+    "checkpoint_opens": 0,
+    "endpoint_runs": 0,
+    "gpu_uses": 0,
+    "inference_runs": 0,
+    "intervention_runs": 0,
+    "jvp_runs": 0,
+    "model_loads": 0,
+    "path_nns_runs": 0,
+    "recipient_image_payload_reads_for_review_evaluation": 0,
+    "recipient_mask_payload_reads_for_review_evaluation": 0,
+    "review_bundle_reads": 2,
+    "scene_image_payload_reads_for_review_evaluation": 0
+  },
+  "artifact_bindings": {
+    "accepted_registry_schema_sha256": "8da1b768aa3265c69dab21dc5daae3b1fa4d7e10d4c5a5734a87435777572720",
+    "accepted_scene_registry_sha256": "9bfaa3e29a50b22b53f1e9924c1af0dc20fa9fc1419bc648c0120f15fe965fd6",
+    "contract_sha256": "1f55b515ae18ebe2a1d96b9055a23cdc962808c85de4d0b9594077cddff8729f",
+    "evaluator_sha256": "880e4ed96985b5da132b512d9dfe1fc1802efc32b0468251e2976d48cc498aa4",
+    "legacy_lineage_ledger_sha256": "b08cb3fe74f024627b0dea35719d9433ca0ae5c922f0df554bbc275e2687da3d",
+    "mask_archive_bindings_sha256": "ab7e777cdaa103024584d5603e5fe68136230e1f9aec2b73448a2b552702e7a0",
+    "protocol_sha256": "9a199ffba882e56eeee8ea791f76f35bba7e60ce1dd5c73e7be584be9e2c79d0",
+    "recipient_candidate_registry_sha256": "449e4048b3b6364bad9ee5ce0ee614d3cdf707b5a0c274cc4a9a5cb6d4f572ca",
+    "review_card_manifest_sha256": "830b660a8b29e2edf32e1007a19c51cf16cd59d548caf9727e5208371f7cbbe0",
+    "review_evaluation_sha256": "eac4185fbaee158476457e5248eb251beb06e6fc2f5ebe6284df7aa3377b6c9e",
+    "review_schema_sha256": "366b4e87c36b85f788a8890a2e2e077517eed382d0fb4208a257f1bec38aa32d",
+    "reviewer_a_bundle_sha256": "9960404eab6069cb836edd882ed2dd1ad598389fcf6adc85126a1426b58bec10",
+    "reviewer_b_bundle_sha256": "d601be01d972c3851cb88d03853ab09003c2000c47ade6883c33ef15e7c6735c",
+    "scene_candidate_registry_sha256": "1d39fcfcc0a42e372921ffef0b378a2e0c71974c92ae48d6d381a089cab98e27",
+    "source_terminal_i5_sha256": "c5980883ee422eb1ec554ac46ba20a2aac513fe5a20fad9dcbc5523064cd5f6e",
+    "threshold_amendment_sha256": "e67564892b38dc3ed4eaa5a78cd17340b0e873ea48bad1f6bb17861138ec46e5"
+  },
+  "attempt_id": "N2_V2_I7_20260922",
+  "gate_results": {
+    "accepted_scene_only_registry": "PASS_43_ACCEPTED_19_AQUATIC_24_NON_AQUATIC",
+    "artifact_union_reject": "APPLIED",
+    "behavior_gate": "NOT_AUTHORIZED",
+    "cohen_kappa": "PASS_0_819_ABOVE_0_800",
+    "identifiability_freeze": "NOT_ISSUED_PENDING_LOW_LEVEL_MATCHING",
+    "independent_reviewers": "PASS_TWO_SEALED_BUNDLES",
+    "legacy_lineage_exclusion": "PASS",
+    "legacy_n2_closure": "PASS",
+    "low_level_matching": "NOT_RUN_AWAITING_NEXT_FRESH_ROOT",
+    "n3": "NOT_AUTHORIZED",
+    "recipient_candidate_preparation": "PASS_12_CANDIDATES",
+    "review_bundle_binding": "PASS",
+    "scene_candidate_preparation": "PASS_60_CANDIDATES",
+    "semantic_reliability": "PASS_RAW_AGREEMENT_0_900_ABOVE_0_850",
+    "v2_protocol_freeze": "PASS_WITH_I7_THRESHOLD_AMENDMENT"
+  },
+  "next_gate": "STOP_I7_LOW_LEVEL_MATCHING_REQUIRES_NEW_FRESH_ROOT_NO_MODEL_ACCESS_AUTHORIZED",
+  "reason": "Under the I7 threshold amendment, the two independent I5 review bundles pass reliability and leave at least 18 accepted scene-only assets for each final context label. Low-level matching has not run.",
+  "review_summary": {
+    "accepted_by_candidate_stratum": {
+      "AQUATIC_CANDIDATE_STRATUM": 20,
+      "NON_AQUATIC_CANDIDATE_STRATUM": 23
+    },
+    "accepted_by_context_label": {
+      "AQUATIC_CONTEXT": 19,
+      "NON_AQUATIC_CONTEXT": 24
+    },
+    "accepted_card_count": 43,
+    "cohen_kappa": 0.8187311178247735,
+    "raw_semantic_agreement": 0.9,
+    "rejected_reason_counts": {
+      "ABNORMAL_COMPOSITING_BOUNDARY": 1,
+      "AMBIGUOUS_LABEL": 7,
+      "OTHER_ARM_IDENTITY_CUE": 2,
+      "SEMANTIC_DISAGREEMENT": 6,
+      "VISIBLE_NON_BACKGROUND_OBJECT": 11
+    },
+    "reviewed_card_count": 60
+  },
+  "schema_version": 1,
+  "stage_id": "N2_V2_INPUT_IDENTIFIABILITY",
+  "status": "PASS_INPUT_IDENTIFIABILITY_FROZEN",
+  "study_version": "N2_V2",
+  "terminal": true
+}

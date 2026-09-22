@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "oneOf": [
+    {"$ref": "#/definitions/legacy_closure"},
+    {"$ref": "#/definitions/asset_preflight"},
+    {"$ref": "#/definitions/reviewer_preflight"}
+  ],
+  "definitions": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "legacy_closure": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "document_type", "attempt_id", "status", "terminal_status", "legacy_audit_status", "bound_file_hashes", "immutable_root_snapshots", "model_access_counts"],
+      "properties": {
+        "schema_version": {"const": 1}, "document_type": {"const": "n2_v2_legacy_closure_preflight"}, "attempt_id": {"const": "N2_V2_I0_20260922"},
+        "status": {"const": "PASS_LEGACY_N2_CLOSED"}, "terminal_status": {"const": "NO_GO_NOT_IDENTIFIABLE"}, "legacy_audit_status": {"const": "PASS_N2_COMPLETION_AUDIT"},
+        "bound_file_hashes": {"type": "array", "minItems": 10, "items": {"$ref": "#/definitions/file_hash"}},
+        "immutable_root_snapshots": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "#/definitions/root_snapshot"}},
+        "model_access_counts": {"$ref": "#/definitions/zero_model_counts"}
+      }
+    },
+    "asset_preflight": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "document_type", "attempt_id", "status", "required_asset_type", "accepted_asset_registry_path", "accepted_asset_registry_present", "accepted_aquatic_scene_count", "accepted_non_aquatic_scene_count", "minimum_per_context", "category_names_are_not_scene_only_evidence", "old_lineage_overlap_count", "new_image_payload_reads", "new_mask_payload_reads", "decision"],
+      "properties": {
+        "schema_version": {"const": 1}, "document_type": {"const": "n2_v2_asset_preflight"}, "attempt_id": {"const": "N2_V2_I0_20260922"},
+        "status": {"const": "BLOCKED_INPUT_ASSETS"}, "required_asset_type": {"const": "NATURAL_SCENE_ONLY_NO_FOREGROUND_REMOVAL"},
+        "accepted_asset_registry_path": {"type": "string"}, "accepted_asset_registry_present": {"const": false},
+        "accepted_aquatic_scene_count": {"const": 0}, "accepted_non_aquatic_scene_count": {"const": 0}, "minimum_per_context": {"const": 24},
+        "category_names_are_not_scene_only_evidence": {"const": true}, "old_lineage_overlap_count": {"const": 0},
+        "new_image_payload_reads": {"const": 0}, "new_mask_payload_reads": {"const": 0}, "decision": {"const": "DO_NOT_GENERATE_PAIRS_OR_REVIEW_CARDS"}
+      }
+    },
+    "reviewer_preflight": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "document_type", "attempt_id", "status", "required_independent_reviewers", "assigned_reviewer_count", "sealed_review_bundle_count", "semantic_agreement_estimated", "cohen_kappa_estimated", "discussion_before_seal_forbidden", "model_outcomes_visible", "decision"],
+      "properties": {
+        "schema_version": {"const": 1}, "document_type": {"const": "n2_v2_reviewer_preflight"}, "attempt_id": {"const": "N2_V2_I0_20260922"},
+        "status": {"const": "BLOCKED_INDEPENDENT_REVIEWERS"}, "required_independent_reviewers": {"const": 2},
+        "assigned_reviewer_count": {"const": 0}, "sealed_review_bundle_count": {"const": 0},
+        "semantic_agreement_estimated": {"const": false}, "cohen_kappa_estimated": {"const": false},
+        "discussion_before_seal_forbidden": {"const": true}, "model_outcomes_visible": {"const": false}, "decision": {"const": "DO_NOT_RUN_BLIND_REVIEW_OR_DOWNSTREAM_GATES"}
+      }
+    },
+    "file_hash": {
+      "type": "object", "additionalProperties": false, "required": ["path", "sha256"],
+      "properties": {"path": {"type": "string"}, "sha256": {"$ref": "#/definitions/sha256"}}
+    },
+    "root_snapshot": {
+      "type": "object", "additionalProperties": false, "required": ["path", "file_count", "tree_sha256"],
+      "properties": {"path": {"type": "string"}, "file_count": {"type": "integer", "minimum": 1}, "tree_sha256": {"$ref": "#/definitions/sha256"}}
+    },
+    "zero_model_counts": {
+      "type": "object", "additionalProperties": false,
+      "required": ["checkpoint_deserializations", "model_loads", "inference_runs", "behavior_outcome_reads", "activation_extractions", "endpoint_runs", "path_nns_runs", "jvp_runs", "intervention_runs", "gpu_uses"],
+      "properties": {
+        "checkpoint_deserializations": {"const": 0}, "model_loads": {"const": 0}, "inference_runs": {"const": 0}, "behavior_outcome_reads": {"const": 0},
+        "activation_extractions": {"const": 0}, "endpoint_runs": {"const": 0}, "path_nns_runs": {"const": 0}, "jvp_runs": {"const": 0},
+        "intervention_runs": {"const": 0}, "gpu_uses": {"const": 0}
+      }
+    }
+  }
+}

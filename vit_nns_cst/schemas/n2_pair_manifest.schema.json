@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "stage_id", "attempt_id", "status", "contract_sha256", "source_manifest_sha256", "mask_archive_sha256", "selection_outcome_blind", "records", "arrays", "identifiability", "exposure"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "stage_id": {"const": "N2"},
+    "attempt_id": {"const": "N2_R1C_20260922"},
+    "status": {"enum": ["PASS_PAIR_CONSTRUCTION", "NO_GO_NOT_IDENTIFIABLE"]},
+    "contract_sha256": {"$ref": "#/definitions/sha"},
+    "source_manifest_sha256": {"$ref": "#/definitions/sha"},
+    "mask_archive_sha256": {"$ref": "#/definitions/sha"},
+    "selection_outcome_blind": {"const": true},
+    "records": {"type": "array", "minItems": 8, "maxItems": 8, "items": {"$ref": "#/definitions/record"}},
+    "arrays": {"$ref": "#/definitions/arrays"},
+    "identifiability": {"$ref": "#/definitions/identifiability"},
+    "exposure": {"$ref": "#/definitions/exposure"}
+  },
+  "definitions": {
+    "sha": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "metric_map": {"type": "object", "additionalProperties": false, "required": ["L1", "L2", "RGB_MEAN_SHIFT", "HIGHPASS_L1", "BOUNDARY_L1"], "properties": {"L1": {"type": "number"}, "L2": {"type": "number"}, "RGB_MEAN_SHIFT": {"type": "number"}, "HIGHPASS_L1": {"type": "number"}, "BOUNDARY_L1": {"type": "number"}}},
+    "identity": {"type": "object", "additionalProperties": false, "required": ["filename", "source_image_id", "source_group_id", "image_sha256", "annotation_sha256", "annotation_wnid", "target_model_class_index", "mask_fraction"], "properties": {"filename": {"type": "string"}, "source_image_id": {"type": "string"}, "source_group_id": {"type": "string"}, "image_sha256": {"$ref": "#/definitions/sha"}, "annotation_sha256": {"$ref": "#/definitions/sha"}, "annotation_wnid": {"type": "string"}, "target_model_class_index": {"type": "integer"}, "mask_fraction": {"type": "number"}}},
+    "record": {"type": "object", "additionalProperties": false, "required": ["pair_id", "recipient", "base_donor", "semantic_donor", "within_stratum_donor", "render_null_beta", "semantic_metrics", "within_null_metrics", "render_null_metrics", "aggregate_log_ratio_distance", "max_per_metric_ratio", "per_metric_ratios", "matched", "arm_array_digests"], "properties": {"pair_id": {"type": "string"}, "recipient": {"$ref": "#/definitions/identity"}, "base_donor": {"$ref": "#/definitions/identity"}, "semantic_donor": {"$ref": "#/definitions/identity"}, "within_stratum_donor": {"$ref": "#/definitions/identity"}, "render_null_beta": {"type": "number"}, "semantic_metrics": {"$ref": "#/definitions/metric_map"}, "within_null_metrics": {"$ref": "#/definitions/metric_map"}, "render_null_metrics": {"$ref": "#/definitions/metric_map"}, "aggregate_log_ratio_distance": {"type": "number"}, "max_per_metric_ratio": {"type": "number"}, "per_metric_ratios": {"$ref": "#/definitions/metric_map"}, "matched": {"type": "boolean"}, "arm_array_digests": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"$ref": "#/definitions/sha"}}}},
+    "arrays": {"type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes", "images_shape", "images_dtype", "masks_shape", "masks_dtype", "arm_order"], "properties": {"path": {"type": "string"}, "sha256": {"$ref": "#/definitions/sha"}, "bytes": {"type": "integer"}, "images_shape": {"type": "array", "minItems": 5, "maxItems": 5, "items": {"type": "integer"}}, "images_dtype": {"const": "uint8"}, "masks_shape": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "integer"}}, "masks_dtype": {"const": "bool"}, "arm_order": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "string"}}}},
+    "identifiability": {"type": "object", "additionalProperties": false, "required": ["matched_count", "unmatched_count", "unmatched_rate", "max_unmatched_rate", "semantic_roster_agreement", "source_lineage_intersection_count", "status"], "properties": {"matched_count": {"type": "integer"}, "unmatched_count": {"type": "integer"}, "unmatched_rate": {"type": "number"}, "max_unmatched_rate": {"type": "number"}, "semantic_roster_agreement": {"type": "number"}, "source_lineage_intersection_count": {"type": "integer"}, "status": {"enum": ["PASS", "NO_GO_NOT_IDENTIFIABLE"]}}},
+    "exposure": {"type": "object", "additionalProperties": false, "required": ["split", "mask_payloads_decoded", "image_payloads_visually_reviewed", "selected_image_payloads_decoded", "confirmation_payloads_read", "replication_payloads_read", "model_outcomes_read_during_selection", "selected_sources_permanently_pilot_only"], "properties": {"split": {"const": "pilot"}, "mask_payloads_decoded": {"type": "integer"}, "image_payloads_visually_reviewed": {"type": "integer"}, "selected_image_payloads_decoded": {"type": "integer"}, "confirmation_payloads_read": {"const": 0}, "replication_payloads_read": {"const": 0}, "model_outcomes_read_during_selection": {"const": 0}, "selected_sources_permanently_pilot_only": {"const": true}}}
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "confirmation_refit_allowed": {"const": false},
+    "contract_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "dimension": {"type": "integer", "minimum": 1},
+    "document_type": {"const": "nns_cst_frozen_readout"},
+    "fit_split": {"type": "string", "minLength": 1},
+    "method": {"const": "projected_class_mean_difference"},
+    "rank": {"type": "integer", "minimum": 1},
+    "schema_version": {"const": 1},
+    "threshold": {"type": "number"},
+    "validation_refit_allowed": {"const": false},
+    "weights": {"type": "array", "minItems": 1, "items": {"type": "number"}}
+  },
+  "required": ["confirmation_refit_allowed", "contract_sha256", "dimension", "document_type", "fit_split", "method", "rank", "schema_version", "threshold", "validation_refit_allowed", "weights"],
+  "title": "NNS-CST N1-R3 frozen readout",
+  "type": "object"
+}

@@ -1,0 +1,195 @@
+{
+  "schema_version": 1,
+  "document_type": "nns_cst_n0_decision",
+  "study_id": "NNS_CST",
+  "stage_id": "N0",
+  "decision_date_prc": "2026-09-22",
+  "status": "N0_COMPLETE_AWAITING_EXPLICIT_N1_AUTHORIZATION",
+  "authority": {
+    "plan_path": "vit_nns_cst/执行规划.md",
+    "plan_sha256": "6761fb7d02a66aa1b6e45624f6a4b78b285897f3eaa3f41a473daaba51d534a6",
+    "goal_path": "vit_nns_cst/研究目标.md",
+    "goal_sha256": "b51c30c447821e86e0fa9ba157f6ae301ec362cf2f17e0291f49d4e991fb24a3",
+    "authorized_stage": "N0_ONLY",
+    "n1_authorized": false,
+    "next_action": "WAIT_FOR_EXPLICIT_N1_AUTHORIZATION"
+  },
+  "repository_state": {
+    "repository_root": "/data01/home/yeziqi.831/nxtrec_wksp/testcode",
+    "branch": "endpoint_pcia_pefa",
+    "head_commit": "84dd00241bd489ea0a18002124d0c4be56565ba3",
+    "preexisting_adjacent_changes_preserved": true,
+    "commit_created": false,
+    "push_performed": false
+  },
+  "deliverables": [
+    {
+      "path": "vit_nns_cst/相关工作与新颖性矩阵.md",
+      "bytes": 18687,
+      "sha256": "0d23fbe77e9492d6a4657961d869d665507f0ecfab25818945cda24cb3868a62",
+      "role": "LITERATURE_AND_NOVELTY_AUDIT"
+    },
+    {
+      "path": "vit_nns_cst/资产与许可清单.md",
+      "bytes": 15641,
+      "sha256": "1031e4c4991c285a6491529583555aae6d468fc155f7ede1df0f10738b9dfdd6",
+      "role": "ASSET_LICENSE_AND_LINEAGE_AUDIT"
+    },
+    {
+      "path": "vit_nns_cst/配对反事实可识别性审计.md",
+      "bytes": 14544,
+      "sha256": "73e31cce9a3492254231ad6c1f77525eca2ae69b386d020161f6cf9f5cb0be7c",
+      "role": "PAIRED_COUNTERFACTUAL_IDENTIFIABILITY_AUDIT"
+    },
+    {
+      "path": "vit_nns_cst/n0_decision.json",
+      "bytes": null,
+      "sha256": null,
+      "role": "MACHINE_READABLE_STAGE_DECISION_SELF_EXCLUDED_FROM_DIGEST"
+    }
+  ],
+  "gates": {
+    "NOVELTY_CANDIDATE": {
+      "passed": true,
+      "decision": "NOVELTY_CANDIDATE",
+      "evidence_path": "vit_nns_cst/相关工作与新颖性矩阵.md",
+      "basis": "No located prior work binds strict paired visual counterfactual identification, a basis-invariant frozen projector, NNS input grounding, complete-cut semantic/complement accounting, local transport, and bidirectional finite intervention as one auditable object. All individual components are treated as prior art.",
+      "falsifier": "A formal source covering the full frozen joint object before N1 changes this gate to NO_GO_NOVELTY."
+    },
+    "DATA_FEASIBLE": {
+      "passed": true,
+      "decision": "DATA_FEASIBLE",
+      "evidence_path": "vit_nns_cst/资产与许可清单.md",
+      "basis": "Local originals, external foreground masks, source-level independent pools, class mappings, two checkpoint candidates, user-attested local research authorization, and reusable implementation infrastructure are present. Counterfactual edits are constructible but not yet generated.",
+      "falsifier": "Failure to freeze lawful lineage-complete pair production or failure to create quality-controlled semantic and null pairs changes the later decision to blocked or no-go."
+    },
+    "IDENTIFIABLE": {
+      "passed": true,
+      "decision": "IDENTIFIABLE",
+      "evidence_path": "vit_nns_cst/配对反事实可识别性审计.md",
+      "basis": "A same-foreground cross-semantic background swap and a within-semantic, low-level-intensity-matched null swap can be produced through the same renderer, with explicit artifact and lineage controls.",
+      "falsifier": "No common support between semantic and null edits, invalid semantic labels, or treatment-predictive artifacts at N2 changes the decision to NO_GO_NOT_IDENTIFIABLE."
+    }
+  },
+  "aggregate_decision": {
+    "rule": "NOVELTY_CANDIDATE_AND_DATA_FEASIBLE_AND_IDENTIFIABLE",
+    "all_required_gates_passed": true,
+    "decision": "GO_REQUEST_N1",
+    "meaning": "N0 is complete and an N1 authorization may be requested; this is not authorization to execute N1."
+  },
+  "asset_facts": {
+    "candidate_pool": {
+      "record_count": 10464,
+      "unique_source_image_count": 10464,
+      "unique_image_sha256_count": 10464,
+      "unique_annotation_sha256_count": 10463,
+      "class_count": 872,
+      "image_reference_present_count": 10464,
+      "mask_reference_present_count": 10464,
+      "historical_exclusion_count": 1101,
+      "historical_candidate_collision_count": 821,
+      "split_counts": {
+        "pilot": 1744,
+        "probe_train": 5232,
+        "probe_validation": 1744,
+        "confirmatory_holdout": 1744
+      }
+    },
+    "archives": [
+      {
+        "path": "vitnns_rebuild/assets/imagenet/ILSVRC2012_img_val.tar",
+        "bytes": 6744924160,
+        "sha256": "c7e06a6c0baccf06d8dbeb6577d71efff84673a5dbdd50633ab44f8ea0456ae0",
+        "metadata_role": "IMAGENET_VALIDATION_ORIGINALS"
+      },
+      {
+        "path": "vitnns_rebuild/assets/imagenet/ImageNetS919-5f7f58ae1003d21da9409a8576bf7680.zip",
+        "bytes": 61281494,
+        "sha256": "31de0324c3a36e0817eeab0d704a7241b77ae5e725aeab103fd60c5b78dadf5e",
+        "metadata_role": "IMAGENET_S919_MASKS"
+      }
+    ],
+    "mask_archive_png_counts": {
+      "total": 21609,
+      "validation": 12419,
+      "train_semi": 9190
+    },
+    "local_train_semi": {
+      "jpeg_count": 9190,
+      "total_bytes": 1033252884,
+      "extraction_receipt_present": true
+    },
+    "models": [
+      {
+        "model_id": "vit_b16",
+        "timm_name": "vit_base_patch16_224.augreg2_in21k_ft_in1k",
+        "depth": 12,
+        "heads": 12,
+        "embedding_dim": 768,
+        "checkpoint_path": "vitnns_rebuild/assets/models/vit_base_patch16_224_weights.semantic_candidate.pth",
+        "checkpoint_bytes": 346329934,
+        "checkpoint_sha256": "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d",
+        "checkpoint_deserialized_in_n0": false
+      },
+      {
+        "model_id": "deit_s16",
+        "timm_name": "deit_small_patch16_224.fb_in1k",
+        "depth": 12,
+        "heads": 6,
+        "embedding_dim": 384,
+        "checkpoint_path": "vitnns_rebuild/assets/models/stage_x_x2/deit_small_patch16_224.fb_in1k.pth",
+        "checkpoint_bytes": 88251143,
+        "checkpoint_sha256": "cd65a15597004d0ce19d7a9daef969903972db5b398e3a5febcd3c4df1d8f59f",
+        "checkpoint_deserialized_in_n0": false
+      }
+    ]
+  },
+  "license_boundary": {
+    "imagenet_s_upstream_explicit_annotation_license_found": false,
+    "user_attested_local_research_authorization_recorded": true,
+    "user_authorization_receipt_path": "vitnns_rebuild/evidence/nns_vit_patch_depth/s0_r2_20260914/authorization_receipt.json",
+    "commercial_use_granted_or_inferred": false,
+    "redistribution_granted_or_inferred": false,
+    "checkpoint_redistribution_right_verified": false,
+    "allowed_scope": "LOCAL_NONCOMMERCIAL_RESEARCH_WORKFLOW_ONLY"
+  },
+  "missing_assets_and_implementations": [
+    "FROZEN_BACKGROUND_SEMANTIC_ONTOLOGY",
+    "DONOR_REGISTRY",
+    "SEMANTIC_EDIT_FILES",
+    "INTENSITY_MATCHED_NULL_EDIT_FILES",
+    "PAIR_AND_LINEAGE_CLOSED_SCHEMA",
+    "PAIR_QUALITY_VALIDATOR",
+    "SEMANTIC_SUBSPACE_ESTIMATOR",
+    "BASIS_INVARIANT_PROJECTOR_IMPLEMENTATION",
+    "NNS_CST_TRANSPORT_CONTRACT"
+  ],
+  "execution_audit": {
+    "new_data_downloads": 0,
+    "formal_image_decodes": 0,
+    "model_loads": 0,
+    "checkpoint_deserializations": 0,
+    "gpu_or_cuda_uses": 0,
+    "training_runs": 0,
+    "inference_runs": 0,
+    "nns_runs": 0,
+    "activation_patching_runs": 0,
+    "formal_outcome_reads": 0,
+    "archive_or_checkpoint_stream_hashing_allowed": true,
+    "zip_central_directory_metadata_read_allowed": true
+  },
+  "non_inheritance": {
+    "historical_scientific_outcomes_inherited": false,
+    "reusable_metadata_and_code_inherited": true,
+    "n0_scientific_success_claimed": false,
+    "n0_scope_statement": "This decision establishes novelty candidacy, local research feasibility, and design-level identifiability only."
+  },
+  "required_next_stage_fail_closed_checks": [
+    "RECHECK_NEAREST_PRIOR_ART_BEFORE_N1_FREEZE",
+    "DEFINE_CLOSED_MATHEMATICAL_AND_LINEAGE_SCHEMAS",
+    "KEEP_CONFIRMATION_AND_REPLICATION_SOURCES_UNEXPOSED",
+    "VALIDATE_SEMANTIC_AND_MATCHED_NULL_EDIT_COMMON_SUPPORT_IN_N2",
+    "STOP_WITH_NO_GO_NOT_IDENTIFIABLE_IF_MATCHING_OR_ARTIFACT_PARITY_FAILS",
+    "STOP_WITH_NO_GO_NO_BEHAVIOR_IF_THE_FROZEN_INPUT_BEHAVIOR_GATE_FAILS"
+  ]
+}

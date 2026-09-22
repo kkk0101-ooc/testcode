@@ -1,0 +1,16 @@
+{
+  "document_type": "nns_cst_n1_r2_terminal_receipt",
+  "failure_code": "N1_FROZEN_READOUT_SERIALIZATION_NOT_CLOSED",
+  "meaning": "R2 passed its registered tests and validator, but completion audit found that the readout bundle omitted the required fit split and contract digest and had no dedicated closed schema. Validator PASS was therefore insufficient for N1 completion.",
+  "n2_started": false,
+  "recovery_rule": "Create a fresh N1 root that adds a closed readout bundle schema and a serializer binding fit split and contract digest; then rerun every inherited N1 gate plus the new readout fixture.",
+  "r2_artifact_sha256": {
+    "analytic_results.json": "96973d93ab1c43e7efd6f90ee3752ddabc5ce0a9d137589fb5edcee95295c3f9",
+    "freeze_receipt.json": "b535de8bad8c658aa6d8907f1b2462ae95b652ed109f0441f30b69093e182469",
+    "validation.json": "9a8c50dfdd6ef64ddea17b95fdeba13759c316ee24020dc7c98a6a021a0dbd0f"
+  },
+  "schema_version": 1,
+  "stage_id": "N1",
+  "status": "FAIL_N1_R2_READOUT_SERIALIZATION_INCOMPLETE",
+  "terminal": true
+}

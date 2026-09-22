@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "study_version", "stage_id", "attempt_id", "terminal", "status", "reason", "gate_results", "access_accounting", "artifact_bindings", "next_gate"],
+  "properties": {
+    "schema_version": {"const": 1}, "study_version": {"const": "N2_V2"}, "stage_id": {"const": "N2_V2_INPUT_IDENTIFIABILITY"},
+    "attempt_id": {"const": "N2_V2_I0_20260922"}, "terminal": {"const": true}, "status": {"const": "BLOCKED_INPUT_ASSETS_AND_REVIEWERS"},
+    "reason": {"type": "string", "minLength": 1}, "gate_results": {"$ref": "#/definitions/gates"},
+    "access_accounting": {"$ref": "#/definitions/access"}, "artifact_bindings": {"$ref": "#/definitions/bindings"},
+    "next_gate": {"const": "STOP_I0_NEW_FRESH_ROOT_REQUIRES_AUDITED_SCENE_ONLY_ASSETS_AND_TWO_INDEPENDENT_REVIEWERS"}
+  },
+  "definitions": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "gates": {
+      "type": "object", "additionalProperties": false,
+      "required": ["legacy_n2_closure", "v2_protocol_freeze", "legacy_lineage_exclusion", "scene_only_asset_registry", "independent_reviewers", "blind_review", "low_level_matching", "identifiability_freeze", "behavior_gate", "n3"],
+      "properties": {
+        "legacy_n2_closure": {"const": "PASS"}, "v2_protocol_freeze": {"const": "PASS"}, "legacy_lineage_exclusion": {"const": "PASS"},
+        "scene_only_asset_registry": {"const": "BLOCKED_NOT_AVAILABLE"}, "independent_reviewers": {"const": "BLOCKED_ZERO_OF_TWO"},
+        "blind_review": {"const": "NOT_RUN_PRECEDING_BLOCK"}, "low_level_matching": {"const": "NOT_RUN_PRECEDING_BLOCK"},
+        "identifiability_freeze": {"const": "NOT_ISSUED"}, "behavior_gate": {"const": "NOT_AUTHORIZED"}, "n3": {"const": "NOT_AUTHORIZED"}
+      }
+    },
+    "access": {
+      "type": "object", "additionalProperties": false,
+      "required": ["new_image_payload_reads", "new_mask_payload_reads", "confirmation_payload_reads", "replication_payload_reads", "reviewer_bundles_sealed", "checkpoint_opens", "checkpoint_deserializations", "model_loads", "inference_runs", "behavior_outcome_reads", "activation_extractions", "endpoint_runs", "path_nns_runs", "jvp_runs", "intervention_runs", "gpu_uses"],
+      "properties": {
+        "new_image_payload_reads": {"const": 0}, "new_mask_payload_reads": {"const": 0}, "confirmation_payload_reads": {"const": 0}, "replication_payload_reads": {"const": 0},
+        "reviewer_bundles_sealed": {"const": 0}, "checkpoint_opens": {"const": 0}, "checkpoint_deserializations": {"const": 0}, "model_loads": {"const": 0},
+        "inference_runs": {"const": 0}, "behavior_outcome_reads": {"const": 0}, "activation_extractions": {"const": 0}, "endpoint_runs": {"const": 0},
+        "path_nns_runs": {"const": 0}, "jvp_runs": {"const": 0}, "intervention_runs": {"const": 0}, "gpu_uses": {"const": 0}
+      }
+    },
+    "bindings": {
+      "type": "object", "additionalProperties": false,
+      "required": ["protocol_sha256", "contract_sha256", "contract_schema_sha256", "lineage_ledger_sha256", "lineage_schema_sha256", "review_schema_sha256", "preflight_schema_sha256", "validation_schema_sha256", "terminal_schema_sha256", "legacy_closure_sha256", "asset_preflight_sha256", "reviewer_preflight_sha256", "validation_sha256", "validator_sha256"],
+      "properties": {
+        "protocol_sha256": {"$ref": "#/definitions/sha256"}, "contract_sha256": {"$ref": "#/definitions/sha256"}, "contract_schema_sha256": {"$ref": "#/definitions/sha256"},
+        "lineage_ledger_sha256": {"$ref": "#/definitions/sha256"}, "lineage_schema_sha256": {"$ref": "#/definitions/sha256"}, "review_schema_sha256": {"$ref": "#/definitions/sha256"},
+        "preflight_schema_sha256": {"$ref": "#/definitions/sha256"}, "validation_schema_sha256": {"$ref": "#/definitions/sha256"}, "terminal_schema_sha256": {"$ref": "#/definitions/sha256"},
+        "legacy_closure_sha256": {"$ref": "#/definitions/sha256"}, "asset_preflight_sha256": {"$ref": "#/definitions/sha256"},
+        "reviewer_preflight_sha256": {"$ref": "#/definitions/sha256"}, "validation_sha256": {"$ref": "#/definitions/sha256"}, "validator_sha256": {"$ref": "#/definitions/sha256"}
+      }
+    }
+  }
+}

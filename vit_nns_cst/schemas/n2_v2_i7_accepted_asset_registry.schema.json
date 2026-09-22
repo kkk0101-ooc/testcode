@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "study_version", "registry_id", "asset_type", "review_bundle_sha256s", "legacy_lineage_ledger_sha256", "threshold_amendment_id", "minimum_accepted_per_context", "records"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "study_version": {"const": "N2_V2"},
+    "registry_id": {"const": "N2_V2_I7_ACCEPTED_SCENE_ONLY_ASSETS_20260922"},
+    "asset_type": {"const": "NATURAL_SCENE_ONLY_NO_FOREGROUND_REMOVAL"},
+    "review_bundle_sha256s": {"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": {"$ref": "#/definitions/sha256"}},
+    "legacy_lineage_ledger_sha256": {"$ref": "#/definitions/sha256"},
+    "threshold_amendment_id": {"const": "N2_V2_I7_REVIEW_THRESHOLD_AMENDMENT_20260922"},
+    "minimum_accepted_per_context": {"const": 18},
+    "records": {"type": "array", "minItems": 36, "uniqueItems": true, "items": {"$ref": "#/definitions/record"}}
+  },
+  "definitions": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asset_id", "card_id", "source_group_id", "image_sha256", "image_path", "license_record_id", "context_label", "scene_only", "foreground_removal_applied", "producer_operations", "reviewer_labels", "artifact_union_reject", "legacy_lineage_overlap", "global_exposure_status"],
+      "properties": {
+        "asset_id": {"type": "string", "minLength": 1},
+        "card_id": {"type": "string", "minLength": 1},
+        "source_group_id": {"type": "string", "minLength": 1},
+        "image_sha256": {"$ref": "#/definitions/sha256"},
+        "image_path": {"type": "string", "minLength": 1},
+        "license_record_id": {"type": "string", "minLength": 1},
+        "context_label": {"enum": ["AQUATIC_CONTEXT", "NON_AQUATIC_CONTEXT"]},
+        "scene_only": {"const": true},
+        "foreground_removal_applied": {"const": false},
+        "producer_operations": {"type": "array", "maxItems": 0},
+        "reviewer_labels": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"enum": ["AQUATIC_CONTEXT", "NON_AQUATIC_CONTEXT"]}},
+        "artifact_union_reject": {"const": false},
+        "legacy_lineage_overlap": {"const": false},
+        "global_exposure_status": {"const": "ELIGIBLE_NEW_PILOT_ONLY"}
+      }
+    }
+  }
+}

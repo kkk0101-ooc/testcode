@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "document_type": {"const": "nns_cst_port_registry"},
+    "graph_revision": {"type": "string", "minLength": 1},
+    "identity_fields": {"type": "array", "items": {"type": "string"}, "minItems": 9, "maxItems": 9},
+    "models": {
+      "type": "array", "minItems": 2, "maxItems": 2,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["blocks", "checkpoint_sha256", "embedding_dim", "heads", "model_id", "timm_name"],
+        "properties": {
+          "blocks": {"type": "integer", "minimum": 1},
+          "checkpoint_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "embedding_dim": {"type": "integer", "minimum": 1},
+          "heads": {"type": "integer", "minimum": 1},
+          "model_id": {"type": "string", "minLength": 1},
+          "timm_name": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "record_count": {"type": "integer", "minimum": 1},
+    "records": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["block_index", "branch", "checkpoint_sha256", "consumer_operator", "graph_revision", "input_slot", "invocation_index", "model_id", "port_id", "producer_tensor", "tensor_role", "token_set"],
+        "properties": {
+          "block_index": {"type": "integer", "minimum": -1},
+          "branch": {"type": "string", "minLength": 1},
+          "checkpoint_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "consumer_operator": {"type": "string", "minLength": 1},
+          "graph_revision": {"type": "string", "minLength": 1},
+          "input_slot": {"type": "integer", "minimum": 0},
+          "invocation_index": {"type": "integer", "minimum": 0},
+          "model_id": {"type": "string", "minLength": 1},
+          "port_id": {"type": "string", "pattern": "^[a-z0-9_]+:[0-9a-f]{20}$"},
+          "producer_tensor": {"type": "string", "minLength": 1},
+          "tensor_role": {"type": "string", "minLength": 1},
+          "token_set": {"enum": ["CLS_ONLY", "PATCH_ONLY", "CLS_PLUS_PATCH_14X14", "SCALAR_TARGET_MINUS_REFERENCE"]}
+        }
+      }
+    },
+    "schema_version": {"const": 1},
+    "stage_id": {"const": "N1"},
+    "status": {"const": "FROZEN_BEFORE_N1_TEST_EXECUTION"}
+  },
+  "required": ["document_type", "graph_revision", "identity_fields", "models", "record_count", "records", "schema_version", "stage_id", "status"],
+  "title": "NNS-CST N1 model port registry",
+  "type": "object"
+}

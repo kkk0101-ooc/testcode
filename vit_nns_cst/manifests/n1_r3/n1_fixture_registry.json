@@ -1,0 +1,126 @@
+{
+  "determinism_probe": {
+    "comparison": "canonical_sha256_of_scientific_payload",
+    "process_count": 2,
+    "pythonhashseed_values": [
+      "0",
+      "99173"
+    ]
+  },
+  "document_type": "nns_cst_n1_fixture_registry",
+  "fixtures": [
+    {
+      "fixture_id": "ROTATED_TWO_DIMENSIONAL_SUBSPACE",
+      "required_assertions": [
+        "PROJECTOR_INVARIANCE",
+        "PROJECTION_INVARIANCE",
+        "SIMILARITY_ONE"
+      ]
+    },
+    {
+      "fixture_id": "DISTRIBUTED_MULTI_HEAD_SIGNAL",
+      "required_assertions": [
+        "EACH_SINGLE_HEAD_INCOMPLETE",
+        "JOINT_SUBSPACE_COMPLETE"
+      ]
+    },
+    {
+      "fixture_id": "BRIGHTNESS_CONTROL_RESIDUALIZATION",
+      "required_assertions": [
+        "NUISANCE_REMOVED",
+        "SEMANTIC_RETAINED"
+      ]
+    },
+    {
+      "fixture_id": "ANALYTIC_TRANSPORT",
+      "required_assertions": [
+        "IDENTITY",
+        "LINEAR",
+        "RESIDUAL",
+        "TWO_BRANCH"
+      ]
+    },
+    {
+      "fixture_id": "SEMANTIC_COMPLEMENT_COMPLETE_CUT",
+      "required_assertions": [
+        "COORDINATE_CLOSURE",
+        "SCALAR_CLOSURE"
+      ]
+    },
+    {
+      "fixture_id": "INTERVENTION_ANALYTICS",
+      "required_assertions": [
+        "INJECTION",
+        "ERASURE",
+        "RANDOM_SUBSPACE",
+        "ORTHOGONAL_COMPLEMENT"
+      ]
+    },
+    {
+      "fixture_id": "TYPED_FAILURES",
+      "required_assertions": [
+        "RANK_TOO_LARGE",
+        "RANK_DEFICIENT",
+        "ZERO_DIFFERENCE",
+        "NONFINITE",
+        "NEAR_SINGULAR_CONTROL",
+        "NO_SEMANTIC_AFTER_CONTROL",
+        "MISSING_TOKEN",
+        "OFF_MANIFOLD"
+      ]
+    },
+    {
+      "fixture_id": "FROZEN_READOUT_SERIALIZATION",
+      "required_assertions": [
+        "CLOSED_FIELD_SET",
+        "FIT_SPLIT_BOUND",
+        "CONTRACT_DIGEST_BOUND",
+        "VALIDATION_REFIT_DISABLED",
+        "CONFIRMATION_REFIT_DISABLED",
+        "POSITIVE_SCORE_DIRECTION",
+        "NEGATIVE_SCORE_DIRECTION"
+      ]
+    }
+  ],
+  "microbenchmark": {
+    "iterations": 200,
+    "operations": [
+      "rank2_subspace_estimation",
+      "analytic_transport",
+      "semantic_complement_attribution"
+    ],
+    "report": [
+      "wall_seconds",
+      "cpu_seconds",
+      "peak_rss_kib",
+      "iterations_per_second"
+    ]
+  },
+  "mutations": [
+    {
+      "expected_failure": "CUT_MISSING_EDGE",
+      "mutation_id": "OMIT_EDGE"
+    },
+    {
+      "expected_failure": "DUPLICATE_PORT",
+      "mutation_id": "DUPLICATE_EDGE"
+    },
+    {
+      "expected_failure": "PORT_IDENTITY_MISMATCH",
+      "mutation_id": "SWAP_Q_K_V_SLOT"
+    },
+    {
+      "expected_failure": "TOKEN_ALIGNMENT_ERROR",
+      "mutation_id": "WRONG_TOKEN_ALIGNMENT"
+    }
+  ],
+  "numeric_contract": {
+    "atol": 1e-09,
+    "device": "CPU",
+    "dtype": "float64",
+    "rtol": 1e-07
+  },
+  "schema_version": 1,
+  "stage_id": "N1",
+  "status": "FROZEN_BEFORE_N1_TEST_EXECUTION"
+}

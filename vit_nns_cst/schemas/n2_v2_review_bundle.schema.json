@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "study_version", "review_bundle_id", "reviewer_id", "review_card_manifest_sha256", "review_started_utc", "review_completed_utc", "independence_declaration", "reviews"],
+  "properties": {
+    "schema_version": {"const": 1}, "study_version": {"const": "N2_V2"},
+    "review_bundle_id": {"type": "string", "minLength": 1}, "reviewer_id": {"type": "string", "minLength": 1},
+    "review_card_manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "review_started_utc": {"type": "string", "format": "date-time"}, "review_completed_utc": {"type": "string", "format": "date-time"},
+    "independence_declaration": {"$ref": "#/definitions/independence"},
+    "reviews": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/review"}}
+  },
+  "definitions": {
+    "independence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["worked_independently", "discussed_before_seal", "model_outcomes_visible", "source_or_arm_identity_visible"],
+      "properties": {"worked_independently": {"const": true}, "discussed_before_seal": {"const": false}, "model_outcomes_visible": {"const": false}, "source_or_arm_identity_visible": {"const": false}}
+    },
+    "review": {
+      "type": "object", "additionalProperties": false,
+      "required": ["card_id", "semantic_label", "visible_non_background_object", "donor_removal_or_fill_trace", "abnormal_compositing_boundary", "other_arm_identity_cue"],
+      "properties": {
+        "card_id": {"type": "string", "minLength": 1},
+        "semantic_label": {"enum": ["AQUATIC_CONTEXT", "NON_AQUATIC_CONTEXT", "AMBIGUOUS"]},
+        "visible_non_background_object": {"type": "boolean"}, "donor_removal_or_fill_trace": {"type": "boolean"},
+        "abnormal_compositing_boundary": {"type": "boolean"}, "other_arm_identity_cue": {"type": "boolean"}
+      }
+    }
+  }
+}

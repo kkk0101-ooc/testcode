@@ -1,0 +1,309 @@
+{
+  "all_requirements_handled": true,
+  "attempt_id": "N2_R1C_20260922",
+  "checklist": [
+    {
+      "evidence": [
+        "evidence/n1_r3_20260922/terminal_receipt.json",
+        "validate_n1_r3.py"
+      ],
+      "requirement": "N1 predecessor is valid",
+      "requirement_id": "N2-COMMON-01",
+      "status": "PASS",
+      "verification": "Current N1 validator and 45-item audit passed"
+    },
+    {
+      "evidence": [
+        "config/n2_r1/pilot_contract.json"
+      ],
+      "requirement": "Only N2 is authorized",
+      "requirement_id": "N2-COMMON-02",
+      "status": "PASS",
+      "verification": "N2_ONLY and n3_authorized=false"
+    },
+    {
+      "evidence": [
+        "evidence/n2_r1c_20260922/pair_manifest.json"
+      ],
+      "requirement": "Only pilot_discovery data are used",
+      "requirement_id": "N2-5.1-01",
+      "status": "PASS",
+      "verification": "24 unique sources are pilot/S1_PILOT_ONLY"
+    },
+    {
+      "evidence": [
+        "evidence/n2_r1c_20260922/terminal_receipt.json"
+      ],
+      "requirement": "Confirmation and replication remain unread",
+      "requirement_id": "N2-5.1-02",
+      "status": "PASS",
+      "verification": "Both payload read counters are zero"
+    },
+    {
+      "evidence": [
+        "config/n2_r1/pilot_contract.json"
+      ],
+      "requirement": "Layers, ranks and semantic axes are finite and predeclared",
+      "requirement_id": "N2-5.1-03",
+      "status": "PASS",
+      "verification": "One axis, four blocks and three ranks"
+    },
+    {
+      "evidence": [
+        "evidence/n2_r1_20260922/qc_rejection_receipt.json",
+        "evidence/n2_r1b_20260922/qc_rejection_receipt.json",
+        "N2-R1C最终生产器恢复修订.md"
+      ],
+      "requirement": "Pilot selections and recoveries are logged",
+      "requirement_id": "N2-5.1-04",
+      "status": "PASS",
+      "verification": "All changes occurred before model outcome access"
+    },
+    {
+      "evidence": [
+        "evidence/n2_r1c_20260922/pair_inputs.npz",
+        "evidence/n2_r1c_20260922/pair_manifest.json"
+      ],
+      "requirement": "Semantic and matched-null four-arm pairs are constructed",
+      "requirement_id": "N2-ID-01",
+      "status": "PASS",
+      "verification": "Eight sources by four arms; raw digests recomputed"
+    },
+    {
+      "evidence": [
+        "evidence/n2_r1c_20260922/validation.json"
+      ],
+      "requirement": "Source lineages do not cross protected splits",
+      "requirement_id": "N2-ID-02",
+      "status": "PASS",
+      "verification": "Source-group intersection is zero"
+    },
+    {
+      "evidence": [
+        "evidence/n2_r1c_20260922/validation.json"
+      ],
+      "requirement": "Recipient foreground is unchanged",
+      "requirement_id": "N2-ID-03",
+      "status": "PASS",
+      "verification": "Maximum eroded-mask uint8 difference is zero"
+    },
+    {
+      "evidence": [
+        "evidence/n2_r1c_20260922/validation.json"
+      ],
+      "requirement": "Low-level matching is independently recomputed",
+      "requirement_id": "N2-ID-04",
+      "status": "PASS",
+      "verification": "Six of eight matched; unmatched rate equals frozen 25 percent cap"
+    },
+    {
+      "evidence": [
+        "evidence/n2_r1c_20260922/blind_qc.json"
+      ],
+      "requirement": "Background semantic reliability is measured",
+      "requirement_id": "N2-ID-05",
+      "status": "PASS",
+      "verification": "Required two-reviewer agreement is not established; fail closed"
+    },
+    {
+      "evidence": [
+        "evidence/n2_r1c_20260922/blind_qc.json"
+      ],
+      "requirement": "Blind edit quality and artifact parity are measured",
+      "requirement_id": "N2-ID-06",
+      "status": "PASS",
+      "verification": "Seven of eight pairs failed artifact-free review"
+    },
+    {
+      "evidence": [
+        "N2隔离Pilot协议.md",
+        "evidence/n2_r1c_20260922/blind_qc.json"
+      ],
+      "requirement": "Behavior is evaluated only after identifiability",
+      "requirement_id": "N2-5.2-01",
+      "status": "CORRECTLY_NOT_RUN_AFTER_GATE_FAILURE",
+      "verification": "Behavior gate correctly not run after identifiability failure"
+    },
+    {
+      "evidence": [
+        "config/n2_r1/pilot_contract.json",
+        "evidence/n2_r1c_20260922/pair_manifest.json"
+      ],
+      "requirement": "Semantic, null and low-level controls enter the behavior gate",
+      "requirement_id": "N2-5.2-02",
+      "status": "CORRECTLY_NOT_RUN_AFTER_GATE_FAILURE",
+      "verification": "Inputs are present but no model outcome was read"
+    },
+    {
+      "evidence": [
+        "evidence/n2_r1c_20260922/blind_qc.json"
+      ],
+      "requirement": "Paired activations and finite subspace search",
+      "requirement_id": "N2-5.3-01",
+      "status": "CORRECTLY_NOT_RUN_AFTER_GATE_FAILURE",
+      "verification": "Not run because the mandatory prior gate failed"
+    },
+    {
+      "evidence": [
+        "tests/test_n2.py",
+        "src/nns_cst_n2/core.py"
+      ],
+      "requirement": "Basis invariance and independent recomputation",
+      "requirement_id": "N2-5.3-02",
+      "status": "CORRECTLY_NOT_RUN_AFTER_GATE_FAILURE",
+      "verification": "Engineering fixtures pass; real pilot correctly not run"
+    },
+    {
+      "evidence": [
+        "evidence/n2_r1c_20260922/blind_qc.json"
+      ],
+      "requirement": "Single-head, PCA, random and equal-capacity probe comparisons",
+      "requirement_id": "N2-5.3-03",
+      "status": "CORRECTLY_NOT_RUN_AFTER_GATE_FAILURE",
+      "verification": "Not run because the mandatory prior gate failed"
+    },
+    {
+      "evidence": [
+        "config/n2_r1/pilot_contract.json",
+        "evidence/n2_r1c_20260922/blind_qc.json"
+      ],
+      "requirement": "Held-out stability and topology checks",
+      "requirement_id": "N2-5.3-04",
+      "status": "CORRECTLY_NOT_RUN_AFTER_GATE_FAILURE",
+      "verification": "Frozen but not run after prior gate failure"
+    },
+    {
+      "evidence": [
+        "evidence/n2_r1c_20260922/terminal_receipt.json"
+      ],
+      "requirement": "Endpoint connectivity and cost pilot",
+      "requirement_id": "N2-5.4-01",
+      "status": "CORRECTLY_NOT_RUN_AFTER_GATE_FAILURE",
+      "verification": "Endpoint run count is zero after prior gate failure"
+    },
+    {
+      "evidence": [
+        "evidence/n2_r1c_20260922/terminal_receipt.json"
+      ],
+      "requirement": "Path NNS convergence, references and mask alignment",
+      "requirement_id": "N2-5.4-02",
+      "status": "CORRECTLY_NOT_RUN_AFTER_GATE_FAILURE",
+      "verification": "Path NNS run count is zero after prior gate failure"
+    },
+    {
+      "evidence": [
+        "evidence/n2_r1c_20260922/terminal_receipt.json"
+      ],
+      "requirement": "Complete-cut semantic/complement closure",
+      "requirement_id": "N2-5.4-03",
+      "status": "CORRECTLY_NOT_RUN_AFTER_GATE_FAILURE",
+      "verification": "Not run after prior gate failure"
+    },
+    {
+      "evidence": [
+        "evidence/n2_r1c_20260922/terminal_receipt.json"
+      ],
+      "requirement": "Attention, MLP and residual JVP transport",
+      "requirement_id": "N2-5.4-04",
+      "status": "CORRECTLY_NOT_RUN_AFTER_GATE_FAILURE",
+      "verification": "JVP run count is zero after prior gate failure"
+    },
+    {
+      "evidence": [
+        "evidence/n2_r1c_20260922/terminal_receipt.json"
+      ],
+      "requirement": "Injection, erasure, doses and off-manifold checks",
+      "requirement_id": "N2-5.4-05",
+      "status": "CORRECTLY_NOT_RUN_AFTER_GATE_FAILURE",
+      "verification": "Intervention run count is zero after prior gate failure"
+    },
+    {
+      "evidence": [
+        "evidence/n2_r1c_20260922/terminal_receipt.json"
+      ],
+      "requirement": "Task resource accounting",
+      "requirement_id": "N2-5.4-06",
+      "status": "PASS",
+      "verification": "GPU, checkpoint, inference and downstream counts are explicitly zero"
+    },
+    {
+      "evidence": [
+        "执行规划.md",
+        "evidence/n2_r1c_20260922/terminal_receipt.json"
+      ],
+      "requirement": "Terminal state belongs to the allowed N2 set",
+      "requirement_id": "N2-5.5-01",
+      "status": "PASS",
+      "verification": "NO_GO_NOT_IDENTIFIABLE is explicitly allowed"
+    },
+    {
+      "evidence": [
+        "N2-R1C最终生产器恢复修订.md",
+        "evidence/n2_r1c_20260922/terminal_receipt.json"
+      ],
+      "requirement": "No extensive concept/layer fishing",
+      "requirement_id": "N2-5.5-02",
+      "status": "PASS",
+      "verification": "Stopped at frozen final producer attempt before any outcome"
+    },
+    {
+      "evidence": [
+        "build_n2_pairs.py",
+        "validate_n2.py"
+      ],
+      "requirement": "Producer and validator are separated",
+      "requirement_id": "N2-COMMON-03",
+      "status": "PASS",
+      "verification": "Validator independently recomputes raw NPZ evidence"
+    },
+    {
+      "evidence": [
+        "schemas/n2_pilot_contract.schema.json",
+        "schemas/n2_pair_manifest.schema.json",
+        "schemas/n2_blind_qc.schema.json",
+        "schemas/n2_terminal_receipt.schema.json",
+        "schemas/n2_completion_audit.schema.json"
+      ],
+      "requirement": "Schemas are closed",
+      "requirement_id": "N2-COMMON-04",
+      "status": "PASS",
+      "verification": "Five Draft-07 schemas self-check and every object is closed"
+    },
+    {
+      "evidence": [
+        "tests/test_n2.py"
+      ],
+      "requirement": "N2 implementation tests pass",
+      "requirement_id": "N2-COMMON-05",
+      "status": "PASS",
+      "verification": "Seven N2 tests and twenty-two repository tests pass"
+    },
+    {
+      "evidence": [
+        "config/n2_r1/pilot_contract.json",
+        "evidence/n2_r1c_20260922/terminal_receipt.json"
+      ],
+      "requirement": "N3 is not started",
+      "requirement_id": "N2-COMMON-06",
+      "status": "PASS",
+      "verification": "n3_authorized=false and terminal next gate starts STOP_N2"
+    }
+  ],
+  "missing_requirements": [],
+  "objective": "Execute N2 of testcode/vit_nns_cst/执行规划.md through its first mandatory terminal gate",
+  "schema_version": 1,
+  "stage_id": "N2",
+  "status": "PASS_N2_COMPLETION_AUDIT",
+  "terminal_decision": "NO_GO_NOT_IDENTIFIABLE",
+  "verification_summary": {
+    "checklist_items": 30,
+    "gpu_uses": 0,
+    "model_outcome_reads": 0,
+    "n1_completion_items": 45,
+    "n2_validator_checks": 33,
+    "n3_started": false,
+    "python_executable": "/data01/home/yeziqi.831/nxtrec_wksp/testcode/.venv/bin/python",
+    "python_executable_realpath": "/data01/home/yeziqi.831/nxtrec_wksp/testcode/.python/cpython-3.10.21-linux-x86_64-gnu/bin/python3.10",
+    "unit_tests": 22
+  }
+}

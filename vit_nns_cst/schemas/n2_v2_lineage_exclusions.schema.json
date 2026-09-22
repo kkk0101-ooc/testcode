@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "study_version", "ledger_id", "source_attempts", "excluded_source_count", "records", "artifact_regression_cases"],
+  "properties": {
+    "schema_version": {"const": 1}, "study_version": {"const": "N2_V2"}, "ledger_id": {"const": "N2_V2_LEGACY_LINEAGE_EXCLUSIONS_20260922"},
+    "source_attempts": {"type": "array", "minItems": 3, "maxItems": 3, "uniqueItems": true, "items": {"enum": ["N2_R1_20260922", "N2_R1B_20260922", "N2_R1C_20260922"]}},
+    "excluded_source_count": {"type": "integer", "minimum": 1},
+    "records": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/definitions/record"}},
+    "artifact_regression_cases": {"type": "array", "minItems": 7, "maxItems": 7, "items": {"$ref": "#/definitions/regression"}}
+  },
+  "definitions": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "record": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_group_id", "image_sha256", "attempt_ids", "roles", "v2_use_policy"],
+      "properties": {
+        "source_group_id": {"type": "string"}, "image_sha256": {"$ref": "#/definitions/sha256"},
+        "attempt_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "roles": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "v2_use_policy": {"const": "REGRESSION_ONLY_EXCLUDED_FROM_ALL_SCIENTIFIC_SPLITS"}
+      }
+    },
+    "regression": {
+      "type": "object", "additionalProperties": false,
+      "required": ["attempt_id", "pair_id", "failure_codes", "arm_array_digests", "scientific_use_forbidden"],
+      "properties": {
+        "attempt_id": {"const": "N2_R1C_20260922"}, "pair_id": {"type": "string"},
+        "failure_codes": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "arm_array_digests": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"$ref": "#/definitions/sha256"}},
+        "scientific_use_forbidden": {"const": true}
+      }
+    }
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "stage_id": "N2_V2_LOW_LEVEL_MATCHING_ACCESS_AUDIT",
+  "attempt_id": "N2_V2_MATCHING_R2_20260922",
+  "status": "PASS_EXACT_INPUT_WHITELIST",
+  "method": "strace -f -e trace=openat followed by repository-relative path classification",
+  "allowed_input_definition": {
+    "control_files": [
+      "evidence/n2_v2_i7_20260922/accepted_scene_only_assets.json",
+      "config/n2_v2/input_identifiability_contract.json",
+      "manifests/n2_v2/legacy_lineage_exclusions.json"
+    ],
+    "i7_bound_scene_original_count": 43,
+    "recipient_original_count": 12,
+    "recipient_mask_count": 12,
+    "total_allowed_input_file_count": 70
+  },
+  "production_trace": {
+    "trace_sha256": "e52a69a48497a47ca3877647f83d35d921293e9fb50e6bb1a13be7915d5f21e2",
+    "repository_open_record_count": 155,
+    "repository_unique_path_flag_pair_count": 80,
+    "allowed_input_file_count_observed": 70,
+    "missing_allowed_inputs": [],
+    "unexpected_repository_files": [],
+    "sensitive_path_hits": []
+  },
+  "validator_trace": {
+    "trace_sha256": "c9757b140b68cde79e533d39839feaeb81c1af76e5bcea2674daa4400620cbdc",
+    "repository_open_record_count": 229,
+    "repository_unique_path_flag_pair_count": 81,
+    "allowed_input_file_count_observed": 70,
+    "missing_allowed_inputs": [],
+    "unexpected_repository_files": [],
+    "sensitive_path_hits": []
+  },
+  "permitted_non_input_repository_reads": [
+    "build_n2_v2_matching.py during production",
+    "validate_n2_v2_matching.py during validation",
+    "evidence/n2_v2_matching_r2_20260922 outputs"
+  ],
+  "environment_note": "Python interpreter and shared-library startup reads occurred outside the repository input set. No workspace checkpoint, behavior outcome, activation, Endpoint, Path NNS, JVP, intervention, or GPU artifact was opened.",
+  "prohibited_activity_counters": {
+    "checkpoint_reads": 0,
+    "model_loads": 0,
+    "inference_runs": 0,
+    "behavior_outcome_reads": 0,
+    "activation_runs": 0,
+    "endpoint_runs": 0,
+    "path_nns_runs": 0,
+    "jvp_runs": 0,
+    "intervention_runs": 0,
+    "gpu_operations": 0
+  }
+}

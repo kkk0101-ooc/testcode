@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "all_requirements_passed": {"const": true},
+    "checklist": {"type": "array", "minItems": 35, "items": {"type": "object", "additionalProperties": false, "properties": {"evidence": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "requirement": {"type": "string", "minLength": 1}, "requirement_id": {"type": "string", "minLength": 1}, "status": {"const": "PASS"}, "verification": {"type": "string", "minLength": 1}}, "required": ["evidence", "requirement", "requirement_id", "status", "verification"]}},
+    "document_type": {"const": "nns_cst_n1_r3_completion_audit"},
+    "missing_requirements": {"const": []},
+    "n2_started": {"const": false},
+    "objective": {"const": "执行testcode/vit_nns_cst/执行规划.md的N1"},
+    "prompt_coverage": {"type": "object", "additionalProperties": false, "properties": {"common_rule_items": {"type": "integer", "minimum": 1}, "n1_4_1_items": {"type": "integer", "minimum": 1}, "n1_4_2_items": {"type": "integer", "minimum": 1}, "n1_4_3_items": {"const": 8}, "n1_4_4_items": {"type": "integer", "minimum": 1}, "total_items": {"type": "integer", "minimum": 35}}, "required": ["common_rule_items", "n1_4_1_items", "n1_4_2_items", "n1_4_3_items", "n1_4_4_items", "total_items"]},
+    "schema_version": {"const": 1},
+    "stage_id": {"const": "N1"},
+    "status": {"const": "PASS_N1_R3_COMPLETION_AUDIT"}
+  },
+  "required": ["all_requirements_passed", "checklist", "document_type", "missing_requirements", "n2_started", "objective", "prompt_coverage", "schema_version", "stage_id", "status"],
+  "title": "NNS-CST N1-R3 prompt-to-artifact completion audit",
+  "type": "object"
+}

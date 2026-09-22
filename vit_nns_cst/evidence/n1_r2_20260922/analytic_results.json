@@ -1,0 +1,242 @@
+{
+  "determinism": {
+    "common_digest": "6601be4861af54bf46365b6765b7ffcea4413533b48a2a46e1344b3bb8d71374",
+    "process_count": 2,
+    "runs": [
+      {
+        "digest": "6601be4861af54bf46365b6765b7ffcea4413533b48a2a46e1344b3bb8d71374",
+        "pythonhashseed": "0"
+      },
+      {
+        "digest": "6601be4861af54bf46365b6765b7ffcea4413533b48a2a46e1344b3bb8d71374",
+        "pythonhashseed": "99173"
+      }
+    ],
+    "status": "PASS"
+  },
+  "document_type": "nns_cst_n1_analytic_results",
+  "environment": {
+    "cuda_visible_devices": "",
+    "device": "CPU",
+    "python_version": "3.7.3",
+    "sys_executable": "/usr/bin/python3.7",
+    "third_party_runtime_dependencies": []
+  },
+  "execution_boundary": {
+    "checkpoint_deserializations": 0,
+    "formal_image_decodes": 0,
+    "formal_outcome_reads": 0,
+    "gpu_or_cuda_uses": 0,
+    "inference_runs": 0,
+    "model_loads": 0,
+    "n2_started": false,
+    "training_runs": 0
+  },
+  "fixtures": [
+    {
+      "assertions": [
+        {
+          "assertion": "PROJECTION_INVARIANCE",
+          "max_abs_error": 4.440892098500626e-16,
+          "passed": true
+        },
+        {
+          "assertion": "PROJECTOR_INVARIANCE",
+          "max_abs_error": 2.220446049250313e-16,
+          "passed": true
+        },
+        {
+          "assertion": "SIMILARITY_ONE",
+          "max_abs_error": 2.220446049250313e-16,
+          "passed": true
+        }
+      ],
+      "fixture_id": "ROTATED_TWO_DIMENSIONAL_SUBSPACE"
+    },
+    {
+      "assertions": [
+        {
+          "assertion": "EACH_SINGLE_HEAD_INCOMPLETE",
+          "max_abs_error": 0.0,
+          "passed": true
+        },
+        {
+          "assertion": "JOINT_SUBSPACE_COMPLETE",
+          "max_abs_error": 0.0,
+          "passed": true
+        }
+      ],
+      "fixture_id": "DISTRIBUTED_MULTI_HEAD_SIGNAL"
+    },
+    {
+      "assertions": [
+        {
+          "assertion": "NUISANCE_REMOVED",
+          "max_abs_error": 0.0,
+          "passed": true
+        },
+        {
+          "assertion": "SEMANTIC_RETAINED",
+          "max_abs_error": 0.0,
+          "passed": true
+        }
+      ],
+      "fixture_id": "BRIGHTNESS_CONTROL_RESIDUALIZATION"
+    },
+    {
+      "assertions": [
+        {
+          "assertion": "IDENTITY",
+          "max_abs_error": 0.0,
+          "passed": true
+        },
+        {
+          "assertion": "LINEAR",
+          "max_abs_error": 0.0,
+          "passed": true
+        },
+        {
+          "assertion": "RESIDUAL",
+          "max_abs_error": 0.0,
+          "passed": true
+        },
+        {
+          "assertion": "TWO_BRANCH",
+          "max_abs_error": 0.0,
+          "passed": true
+        }
+      ],
+      "fixture_id": "ANALYTIC_TRANSPORT"
+    },
+    {
+      "assertions": [
+        {
+          "assertion": "COORDINATE_CLOSURE",
+          "max_abs_error": 0.0,
+          "passed": true
+        },
+        {
+          "assertion": "SCALAR_CLOSURE",
+          "max_abs_error": 0.0,
+          "passed": true
+        }
+      ],
+      "fixture_id": "SEMANTIC_COMPLEMENT_COMPLETE_CUT"
+    },
+    {
+      "assertions": [
+        {
+          "assertion": "INJECTION",
+          "max_abs_error": 0.0,
+          "passed": true
+        },
+        {
+          "assertion": "ERASURE",
+          "max_abs_error": 0.0,
+          "passed": true
+        },
+        {
+          "assertion": "RANDOM_SUBSPACE",
+          "max_abs_error": 0.0,
+          "passed": true
+        },
+        {
+          "assertion": "ORTHOGONAL_COMPLEMENT",
+          "max_abs_error": 0.0,
+          "passed": true
+        }
+      ],
+      "fixture_id": "INTERVENTION_ANALYTICS"
+    },
+    {
+      "assertions": [
+        {
+          "assertion": "RANK_TOO_LARGE",
+          "max_abs_error": 0.0,
+          "observed_failure": "RANK_EXCEEDS_DIMENSION",
+          "passed": true
+        },
+        {
+          "assertion": "RANK_DEFICIENT",
+          "max_abs_error": 0.0,
+          "observed_failure": "RANK_DEFICIENT",
+          "passed": true
+        },
+        {
+          "assertion": "ZERO_DIFFERENCE",
+          "max_abs_error": 0.0,
+          "observed_failure": "ZERO_PAIR_DIFFERENCE",
+          "passed": true
+        },
+        {
+          "assertion": "NONFINITE",
+          "max_abs_error": 0.0,
+          "observed_failure": "NONFINITE_VALUE",
+          "passed": true
+        },
+        {
+          "assertion": "NEAR_SINGULAR_CONTROL",
+          "max_abs_error": 0.0,
+          "observed_failure": "NEAR_SINGULAR_CONTROL_COVARIANCE",
+          "passed": true
+        },
+        {
+          "assertion": "NO_SEMANTIC_AFTER_CONTROL",
+          "max_abs_error": 0.0,
+          "observed_failure": "NO_SEMANTIC_AFTER_CONTROL",
+          "passed": true
+        },
+        {
+          "assertion": "MISSING_TOKEN",
+          "max_abs_error": 0.0,
+          "observed_failure": "MISSING_TOKEN",
+          "passed": true
+        },
+        {
+          "assertion": "OFF_MANIFOLD",
+          "max_abs_error": 0.0,
+          "observed_failure": "OFF_MANIFOLD_INTERVENTION",
+          "passed": true
+        }
+      ],
+      "fixture_id": "TYPED_FAILURES"
+    }
+  ],
+  "microbenchmark": {
+    "cpu_seconds": 0.07600210499999999,
+    "iterations": 200,
+    "iterations_per_second": 2631.192717192729,
+    "peak_rss_kib": 17132,
+    "wall_seconds": 0.07601115596480668
+  },
+  "mutations": [
+    {
+      "expected_failure": "CUT_MISSING_EDGE",
+      "mutation_id": "OMIT_EDGE",
+      "observed_failure": "CUT_MISSING_EDGE",
+      "passed": true
+    },
+    {
+      "expected_failure": "DUPLICATE_PORT",
+      "mutation_id": "DUPLICATE_EDGE",
+      "observed_failure": "DUPLICATE_PORT",
+      "passed": true
+    },
+    {
+      "expected_failure": "PORT_IDENTITY_MISMATCH",
+      "mutation_id": "SWAP_Q_K_V_SLOT",
+      "observed_failure": "PORT_IDENTITY_MISMATCH",
+      "passed": true
+    },
+    {
+      "expected_failure": "TOKEN_ALIGNMENT_ERROR",
+      "mutation_id": "WRONG_TOKEN_ALIGNMENT",
+      "observed_failure": "TOKEN_ALIGNMENT_ERROR",
+      "passed": true
+    }
+  ],
+  "schema_version": 1,
+  "scientific_payload_digest": "6601be4861af54bf46365b6765b7ffcea4413533b48a2a46e1344b3bb8d71374",
+  "stage_id": "N1",
+  "status": "PASS_N1_ANALYTIC_FIXTURES"
+}

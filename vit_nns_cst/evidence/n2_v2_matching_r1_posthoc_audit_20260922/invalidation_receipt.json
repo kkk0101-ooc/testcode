@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "stage_id": "N2_V2_LOW_LEVEL_MATCHING_POSTHOC_AUDIT",
+  "attempt_id": "N2_V2_MATCHING_R1_POSTHOC_AUDIT_20260922",
+  "audited_attempt_id": "N2_V2_MATCHING_R1_20260922",
+  "status": "INVALID_PROTOCOL",
+  "reason_code": "PRE_PRODUCTION_CONTROL_PLANE_READ_WHITELIST_VIOLATION",
+  "finding": "Legacy N2 producer and validator code was inspected before R1 production although it was outside the user-declared upstream read whitelist. No checkpoint, model output, behavior outcome, activation, Endpoint, Path NNS, JVP, intervention, or GPU was accessed.",
+  "scientific_interpretation": "R1 matching numbers are not authoritative and do not authorize any downstream gate.",
+  "recovery": "Create N2_V2_MATCHING_R2_20260922 as a fresh root with unchanged scientific definitions and command-level openat access audit.",
+  "r1_root_immutable": true
+}

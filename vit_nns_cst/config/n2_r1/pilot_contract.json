@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "stage_id": "N2",
+  "attempt_id": "N2_R1C_20260922",
+  "authorized_stage": "N2_ONLY",
+  "n3_authorized": false,
+  "semantic_axis": {
+    "axis_id": "AQUATIC_TO_NON_AQUATIC_CONTEXT",
+    "recipient_concept": "AQUATIC_OBJECT",
+    "positive_context": "AQUATIC_CONTEXT",
+    "negative_context": "NON_AQUATIC_CONTEXT",
+    "target_output": "ANNOTATION_CLASS_RAW_LOGIT"
+  },
+  "data_boundary": {
+    "allowed_split": "pilot",
+    "allowed_use_policy": "S1_PILOT_ONLY",
+    "forbidden_splits": ["probe_train", "probe_validation", "confirmatory_holdout", "replication"],
+    "recipient_count": 8,
+    "arms": ["S0_BASE_COMPOSITE", "S1_SEMANTIC_SWAP", "N1_WITHIN_STRATUM_SWAP", "N2_RENDER_NULL"],
+    "donor_mask_fraction_max": 0.2,
+    "donor_max_reuse": 2
+  },
+  "recipients": [
+    "n01484850_1756.JPEG",
+    "n01491361_7198.JPEG",
+    "n01494475_1553.JPEG",
+    "n01664065_2613.JPEG",
+    "n01665541_30058.JPEG",
+    "n02066245_5324.JPEG",
+    "n02444819_8044.JPEG",
+    "n02607072_2020.JPEG"
+  ],
+  "aquatic_donors": [
+    "n02009912_22931.JPEG",
+    "n01601694_25730.JPEG",
+    "n02018207_1303.JPEG",
+    "n03662601_15781.JPEG",
+    "n04273569_3437.JPEG",
+    "n03873416_3768.JPEG",
+    "n03873416_7943.JPEG",
+    "n04273569_16441.JPEG"
+  ],
+  "non_aquatic_donors": [
+    "n02802426_14209.JPEG",
+    "n04019541_47506.JPEG",
+    "n02841315_16435.JPEG",
+    "n03141823_449.JPEG",
+    "n03733131_5461.JPEG",
+    "n03838899_41421.JPEG",
+    "n04540053_2635.JPEG",
+    "n03876231_24829.JPEG"
+  ],
+  "producer": {
+    "resize_shorter_side": 248,
+    "crop_size": 224,
+    "image_interpolation": "BICUBIC_ANTIALIAS",
+    "mask_interpolation": "NEAREST",
+    "donor_foreground_removal": "OPENCV_4_9_0_TELEA_RADIUS_3_MASK_DILATION_3",
+    "alpha_gaussian_radius": 1.0,
+    "render_null_beta_candidates": [0.5, 0.75, 1.0, 1.25],
+    "low_level_metrics": ["L1", "L2", "RGB_MEAN_SHIFT", "HIGHPASS_L1", "BOUNDARY_L1"],
+    "selection_objective": "MIN_LOG_RATIO_DISTANCE_SEMANTIC_VS_WITHIN_STRATUM_NULL",
+    "tie_break": "LEXICOGRAPHIC_DONOR_FILENAMES"
+  },
+  "identifiability_gate": {
+    "max_per_metric_ratio": 2.5,
+    "max_aggregate_log_ratio_distance": 1.25,
+    "max_unmatched_rate": 0.25,
+    "required_semantic_roster_agreement": 1.0,
+    "required_source_lineage_intersection_count": 0
+  },
+  "model": {
+    "model_id": "vit_b16",
+    "timm_name": "vit_base_patch16_224.augreg2_in21k_ft_in1k",
+    "checkpoint_path": "assets/models/vit_base_patch16_224_weights.semantic_candidate.pth",
+    "checkpoint_bytes": 346329934,
+    "checkpoint_sha256": "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d",
+    "mean": [0.5, 0.5, 0.5],
+    "std": [0.5, 0.5, 0.5]
+  },
+  "behavior_gate": {
+    "minimum_median_incremental_logit": 0.1,
+    "minimum_positive_sources": 6,
+    "source_count": 8
+  },
+  "subspace": {
+    "blocks": [2, 5, 8, 11],
+    "token_summaries": ["CLS", "PATCH_MEAN_14X14"],
+    "ranks": [1, 2, 4],
+    "ridge": [0.0, 0.000001],
+    "eligible_centering": "NO_ACROSS_SOURCE_CENTER",
+    "diagnostic_centering": "ACROSS_SOURCE_MEAN_DIAGNOSTIC_ONLY",
+    "control_covariance_required_for_selection": true,
+    "minimum_projector_stability": 0.35,
+    "minimum_signal_control_ratio": 1.1,
+    "basis_rotation_max_abs": 1e-8,
+    "independent_recompute_max_abs": 1e-7
+  },
+  "path_nns": {
+    "quadrature_steps": [8, 16, 32],
+    "references": ["ZERO_NORMALIZED_INPUT", "GAUSSIAN_BLUR_SIGMA_8"],
+    "max_relative_l1_16_to_32": 0.2,
+    "max_completeness_relative_error": 0.05
+  },
+  "transport": {
+    "finite_difference_epsilon": 0.001,
+    "max_relative_error": 0.05,
+    "branches": ["ATTENTION", "MLP", "RESIDUAL"]
+  },
+  "intervention": {
+    "doses": [0.25, 0.5, 1.0],
+    "controls": ["SAME_RANK_RANDOM", "ORTHOGONAL_COMPLEMENT"],
+    "off_manifold_ratio_max": 3.0,
+    "random_seed": 20260922
+  },
+  "resource_limits": {
+    "gpu_count_max": 1,
+    "wall_seconds_max": 3600,
+    "gpu_hours_max": 1.0,
+    "evidence_bytes_max": 1073741824
+  },
+  "terminal_statuses": ["GO_PROTOCOL_FREEZE", "NO_GO_NO_BEHAVIOR", "NO_GO_NOT_IDENTIFIABLE", "NO_GO_SUBSPACE_UNSTABLE", "BLOCKED_INFRASTRUCTURE", "INVALID_NUMERICAL"]
+}

@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "study_version": "N2_V2",
+  "stage_id": "N2_V2_INPUT_IDENTIFIABILITY",
+  "contract_id": "N2_V2_INPUT_CONTRACT_20260922",
+  "authorized_scope": "INPUT_IDENTIFIABILITY_ONLY",
+  "authorization": {
+    "model_checkpoint_access": false,
+    "behavior_gate": false,
+    "activation_extraction": false,
+    "subspace_or_readout": false,
+    "endpoint_or_path_nns": false,
+    "transport_or_intervention": false,
+    "n3": false
+  },
+  "legacy_n2": {
+    "terminal_attempt_id": "N2_R1C_20260922",
+    "terminal_status": "NO_GO_NOT_IDENTIFIABLE",
+    "terminal_receipt_path": "evidence/n2_r1c_20260922/terminal_receipt.json",
+    "terminal_receipt_sha256": "051db983c2e9084119fca5e4d15581c229b312b5f6870e76564ba6803a7dd7c4",
+    "immutable_attempt_roots": [
+      "evidence/n2_r1_20260922",
+      "evidence/n2_r1b_20260922",
+      "evidence/n2_r1c_20260922"
+    ],
+    "allowed_claim": "IMAGENET_DONOR_WITH_FOREGROUND_REMOVAL_CANNOT_RELIABLY_SEPARATE_BACKGROUND_SEMANTICS_FROM_EDIT_ARTIFACTS",
+    "prohibited_claims": [
+      "MODEL_HAS_NO_BACKGROUND_DEPENDENCE",
+      "NO_STABLE_SEMANTIC_SUBSPACE_EXISTS",
+      "NNS_CST_IS_INVALID",
+      "MODEL_BEHAVIOR_GATE_FAILED"
+    ]
+  },
+  "inheritance": {
+    "n1_contract_path": "N1数学合同.md",
+    "n1_contract_sha256": "44b8027b33a6e551b305e43b1a8767053b704f0c4c99308a7749613424ef452d",
+    "n1_terminal_path": "evidence/n1_r3_20260922/terminal_receipt.json",
+    "n1_terminal_sha256": "42c6d7c3d09630b8d153ca16e70c12b9280afa62de73fb92068ab704b542bebf",
+    "model_registry_path": "manifests/model_port_registry.json",
+    "model_registry_sha256": "2bd1ded6128014a22ef231ac628b8bcc8134e9b70a564f3a7b8d9cb294d3cc73",
+    "prior_model_side_contract_path": "config/n2_r1/pilot_contract.json",
+    "prior_model_side_contract_sha256": "baad81af98b8a76050d4028f36cad8e27a131f55959f1898381be5a27783cd9c"
+  },
+  "semantic_axis": {
+    "axis_id": "AQUATIC_TO_NON_AQUATIC_CONTEXT",
+    "recipient_concept": "AQUATIC_OBJECT",
+    "positive_context": "AQUATIC_CONTEXT",
+    "negative_context": "NON_AQUATIC_CONTEXT",
+    "target_output": "ANNOTATION_CLASS_RAW_LOGIT"
+  },
+  "asset_policy": {
+    "primary_asset_type": "NATURAL_SCENE_ONLY_NO_FOREGROUND_REMOVAL",
+    "fallback_asset_type": "CONTROLLED_RENDERED_SCENE_SEPARATE_DOMAIN",
+    "fallback_requires_new_amendment": true,
+    "mixed_primary_estimand_forbidden": true,
+    "forbidden_operations": [
+      "DONOR_FOREGROUND_REMOVAL",
+      "INPAINTING",
+      "CONTENT_AWARE_FILL",
+      "GENERATIVE_FILL",
+      "LOCAL_PATCH_REPAIR"
+    ],
+    "old_lineage_ledger_path": "manifests/n2_v2/legacy_lineage_exclusions.json",
+    "global_exposure_union_required": true,
+    "minimum_assets_per_context": 24,
+    "minimum_recipient_candidates": 12,
+    "final_pair_count": 8,
+    "reserve_recipient_count": 4,
+    "background_max_reuse": 1
+  },
+  "blind_review": {
+    "required_independent_reviewers": 2,
+    "reviewers_must_be_distinct": true,
+    "mutual_discussion_forbidden_before_seal": true,
+    "hidden_fields": ["SOURCE_ID", "DATASET_CLASS", "ARM_IDENTITY", "MODEL_INFORMATION"],
+    "semantic_labels": ["AQUATIC_CONTEXT", "NON_AQUATIC_CONTEXT", "AMBIGUOUS"],
+    "artifact_flags": [
+      "VISIBLE_NON_BACKGROUND_OBJECT",
+      "DONOR_REMOVAL_OR_FILL_TRACE",
+      "ABNORMAL_COMPOSITING_BOUNDARY",
+      "OTHER_ARM_IDENTITY_CUE"
+    ],
+    "minimum_raw_semantic_agreement": 0.95,
+    "minimum_cohen_kappa": 0.8,
+    "any_reviewer_artifact_flag_rejects": true,
+    "ambiguous_or_disagreement_rejects": true,
+    "adjudication_cannot_restore_rejected_item": true
+  },
+  "matching": {
+    "low_level_metrics": ["L1", "L2", "RGB_MEAN_SHIFT", "HIGHPASS_L1", "BOUNDARY_L1"],
+    "max_per_metric_ratio": 2.5,
+    "max_aggregate_log_ratio_distance": 1.25,
+    "max_unmatched_rate": 0.0,
+    "all_final_pairs_must_match": true,
+    "selection_objective": "MIN_LOG_RATIO_DISTANCE_SEMANTIC_VS_WITHIN_STRATUM_NULL",
+    "tie_break": "SHA256_SOURCE_GROUP_ID_ASCENDING",
+    "reserve_order": "FROZEN_BEFORE_MODEL_ACCESS_BY_SELECTION_SCORE_THEN_TIE_BREAK",
+    "outcome_guided_replacement_forbidden": true
+  },
+  "dormant_model_side_inheritance": {
+    "model_id": "vit_b16",
+    "timm_name": "vit_base_patch16_224.augreg2_in21k_ft_in1k",
+    "checkpoint_sha256": "489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d",
+    "behavior_minimum_median_incremental_logit": 0.1,
+    "behavior_minimum_positive_sources": 6,
+    "blocks": [2, 5, 8, 11],
+    "ranks": [1, 2, 4],
+    "ridge": [0.0, 0.000001],
+    "path_nns_quadrature_steps": [8, 16, 32],
+    "path_nns_references": ["ZERO_NORMALIZED_INPUT", "GAUSSIAN_BLUR_SIGMA_8"],
+    "intervention_doses": [0.25, 0.5, 1.0]
+  },
+  "sequential_gate": {
+    "required_order": [
+      "LEGACY_CLOSURE_VALID",
+      "NEW_ASSETS_ACCEPTED",
+      "TWO_REVIEWS_SEALED",
+      "SEMANTIC_RELIABILITY_PASS",
+      "ARTIFACT_UNION_REJECT_APPLIED",
+      "ALL_FINAL_PAIRS_LOW_LEVEL_MATCHED",
+      "INPUT_IDENTIFIABILITY_FREEZE_RECEIPT",
+      "EXPLICIT_BEHAVIOR_GATE_AUTHORIZATION"
+    ],
+    "input_pass_does_not_authorize_model": true,
+    "fresh_root_required_after_block_or_failure": true
+  },
+  "allowed_input_stage_statuses": [
+    "PASS_INPUT_IDENTIFIABILITY_FROZEN",
+    "BLOCKED_INPUT_ASSETS",
+    "BLOCKED_INDEPENDENT_REVIEWERS",
+    "BLOCKED_INPUT_ASSETS_AND_REVIEWERS",
+    "NO_GO_NOT_IDENTIFIABLE",
+    "INVALID_LINEAGE",
+    "INVALID_PROTOCOL"
+  ]
+}

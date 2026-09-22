@@ -1,0 +1,463 @@
+{
+  "all_requirements_passed": true,
+  "checklist": [
+    {
+      "evidence": [
+        "n0_decision.json",
+        "validate_n0.py"
+      ],
+      "requirement": "N0 predecessor gates are currently valid",
+      "requirement_id": "COMMON-01",
+      "status": "PASS",
+      "verification": "Reexecuted validate_n0.py; status PASS and aggregate GO_REQUEST_N1"
+    },
+    {
+      "evidence": [
+        "evidence/n1_r3_20260922/freeze_receipt.json"
+      ],
+      "requirement": "Current request authorizes N1 and not N2",
+      "requirement_id": "COMMON-02",
+      "status": "PASS",
+      "verification": "Checked authorized_stage=N1, n2_authorized=false"
+    },
+    {
+      "evidence": [
+        "evidence/n1_r1_20260922/terminal_receipt.json",
+        "evidence/n1_r3_20260922/freeze_receipt.json"
+      ],
+      "requirement": "R1 terminal failure is preserved",
+      "requirement_id": "COMMON-03",
+      "status": "PASS",
+      "verification": "Checked R1 status and SHA-256 predecessor binding"
+    },
+    {
+      "evidence": [
+        "evidence/n1_r2_20260922/terminal_receipt.json",
+        "evidence/n1_r3_20260922/freeze_receipt.json"
+      ],
+      "requirement": "R2 terminal failure is preserved",
+      "requirement_id": "COMMON-04",
+      "status": "PASS",
+      "verification": "Checked R2 status and SHA-256 predecessor binding"
+    },
+    {
+      "evidence": [
+        "evidence/n1_r3_20260922/freeze_receipt.json"
+      ],
+      "requirement": "R3 source and contracts were frozen before execution",
+      "requirement_id": "COMMON-05",
+      "status": "PASS",
+      "verification": "Recomputed all 29 frozen artifact SHA-256 values"
+    },
+    {
+      "evidence": [
+        "schemas/n1_r3_analytic_results.schema.json",
+        "schemas/n1_r3_completion_audit.schema.json",
+        "schemas/n1_r3_fixture_registry.schema.json",
+        "schemas/n1_r3_freeze_receipt.schema.json",
+        "schemas/n1_r3_frozen_readout.schema.json",
+        "schemas/n1_r3_terminal_receipt.schema.json",
+        "schemas/n1_r3_validation.schema.json"
+      ],
+      "requirement": "Closed schemas reject unspecified object fields",
+      "requirement_id": "COMMON-06",
+      "status": "PASS",
+      "verification": "Recursively inspected every R3 object schema for additionalProperties=false"
+    },
+    {
+      "evidence": [
+        "run_n1_r3.py",
+        "validate_n1_r3.py",
+        "evidence/n1_r3_20260922/validation.json"
+      ],
+      "requirement": "Producer and validator are separated",
+      "requirement_id": "COMMON-07",
+      "status": "PASS",
+      "verification": "Different scripts; validator status PASS and recomputation coverage present"
+    },
+    {
+      "evidence": [
+        "evidence/n1_r3_20260922/analytic_results.json",
+        "evidence/n1_r3_20260922/validation.json"
+      ],
+      "requirement": "Execution remained CPU-only and synthetic-only",
+      "requirement_id": "COMMON-08",
+      "status": "PASS",
+      "verification": "Checked zero image/model/GPU/training/inference/outcome counters and CPU environment"
+    },
+    {
+      "evidence": [
+        "evidence/n1_r3_20260922/freeze_receipt.json",
+        "evidence/n1_r3_20260922/analytic_results.json",
+        "evidence/n1_r3_20260922/validation.json"
+      ],
+      "requirement": "N2 did not start",
+      "requirement_id": "COMMON-09",
+      "status": "PASS",
+      "verification": "Checked all n2_started fields are false"
+    },
+    {
+      "evidence": [
+        "manifests/n1_r3/model_port_registry.json"
+      ],
+      "requirement": "Patch embedding residual stream is registered",
+      "requirement_id": "N1-4.1-01",
+      "status": "PASS",
+      "verification": "Role set includes patch_embedding_residual_stream"
+    },
+    {
+      "evidence": [
+        "manifests/n1_r3/model_port_registry.json"
+      ],
+      "requirement": "Every block pre/post LayerNorm is registered",
+      "requirement_id": "N1-4.1-02",
+      "status": "PASS",
+      "verification": "Role set includes four norm boundary roles"
+    },
+    {
+      "evidence": [
+        "manifests/n1_r3/model_port_registry.json"
+      ],
+      "requirement": "Every head query, key, value input and value is registered",
+      "requirement_id": "N1-4.1-03",
+      "status": "PASS",
+      "verification": "Recomputed head-port roles and total model counts"
+    },
+    {
+      "evidence": [
+        "manifests/n1_r3/model_port_registry.json"
+      ],
+      "requirement": "Every head pre-projection output is registered",
+      "requirement_id": "N1-4.1-04",
+      "status": "PASS",
+      "verification": "Role present for both models"
+    },
+    {
+      "evidence": [
+        "manifests/n1_r3/model_port_registry.json"
+      ],
+      "requirement": "Attention merged output and residual use-edge are registered",
+      "requirement_id": "N1-4.1-05",
+      "status": "PASS",
+      "verification": "Both roles present for all blocks"
+    },
+    {
+      "evidence": [
+        "manifests/n1_r3/model_port_registry.json"
+      ],
+      "requirement": "MLP expand, activation, contract and residual use-edge are registered",
+      "requirement_id": "N1-4.1-06",
+      "status": "PASS",
+      "verification": "All four MLP roles present"
+    },
+    {
+      "evidence": [
+        "manifests/n1_r3/model_port_registry.json"
+      ],
+      "requirement": "CLS, final norm and classifier margin are registered",
+      "requirement_id": "N1-4.1-07",
+      "status": "PASS",
+      "verification": "All four readout roles present"
+    },
+    {
+      "evidence": [
+        "N1数学合同.md",
+        "src/nns_cst/core.py",
+        "manifests/n1_r3/model_port_registry.json"
+      ],
+      "requirement": "Port identity jointly binds producer, consumer, slot, invocation, block, branch and checkpoint",
+      "requirement_id": "N1-4.1-08",
+      "status": "PASS",
+      "verification": "Validator rederived every port_id; SWAP_Q_K_V_SLOT mutation failed closed"
+    },
+    {
+      "evidence": [
+        "config/n1_r3/subspace_contract.json"
+      ],
+      "requirement": "Activation layout and token sets are frozen",
+      "requirement_id": "N1-4.2-01",
+      "status": "PASS",
+      "verification": "Checked BATCH_TOKEN_CHANNEL and three explicit token sets"
+    },
+    {
+      "evidence": [
+        "N1数学合同.md",
+        "config/n1_r3/subspace_contract.json"
+      ],
+      "requirement": "Paired difference and centering are frozen",
+      "requirement_id": "N1-4.2-02",
+      "status": "PASS",
+      "verification": "Checked source_group_id pairing and centering field"
+    },
+    {
+      "evidence": [
+        "config/n1_r3/subspace_contract.json"
+      ],
+      "requirement": "Token and source weights are frozen",
+      "requirement_id": "N1-4.2-03",
+      "status": "PASS",
+      "verification": "Checked explicit token_weight_formula and source_weight_formula"
+    },
+    {
+      "evidence": [
+        "config/n1_r3/subspace_contract.json"
+      ],
+      "requirement": "Control covariance operation is frozen",
+      "requirement_id": "N1-4.2-04",
+      "status": "PASS",
+      "verification": "Checked intensity-matched null source and nuisance projection operation"
+    },
+    {
+      "evidence": [
+        "config/n1_r3/subspace_contract.json"
+      ],
+      "requirement": "Estimator, rank candidates and ridge candidates are frozen",
+      "requirement_id": "N1-4.2-05",
+      "status": "PASS",
+      "verification": "Checked estimator name, ranks 1/2/4/8/16 and ridge 0/1e-8/1e-6"
+    },
+    {
+      "evidence": [
+        "N1数学合同.md",
+        "config/n1_r3/subspace_contract.json",
+        "src/nns_cst/core.py"
+      ],
+      "requirement": "Basis-invariant projection, similarity and distance are frozen",
+      "requirement_id": "N1-4.2-06",
+      "status": "PASS",
+      "verification": "Checked projector definitions and disabled individual basis-vector claims"
+    },
+    {
+      "evidence": [
+        "config/n1_r3/subspace_contract.json"
+      ],
+      "requirement": "Frozen readout training and validation rules are frozen",
+      "requirement_id": "N1-4.2-07",
+      "status": "PASS",
+      "verification": "Checked fit split, selection-only validation and no confirmation refit"
+    },
+    {
+      "evidence": [
+        "schemas/n1_r3_frozen_readout.schema.json",
+        "evidence/n1_r3_20260922/analytic_results.json"
+      ],
+      "requirement": "Frozen readout serialization is closed and provenance-bound",
+      "requirement_id": "N1-4.2-08",
+      "status": "PASS",
+      "verification": "Checked exact field set, fit_split and contract_sha256 against current contract"
+    },
+    {
+      "evidence": [
+        "config/n1_r3/subspace_contract.json",
+        "evidence/n1_r3_20260922/analytic_results.json"
+      ],
+      "requirement": "Different channel dimensions and token topologies fail closed",
+      "requirement_id": "N1-4.2-09",
+      "status": "PASS",
+      "verification": "Checked no implicit resize/drop and wrong alignment mutation detected"
+    },
+    {
+      "evidence": [
+        "config/n1_r3/subspace_contract.json",
+        "evidence/n1_r3_20260922/analytic_results.json"
+      ],
+      "requirement": "Numerical degeneracy has explicit typed failures",
+      "requirement_id": "N1-4.2-10",
+      "status": "PASS",
+      "verification": "Checked exact 12-code registry and eight triggered typed-failure assertions"
+    },
+    {
+      "evidence": [
+        "evidence/n1_r3_20260922/analytic_results.json"
+      ],
+      "requirement": "Rotated two-dimensional subspace is basis invariant",
+      "requirement_id": "N1-4.3-01",
+      "status": "PASS",
+      "verification": "Projection, projector and similarity assertions all passed"
+    },
+    {
+      "evidence": [
+        "evidence/n1_r3_20260922/analytic_results.json"
+      ],
+      "requirement": "Distributed multi-head signal defeats single heads but succeeds jointly",
+      "requirement_id": "N1-4.3-02",
+      "status": "PASS",
+      "verification": "Both pre-registered assertions passed"
+    },
+    {
+      "evidence": [
+        "evidence/n1_r3_20260922/analytic_results.json"
+      ],
+      "requirement": "Brightness control removes low-level pseudo-semantic signal",
+      "requirement_id": "N1-4.3-03",
+      "status": "PASS",
+      "verification": "Nuisance removed and semantic retained assertions passed"
+    },
+    {
+      "evidence": [
+        "evidence/n1_r3_20260922/analytic_results.json"
+      ],
+      "requirement": "Identity, linear, residual and two-branch transport have analytic results",
+      "requirement_id": "N1-4.3-04",
+      "status": "PASS",
+      "verification": "All four transport assertions passed"
+    },
+    {
+      "evidence": [
+        "evidence/n1_r3_20260922/analytic_results.json"
+      ],
+      "requirement": "Semantic and complement attribution reconstruct complete-cut attribution",
+      "requirement_id": "N1-4.3-05",
+      "status": "PASS",
+      "verification": "Coordinate and scalar closure passed"
+    },
+    {
+      "evidence": [
+        "manifests/n1_r3/n1_fixture_registry.json",
+        "evidence/n1_r3_20260922/analytic_results.json"
+      ],
+      "requirement": "Missing edge, duplicate edge, QKV slot swap and token mismatch are detected",
+      "requirement_id": "N1-4.3-06",
+      "status": "PASS",
+      "verification": "All four mutations produced their exact registered failures"
+    },
+    {
+      "evidence": [
+        "evidence/n1_r3_20260922/analytic_results.json"
+      ],
+      "requirement": "Injection, erasure, random subspace and orthogonal complement match analytic expectations",
+      "requirement_id": "N1-4.3-07",
+      "status": "PASS",
+      "verification": "All four intervention assertions passed"
+    },
+    {
+      "evidence": [
+        "evidence/n1_r3_20260922/analytic_results.json"
+      ],
+      "requirement": "Rank, zero-difference, nonfinite and off-manifold diagnostics are typed",
+      "requirement_id": "N1-4.3-08",
+      "status": "PASS",
+      "verification": "Eight typed-failure assertions passed including all named categories"
+    },
+    {
+      "evidence": [
+        "N1数学合同.md",
+        "evidence/n1_r3_20260922/freeze_receipt.json"
+      ],
+      "requirement": "Mathematical contract is delivered and authority-bound",
+      "requirement_id": "N1-4.4-01",
+      "status": "PASS",
+      "verification": "Recomputed contract SHA-256 against freeze receipt"
+    },
+    {
+      "evidence": [
+        "schemas/n1_r3_analytic_results.schema.json",
+        "schemas/n1_r3_completion_audit.schema.json",
+        "schemas/n1_r3_fixture_registry.schema.json",
+        "schemas/n1_r3_freeze_receipt.schema.json",
+        "schemas/n1_r3_frozen_readout.schema.json",
+        "schemas/n1_r3_terminal_receipt.schema.json",
+        "schemas/n1_r3_validation.schema.json"
+      ],
+      "requirement": "Closed schemas are delivered",
+      "requirement_id": "N1-4.4-02",
+      "status": "PASS",
+      "verification": "Found and recursively checked all R3 schemas"
+    },
+    {
+      "evidence": [
+        "src/nns_cst/core.py",
+        "src/nns_cst/interfaces.py",
+        "src/nns_cst_r3/readout.py"
+      ],
+      "requirement": "Implementation skeleton is delivered",
+      "requirement_id": "N1-4.4-03",
+      "status": "PASS",
+      "verification": "All source files frozen and independent validator scanned dependencies"
+    },
+    {
+      "evidence": [
+        "validate_n1_r3.py",
+        "evidence/n1_r3_20260922/validation.json"
+      ],
+      "requirement": "Standard-library metadata validator is delivered",
+      "requirement_id": "N1-4.4-04",
+      "status": "PASS",
+      "verification": "Validator ran on Python standard library only and returned PASS"
+    },
+    {
+      "evidence": [
+        "tests/test_n1.py",
+        "tests/test_n1_r3.py",
+        "evidence/n1_r3_20260922/validation.json"
+      ],
+      "requirement": "Unit tests pass",
+      "requirement_id": "N1-4.4-05",
+      "status": "PASS",
+      "verification": "Independent validator reran full suite"
+    },
+    {
+      "evidence": [
+        "manifests/n1_r3/n1_fixture_registry.json",
+        "evidence/n1_r3_20260922/analytic_results.json"
+      ],
+      "requirement": "Analytic identities and registered fixture assertions all pass",
+      "requirement_id": "N1-4.4-06",
+      "status": "PASS",
+      "verification": "8 fixtures and all 32 exact assertions passed"
+    },
+    {
+      "evidence": [
+        "evidence/n1_r3_20260922/analytic_results.json"
+      ],
+      "requirement": "Mutation tests all pass",
+      "requirement_id": "N1-4.4-07",
+      "status": "PASS",
+      "verification": "Four exact typed failures observed"
+    },
+    {
+      "evidence": [
+        "n1_r3_determinism_probe.py",
+        "evidence/n1_r3_20260922/analytic_results.json"
+      ],
+      "requirement": "Determinism probe passes",
+      "requirement_id": "N1-4.4-08",
+      "status": "PASS",
+      "verification": "Two independent PYTHONHASHSEED processes produced one digest"
+    },
+    {
+      "evidence": [
+        "evidence/n1_r3_20260922/analytic_results.json"
+      ],
+      "requirement": "Runtime cost microbenchmark is finite",
+      "requirement_id": "N1-4.4-09",
+      "status": "PASS",
+      "verification": "Checked 200 iterations, positive wall/throughput/RSS and finite CPU time"
+    },
+    {
+      "evidence": [
+        "N1数学合同.md",
+        "evidence/n1_r3_20260922/analytic_results.json"
+      ],
+      "requirement": "N1 PASS does not claim real-model or scientific support",
+      "requirement_id": "N1-4.4-10",
+      "status": "PASS",
+      "verification": "No formal image/model/outcome access occurred; next gate remains N2 request"
+    }
+  ],
+  "document_type": "nns_cst_n1_r3_completion_audit",
+  "missing_requirements": [],
+  "n2_started": false,
+  "objective": "执行testcode/vit_nns_cst/执行规划.md的N1",
+  "prompt_coverage": {
+    "common_rule_items": 9,
+    "n1_4_1_items": 8,
+    "n1_4_2_items": 10,
+    "n1_4_3_items": 8,
+    "n1_4_4_items": 10,
+    "total_items": 45
+  },
+  "schema_version": 1,
+  "stage_id": "N1",
+  "status": "PASS_N1_R3_COMPLETION_AUDIT"
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "stage_id", "attempt_id", "status", "review_boundary", "semantic_label_reliability", "pair_reviews", "quality_gate", "decision", "downstream_execution"],
+  "properties": {
+    "schema_version": {"const": 1}, "stage_id": {"const": "N2"}, "attempt_id": {"const": "N2_R1C_20260922"},
+    "status": {"const": "FAIL_ARTIFACT_PARITY_AND_SEMANTIC_RELIABILITY"},
+    "review_boundary": {"$ref": "#/definitions/review_boundary"},
+    "semantic_label_reliability": {"$ref": "#/definitions/reliability"},
+    "pair_reviews": {"type": "array", "minItems": 8, "maxItems": 8, "items": {"$ref": "#/definitions/review"}},
+    "quality_gate": {"$ref": "#/definitions/gate"}, "decision": {"const": "NO_GO_NOT_IDENTIFIABLE"},
+    "downstream_execution": {"$ref": "#/definitions/downstream"}
+  },
+  "definitions": {
+    "review_boundary": {"type": "object", "additionalProperties": false, "required": ["model_checkpoint_deserializations_before_review", "model_outcomes_visible", "review_inputs", "forbidden_inputs_used"], "properties": {"model_checkpoint_deserializations_before_review": {"const": 0}, "model_outcomes_visible": {"const": false}, "review_inputs": {"type": "array", "items": {"type": "string"}}, "forbidden_inputs_used": {"type": "array", "maxItems": 0}}},
+    "reliability": {"type": "object", "additionalProperties": false, "required": ["required_independent_reviewers", "completed_independent_reviewers", "agreement_estimated", "status"], "properties": {"required_independent_reviewers": {"const": 2}, "completed_independent_reviewers": {"const": 1}, "agreement_estimated": {"const": false}, "status": {"const": "FAIL_DOUBLE_ANNOTATION_NOT_ESTABLISHED"}}},
+    "review": {"type": "object", "additionalProperties": false, "required": ["pair_id", "artifact_free", "codes"], "properties": {"pair_id": {"type": "string"}, "artifact_free": {"type": "boolean"}, "codes": {"type": "array", "items": {"type": "string"}}}},
+    "gate": {"type": "object", "additionalProperties": false, "required": ["reviewed_pair_count", "artifact_free_pair_count", "artifact_failed_pair_count", "artifact_failed_rate", "double_annotation_required", "double_annotation_passed", "artifact_parity_passed", "overall_identifiability_passed"], "properties": {"reviewed_pair_count": {"const": 8}, "artifact_free_pair_count": {"type": "integer"}, "artifact_failed_pair_count": {"type": "integer"}, "artifact_failed_rate": {"type": "number"}, "double_annotation_required": {"const": true}, "double_annotation_passed": {"const": false}, "artifact_parity_passed": {"const": false}, "overall_identifiability_passed": {"const": false}}},
+    "downstream": {"type": "object", "additionalProperties": false, "required": ["behavior_gate", "subspace_readout_pilot", "nns_transport_intervention_pilot"], "properties": {"behavior_gate": {"const": "NOT_RUN_PRECEDING_IDENTIFIABILITY_FAILURE"}, "subspace_readout_pilot": {"const": "NOT_RUN_PRECEDING_IDENTIFIABILITY_FAILURE"}, "nns_transport_intervention_pilot": {"const": "NOT_RUN_PRECEDING_IDENTIFIABILITY_FAILURE"}}}
+  }
+}

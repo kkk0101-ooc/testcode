@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "artifact_bindings": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["path", "sha256"], "properties": {"path": {"type": "string", "minLength": 1}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}}},
+    "claims_not_established": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
+    "document_type": {"const": "nns_cst_n1_terminal_receipt"},
+    "execution_boundary": {"type": "object", "additionalProperties": false, "required": ["formal_image_decodes", "gpu_or_cuda_uses", "model_loads", "n2_started"], "properties": {"formal_image_decodes": {"const": 0}, "gpu_or_cuda_uses": {"const": 0}, "model_loads": {"const": 0}, "n2_started": {"const": false}}},
+    "gate_results": {"type": "object", "additionalProperties": false, "required": ["closed_schemas", "determinism_probe", "fixture_assertions", "independent_validator", "microbenchmark", "mutation_tests", "n0_predecessor", "prompt_to_artifact_audit"], "properties": {"closed_schemas": {"const": true}, "determinism_probe": {"const": true}, "fixture_assertions": {"const": true}, "independent_validator": {"const": true}, "microbenchmark": {"const": true}, "mutation_tests": {"const": true}, "n0_predecessor": {"const": true}, "prompt_to_artifact_audit": {"const": true}}},
+    "next_gate": {"const": "N2_REQUIRES_EXPLICIT_USER_REQUEST"},
+    "recovery_from": {"type": "object", "additionalProperties": false, "required": ["r1_status", "r1_terminal_sha256"], "properties": {"r1_status": {"const": "FAIL_N1_R1_SCHEMA_FREEZE_INCOMPLETE"}, "r1_terminal_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}},
+    "schema_version": {"const": 1},
+    "stage_id": {"const": "N1"},
+    "status": {"const": "PASS_N1_ANALYTIC_CONTRACT_AND_SKELETON"},
+    "terminal": {"const": true},
+    "validator_output_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "required": ["artifact_bindings", "claims_not_established", "document_type", "execution_boundary", "gate_results", "next_gate", "recovery_from", "schema_version", "stage_id", "status", "terminal", "validator_output_sha256"],
+  "title": "NNS-CST N1 terminal receipt",
+  "type": "object"
+}

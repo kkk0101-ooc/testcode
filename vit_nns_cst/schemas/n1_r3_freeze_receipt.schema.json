@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "attempt_id": {"const": "N1_R3_20260922"},
+    "authority": {"type": "object", "additionalProperties": false, "properties": {"execution_plan_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "mathematical_contract_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "recovery_amendment_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "research_goal_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}, "required": ["execution_plan_sha256", "mathematical_contract_sha256", "recovery_amendment_sha256", "research_goal_sha256"]},
+    "authorization": {"type": "object", "additionalProperties": false, "properties": {"authorized_stage": {"const": "N1"}, "n2_authorized": {"const": false}, "source": {"const": "explicit_current_thread_user_request"}}, "required": ["authorized_stage", "n2_authorized", "source"]},
+    "document_type": {"const": "nns_cst_n1_r3_freeze_receipt"},
+    "execution_boundary": {"type": "object", "additionalProperties": false, "properties": {"checkpoint_deserializations": {"const": 0}, "formal_image_decodes": {"const": 0}, "formal_outcome_reads": {"const": 0}, "gpu_or_cuda_uses": {"const": 0}, "inference_runs": {"const": 0}, "model_loads": {"const": 0}, "n2_started": {"const": false}, "training_runs": {"const": 0}}, "required": ["checkpoint_deserializations", "formal_image_decodes", "formal_outcome_reads", "gpu_or_cuda_uses", "inference_runs", "model_loads", "n2_started", "training_runs"]},
+    "frozen_artifacts": {"type": "array", "minItems": 30, "items": {"type": "object", "additionalProperties": false, "properties": {"path": {"type": "string", "minLength": 1}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}, "required": ["path", "sha256"]}},
+    "predecessors": {"type": "object", "additionalProperties": false, "properties": {"n0_decision": {"const": "GO_REQUEST_N1"}, "n0_decision_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "n1_r1_status": {"const": "FAIL_N1_R1_SCHEMA_FREEZE_INCOMPLETE"}, "n1_r1_terminal_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "n1_r2_status": {"const": "FAIL_N1_R2_READOUT_SERIALIZATION_INCOMPLETE"}, "n1_r2_terminal_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}, "required": ["n0_decision", "n0_decision_sha256", "n1_r1_status", "n1_r1_terminal_sha256", "n1_r2_status", "n1_r2_terminal_sha256"]},
+    "repository": {"type": "object", "additionalProperties": false, "properties": {"branch": {"type": "string", "minLength": 1}, "head_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}}, "required": ["branch", "head_commit"]},
+    "schema_version": {"const": 1},
+    "stage_id": {"const": "N1"},
+    "status": {"const": "FROZEN_BEFORE_N1_R3_EXECUTION"}
+  },
+  "required": ["attempt_id", "authority", "authorization", "document_type", "execution_boundary", "frozen_artifacts", "predecessors", "repository", "schema_version", "stage_id", "status"],
+  "title": "NNS-CST N1-R3 freeze receipt",
+  "type": "object"
+}

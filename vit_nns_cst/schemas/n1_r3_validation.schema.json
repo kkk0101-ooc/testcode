@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "artifact_hashes": {"type": "object", "additionalProperties": false, "properties": {"analytic_results_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "freeze_receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}, "required": ["analytic_results_sha256", "freeze_receipt_sha256"]},
+    "coverage": {"type": "object", "additionalProperties": false, "properties": {"assertion_count": {"const": 32}, "closed_object_schema_count": {"type": "integer", "minimum": 1}, "fixture_count": {"const": 8}, "frozen_artifact_count": {"const": 30}, "mutation_count": {"const": 4}, "port_count": {"const": 1330}, "readout_schema_valid": {"const": true}, "tensor_role_count": {"const": 20}, "typed_failure_count": {"const": 12}, "unit_test_count": {"type": "integer", "minimum": 15}}, "required": ["assertion_count", "closed_object_schema_count", "fixture_count", "frozen_artifact_count", "mutation_count", "port_count", "readout_schema_valid", "tensor_role_count", "typed_failure_count", "unit_test_count"]},
+    "determinism_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "document_type": {"const": "nns_cst_n1_r3_independent_validation"},
+    "n2_started": {"const": false},
+    "schema_version": {"const": 1},
+    "stage_id": {"const": "N1"},
+    "status": {"const": "PASS_N1_R3_INDEPENDENT_VALIDATION"}
+  },
+  "required": ["artifact_hashes", "coverage", "determinism_digest", "document_type", "n2_started", "schema_version", "stage_id", "status"],
+  "title": "NNS-CST N1-R3 independent validation",
+  "type": "object"
+}

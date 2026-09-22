@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "study_version", "attempt_id", "contract_sha256", "accepted_asset_registry_sha256", "model_outcome_reads_before_freeze", "final_pairs", "reserve_recipients", "matching_summary", "identifiability_decision"],
+  "properties": {
+    "schema_version": {"const": 1}, "study_version": {"const": "N2_V2"}, "attempt_id": {"type": "string", "pattern": "^N2_V2_I[1-9][0-9]*_[0-9]{8}$"},
+    "contract_sha256": {"$ref": "#/definitions/sha256"}, "accepted_asset_registry_sha256": {"$ref": "#/definitions/sha256"}, "model_outcome_reads_before_freeze": {"const": 0},
+    "final_pairs": {"type": "array", "minItems": 8, "maxItems": 8, "uniqueItems": true, "items": {"$ref": "#/definitions/pair"}},
+    "reserve_recipients": {"type": "array", "minItems": 4, "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/definitions/reserve"}},
+    "matching_summary": {"$ref": "#/definitions/summary"}, "identifiability_decision": {"enum": ["PASS_INPUT_IDENTIFIABILITY_FROZEN", "NO_GO_NOT_IDENTIFIABLE"]}
+  },
+  "definitions": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "metric_map": {
+      "type": "object", "additionalProperties": false, "required": ["L1", "L2", "RGB_MEAN_SHIFT", "HIGHPASS_L1", "BOUNDARY_L1"],
+      "properties": {"L1": {"type": "number", "minimum": 0}, "L2": {"type": "number", "minimum": 0}, "RGB_MEAN_SHIFT": {"type": "number", "minimum": 0}, "HIGHPASS_L1": {"type": "number", "minimum": 0}, "BOUNDARY_L1": {"type": "number", "minimum": 0}}
+    },
+    "pair": {
+      "type": "object", "additionalProperties": false,
+      "required": ["pair_id", "recipient_source_group_id", "base_asset_id", "semantic_asset_id", "within_stratum_asset_id", "source_lineage_ids", "semantic_metrics", "null_metrics", "per_metric_ratios", "aggregate_log_ratio_distance", "matched"],
+      "properties": {
+        "pair_id": {"type": "string"}, "recipient_source_group_id": {"type": "string"}, "base_asset_id": {"type": "string"}, "semantic_asset_id": {"type": "string"}, "within_stratum_asset_id": {"type": "string"},
+        "source_lineage_ids": {"type": "array", "minItems": 4, "maxItems": 4, "uniqueItems": true, "items": {"type": "string"}},
+        "semantic_metrics": {"$ref": "#/definitions/metric_map"}, "null_metrics": {"$ref": "#/definitions/metric_map"}, "per_metric_ratios": {"$ref": "#/definitions/metric_map"},
+        "aggregate_log_ratio_distance": {"type": "number", "minimum": 0}, "matched": {"const": true}
+      }
+    },
+    "reserve": {
+      "type": "object", "additionalProperties": false, "required": ["reserve_rank", "recipient_source_group_id", "selection_score", "tie_break_digest"],
+      "properties": {"reserve_rank": {"type": "integer", "minimum": 1, "maximum": 4}, "recipient_source_group_id": {"type": "string"}, "selection_score": {"type": "number", "minimum": 0}, "tie_break_digest": {"$ref": "#/definitions/sha256"}}
+    },
+    "summary": {
+      "type": "object", "additionalProperties": false, "required": ["pair_count", "matched_count", "unmatched_count", "unmatched_rate", "all_final_pairs_match", "background_reuse_max"],
+      "properties": {"pair_count": {"const": 8}, "matched_count": {"const": 8}, "unmatched_count": {"const": 0}, "unmatched_rate": {"const": 0.0}, "all_final_pairs_match": {"const": true}, "background_reuse_max": {"const": 1}}
+    }
+  }
+}

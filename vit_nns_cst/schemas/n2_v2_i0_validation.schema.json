@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "study_version", "stage_id", "attempt_id", "status", "checks", "summary"],
+  "properties": {
+    "schema_version": {"const": 1}, "study_version": {"const": "N2_V2"}, "stage_id": {"const": "N2_V2_INPUT_IDENTIFIABILITY"},
+    "attempt_id": {"const": "N2_V2_I0_20260922"}, "status": {"const": "PASS_I0_FAIL_CLOSED_VALIDATION"},
+    "checks": {"type": "array", "minItems": 20, "items": {"$ref": "#/definitions/check"}},
+    "summary": {"$ref": "#/definitions/summary"}
+  },
+  "definitions": {
+    "check": {"type": "object", "additionalProperties": false, "required": ["check_id", "status", "evidence"], "properties": {"check_id": {"type": "string"}, "status": {"const": "PASS"}, "evidence": {"type": "string"}}},
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["check_count", "legacy_excluded_source_count", "artifact_regression_case_count", "accepted_scene_asset_count", "sealed_reviewer_bundle_count", "model_access_count", "validated_i0_status"],
+      "properties": {
+        "check_count": {"type": "integer", "minimum": 20}, "legacy_excluded_source_count": {"type": "integer", "minimum": 1},
+        "artifact_regression_case_count": {"const": 7}, "accepted_scene_asset_count": {"const": 0}, "sealed_reviewer_bundle_count": {"const": 0},
+        "model_access_count": {"const": 0}, "validated_i0_status": {"const": "BLOCKED_INPUT_ASSETS_AND_REVIEWERS"}
+      }
+    }
+  }
+}
