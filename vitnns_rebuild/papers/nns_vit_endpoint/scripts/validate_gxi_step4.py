@@ -339,7 +339,7 @@ def main() -> int:
     check("step4_deliverables_present", all(path.is_file() for path in required))
     plan = (REPO / "Endpoint_GxI创新定位与后续五步计划.md").read_text()
     step4_record = plan.split("## 十一、第四步执行记录：结果重排与封存证据绑定", 1)[1]
-    check("step4_plan_status", "第四步已完成实验结果重排与封存证据绑定" in plan.splitlines()[2] and "第五步未启动" in plan.splitlines()[2])
+    check("step4_plan_status", "第四步已完成实验结果重排与封存证据绑定" in plan.splitlines()[2] and "## 十一、第四步执行记录：结果重排与封存证据绑定" in plan)
     check("step4_prompt_artifact_audit", step4_record.split("### 11.4 第四步 prompt-to-artifact 验收表", 1)[1].split("### 11.5", 1)[0].count("| PASS |") == 16)
     errors = [row for row in CHECKS if not row["passed"]]
     result = {

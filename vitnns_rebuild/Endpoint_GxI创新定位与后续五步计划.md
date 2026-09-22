@@ -1,6 +1,6 @@
 # Endpoint 与 Gradient × Input 等价下的创新定位与后续五步计划
 
-> 执行状态（2026-09-22）：第一步已完成内容冻结，验收记录见第八节；第二步已完成联合能力的新颖性差分审计并通过 1,734 项发布校验，验收记录见第九节；第三步已完成方法章节和核心概念图重构，验收记录见第十节；第四步已完成实验结果重排与封存证据绑定，验收记录见第十一节；第五步未启动。
+> 执行状态（2026-09-22）：第一步已完成内容冻结，验收记录见第八节；第二步已完成联合能力的新颖性差分审计并通过 1,734 项发布校验，验收记录见第九节；第三步已完成方法章节和核心概念图重构，验收记录见第十节；第四步已完成实验结果重排与封存证据绑定，验收记录见第十一节；第五步已完成中英文同步重写与对抗式终审，验收记录见第十二节。
 
 ## 一、结论
 
@@ -874,3 +874,76 @@ H1–H3 在四个 checkpoint 中均保持正方向。H4 在四个 checkpoint 中
 ### 11.5 完成门结论
 
 第四步完成门通过。至少一项 attention 和一项 residual 结论明确依赖 $[e,i]$ 联合信息；核心结果均给出统计单位、效应量、区间、checkpoint 与适用 target。E5 只有在全部绑定和重算通过后才进入现役稿。正结果、未获支持、H4 相反方向和既有跨模型相反趋势均保留，行为结果继续表述为“广泛但非普遍”。第五步需要显式后续请求，本轮不启动。
+
+## 十二、第五步执行记录：中英文同步重写与对抗式终审
+
+执行日期：2026-09-22。现役入口为 `papers/nns_vit_endpoint/publication_r2_20260920/{zh,en}/manuscript.md` 及外层双语镜像。第五步使用第四步已经通过 source、cohort、checkpoint、统计合同和原始数组重算的证据，没有启动新实验。
+
+### 12.1 中英文同步重写
+
+中英文标题统一改为直接命名双索引对象与结构审计。摘要和贡献二不再用“结构化、可闭合、可审计”等属性词代替技术对象，而是直接定义
+
+$$
+\mathcal L_{e,i}(s;x)
+=x_i\left[J_{z_e,x}(x)^{\mathsf T}\bar z_e^{(s)}\right]_i.
+$$
+
+摘要同时说明输入坐标 $i$、实际 consumer-use edge $e$、目标条件 $s$、合法切面和结构审计。引言、相关工作、讨论和结论保持同一身份：基础测量原语是同目标 G×I；方法增量是目标条件化双索引图组、合法切面合同、结构故障检出和由此支持的 attention/residual 空间机制分析。
+
+### 12.2 最强近邻反例与主张失效条件
+
+双语 Related Work 在 Table 1 后增加最强近邻逐字段反例。Conductance 约束隐藏单元路径归因主张，DecompX/LRP 约束组件传播和 conservation 主张，EAP/Vi-CD 约束真实边与有限干预主张，Unpack 约束命名路径与 K/Q/V 标签主张。`NOV-JOINT-1` 只对应 current-point local differential、原始输入坐标、具体 consumer-use edge、合法切面重构、attention/residual 成对图和结构故障检出的联合字段。一个既有方法若覆盖这些字段，方法新颖性即失效。完整成立与失效条件见 `evidence/gxi_step5_novelty_conditions.md`。
+
+### 12.3 对抗式审稿与修订
+
+模拟审稿依次检查四个强制问题：是否只是 G×I 加 hooks、是否只是已有组件拼装、结构闭合是否误写成因果正确、经验结果是否真的需要双索引。修订结果如下：
+
+1. 标题、摘要和贡献二直接给出双索引对象，Figure 1 给出无 $i$、无 $e$ 和无切面合同的退化；
+2. Related Work 用四组最强近邻构成可证伪的逐字段反例，不保留任何单项首次主张；
+3. 讨论与结论明确把结构闭合的正确性证据和有限替换的行为证据分开；
+4. Attention 的 Q/K/V spatial entropy 与 residual 的 output–identity spatial TV 分别承担联合索引必要性，routing/identity share 和总图 broadening 保持支持或背景身份；
+5. H1–H3、H4 四项反向、all-family 未获支持和 Q 的模型依赖方向均完整保留。
+
+逐项意见、初审证据和修订后裁定见 `qc/gxi_step5_adversarial_review.md`。
+
+### 12.4 硕士毕业论文终审
+
+终审按六个固定维度执行：研究问题与科学价值、研究设计与因果逻辑、方法学与统计推断、结果解释与外推边界、学术写作与叙事结构、改进路径。每个维度均给出问题、证据位置、影响和修订判断。证据与结论不匹配表覆盖八类高风险位置，风险清单按阻断毕业、重大修改、一般修改和修辞优化分级。
+
+终审结论为 `可送审`。初审发现的三项重大问题已处理：入口未直接定义双索引对象，最强近邻的失效条件不够显式，结论对 closure 与 finite utility 的分层仍可更清楚。当前无未解决的阻断毕业或重大修改项。作者、单位、通讯作者、repository/archive 和学校模板属于发布流程元数据，不改变学术结论。完整报告见 `qc/gxi_step5_thesis_final_review.md` 与 `qc/gxi_step5_evidence_mismatch_and_risk.md`。
+
+### 12.5 第五步交付物
+
+- 中英文同步终稿及外层镜像：`publication_r2_20260920/{zh,en}/manuscript.md`、`{zh,en}/full_draft.md`；
+- 独立方法定位与 claim-to-evidence：`evidence/gxi_step5_claim_to_evidence.md`；
+- 创新成立与失效条件：`evidence/gxi_step5_novelty_conditions.md`；
+- 模拟对抗审稿与逐项修订：`qc/gxi_step5_adversarial_review.md`；
+- 防御性写作终审：`qc/gxi_step5_defensive_writing_audit.md`；
+- 六维硕士毕业论文终审：`qc/gxi_step5_thesis_final_review.md`；
+- 证据错配与分级风险：`qc/gxi_step5_evidence_mismatch_and_risk.md`；
+- 第五步专项校验与完成审计：`scripts/validate_gxi_step5.py`、`qc/gxi_step5_validation.json`、`qc/gxi_step5_completion_audit.md`。
+
+### 12.6 第五步 prompt-to-artifact 验收表
+
+| 显式要求 | 直接产物 | 覆盖证据 | 状态 |
+| --- | --- | --- | --- |
+| 双语标题、摘要、引言、贡献、相关工作、讨论和结论 | 双语现役稿与镜像 | 标题、公式、`NOV-JOINT-1`、章节和镜像专项检查 | PASS |
+| 摘要与贡献二直接定义技术增量 | 双语摘要与贡献二 | $\mathcal L_{e,i}$、$e/i/s$、valid cut 与审计直接出现 | PASS |
+| 主张—证据—简洁边界 | 主稿、防御性写作审计 | 评分 1/10；固定 reviewer-facing 构式为 0 | PASS |
+| 所有关键数字与范围 | 第四步数字重算、第五步校验 | E5 1,600 任务、6,400 个值重算最大差 0；双语表格一致 | PASS |
+| 四项对抗性检查 | 模拟对抗审稿 | 四项均含初审证据、修订动作和修订后裁定 | PASS |
+| 最强近邻逐字段反例 | Related Work、创新条件清单 | Conductance、DecompX/LRP、EAP/Vi-CD、Unpack 全覆盖 | PASS |
+| 正文、附录、图注、表格、matrix 和 evidence index 同步 | 第五步校验 | 主文逐表、公式、图路径及补充材料标题/数字/图路径一致 | PASS |
+| 只有必要时新增实验 | 校验元数据 | `new_experiments=0` | PASS |
+| claim-to-evidence 对照表 | `gxi_step5_claim_to_evidence.md` | 位置、证据、统计单位、范围与反证边界齐全 | PASS |
+| 数字与引用自动校验 | `gxi_step5_validation.json` | 数字门、引用作者、链接、Markdown/LaTeX 全覆盖 | PASS |
+| 创新成立与失效条件 | `gxi_step5_novelty_conditions.md` | 六项成立条件、九项失效条件和禁用扩大表述 | PASS |
+| 六维硕士终审及送审结论 | `gxi_step5_thesis_final_review.md` | 六维齐全，结论 `可送审`，最小维持条件四项 | PASS |
+| 证据错配表与分级问题 | `gxi_step5_evidence_mismatch_and_risk.md` | 八类错配和四级风险齐全 | PASS |
+| 阻断毕业和重大修改清零 | 风险清单、终审 | 无阻断项；三项重大问题均已修复 | PASS |
+
+### 12.7 完成门结论
+
+第五步完成门通过。读者可在摘要中直接回答 G×I 等价下的新增对象；Figure 1 与数据分别回答为何不是 G×I 加 hooks；最强近邻的 estimand、索引和闭合对象差异已明确；所有方法贡献句统一锚定 `NOV-JOINT-1`；E5 只在第四步数组级重算通过后进入主稿；双语、引用、公式、链接和 Markdown 校验通过；六维终审给出 `可送审` 结论与最小维持条件。
+
+验证记录：`validate_gxi_step3.py` 30 项通过；`validate_gxi_step4.py` 68 项通过；`validate_publication_r2.py` 1,733 项通过并重算 162 个真实显示面板；`validate_gxi_step5.py` 411 项通过；`tests/test_revision_v5.py` 6 项通过；四个校验器 `py_compile` 与 `git diff --check` 均通过。

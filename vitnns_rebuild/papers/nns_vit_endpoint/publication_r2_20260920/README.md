@@ -1,4 +1,4 @@
-# 从 NNS 到视觉 Transformer：内部目标的可审计 Jacobian 扫描与结构分解
+# 面向视觉 Transformer 内部目标的双索引局部 Jacobian 扫描与结构审计
 
 这个目录包含可独立阅读和复制的论文版本：11 张正文图、10 张编号正文表、2 张方法合同表、22 张完整渲染图件、双语补充材料，以及 92 页历史补充图。
 
@@ -13,6 +13,11 @@
 - [修改意见 v3 第二步后继主张](../notes/revision_v3_step2_claims.md)
 - [G×I 五步计划第三步专项审计](qc/gxi_step3_completion_audit.md)
 - [G×I 五步计划第四步专项审计](qc/gxi_step4_completion_audit.md)
+- [G×I 五步计划第五步完成审计](qc/gxi_step5_completion_audit.md)
+- [第五步硕士毕业论文终审](qc/gxi_step5_thesis_final_review.md)
+- [第五步模拟对抗审稿与修订记录](qc/gxi_step5_adversarial_review.md)
+- [第五步 claim-to-evidence 对照表](evidence/gxi_step5_claim_to_evidence.md)
+- [创新性成立与失效条件](evidence/gxi_step5_novelty_conditions.md)
 - [第四步逐主张证据索引](evidence/gxi_step4_evidence_index.md)
 - [第四步主文与补充材料分配表](evidence/gxi_step4_figure_allocation.md)
 - [Endpoint 与 Gradient × Input 等价下的创新定位及五步计划](../../../Endpoint_GxI创新定位与后续五步计划.md)（第八至十一节为第一至第四步执行记录）
@@ -36,9 +41,11 @@ Figures 2–5 和 7 进一步采用参考论文的概念图视觉语法：虚线
 
 第四步已按“身份与正确性—背景规律—联合索引机制结果—跨 checkpoint 复现—行为标定”重排 Results。新增 Table 4 区分总图、edge scalar 与双索引图组的可恢复信息；attention Full–Value 和 residual output–identity spatial TV 分别作为两项联合索引必要性结果。E5 在通过来源、零重叠 cohort、四 checkpoint、统计合同和原始数字重算后进入现役双语稿；H1–H3 正向复现与 H4 四 checkpoint 反向结果均完整保留。
 
+第五步已同步重写中英文标题、摘要、引言、贡献、相关工作、讨论和结论。标题与摘要直接定义双索引局部微分对象；相关工作用 Conductance、DecompX/LRP、EAP/Vi-CD 和 Unpack 做最强近邻反例。对抗终审覆盖六个硕士论文评审维度、证据错配、分级风险、防御性写作和创新失效条件。
+
 对比使用相同输入与冻结模型；Endpoint/Grad-CAM 使用同一 GT logit，attention 方法为 class-agnostic。Figure 20 的狒狒、听诊器和海上钻井平台三例按预先封存的 Endpoint/输入细节可读性规则选定，比较方法未参与排序。图片说明表示对象和空间形态，不用于宣称方法普遍优越。原群体统计与 C4a/C4b 判定保留在补充材料。
 
 修改意见 v3 第二步新增 1000 个 image-model 任务：800 个任务完成五幅度 head-output replacement 和 Q/K/V 全 block 统计，200 个任务各执行 5 组独立 channel/token 抽样。双语结果报告位于 `zh/en/revision_v3_step2_experiments.md`，汇总数据、收据和三张结果图位于 `evidence/revision_v3_step2/`。替代训练 checkpoint 与同目标机制桥接仍不在当前证据范围。
 
-复现入口位于上级 scripts/：compute_publication_r2.py、render_publication_r2.py、verify_publication_r2_methods.py、validate_publication_r2.py；v3 第一步、第二步及 G×I 第三、第四步专项审计分别为 validate_revision_v3_step1.py、validate_revision_v3_step2.py、validate_gxi_step3.py 和 validate_gxi_step4.py。write_publication_r2.py 是旧 v1 生成器，默认拒绝覆盖当前手工审校稿。实际阅读和图件复制只需本目录。
+复现入口位于上级 scripts/：compute_publication_r2.py、render_publication_r2.py、verify_publication_r2_methods.py、validate_publication_r2.py；v3 第一步、第二步及 G×I 第三至第五步专项审计分别为 validate_revision_v3_step1.py、validate_revision_v3_step2.py、validate_gxi_step3.py、validate_gxi_step4.py 和 validate_gxi_step5.py。write_publication_r2.py 是旧 v1 生成器，默认拒绝覆盖当前手工审校稿。实际阅读和图件复制只需本目录。
 补充实验入口为 `prepare_endpoint_supplement_v1.py`、`run_endpoint_supplement_v1.py`、`analyze_endpoint_supplement_*.py`、`render_endpoint_supplement_v1.py`、`write_endpoint_supplement_v1.py` 与 `validate_endpoint_supplement_v1.py`。

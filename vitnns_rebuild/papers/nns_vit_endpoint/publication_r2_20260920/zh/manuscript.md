@@ -1,4 +1,4 @@
-# 从 NNS 到视觉 Transformer：内部目标的可审计 Jacobian 扫描与结构分解
+# 面向视觉 Transformer 内部目标的双索引局部 Jacobian 扫描与结构审计
 
 - 作者：[AUTHOR REQUIRED]
 - 单位：[AFFILIATION REQUIRED]
@@ -6,7 +6,7 @@
 
 ## 摘要
 
-神经网络扫描器（Neural Network Scanner，NNS）通过逐层传播局部尺度，为网络内部目标生成保留输入位置的学习图像。当各层使用实际前向状态下的精确局部导数，且不加入归一化、截断或相关性重分配时，标量 NNS 学习图像等于 $x\odot\nabla_xs(x)$，即同目标的 Gradient × Input。以 Gradient × Input 为局部测量原语，本文构建面向 ViT 异构内部目标的结构化、可闭合、可审计扫描框架，并用它系统研究局部输入依赖如何随层深、attention 路径和 residual 分支重新组织。该框架注册异构内部目标，在真实计算边上定义合法 differential cuts，将 attention differential 分为 Q-induced、K-induced 与 V-induced 路径，将 residual differential 分为 identity 与 branch 路径，并检验各切面的加和闭合。分项相对于指定计算图、切面和参数化定义。ViT-B/16 与 DeiT-S/16 两个原始固定 checkpoint 上的实验覆盖数值正确性、路径层深统计、训练参数状态与随机参数状态的差异，以及规定有限替换任务中的排序能力。冻结抽样目标的局部输入依赖随深度扩展到更广、更远的 patch；深层 attention 的 routing 相对范数和 Value-only 近似误差提高，attention 与 MLP residual 呈现不同的层深变化。在与旧队列零重叠的 400 张图像和四个公开 checkpoint 上，神经元熵、routing 尺度与 residual 轨迹的冻结方向均复现，而路径图相对 activation × gradient 的 head 排序增量在四个 checkpoint 上均为负。局部路径图与有限成分效应存在广泛但非普遍的关联；给定 reference 的区域替换中，显式使用实际位移的 Taylor 排序优于 clean-only Endpoint。
+神经网络扫描器（Neural Network Scanner，NNS）通过逐层传播局部尺度，为网络内部目标生成保留输入位置的学习图像。当各层使用实际前向状态下的精确局部导数，且不加入归一化、截断或相关性重分配时，标量 NNS 学习图像等于 $x\odot\nabla_xs(x)$，即同目标的 Gradient × Input。本文以该已有量为测量原语，对每个注册目标 $s$ 定义 $\mathcal L_{e,i}(s;x)=x_i[J_{z_e,x}(x)^{\mathsf T}\bar z_e^{(s)}]_i$。它同时保留原始输入坐标 $i$ 和由 producer、consumer、input slot 与 invocation 确定的实际使用边 $e$。合法 differential cut 上的分项加和恢复同一总局部微分。结构审计覆盖 attention 的 Q-induced、K-induced 与 V-induced 路径、residual 的 identity 与 branch 路径、遗漏或重复 mutation、JVP/VJP 和有限差分。ViT-B/16 与 DeiT-S/16 两个原始固定 checkpoint 上的实验显示，冻结抽样目标的局部输入依赖随深度扩展；Q/K/V 与 residual 分项呈现不能由总图或 edge scalar 恢复的空间变化。在与旧队列零重叠的 400 张图像和四个公开 checkpoint 上，神经元熵、routing 尺度与 residual 轨迹保持冻结方向，而路径图相对 activation × gradient 的 head 排序增量在四个 checkpoint 上均为负。局部路径图与有限成分效应存在广泛但非普遍的关联。给定 reference 的区域替换中，显式使用实际位移的 Taylor 排序优于 clean-only Endpoint。
 
 关键词：视觉 Transformer；Neural Network Scanner；学习图像；局部 Jacobian；结构路径分解
 
@@ -16,7 +16,7 @@
 
 现有可视化通常展示特征图、注意力权重或类别相关区域。这些视图各有用途，但其空间分辨率、目标和传播规则不同。前向特征图说明一个通道在 token 网格上的响应，attention 权重说明 token 间的分配关系；它们与某个内部标量关于原始图像的依赖并不是同一个对象。将内部目标映射回统一输入坐标，可以为跨模块比较提供共同的观察基础。
 
-Neural Network Scanner（NNS）为神经元关联一张保留输入位置的 learning image（Dou et al., 2023）。原方法的逐层尺度传播在使用实际局部导数时可以写成 Jacobian 链式法则；对标量目标，其终点学习图像就是 Input × Gradient。这个恒等式确定了本文的局部测量原语。普通总梯度不能区分局部响应经过 Q、K、V、不同 heads，还是 residual 的 identity 与 branch。本文据此构建面向 ViT 异构内部目标的结构化、可闭合、可审计扫描框架，将完整局部输入依赖分解到真实计算边，并研究这些依赖如何随层深和结构路径重新组织。
+Neural Network Scanner（NNS）为神经元关联一张保留输入位置的 learning image（Dou et al., 2023）。原方法的逐层尺度传播在使用实际局部导数时可以写成 Jacobian 链式法则；对标量目标，其终点学习图像就是 Input × Gradient。这个恒等式确定了本文的局部测量原语。本文进一步保留两个自由索引。输入坐标 $i$ 记录局部依赖出现在哪里，实际 consumer-use edge $e$ 记录该项经过哪一次具体使用。目标 registry 固定条件 $s$，合法切面把分项绑定回同一总局部微分。该双索引对象用于比较 Q/K/V、routing/value 和 identity/branch 的空间变化。
 
 ![Figure 1](../figures/png/fig_01_concept_overview.png)
 
@@ -29,7 +29,7 @@ Neural Network Scanner（NNS）为神经元关联一张保留输入位置的 lea
 3. **RQ3：结构路径如何随深度变化？** 在两个固定预训练 checkpoint 的冻结抽样目标上分析空间扩展、routing/value 与 identity/branch 的层深规律，并比较训练参数状态和随机参数状态以及目标与抽样控制。
 4. **RQ4：局部路径图能否在规定的有限替换任务中排序成分和空间区域？** 对固定模型、样本、层、head、reference、替换算子和区域预算，比较 clean-only 局部路径图与 reference-aware 位移估计的成分排序和区域选择。
 
-本文作出三项贡献。第一，**数学身份与对象定义**。我们给出原始 NNS learning-image propagation 等于同目标 Gradient × Input 的条件，并区分 Endpoint、Path IG、模型常数和 reference-specific finite replacement；Table 3 的 5,000 项公式回归及 88 个算子方向检查验证了该对象定义。第二，**结构化扫描与审计框架**。我们建立面向 ViT token-channel、通道聚合、attention head、residual edge 与类别目标的 registry，在真实计算边上定义合法 differential cuts，并对 Q/K/V、multi-head 和 identity/branch 局部微分进行可加记账；Table 2 的 457/385 个注册目标以及 76,800 项正向闭合、28,800 项遗漏/重复负控和 6,144 项解析 JVP 构成直接证据。第三，**机制观察与解释边界**。我们用两个原始固定 checkpoint 的冻结样本测量层深、attention 和 residual 的局部输入依赖规律，在独立 400 图和四个公开 checkpoint 上检验冻结方向，并以规定有限替换实验区分观测点局部表示与 reference-specific intervention estimator；Figures 6–11 与 Tables 4–10 给出图像级结果。
+本文作出三项贡献。第一，**数学身份与对象定义**。我们给出原始 NNS learning-image propagation 等于同目标 Gradient × Input 的条件，并区分 Endpoint、Path IG、模型常数和 reference-specific finite replacement；Table 3 的 5,000 项公式回归及 88 个算子方向检查验证了该对象定义。第二，**目标条件化双索引扫描与结构审计**。对注册目标 $s$，我们定义 $\mathcal L_{e,i}(s;x)=x_i[J_{z_e,x}(x)^{\mathsf T}\bar z_e^{(s)}]_i$，其中 $i$ 是原始输入坐标，$e$ 是实际 consumer-use edge。合法切面在 signed 输入坐标上恢复同一总 Gradient × Input；该对象与合同对应 `NOV-JOINT-1`。Table 2 的 457/385 个注册目标、76,800 项正向闭合、28,800 项遗漏或重复负控和 6,144 项解析 JVP 检查构成直接证据。第三，**机制观察与解释边界**。我们用两个原始固定 checkpoint 的冻结样本测量 attention 与 residual 分项的空间化层深变化，在独立 400 图和四个公开 checkpoint 上检验冻结方向，并以规定有限替换实验区分观测点局部表示与 reference-specific intervention estimator；Figures 6–11 与 Tables 4–10 给出图像级结果。
 
 下文先界定相关方法与本文定位，再给出 NNS 的一般 Jacobian 表示和 ViT 结构分解。实验按等价性与闭合、层深规律、结构路径和有限干预组织，最后讨论证据范围。
 
@@ -55,7 +55,7 @@ AttnLRP 为 softmax、双线性 attention、normalization 与 latent attribution
 
 Activation patching 以 clean/corrupted reference 替换真实内部变量并测量有限输出变化；结果依赖 corruption、替换位置和评价指标（Zhang and Nanda, 2023）。Attribution patching 以 activation displacement 与局部梯度的内积近似单个组件的 patching effect；Edge attribution patching 将这一近似用于计算图边（Syed et al., 2024）。AtP* 进一步处理 attention saturation 与抵消造成的近似误差（Kramár et al., 2024）。这些方法直接评价或近似 reference-specified finite effect。本文分别报告 clean-only 路径图、reference-aware Taylor 量和真实替换效应，不用结构闭合代替有限干预效用。
 
-边分析和内部干预也已经进入视觉领域。Vi-CD 通过 activation patching 在 ViT 与 OpenCLIP 中发现并验证稀疏 residual-stream edge circuits（Żukowska et al., 2026）；CAAP 将源图像 activation 插入中性上下文以构造 ViT patch attribution（Izadi et al., 2026）。因此，真实边和 ViT activation patching 都是本文的先例，不是新颖性主张。
+边分析和内部干预也已经进入视觉领域。Vi-CD 通过 activation patching 在 ViT 与 OpenCLIP 中发现并验证稀疏 residual-stream edge circuits（Żukowska et al., 2026）；CAAP 将源图像 activation 插入中性上下文以构造 ViT patch attribution（Izadi et al., 2026）。因此，真实边和 ViT activation patching 都是本文的先例，不属于 `NOV-JOINT-1` 的贡献来源。
 
 ### 2.5 视觉归因与本文定位
 
@@ -78,7 +78,9 @@ Grad-CAM 通过梯度加权特征图获得类别相关定位（Selvaraju et al.,
 | Unpack | Component interactions, named paths, token credit | Attention, MLP, tokens, K/Q/V-labelled paths | Component/path identity | No input-to-target valid-cut contract found | K/Q/V labels, not true-Jacobian routing/value maps | Paths traverse residual computation | Method-specific credit decomposition | No structural mutant suite found | LLM composition and IOI analysis |
 | NNS–ViT (this work) | Same current-point local differential indexed by input and edge | Registered ViT scalar targets and structural terms | Cotangent at actual use edges; multi-input/shared-tensor uses distinguished | Each live input-target path crosses once | Q+K routing and V value; Q/K/V maps | Identity plus branch maps | Same signed local differential | Omit-head, omit-routing and duplicate-identity controls | Two-model depth/path analysis and separate replacement calibration |
 
-最后一行的每个单项均有先例：内部归因、Transformer 组件分解、Q/K/V 分析、residual 分配、计算边、守恒和 ViT 干预都不是空白。截至检索日，所核查来源中未发现一个方法同时保留输入坐标与具体 consumer-use 身份，在合法切面上重构同一当前点局部微分，输出 attention 与 residual 的成对结构图，并使用结构 mutation 测试。本文的贡献主张是这一有边界的组合及其层深机制分析，不延伸到单项能力或新的基础归因公式。
+最后一行的每个单项均有先例：内部归因、Transformer 组件分解、Q/K/V 分析、residual 分配、计算边、守恒和 ViT 干预都不是空白。截至检索日，所核查来源中未发现一个方法同时保留输入坐标与具体 consumer-use 身份，在合法切面上重构同一当前点局部微分，输出 attention 与 residual 的成对结构图，并使用结构 mutation 测试。`NOV-JOINT-1` 只主张这一有边界的组合及其层深机制分析，不延伸到单项能力或新的基础归因公式。
+
+最强近邻分别覆盖这一组合的不同部分。Conductance 保留隐藏单元的路径归因并以输出差为完整性对象；DecompX 与 LRP 族分解 representation、logit 或 relevance；EAP 与 Vi-CD 估计或验证 reference-specific 边效应；Unpack 保留命名组件路径和 K/Q/V 标签。它们均构成直接先例。`NOV-JOINT-1` 只对应 Table 1 最后一行的联合字段：current-point local differential、原始输入坐标、具体 consumer-use edge、合法切面重构、attention/residual 成对图和结构故障检出。若一个既有方法覆盖这些字段，本文的方法新颖性主张即失效。
 
 ## 3. NNS 的 Jacobian 解释
 
@@ -520,7 +522,7 @@ Endpoint 保留像素尺度的局部项，Grad-CAM 和 attention 类方法提供
 
 ### 8.1 讨论
 
-本文的唯一定位是以 Gradient × Input 为局部测量原语，对 ViT 异构内部目标进行结构化 Jacobian 扫描，并在指定真实计算边上实现可闭合、可审计的 differential accounting。命题 1 界定数学身份，命题 2 界定指定图与切面上的闭合条件。核心机制结论由两个原始固定 checkpoint 建立，并在独立 400 图和四个公开 checkpoint 上检验冻结方向。
+Gradient × Input 是本文的局部测量原语。方法增量是目标条件化的 $[e,i]$ 局部微分图组、合法切面合同和结构审计。命题 1 给出 NNS 与基础量的数学身份，命题 2 给出指定计算图与切面上的闭合条件。两个原始固定 checkpoint 建立 attention 与 residual 的空间化层深结果；独立 400 图和四个公开 checkpoint 检验这些冻结方向。
 
 结构闭合、局部路径尺度、双索引空间重组和有限替换排序对应不同问题。Q/K/V、multi-head 与 identity/branch 的加和闭合说明各项重构指定目标的局部微分；routing 或 identity scale 比较路径图的相对范数；Full–Value 与 output–identity spatial TV 使用 $[e,i]$ 图组定位路径间的空间重组；activation replacement 测量指定 reference 和替换算子下的有限效应。本文的 RQ4 只评价完整替换与固定面积预算下的成分排序和区域选择，不估计 Taylor 误差随干预幅度变化的边界。
 
@@ -532,7 +534,7 @@ Endpoint 保留像素尺度的局部项，Grad-CAM 和 attention 类方法提供
 
 ### 8.2 结论
 
-本文得到四点结论。第一，使用精确当前点局部导数且无额外重分配时，NNS 标量学习图像等于 Input × Gradient，因而 Gradient × Input 是框架的基础测量原语。第二，本文在指定 ViT 计算图上建立异构内部目标 registry 和真实边 differential cuts；attention 的 Q-induced、K-induced 与 V-induced 路径以及 residual 的 identity 与 branch 路径在合法切面上加和恢复完整局部输入依赖，分项随图、切面和参数化而变。第三，总图给出空间扩展背景，$[e,i]$ 图组进一步揭示 attention Full–Value 与 residual output–identity 的空间重组；H1–H3 在独立 400 图和四个公开 checkpoint 上保持方向。第四，局部路径图在规定成分替换任务中与有限效应具有广泛但非普遍的关联，H4 的 head 排序增量在四个 checkpoint 上均为负，给定 reference 的规定区域替换更适合使用位移感知 Taylor 排序。本文由此形成结构化局部 Jacobian 扫描、可验证记账和跨 checkpoint 机制研究的统一框架。
+本文得到四点结论。第一，使用精确当前点局部导数且无额外重分配时，NNS 标量学习图像等于 Input × Gradient，Gradient × Input 因而构成基础测量原语。第二，目标条件化的 $\mathcal L_{e,i}(s;x)$ 同时保留输入坐标与实际使用边；合法切面上的 Q/K/V、multi-head 和 identity/branch 分项恢复同一总局部微分，结构审计检验已封存的漏项与重复错误。第三，总图给出空间扩展背景，双索引图组揭示 attention Full–Value 与 residual output–identity 的空间重组；H1–H3 在独立 400 图和四个公开 checkpoint 上保持方向。第四，局部路径图在规定成分替换任务中与有限效应具有广泛但非普遍的关联，H4 的 head 排序增量在四个 checkpoint 上均为负，给定 reference 的规定区域替换更适合使用位移感知 Taylor 排序。结构闭合支持局部微分记账，有限替换实验评价规定干预任务，两类证据分别界定方法正确性和行为用途。
 
 ## 参考文献与补充材料
 

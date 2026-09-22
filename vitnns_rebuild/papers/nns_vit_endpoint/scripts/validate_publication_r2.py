@@ -57,22 +57,22 @@ def main():
         ) if lang=='zh' else (
             'Joint-index necessity','E5 four-checkpoint external replication','broad but non-universal','0.1136–0.1862'
         ))))
-    title_zh='# 从 NNS 到视觉 Transformer：内部目标的可审计 Jacobian 扫描与结构分解'
-    title_en='# From NNS to Vision Transformers: Auditable Jacobian Scanning and Structural Decomposition of Internal Targets'
-    central_zh='以 Gradient × Input 为局部测量原语，本文构建面向 ViT 异构内部目标的结构化、可闭合、可审计扫描框架，并用它系统研究局部输入依赖如何随层深、attention 路径和 residual 分支重新组织。'
-    central_en='We turn Gradient × Input into a structure-aware and auditable scanner for heterogeneous internal targets in Vision Transformers, enabling exact differential accounting and systematic analysis of how local input dependence is reorganized across depth, attention paths, and residual branches.'
+    title_zh='# 面向视觉 Transformer 内部目标的双索引局部 Jacobian 扫描与结构审计'
+    title_en='# Dual-Indexed Local Jacobian Scanning and Structural Auditing of Internal Targets in Vision Transformers'
+    central_zh=r'本文以该已有量为测量原语，对每个注册目标 $s$ 定义 $\mathcal L_{e,i}(s;x)=x_i[J_{z_e,x}(x)^{\mathsf T}\bar z_e^{(s)}]_i$。'
+    central_en=r'Using this established quantity as the measurement primitive, we define $\mathcal L_{e,i}(s;x)=x_i[J_{z_e,x}(x)^{\mathsf T}\bar z_e^{(s)}]_i$ for each registered target $s$.'
     check('gxi_frozen_titles',texts['zh'].startswith(title_zh) and texts['en'].startswith(title_en))
     check('gxi_abstract_central_sentences',central_zh in texts['zh'].split('## 1.')[0] and central_en in texts['en'].split('## 1.')[0])
-    check('gxi_introduction_positioning','本文据此构建面向 ViT 异构内部目标的结构化、可闭合、可审计扫描框架' in texts['zh'].split('## 2.')[0] and 'structure-aware, closable, and auditable scanner for heterogeneous internal ViT targets' in texts['en'].split('## 2.')[0])
+    check('gxi_introduction_positioning','本文进一步保留两个自由索引' in texts['zh'].split('## 2.')[0] and 'We retain two free indices beyond that total map' in texts['en'].split('## 2.')[0])
     contribution_terms={
-        'zh':('数学身份与对象定义','结构化扫描与审计框架','机制观察与解释边界'),
-        'en':('mathematical identity and object definition','a structured scanning and audit framework','mechanistic observations and an interpretation boundary'),
+        'zh':('数学身份与对象定义','目标条件化双索引扫描与结构审计','机制观察与解释边界'),
+        'en':('mathematical identity and object definition','target-conditioned dual-indexed scanning and structural auditing','mechanistic observations and an interpretation boundary'),
     }
     for lang,text in texts.items():
         intro=text.split('## 2.')[0]
         check('gxi_three_contributions:'+lang,all(term in intro for term in contribution_terms[lang]))
-    check('gxi_discussion_positioning','本文的唯一定位是以 Gradient × Input 为局部测量原语' in texts['zh'] and 'This paper has one position: Gradient × Input is the local measurement primitive' in texts['en'])
-    check('gxi_conclusion_positioning','结构化局部 Jacobian 扫描、可验证记账和跨 checkpoint 机制研究的统一框架' in texts['zh'] and 'structured local-Jacobian scanning, verifiable accounting, and cross-checkpoint mechanistic analysis' in texts['en'])
+    check('gxi_discussion_positioning','方法增量是目标条件化的 $[e,i]$ 局部微分图组、合法切面合同和结构审计' in texts['zh'] and 'The technical increment is the target-conditioned $[e,i]$ local-differential map set, its valid-cut contract, and structural audit' in texts['en'])
+    check('gxi_conclusion_positioning','两类证据分别界定方法正确性和行为用途' in texts['zh'] and 'these evidence types delimit correctness and behavioral use separately' in texts['en'])
     plan=(REPO/'Endpoint_GxI创新定位与后续五步计划.md').read_text()
     categories=('数学身份','结构方法','实现正确性','经验发现','解释边界')
     check('gxi_claim_registry',all(plan.count('| '+term+' |')>=1 for term in categories) and all(claim in plan for claim in ('MI-1','SM-1','IC-1','EF-1','IB-1')))
