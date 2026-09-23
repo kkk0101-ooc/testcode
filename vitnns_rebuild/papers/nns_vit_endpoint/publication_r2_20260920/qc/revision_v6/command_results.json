@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "commands": [
+    {
+      "command": "CUDA_VISIBLE_DEVICES='' ../.conda/envs/vitnns/bin/python3.10 papers/nns_vit_endpoint/scripts/validate_gxi_step3.py",
+      "exit_code": 0,
+      "seconds": 0.04248509812168777,
+      "stdout": "{\"status\": \"PASS\", \"checks\": 54, \"errors\": []}\n",
+      "stderr": ""
+    },
+    {
+      "command": "CUDA_VISIBLE_DEVICES='' ../.conda/envs/vitnns/bin/python3.10 papers/nns_vit_endpoint/scripts/validate_gxi_step4.py",
+      "exit_code": 0,
+      "seconds": 14.856943937949836,
+      "stdout": "{\n  \"status\": \"PASS\",\n  \"checks\": 971,\n  \"errors\": [],\n  \"e5_decision\": \"SYNC_FOUR_CHECKPOINT_E5\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": "CUDA_VISIBLE_DEVICES='' ../.conda/envs/vitnns/bin/python3.10 papers/nns_vit_endpoint/scripts/validate_publication_r2.py",
+      "exit_code": 0,
+      "seconds": 3.0270945380907506,
+      "stdout": "{\n  \"status\": \"PASS\",\n  \"check_count\": 2678,\n  \"errors\": [],\n  \"real_panels_recomputed\": 162\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": "CUDA_VISIBLE_DEVICES='' ../.conda/envs/vitnns/bin/python3.10 papers/nns_vit_endpoint/scripts/validate_gxi_step5.py",
+      "exit_code": 0,
+      "seconds": 0.12604018999263644,
+      "stdout": "{\"status\": \"PASS\", \"checks\": 997, \"errors\": []}\n",
+      "stderr": ""
+    },
+    {
+      "command": "CUDA_VISIBLE_DEVICES='' ../.conda/envs/vitnns/bin/python3.10 -m pytest -q tests/test_revision_v5.py",
+      "exit_code": 0,
+      "seconds": 3.0387240031268448,
+      "stdout": "......                                                                   [100%]\n6 passed in 2.23s\n",
+      "stderr": ""
+    },
+    {
+      "command": "CUDA_VISIBLE_DEVICES='' ../.conda/envs/vitnns/bin/python3.10 -m pytest -q tests/test_revision_v6.py",
+      "exit_code": 0,
+      "seconds": 2.976092563010752,
+      "stdout": ".....                                                                    [100%]\n5 passed in 2.26s\n",
+      "stderr": ""
+    },
+    {
+      "command": "CUDA_VISIBLE_DEVICES='' ../.conda/envs/vitnns/bin/python3.10 papers/nns_vit_endpoint/scripts/validate_revision_v6.py --stage final",
+      "exit_code": 0,
+      "seconds": 0.19810812594369054,
+      "stdout": "{\"status\": \"PASS\", \"checks\": 1075, \"errors\": []}\n",
+      "stderr": ""
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "seconds": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": "git diff --cached --check",
+      "exit_code": 0,
+      "seconds": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "py_compile_files": [
+    "papers/nns_vit_endpoint/scripts/audit_revision_v6_completion.py",
+    "papers/nns_vit_endpoint/scripts/render_revision_v6.py",
+    "papers/nns_vit_endpoint/scripts/render_revision_v6_residual.py",
+    "papers/nns_vit_endpoint/scripts/revision_v6_publication_checks.py",
+    "papers/nns_vit_endpoint/scripts/validate_gxi_step3.py",
+    "papers/nns_vit_endpoint/scripts/validate_gxi_step4.py",
+    "papers/nns_vit_endpoint/scripts/validate_gxi_step5.py",
+    "papers/nns_vit_endpoint/scripts/validate_publication_r2.py",
+    "papers/nns_vit_endpoint/scripts/validate_revision_v6.py",
+    "scripts/analyze_revision_v6.py",
+    "scripts/audit_revision_v6_m4.py",
+    "scripts/audit_revision_v6_sources.py",
+    "scripts/audit_revision_v6_spatial_sources.py",
+    "scripts/audit_revision_v6_tables.py",
+    "scripts/build_revision_v6_analysis_identity.py",
+    "scripts/launch_revision_v6.py",
+    "scripts/prepare_revision_v6.py",
+    "scripts/run_revision_v6_analytic.py",
+    "scripts/run_revision_v6_worker.py",
+    "scripts/seal_revision_v6.py",
+    "scripts/validate_revision_v6_experiments.py",
+    "src/vitnns/revision_v6_analytic.py",
+    "src/vitnns/revision_v6_coordinate.py",
+    "tests/test_revision_v6.py"
+  ]
+}

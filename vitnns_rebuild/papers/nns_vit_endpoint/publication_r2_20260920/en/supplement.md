@@ -48,11 +48,11 @@ All models run in evaluation mode. M3 computes chunked VJPs with torch.autograd.
         g <- VJP(s, x) at the observed forward state
         return x * g
 
-    StructuredCut(F, edges):
+    StructuredCut(F, edges, reconstruction_target):
         for each actual use-edge z_k in a valid cut:
             g_k <- downstream cotangent dF/dz_k
             E_k <- x * VJP(z_k, x; vector=g_k)
-        assert sum_k E_k closes to Endpoint(F, x)
+        assert sum_k E_k closes to reconstruction_target # branch contribution or Total Endpoint
 
     SpatialMetrics(E, target_patch):
         M[p] <- sum_rgb abs(E[p, rgb])
@@ -120,7 +120,7 @@ Head rankings use average ranks and Kendall tau-b. Top-K ties are broken by asce
 
 | Method | Primary object | External reference | Propagation / contract |
 | --- | --- | --- | --- |
-| Endpoint | Current-input local dependence | No; normalization origin matters | True local Jacobian; valid cuts close |
+| Endpoint | Normalized-input Total Endpoint | No; normalization origin matters | Global cuts close to total; branch partitions close to branch |
 | Activation-space Taylor | Specified replacement effect | Yes | Clean cotangent × displacement |
 | Integrated Gradients | Baseline-to-input attribution | Yes | Path-average gradient; baseline-difference completeness |
 | Attention rollout | Token flow | No | Accumulated attention / residual flow |
@@ -439,3 +439,161 @@ Revision v2 moves the following presentation-oriented or repetitive figures out 
 
 
 [New supplementary experiments S9–S14](supplement_experiments_v1.md)
+
+
+<a id="v6-data"></a>
+## S15. Data, models, populations, and analysis identities
+
+ImageNet data come from the official ILSVRC2012 validation set. Models instantiate timm 0.9.16 standard Block/Attention and strictly load checkpoint keys. All checkpoint byte counts and SHA-256 values were recomputed. AugReg names identify IN21K pretraining followed by IN1K fine-tuning or IN1K training; DeiT-S uses public Facebook IN1K weights. Results condition on these parameter states.
+
+| Model ID | Exact timm name / training | Bytes | SHA-256 |
+| --- | --- | --- | --- |
+| vit_b16 | vit_base_patch16_224.augreg2_in21k_ft_in1k | 346329934 | 489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d |
+| deit_s16 | deit_small_patch16_224.fb_in1k | 88251143 | cd65a15597004d0ce19d7a9daef969903972db5b398e3a5febcd3c4df1d8f59f |
+| vit_b16_in1k | vit_base_patch16_224.augreg_in1k | 346335542 | 69c9a2822a47838f57e522350b10ccc0d89d67fdcee07603e4ae3259b3350336 |
+| vit_s16_augreg | vit_small_patch16_224.augreg_in21k_ft_in1k | 88267574 | 545815b4e770d2fa6ca4b3ccba7c16b035e474354e52d17ca197ea4efecbf4d3 |
+
+Discovery, calibration, and evaluation contain 64, 64, and 400 classes, respectively, with one image per class. The 100-class unit study is an evaluation subset. E1 has five images from each of 100 classes; E5 has one from each of 400 classes. E5 uses class_e5/image_e5 hash ordering after excluding historical exposures and E1. The matrix reports image identity overlap. Classes may recur across later cohorts; independent images do not imply independent classes. E5 train/validation/test labels belong to a separate prediction analysis and do not change this all-400-image H1–H4 check.
+
+| Cohort | discovery | calibration | evaluation | unit_study | e1 | e5 |
+| --- | --- | --- | --- | --- | --- | --- |
+| discovery | 64 | 0 | 0 | 0 | 0 | 0 |
+| calibration | 0 | 64 | 0 | 0 | 0 | 0 |
+| evaluation | 0 | 0 | 400 | 100 | 0 | 0 |
+| unit_study | 0 | 0 | 100 | 100 | 0 | 0 |
+| e1 | 0 | 0 | 0 | 0 | 500 | 0 |
+| e5 | 0 | 0 | 0 | 0 | 0 | 400 |
+
+Preprocessing uses Pillow 10.2.0 RGB without EXIF transpose. Torchvision 0.17.2 resizes the PIL image’s shorter side to 248 with bicubic interpolation and antialias=True, center-crops to 224, converts to float32, and divides by 255. Table 2 specifies model normalization. Blur operates after cropping in RGB with a 31×31 Gaussian kernel, sigma=10, and reflect padding=15, then normalizes. Evaluation mode disables dropout and drop path. CLS, positions, and biases are fixed. The original logit target uses the official ground-truth class; clean-top1 is a separate frozen readout. Neither determines cohort selection. The original registry records its four-token/four-channel per-block selections. M3 fixes CLS plus 15 tokens from 3×5 spatial strata and 32 channels per block. Equal cross-model channel indices do not imply semantic correspondence. Structural analysis scans all heads and 12 blocks; the primary regional task fixes block 5 with ViT-B heads 0/6/11 and DeiT-S heads 0/3/5.
+
+Selections use deterministic rules or explicit seeds. Actual IDs and targets appear in [cohort bindings](../evidence/revision_v6/cohort_bindings.json). Original protocols retain exact random-control keys and invocation order; seeds from different analyses are not interchangeable.
+
+| Purpose | Frozen seed / deterministic rule |
+| --- | --- |
+| Original image selection | SHA256(NNS_VIT_ENDPOINT_EP0_R1_20260918 &#124; class &#124; WNID), then namespace &#124; image &#124; filename |
+| Unit cohort | SHA256(ENDPOINT_M3_COHORT_20260919 &#124; sample_id &#124; image_sha256), lowest 100 |
+| Unit channels | SHA256(ENDPOINT_M3_CHANNEL_20260919 &#124; model &#124; block &#124; channel), lowest 32 |
+| Unit tokens | CLS + nearest patch to each of 3×5 strata centers; row-major ties |
+| Original bootstrap | SHA256(namespace &#124; bootstrap &#124; family_id), first 8 bytes big-endian; PCG64 |
+| Unit bootstrap | SHA256(ENDPOINT_M3_BOOTSTRAP_20260919 &#124; M3 &#124; model &#124; metric), first 8 bytes |
+| Structural bootstrap | SHA256(M4 &#124; test &#124; model &#124; test_id), with residual type inserted where applicable |
+| Random initialization | 202609201, 202609202, 202609203 |
+| Independent cohort / target selection | NNS_VIT_REVISION_V5_20260921_R1 namespace; class_e5, image_e5 and post/block/channel/token keys |
+| Independent-cohort bootstrap | ENDPOINT_M1_20260918_V1 &#124; 20260918 &#124; bootstrap &#124; V5 &#124; (model,hypothesis) |
+| Coordinate/threshold bootstrap | SHA256(2026092302 &#124; analysis key), first 8 bytes; 10,000 PCG64 replicates |
+| Analytic directions | NumPy default_rng(2026092301), three normalized Gaussian directions |
+| Regional random orders | Frozen namespace/model/image/reference/head/repeat keys in original intervention registry; 20 repeats |
+
+Confirmatory identity is relative to each locally frozen pre-analysis plan; no external registration is supplied. Families retain their original members and uses, without retrospective combination with the original 28 tests. The [analysis identity record](../evidence/revision_v6/analysis_identity.json) contains all 28 test IDs and source hashes. The 0.10/0.05 thresholds lack external utility calibration and are researcher-set operational choices. Original decisions jointly require validity, attempted coverage, n and interval precision, the point estimate, and Holm significance; CI lower > 0.10 is not required. [All 68 threshold sensitivity rows](../evidence/revision_v6/threshold_sensitivity.csv) are available.
+
+| Analysis | Identity | Multiplicity family | Local freeze evidence |
+| --- | --- | --- | --- |
+| original_component_and_region | confirmatory | 28 tests jointly Holm; 12 component correlations + 16 regional baseline contrasts | local pre-outcome plan; first committed occurrence below; 6237ef87a1af0205973b76bee172defe33a0a6da 2026-09-18T09:26:20+08:00 |
+| unit_depth | confirmatory | five per model: entropy, locality, distance, cancellation, CLS-patch entropy | local pre-outcome plan; first committed occurrence below; f2eba3f60d765e6a9729d9ff12a57bd01f93f952 2026-09-19T13:53:48+08:00 |
+| attention_residual_depth | confirmatory | four attention tests/model; two residual tests/model/type | local pre-outcome plan; first committed occurrence below; 1a1000bcdd15d8b0e76406f4376a82d60ec79b86 2026-09-19T17:25:17+08:00 |
+| head_baselines | exploratory | separate paired and absolute Spearman families; other metrics descriptive | local pre-outcome plan; first committed occurrence below; 33c8c320446a631b2e451016b3268eefdd9c926b 2026-09-19T04:20:36+08:00 |
+| residual_spatial_tv | post-hoc | four Holm contrasts across model and residual type | 2026-09-19T10:59:17.569991+00:00; protocol timestamp and hashes |
+| QKV_spatial | prospective robustness | 30 descriptive contrasts; no confirmatory family combined with prior tests | 2026-09-20T17:14:57.250515+00:00; protocol timestamp and hashes |
+| independent_cohort_checkpoints | prospective robustness | H1-H4 Holm separately within each checkpoint | local pre-outcome plan; first committed occurrence below; 944f54c99c8d83803d461224565b93a779e75915 2026-09-21T11:31:10+08:00 |
+| training_target_sampling_controls | exploratory | descriptive 2000 bootstrap; training control resamples image and initialization seed; sampling control resamples target strata and images | 2026-09-20T00:22:59.620440+00:00; 395d30b3804983d0e51e99a28d0c3c900aca8fda 2026-09-20T22:41:48+08:00 |
+| coordinate_sensitivity_v6 | prospective robustness | no significance-based success criterion; report all directions and intervals | 2026-09-22T16:43:58.690139+00:00; protocol timestamp and hashes |
+| threshold_sensitivity_v6 | post-hoc | descriptive thresholds only; original tests and decisions immutable | 2026-09-22T16:43:58.690139+00:00; protocol timestamp and hashes |
+
+<a id="v6-intervention"></a>
+## S16. Finite-replacement variables and executable pseudocode
+
+A and V are forward variables; routing-induced/value-induced are differential partitions. Table 6’s A/V family contains one all-head A and one all-head V replacement per block, totaling 24 components. Head families include all block/head pairs; residual families contain attention and MLP branches per block. Reference activations come from a complete reference forward. The consumer slot is part of replacement identity.
+
+| Replacement | Forward tensor / shape (batch=1) | Consumer input slot | Clean state and recomputation |
+| --- | --- | --- | --- |
+| Attention probability | A [1,H,197,197], after softmax/dropout | left input of A @ V | V, other branches and residual identity clean; recompute AV, concat, output projection, residual suffix |
+| V projection | V [1,H,197,64], qkv projection slice | right input of A @ V | Q/K/A and identity clean; recompute AV and entire suffix |
+| Head output | slice of projection_input [1,197,H×64], head h channels h×64:(h+1)×64 | attn.proj input channels | all other head slices and residual identity clean; recompute projection and suffix |
+| Attention branch | drop_path1 output [1,197,D] | residual1 add branch input | identity u clean; recompute residual sum, MLP and remaining blocks |
+| MLP branch | drop_path2 output [1,197,D] | residual2 add branch input | carry r1 clean; recompute residual sum and remaining blocks |
+
+    clean_rgb = RGB(image) / 255
+    clean_rgb = center_crop(resize_shorter_side(clean_rgb, 248, bicubic, antialias=True), 224)
+    x = (clean_rgb - mu) / sigma
+    reference_zero = zeros_like(x)             # raw RGB equals mu
+    reference_blur = (GaussianBlur(clean_rgb, kernel=31, sigma=10, reflect_padding=15) - mu) / sigma
+    clean = forward_and_capture(x)
+    reference = forward_and_capture(reference_input)
+    for fixed block, component, consumer slot:
+        replacement = reference.tensor_at(component, slot)
+        patched = forward(x, replace_only_this_use=replacement)
+        effect = clean.GT_logit - patched.GT_logit
+        # All sibling heads and bypass inputs remain clean before the replacement.
+        # Every node downstream of the replaced use is recomputed normally.
+
+    for singleton region P in the fixed 4x4 grid of 56x56 pixels:
+        x_P = x.copy(); x_P[P] = reference_input[P]
+        mixed[P] = forward_and_capture(x_P)
+        regional_Taylor[P] = abs(dot(clean_head_cotangent, clean_head - mixed[P].head))
+    rank_regions(score, ties=ascending_region_id)
+    for budget in [1, 2, 4]:
+        selected = top_regions(budget)
+        x_selected = x with selected pixels from reference_input
+        mixed = forward_and_capture(x_selected)
+        full_input_effect = clean.GT_logit - mixed.GT_logit
+        isolated = forward(x, target_head_slice=mixed.head_slice)
+        isolated_effect = clean.GT_logit - isolated.GT_logit
+    AUC = trapezoid(abs(isolated_effect), areas=[0,1/16,2/16,4/16]) / 0.25
+    image_AUC = mean(AUC across the three fixed heads)
+    random_AUC = mean(AUC per random repeat, then heads) # abs before averaging repeats
+
+Full-input effects change the entire forward computation. Isolated-component effects insert only the target tensor from a mixed-input forward into a clean forward, preserving sibling heads and bypass inputs. Candidate sets match across regional scores, but Taylor requires singleton mixed forwards and therefore additional information. Region ties use ascending IDs; head ties use ascending component IDs; Spearman uses average ranks. Candidate-envelope AUC takes the greatest evaluated absolute effect separately at each area, then integrates and averages heads. It may join points from different rankings and is not an executable globally optimal region policy. It supplies an upper envelope over evaluated candidates and the regret denominator.
+
+<a id="v6-coordinate"></a>
+## S17. Coordinate sensitivity and independent analytic checks
+
+All representations use the same current input point, fixed target, and checkpoint. Raw gradient divides by model sigma; the common-origin weighted gradient uses raw RGB zero, independently of model mean. Cells report image-level median differences and 95% bootstrap intervals. Unit n=100 and structural n=400 per model, with no missing images. Coordinates are paired within images and are not additional samples.
+
+$$
+E_i^{(x)}=x_i\frac{\partial s}{\partial x_i},\qquad
+G_i^{(r)}=\frac1{\sigma_i}\frac{\partial s}{\partial x_i},\qquad
+E_i^{(0)}=r_i\frac{\partial s}{\partial r_i}
+=\left(x_i+\frac{\mu_i}{\sigma_i}\right)\frac{\partial s}{\partial x_i}.
+$$
+
+| Model | Object / metric | Contrast | Normalized Endpoint | Raw-pixel gradient | Common-origin gradient | n / NA |
+| --- | --- | --- | --- | --- | --- | --- |
+| deit_s16 | K / entropy | block11_minus_block0 | -0.067 [-0.074, -0.059] | -0.066 [-0.073, -0.060] | -0.061 [-0.069, -0.053] | 400 / 0 |
+| deit_s16 | K / entropy | late_minus_early | -0.028 [-0.031, -0.024] | -0.029 [-0.032, -0.026] | -0.027 [-0.031, -0.024] | 400 / 0 |
+| deit_s16 | Q / entropy | block11_minus_block0 | -0.004 [-0.008, 0.0005] | 0.003 [-0.001, 0.006] | 0.002 [-0.003, 0.006] | 400 / 0 |
+| deit_s16 | Q / entropy | late_minus_early | 0.018 [0.013, 0.022] | 0.018 [0.015, 0.022] | 0.015 [0.012, 0.018] | 400 / 0 |
+| deit_s16 | V / entropy | block11_minus_block0 | -0.067 [-0.075, -0.061] | -0.076 [-0.081, -0.068] | -0.070 [-0.077, -0.062] | 400 / 0 |
+| deit_s16 | V / entropy | late_minus_early | -0.013 [-0.016, -0.011] | -0.016 [-0.017, -0.013] | -0.015 [-0.017, -0.013] | 400 / 0 |
+| deit_s16 | attention / output_identity_tv | block11_minus_block0 | 0.078 [0.072, 0.085] | 0.079 [0.070, 0.085] | 0.074 [0.067, 0.081] | 400 / 0 |
+| deit_s16 | attention / output_identity_tv | late_minus_early | 0.028 [0.026, 0.030] | 0.028 [0.026, 0.030] | 0.027 [0.026, 0.029] | 400 / 0 |
+| deit_s16 | mlp / output_identity_tv | block11_minus_block0 | -0.050 [-0.059, -0.040] | -0.044 [-0.057, -0.037] | -0.037 [-0.043, -0.029] | 400 / 0 |
+| deit_s16 | mlp / output_identity_tv | late_minus_early | -0.046 [-0.052, -0.041] | -0.044 [-0.051, -0.039] | -0.039 [-0.044, -0.034] | 400 / 0 |
+| deit_s16 | unit / distance | block11_minus_block0 | 0.163 [0.159, 0.169] | 0.169 [0.164, 0.175] | 0.171 [0.167, 0.178] | 100 / 0 |
+| deit_s16 | unit / distance | late_minus_early | 0.122 [0.120, 0.128] | 0.129 [0.126, 0.132] | 0.127 [0.122, 0.131] | 100 / 0 |
+| deit_s16 | unit / entropy | block11_minus_block0 | 0.397 [0.387, 0.404] | 0.426 [0.412, 0.438] | 0.418 [0.400, 0.427] | 100 / 0 |
+| deit_s16 | unit / entropy | late_minus_early | 0.225 [0.212, 0.228] | 0.245 [0.241, 0.249] | 0.221 [0.217, 0.229] | 100 / 0 |
+| deit_s16 | unit / locality | block11_minus_block0 | -0.455 [-0.467, -0.432] | -0.453 [-0.469, -0.441] | -0.477 [-0.493, -0.455] | 100 / 0 |
+| deit_s16 | unit / locality | late_minus_early | -0.342 [-0.353, -0.333] | -0.359 [-0.366, -0.352] | -0.356 [-0.361, -0.344] | 100 / 0 |
+| vit_b16 | K / entropy | block11_minus_block0 | -0.059 [-0.064, -0.053] | -0.052 [-0.058, -0.048] | -0.046 [-0.054, -0.041] | 400 / 0 |
+| vit_b16 | K / entropy | late_minus_early | -0.021 [-0.024, -0.019] | -0.019 [-0.023, -0.016] | -0.019 [-0.022, -0.016] | 400 / 0 |
+| vit_b16 | Q / entropy | block11_minus_block0 | 0.027 [0.022, 0.031] | 0.026 [0.018, 0.031] | 0.014 [0.009, 0.018] | 400 / 0 |
+| vit_b16 | Q / entropy | late_minus_early | 0.037 [0.033, 0.043] | 0.039 [0.033, 0.044] | 0.034 [0.030, 0.037] | 400 / 0 |
+| vit_b16 | V / entropy | block11_minus_block0 | -0.053 [-0.059, -0.047] | -0.057 [-0.061, -0.049] | -0.055 [-0.060, -0.050] | 400 / 0 |
+| vit_b16 | V / entropy | late_minus_early | -0.010 [-0.012, -0.008] | -0.009 [-0.011, -0.007] | -0.010 [-0.012, -0.007] | 400 / 0 |
+| vit_b16 | attention / output_identity_tv | block11_minus_block0 | 0.166 [0.159, 0.172] | 0.167 [0.159, 0.174] | 0.167 [0.160, 0.175] | 400 / 0 |
+| vit_b16 | attention / output_identity_tv | late_minus_early | 0.052 [0.049, 0.055] | 0.054 [0.051, 0.056] | 0.053 [0.050, 0.055] | 400 / 0 |
+| vit_b16 | mlp / output_identity_tv | block11_minus_block0 | -0.037 [-0.043, -0.031] | -0.034 [-0.038, -0.029] | -0.032 [-0.039, -0.025] | 400 / 0 |
+| vit_b16 | mlp / output_identity_tv | late_minus_early | -0.019 [-0.022, -0.015] | -0.017 [-0.020, -0.013] | -0.018 [-0.021, -0.014] | 400 / 0 |
+| vit_b16 | unit / distance | block11_minus_block0 | 0.197 [0.190, 0.204] | 0.205 [0.200, 0.211] | 0.209 [0.203, 0.214] | 100 / 0 |
+| vit_b16 | unit / distance | late_minus_early | 0.131 [0.129, 0.136] | 0.138 [0.134, 0.141] | 0.134 [0.129, 0.138] | 100 / 0 |
+| vit_b16 | unit / entropy | block11_minus_block0 | 0.398 [0.392, 0.409] | 0.440 [0.426, 0.447] | 0.412 [0.402, 0.426] | 100 / 0 |
+| vit_b16 | unit / entropy | late_minus_early | 0.220 [0.211, 0.227] | 0.240 [0.235, 0.246] | 0.217 [0.209, 0.223] | 100 / 0 |
+| vit_b16 | unit / locality | block11_minus_block0 | -0.526 [-0.534, -0.516] | -0.543 [-0.554, -0.532] | -0.545 [-0.552, -0.538] | 100 / 0 |
+| vit_b16 | unit / locality | late_minus_early | -0.356 [-0.363, -0.350] | -0.367 [-0.373, -0.361] | -0.356 [-0.364, -0.347] | 100 / 0 |
+
+DeiT-S Q changes B11−B0 point-estimate sign across coordinates and all three intervals cross zero. Differences between phase and endpoint contrasts also show why an endpoint comparison cannot replace a trajectory. Main claims remain restricted to normalized-input Endpoint. Other objects support direction retention for these three representations, not general parameterization invariance.
+
+The independent NumPy float64 reference explicitly constructs affine, LayerNorm, softmax diag(a)−aaᵀ, Q/K/V, head concatenation/output projection, GELU/MLP, and residual-identity Jacobians. It imports no scanner, hooks, or autograd. A separate driver compares reference maps with the actual main scanner on single-head, double-head, and pre-LN residual attention/MLP tiny models. All 32 component comparisons and nine frozen-direction finite differences pass, with maximum component absolute error 1.11e-16. Per-component relative L2 errors and tolerances appear in [analytic results](../evidence/revision_v6/analytic_reference_results.json). Shared-producer wrong-slot, attention Q/K-slot exchange, premature fan-out merging, and duplicated merged terms are rejected after the correct implementation passes. Coverage is limited to these numerical graphs and fault types, rather than all possible scanner errors.
+
+
+The legacy regional key raw_gradient stores ∇x, not ∇r; the main text names its actual coordinates. Random region order hashes the joined NNS_VIT_ENDPOINT_E5_RANDOM_REGIONS_V1, task_seed, model_id, reference_id, head, and repeat string with SHA-256, uses its first eight big-endian bytes as the PCG64 seed, then applies permutation(16). task_seed derives from NNS_VIT_ENDPOINT_QUEUE_V1 and task_id.

@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "rows": [
+    {
+      "mutation": "wrong_slot",
+      "rejected": true,
+      "reason": "USE_COMPONENT_MISMATCH",
+      "correct_pass": true
+    },
+    {
+      "mutation": "merged_fanout",
+      "rejected": true,
+      "reason": "USE_IDENTITY_MISMATCH",
+      "correct_pass": true
+    },
+    {
+      "mutation": "merged_fanout_duplicated",
+      "rejected": true,
+      "reason": "USE_COMPONENT_MISMATCH",
+      "correct_pass": true
+    },
+    {
+      "mutation": "attention_wrong_qk_slot",
+      "rejected": true,
+      "reason": "USE_COMPONENT_MISMATCH",
+      "correct_pass": true
+    }
+  ],
+  "fanout_maps": {
+    "('producer', 'consumer', 0, 0)": [
+      1.442,
+      2.47,
+      0.6300000000000002
+    ],
+    "('producer', 'consumer', 1, 0)": [
+      -4.859400000000001,
+      -1.26412,
+      -12.211080000000003
+    ]
+  }
+}

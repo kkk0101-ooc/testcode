@@ -1,0 +1,4710 @@
+{
+  "schema_version": 1,
+  "schemas": {
+    "gxi_step5_validation.json": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "contract": {
+          "type": "string"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "passed": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name",
+                  "passed"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "passed": {
+                    "type": "boolean"
+                  },
+                  "detail": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "passed",
+                  "detail"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "not": {}
+          }
+        }
+      },
+      "required": [
+        "schema_version",
+        "status",
+        "contract",
+        "checks",
+        "errors"
+      ],
+      "additionalProperties": false
+    },
+    "reference_live_checks.json": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "arxiv_id": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "accessed_at_utc": {
+                "type": "string"
+              },
+              "http_status": {
+                "type": "integer"
+              },
+              "sha256": {
+                "type": "string"
+              },
+              "bytes": {
+                "type": "integer"
+              },
+              "metadata": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "status_fragments": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "error": {
+                "type": "null"
+              },
+              "version": {
+                "type": "string"
+              },
+              "arxiv_doi": {
+                "type": "string"
+              },
+              "publication_status": {
+                "type": "string"
+              },
+              "doi_registration_status": {
+                "type": "string"
+              },
+              "journal_doi": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "arxiv_id",
+              "url",
+              "accessed_at_utc",
+              "http_status",
+              "sha256",
+              "bytes",
+              "metadata",
+              "status_fragments",
+              "error",
+              "version",
+              "arxiv_doi",
+              "publication_status",
+              "doi_registration_status",
+              "journal_doi"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "schema_version",
+        "scope",
+        "records"
+      ],
+      "additionalProperties": false
+    },
+    "visual_review.json": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "reviewed_current_package_figures": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "png_hashes": {
+          "type": "object",
+          "properties": {
+            "1": {
+              "type": "string"
+            },
+            "2": {
+              "type": "string"
+            },
+            "3": {
+              "type": "string"
+            },
+            "4": {
+              "type": "string"
+            },
+            "5": {
+              "type": "string"
+            },
+            "6": {
+              "type": "string"
+            },
+            "7": {
+              "type": "string"
+            },
+            "8": {
+              "type": "string"
+            },
+            "9": {
+              "type": "string"
+            },
+            "10": {
+              "type": "string"
+            },
+            "11": {
+              "type": "string"
+            },
+            "12": {
+              "type": "string"
+            },
+            "13": {
+              "type": "string"
+            },
+            "14": {
+              "type": "string"
+            },
+            "15": {
+              "type": "string"
+            },
+            "16": {
+              "type": "string"
+            },
+            "17": {
+              "type": "string"
+            },
+            "18": {
+              "type": "string"
+            },
+            "19": {
+              "type": "string"
+            },
+            "20": {
+              "type": "string"
+            },
+            "21": {
+              "type": "string"
+            },
+            "22": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "18",
+            "19",
+            "20",
+            "21",
+            "22"
+          ],
+          "additionalProperties": false
+        },
+        "unchanged_figures": {
+          "type": "string"
+        },
+        "renderers": {
+          "type": "object",
+          "properties": {
+            "papers/nns_vit_endpoint/scripts/render_revision_v6.py": {
+              "type": "string"
+            },
+            "papers/nns_vit_endpoint/scripts/render_revision_v6_residual.py": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "papers/nns_vit_endpoint/scripts/render_revision_v6.py",
+            "papers/nns_vit_endpoint/scripts/render_revision_v6_residual.py"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "status",
+        "reviewed_current_package_figures",
+        "checks",
+        "png_hashes",
+        "unchanged_figures",
+        "renderers"
+      ],
+      "additionalProperties": false
+    },
+    "stage0_source_audit.json": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer"
+        },
+        "created_utc": {
+          "type": "string"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "head": {
+          "type": "string"
+        },
+        "cohorts": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "images": {
+                    "type": "integer"
+                  },
+                  "classes": {
+                    "type": "integer"
+                  },
+                  "class_size_histogram": {
+                    "type": "object",
+                    "properties": {
+                      "1": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "1"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "name",
+                  "images",
+                  "classes",
+                  "class_size_histogram"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "images": {
+                    "type": "integer"
+                  },
+                  "classes": {
+                    "type": "integer"
+                  },
+                  "class_size_histogram": {
+                    "type": "object",
+                    "properties": {
+                      "5": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "5"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "name",
+                  "images",
+                  "classes",
+                  "class_size_histogram"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "overlaps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "left": {
+                "type": "string"
+              },
+              "right": {
+                "type": "string"
+              },
+              "shared_images": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "left",
+              "right",
+              "shared_images"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "bindings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string"
+              },
+              "bytes": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "path",
+              "sha256",
+              "bytes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "source_failures": {
+          "type": "array",
+          "items": {
+            "not": {}
+          }
+        },
+        "image_checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string"
+              },
+              "passed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "path",
+              "sha256",
+              "passed"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "created_utc",
+        "branch",
+        "head",
+        "cohorts",
+        "overlaps",
+        "bindings",
+        "source_failures",
+        "image_checks",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "command_results.json": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "commands": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "command": {
+                    "type": "string"
+                  },
+                  "exit_code": {
+                    "type": "integer"
+                  },
+                  "seconds": {
+                    "type": "number"
+                  },
+                  "stdout": {
+                    "type": "string"
+                  },
+                  "stderr": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "command",
+                  "exit_code",
+                  "seconds",
+                  "stdout",
+                  "stderr"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "command": {
+                    "type": "string"
+                  },
+                  "exit_code": {
+                    "type": "integer"
+                  },
+                  "seconds": {
+                    "type": "integer"
+                  },
+                  "stdout": {
+                    "type": "string"
+                  },
+                  "stderr": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "command",
+                  "exit_code",
+                  "seconds",
+                  "stdout",
+                  "stderr"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "py_compile_files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "schema_version",
+        "status",
+        "commands",
+        "py_compile_files"
+      ],
+      "additionalProperties": false
+    },
+    "repeated_phrase_counts.json": {
+      "type": "object",
+      "properties": {
+        "zh": {
+          "type": "object",
+          "properties": {
+            "\u6211\u4eec\u4e0d\u58f0\u79f0": {
+              "type": "integer"
+            },
+            "\u4e3a\u907f\u514d\u8bef\u89e3": {
+              "type": "integer"
+            },
+            "We emphasize that": {
+              "type": "integer"
+            },
+            "We do not claim": {
+              "type": "integer"
+            },
+            "NOV-": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "\u6211\u4eec\u4e0d\u58f0\u79f0",
+            "\u4e3a\u907f\u514d\u8bef\u89e3",
+            "We emphasize that",
+            "We do not claim",
+            "NOV-"
+          ],
+          "additionalProperties": false
+        },
+        "en": {
+          "type": "object",
+          "properties": {
+            "\u6211\u4eec\u4e0d\u58f0\u79f0": {
+              "type": "integer"
+            },
+            "\u4e3a\u907f\u514d\u8bef\u89e3": {
+              "type": "integer"
+            },
+            "We emphasize that": {
+              "type": "integer"
+            },
+            "We do not claim": {
+              "type": "integer"
+            },
+            "NOV-": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "\u6211\u4eec\u4e0d\u58f0\u79f0",
+            "\u4e3a\u907f\u514d\u8bef\u89e3",
+            "We emphasize that",
+            "We do not claim",
+            "NOV-"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "zh",
+        "en"
+      ],
+      "additionalProperties": false
+    },
+    "publication_validation.json": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "check_count": {
+          "type": "integer"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "not": {}
+          }
+        },
+        "real_panels_recomputed": {
+          "type": "integer"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "passed": {
+                "type": "boolean"
+              },
+              "detail": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "passed",
+              "detail"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "status",
+        "check_count",
+        "errors",
+        "real_panels_recomputed",
+        "checks"
+      ],
+      "additionalProperties": false
+    },
+    "gxi_step4_numeric_recalculation.json": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "cpu_only": {
+          "type": "boolean"
+        },
+        "new_experiments": {
+          "type": "integer"
+        },
+        "e5": {
+          "type": "object",
+          "properties": {
+            "decision": {
+              "type": "string"
+            },
+            "source_task_files": {
+              "type": "integer"
+            },
+            "image_checkpoint_tasks": {
+              "type": "integer"
+            },
+            "recomputed_hypothesis_values": {
+              "type": "integer"
+            },
+            "maximum_raw_value_difference": {
+              "type": "number"
+            },
+            "cohort": {
+              "type": "object",
+              "properties": {
+                "images": {
+                  "type": "integer"
+                },
+                "overlap_with_e1": {
+                  "type": "integer"
+                },
+                "overlap_with_prior_exclusions": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "images",
+                "overlap_with_e1",
+                "overlap_with_prior_exclusions"
+              ],
+              "additionalProperties": false
+            },
+            "checkpoints": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "model_id": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string"
+                  },
+                  "timm_name": {
+                    "type": "string"
+                  },
+                  "checkpoint_sha256": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "model_id",
+                  "role",
+                  "timm_name",
+                  "checkpoint_sha256"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "summary": {
+              "type": "object",
+              "properties": {
+                "deit_s16|H1": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "deit_s16|H2": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "deit_s16|H3": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "deit_s16|H4": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_b16|H1": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_b16|H2": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_b16|H3": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_b16|H4": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_b16_in1k|H1": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_b16_in1k|H2": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_b16_in1k|H3": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_b16_in1k|H4": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_s16_augreg|H1": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_s16_augreg|H2": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_s16_augreg|H3": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_s16_augreg|H4": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "deit_s16|H1",
+                "deit_s16|H2",
+                "deit_s16|H3",
+                "deit_s16|H4",
+                "vit_b16|H1",
+                "vit_b16|H2",
+                "vit_b16|H3",
+                "vit_b16|H4",
+                "vit_b16_in1k|H1",
+                "vit_b16_in1k|H2",
+                "vit_b16_in1k|H3",
+                "vit_b16_in1k|H4",
+                "vit_s16_augreg|H1",
+                "vit_s16_augreg|H2",
+                "vit_s16_augreg|H3",
+                "vit_s16_augreg|H4"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "decision",
+            "source_task_files",
+            "image_checkpoint_tasks",
+            "recomputed_hypothesis_values",
+            "maximum_raw_value_difference",
+            "cohort",
+            "checkpoints",
+            "summary"
+          ],
+          "additionalProperties": false
+        },
+        "existing_evidence": {
+          "type": "object",
+          "properties": {
+            "identity": {
+              "type": "object",
+              "properties": {
+                "comparisons": {
+                  "type": "integer"
+                },
+                "float64_max_relative_l2": {
+                  "type": "number"
+                },
+                "float32_max_relative_l2": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "comparisons",
+                "float64_max_relative_l2",
+                "float32_max_relative_l2"
+              ],
+              "additionalProperties": false
+            },
+            "closure": {
+              "type": "object",
+              "properties": {
+                "positive": {
+                  "type": "integer"
+                },
+                "mutations_rejected": {
+                  "type": "integer"
+                },
+                "maximum_closure_absolute_error": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "positive",
+                "mutations_rejected",
+                "maximum_closure_absolute_error"
+              ],
+              "additionalProperties": false
+            },
+            "background_spatial": {
+              "type": "object",
+              "properties": {
+                "vit_b16": {
+                  "type": "object",
+                  "properties": {
+                    "entropy": {
+                      "type": "object",
+                      "properties": {
+                        "n": {
+                          "type": "integer"
+                        },
+                        "median": {
+                          "type": "number"
+                        },
+                        "ci95": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "required": [
+                        "n",
+                        "median",
+                        "ci95"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "locality": {
+                      "type": "object",
+                      "properties": {
+                        "n": {
+                          "type": "integer"
+                        },
+                        "median": {
+                          "type": "number"
+                        },
+                        "ci95": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "required": [
+                        "n",
+                        "median",
+                        "ci95"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "distance": {
+                      "type": "object",
+                      "properties": {
+                        "n": {
+                          "type": "integer"
+                        },
+                        "median": {
+                          "type": "number"
+                        },
+                        "ci95": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "required": [
+                        "n",
+                        "median",
+                        "ci95"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "entropy",
+                    "locality",
+                    "distance"
+                  ],
+                  "additionalProperties": false
+                },
+                "deit_s16": {
+                  "type": "object",
+                  "properties": {
+                    "entropy": {
+                      "type": "object",
+                      "properties": {
+                        "n": {
+                          "type": "integer"
+                        },
+                        "median": {
+                          "type": "number"
+                        },
+                        "ci95": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "required": [
+                        "n",
+                        "median",
+                        "ci95"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "locality": {
+                      "type": "object",
+                      "properties": {
+                        "n": {
+                          "type": "integer"
+                        },
+                        "median": {
+                          "type": "number"
+                        },
+                        "ci95": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "required": [
+                        "n",
+                        "median",
+                        "ci95"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "distance": {
+                      "type": "object",
+                      "properties": {
+                        "n": {
+                          "type": "integer"
+                        },
+                        "median": {
+                          "type": "number"
+                        },
+                        "ci95": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "required": [
+                        "n",
+                        "median",
+                        "ci95"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "entropy",
+                    "locality",
+                    "distance"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "vit_b16",
+                "deit_s16"
+              ],
+              "additionalProperties": false
+            },
+            "attention": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "test_id": {
+                    "type": "string"
+                  },
+                  "model_id": {
+                    "type": "string"
+                  },
+                  "domain": {
+                    "type": "string"
+                  },
+                  "metric": {
+                    "type": "string"
+                  },
+                  "median": {
+                    "type": "number"
+                  },
+                  "ci95": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    }
+                  },
+                  "n": {
+                    "type": "integer"
+                  },
+                  "positive": {
+                    "type": "integer"
+                  },
+                  "negative": {
+                    "type": "integer"
+                  },
+                  "ties": {
+                    "type": "integer"
+                  },
+                  "p": {
+                    "type": "number"
+                  },
+                  "holm_p": {
+                    "type": "number"
+                  },
+                  "reject": {
+                    "type": "boolean"
+                  },
+                  "decision": {
+                    "type": "string"
+                  },
+                  "direction": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "test_id",
+                  "model_id",
+                  "domain",
+                  "metric",
+                  "median",
+                  "ci95",
+                  "n",
+                  "positive",
+                  "negative",
+                  "ties",
+                  "p",
+                  "holm_p",
+                  "reject",
+                  "decision",
+                  "direction"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "residual_spatial": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "test_id": {
+                    "type": "string"
+                  },
+                  "model_id": {
+                    "type": "string"
+                  },
+                  "residual_type": {
+                    "type": "string"
+                  },
+                  "median": {
+                    "type": "number"
+                  },
+                  "ci95": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    }
+                  },
+                  "n": {
+                    "type": "integer"
+                  },
+                  "positive": {
+                    "type": "integer"
+                  },
+                  "negative": {
+                    "type": "integer"
+                  },
+                  "ties": {
+                    "type": "integer"
+                  },
+                  "p": {
+                    "type": "number"
+                  },
+                  "holm_p": {
+                    "type": "number"
+                  },
+                  "reject": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "test_id",
+                  "model_id",
+                  "residual_type",
+                  "median",
+                  "ci95",
+                  "n",
+                  "positive",
+                  "negative",
+                  "ties",
+                  "p",
+                  "holm_p",
+                  "reject"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "attention_full_value_patch_tv": {
+              "type": "object",
+              "properties": {
+                "vit_b16": {
+                  "type": "object",
+                  "properties": {
+                    "block_0": {
+                      "type": "object",
+                      "properties": {
+                        "n": {
+                          "type": "integer"
+                        },
+                        "median": {
+                          "type": "number"
+                        },
+                        "ci95": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "required": [
+                        "n",
+                        "median",
+                        "ci95"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "block_11": {
+                      "type": "object",
+                      "properties": {
+                        "n": {
+                          "type": "integer"
+                        },
+                        "median": {
+                          "type": "number"
+                        },
+                        "ci95": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "required": [
+                        "n",
+                        "median",
+                        "ci95"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "block_0",
+                    "block_11"
+                  ],
+                  "additionalProperties": false
+                },
+                "deit_s16": {
+                  "type": "object",
+                  "properties": {
+                    "block_0": {
+                      "type": "object",
+                      "properties": {
+                        "n": {
+                          "type": "integer"
+                        },
+                        "median": {
+                          "type": "number"
+                        },
+                        "ci95": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "required": [
+                        "n",
+                        "median",
+                        "ci95"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "block_11": {
+                      "type": "object",
+                      "properties": {
+                        "n": {
+                          "type": "integer"
+                        },
+                        "median": {
+                          "type": "number"
+                        },
+                        "ci95": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "required": [
+                        "n",
+                        "median",
+                        "ci95"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "block_0",
+                    "block_11"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "vit_b16",
+                "deit_s16"
+              ],
+              "additionalProperties": false
+            },
+            "qkv_source_sha256": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "identity",
+            "closure",
+            "background_spatial",
+            "attention",
+            "residual_spatial",
+            "attention_full_value_patch_tv",
+            "qkv_source_sha256"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "status",
+        "cpu_only",
+        "new_experiments",
+        "e5",
+        "existing_evidence"
+      ],
+      "additionalProperties": false
+    },
+    "gxi_step3_validation.json": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "contract": {
+          "type": "string"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "passed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "name",
+              "passed"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "not": {}
+          }
+        }
+      },
+      "required": [
+        "schema_version",
+        "status",
+        "contract",
+        "checks",
+        "errors"
+      ],
+      "additionalProperties": false
+    },
+    "stage1_validation.json": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer"
+        },
+        "stage": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "passed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "name",
+              "passed"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "not": {}
+          }
+        },
+        "coverage": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "stage",
+        "status",
+        "checks",
+        "errors",
+        "coverage"
+      ],
+      "additionalProperties": false
+    },
+    "stage0_definition_evidence.json": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "cuts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "model": {
+                "type": "string"
+              },
+              "block": {
+                "type": "integer"
+              },
+              "cut": {
+                "type": "string"
+              },
+              "components": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "target": {
+                "type": "string"
+              },
+              "max_abs_error": {
+                "type": "number"
+              },
+              "passed": {
+                "type": "boolean"
+              },
+              "source": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "model",
+              "block",
+              "cut",
+              "components",
+              "target",
+              "max_abs_error",
+              "passed",
+              "source",
+              "sha256"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "schema_version",
+        "status",
+        "scope",
+        "cuts"
+      ],
+      "additionalProperties": false
+    },
+    "prompt_to_artifact.json": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "goal_state": {
+          "type": "string"
+        },
+        "requirements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "section": {
+                "type": "integer"
+              },
+              "requirement": {
+                "type": "string"
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "sha256": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "assessment": {
+                "type": "string"
+              },
+              "post_push_required": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "section",
+              "requirement",
+              "evidence",
+              "assessment",
+              "post_push_required"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "requirement": {
+                "type": "string"
+              },
+              "passed": {
+                "type": "boolean"
+              },
+              "detail": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "requirement",
+              "passed",
+              "detail"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "not": {}
+          }
+        },
+        "git_audit": {
+          "type": "null"
+        }
+      },
+      "required": [
+        "schema_version",
+        "status",
+        "goal_state",
+        "requirements",
+        "checks",
+        "errors",
+        "git_audit"
+      ],
+      "additionalProperties": false
+    },
+    "py_compile_results.json": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "sha256"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "schema_version",
+        "status",
+        "count",
+        "files"
+      ],
+      "additionalProperties": false
+    },
+    "final_validation.json": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer"
+        },
+        "stage": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "passed": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name",
+                  "passed"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "passed": {
+                    "type": "boolean"
+                  },
+                  "detail": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "passed",
+                  "detail"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "not": {}
+          }
+        },
+        "coverage": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "stage",
+        "status",
+        "checks",
+        "errors",
+        "coverage"
+      ],
+      "additionalProperties": false
+    },
+    "gxi_step4_validation.json": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "objective": {
+          "type": "string"
+        },
+        "cpu_only": {
+          "type": "boolean"
+        },
+        "new_experiments": {
+          "type": "integer"
+        },
+        "check_count": {
+          "type": "integer"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "not": {}
+          }
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "passed": {
+                "type": "boolean"
+              },
+              "detail": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "passed",
+              "detail"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "e5_audit": {
+          "type": "object",
+          "properties": {
+            "decision": {
+              "type": "string"
+            },
+            "source_task_files": {
+              "type": "integer"
+            },
+            "image_checkpoint_tasks": {
+              "type": "integer"
+            },
+            "recomputed_hypothesis_values": {
+              "type": "integer"
+            },
+            "maximum_raw_value_difference": {
+              "type": "number"
+            },
+            "cohort": {
+              "type": "object",
+              "properties": {
+                "images": {
+                  "type": "integer"
+                },
+                "overlap_with_e1": {
+                  "type": "integer"
+                },
+                "overlap_with_prior_exclusions": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "images",
+                "overlap_with_e1",
+                "overlap_with_prior_exclusions"
+              ],
+              "additionalProperties": false
+            },
+            "checkpoints": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "model_id": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string"
+                  },
+                  "timm_name": {
+                    "type": "string"
+                  },
+                  "checkpoint_sha256": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "model_id",
+                  "role",
+                  "timm_name",
+                  "checkpoint_sha256"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "summary": {
+              "type": "object",
+              "properties": {
+                "deit_s16|H1": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "deit_s16|H2": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "deit_s16|H3": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "deit_s16|H4": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_b16|H1": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_b16|H2": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_b16|H3": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_b16|H4": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_b16_in1k|H1": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_b16_in1k|H2": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_b16_in1k|H3": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_b16_in1k|H4": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_s16_augreg|H1": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_s16_augreg|H2": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_s16_augreg|H3": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                },
+                "vit_s16_augreg|H4": {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "ties": {
+                      "type": "integer"
+                    },
+                    "p": {
+                      "type": "number"
+                    },
+                    "holm_p": {
+                      "type": "number"
+                    },
+                    "decision": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "median",
+                    "ci95",
+                    "positive",
+                    "negative",
+                    "ties",
+                    "p",
+                    "holm_p",
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "deit_s16|H1",
+                "deit_s16|H2",
+                "deit_s16|H3",
+                "deit_s16|H4",
+                "vit_b16|H1",
+                "vit_b16|H2",
+                "vit_b16|H3",
+                "vit_b16|H4",
+                "vit_b16_in1k|H1",
+                "vit_b16_in1k|H2",
+                "vit_b16_in1k|H3",
+                "vit_b16_in1k|H4",
+                "vit_s16_augreg|H1",
+                "vit_s16_augreg|H2",
+                "vit_s16_augreg|H3",
+                "vit_s16_augreg|H4"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "decision",
+            "source_task_files",
+            "image_checkpoint_tasks",
+            "recomputed_hypothesis_values",
+            "maximum_raw_value_difference",
+            "cohort",
+            "checkpoints",
+            "summary"
+          ],
+          "additionalProperties": false
+        },
+        "existing_evidence": {
+          "type": "object",
+          "properties": {
+            "identity": {
+              "type": "object",
+              "properties": {
+                "comparisons": {
+                  "type": "integer"
+                },
+                "float64_max_relative_l2": {
+                  "type": "number"
+                },
+                "float32_max_relative_l2": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "comparisons",
+                "float64_max_relative_l2",
+                "float32_max_relative_l2"
+              ],
+              "additionalProperties": false
+            },
+            "closure": {
+              "type": "object",
+              "properties": {
+                "positive": {
+                  "type": "integer"
+                },
+                "mutations_rejected": {
+                  "type": "integer"
+                },
+                "maximum_closure_absolute_error": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "positive",
+                "mutations_rejected",
+                "maximum_closure_absolute_error"
+              ],
+              "additionalProperties": false
+            },
+            "background_spatial": {
+              "type": "object",
+              "properties": {
+                "vit_b16": {
+                  "type": "object",
+                  "properties": {
+                    "entropy": {
+                      "type": "object",
+                      "properties": {
+                        "n": {
+                          "type": "integer"
+                        },
+                        "median": {
+                          "type": "number"
+                        },
+                        "ci95": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "required": [
+                        "n",
+                        "median",
+                        "ci95"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "locality": {
+                      "type": "object",
+                      "properties": {
+                        "n": {
+                          "type": "integer"
+                        },
+                        "median": {
+                          "type": "number"
+                        },
+                        "ci95": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "required": [
+                        "n",
+                        "median",
+                        "ci95"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "distance": {
+                      "type": "object",
+                      "properties": {
+                        "n": {
+                          "type": "integer"
+                        },
+                        "median": {
+                          "type": "number"
+                        },
+                        "ci95": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "required": [
+                        "n",
+                        "median",
+                        "ci95"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "entropy",
+                    "locality",
+                    "distance"
+                  ],
+                  "additionalProperties": false
+                },
+                "deit_s16": {
+                  "type": "object",
+                  "properties": {
+                    "entropy": {
+                      "type": "object",
+                      "properties": {
+                        "n": {
+                          "type": "integer"
+                        },
+                        "median": {
+                          "type": "number"
+                        },
+                        "ci95": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "required": [
+                        "n",
+                        "median",
+                        "ci95"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "locality": {
+                      "type": "object",
+                      "properties": {
+                        "n": {
+                          "type": "integer"
+                        },
+                        "median": {
+                          "type": "number"
+                        },
+                        "ci95": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "required": [
+                        "n",
+                        "median",
+                        "ci95"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "distance": {
+                      "type": "object",
+                      "properties": {
+                        "n": {
+                          "type": "integer"
+                        },
+                        "median": {
+                          "type": "number"
+                        },
+                        "ci95": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "required": [
+                        "n",
+                        "median",
+                        "ci95"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "entropy",
+                    "locality",
+                    "distance"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "vit_b16",
+                "deit_s16"
+              ],
+              "additionalProperties": false
+            },
+            "attention": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "test_id": {
+                    "type": "string"
+                  },
+                  "model_id": {
+                    "type": "string"
+                  },
+                  "domain": {
+                    "type": "string"
+                  },
+                  "metric": {
+                    "type": "string"
+                  },
+                  "median": {
+                    "type": "number"
+                  },
+                  "ci95": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    }
+                  },
+                  "n": {
+                    "type": "integer"
+                  },
+                  "positive": {
+                    "type": "integer"
+                  },
+                  "negative": {
+                    "type": "integer"
+                  },
+                  "ties": {
+                    "type": "integer"
+                  },
+                  "p": {
+                    "type": "number"
+                  },
+                  "holm_p": {
+                    "type": "number"
+                  },
+                  "reject": {
+                    "type": "boolean"
+                  },
+                  "decision": {
+                    "type": "string"
+                  },
+                  "direction": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "test_id",
+                  "model_id",
+                  "domain",
+                  "metric",
+                  "median",
+                  "ci95",
+                  "n",
+                  "positive",
+                  "negative",
+                  "ties",
+                  "p",
+                  "holm_p",
+                  "reject",
+                  "decision",
+                  "direction"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "residual_spatial": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "test_id": {
+                    "type": "string"
+                  },
+                  "model_id": {
+                    "type": "string"
+                  },
+                  "residual_type": {
+                    "type": "string"
+                  },
+                  "median": {
+                    "type": "number"
+                  },
+                  "ci95": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    }
+                  },
+                  "n": {
+                    "type": "integer"
+                  },
+                  "positive": {
+                    "type": "integer"
+                  },
+                  "negative": {
+                    "type": "integer"
+                  },
+                  "ties": {
+                    "type": "integer"
+                  },
+                  "p": {
+                    "type": "number"
+                  },
+                  "holm_p": {
+                    "type": "number"
+                  },
+                  "reject": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "test_id",
+                  "model_id",
+                  "residual_type",
+                  "median",
+                  "ci95",
+                  "n",
+                  "positive",
+                  "negative",
+                  "ties",
+                  "p",
+                  "holm_p",
+                  "reject"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "attention_full_value_patch_tv": {
+              "type": "object",
+              "properties": {
+                "vit_b16": {
+                  "type": "object",
+                  "properties": {
+                    "block_0": {
+                      "type": "object",
+                      "properties": {
+                        "n": {
+                          "type": "integer"
+                        },
+                        "median": {
+                          "type": "number"
+                        },
+                        "ci95": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "required": [
+                        "n",
+                        "median",
+                        "ci95"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "block_11": {
+                      "type": "object",
+                      "properties": {
+                        "n": {
+                          "type": "integer"
+                        },
+                        "median": {
+                          "type": "number"
+                        },
+                        "ci95": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "required": [
+                        "n",
+                        "median",
+                        "ci95"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "block_0",
+                    "block_11"
+                  ],
+                  "additionalProperties": false
+                },
+                "deit_s16": {
+                  "type": "object",
+                  "properties": {
+                    "block_0": {
+                      "type": "object",
+                      "properties": {
+                        "n": {
+                          "type": "integer"
+                        },
+                        "median": {
+                          "type": "number"
+                        },
+                        "ci95": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "required": [
+                        "n",
+                        "median",
+                        "ci95"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "block_11": {
+                      "type": "object",
+                      "properties": {
+                        "n": {
+                          "type": "integer"
+                        },
+                        "median": {
+                          "type": "number"
+                        },
+                        "ci95": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "required": [
+                        "n",
+                        "median",
+                        "ci95"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "block_0",
+                    "block_11"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "vit_b16",
+                "deit_s16"
+              ],
+              "additionalProperties": false
+            },
+            "qkv_source_sha256": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "identity",
+            "closure",
+            "background_spatial",
+            "attention",
+            "residual_spatial",
+            "attention_full_value_patch_tv",
+            "qkv_source_sha256"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "status",
+        "objective",
+        "cpu_only",
+        "new_experiments",
+        "check_count",
+        "errors",
+        "checks",
+        "e5_audit",
+        "existing_evidence"
+      ],
+      "additionalProperties": false
+    },
+    "gxi_step4_e5_audit.json": {
+      "type": "object",
+      "properties": {
+        "decision": {
+          "type": "string"
+        },
+        "source_task_files": {
+          "type": "integer"
+        },
+        "image_checkpoint_tasks": {
+          "type": "integer"
+        },
+        "recomputed_hypothesis_values": {
+          "type": "integer"
+        },
+        "maximum_raw_value_difference": {
+          "type": "number"
+        },
+        "cohort": {
+          "type": "object",
+          "properties": {
+            "images": {
+              "type": "integer"
+            },
+            "overlap_with_e1": {
+              "type": "integer"
+            },
+            "overlap_with_prior_exclusions": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "images",
+            "overlap_with_e1",
+            "overlap_with_prior_exclusions"
+          ],
+          "additionalProperties": false
+        },
+        "checkpoints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "model_id": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              },
+              "timm_name": {
+                "type": "string"
+              },
+              "checkpoint_sha256": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "model_id",
+              "role",
+              "timm_name",
+              "checkpoint_sha256"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "deit_s16|H1": {
+              "type": "object",
+              "properties": {
+                "n": {
+                  "type": "integer"
+                },
+                "median": {
+                  "type": "number"
+                },
+                "ci95": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "positive": {
+                  "type": "integer"
+                },
+                "negative": {
+                  "type": "integer"
+                },
+                "ties": {
+                  "type": "integer"
+                },
+                "p": {
+                  "type": "number"
+                },
+                "holm_p": {
+                  "type": "number"
+                },
+                "decision": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "n",
+                "median",
+                "ci95",
+                "positive",
+                "negative",
+                "ties",
+                "p",
+                "holm_p",
+                "decision"
+              ],
+              "additionalProperties": false
+            },
+            "deit_s16|H2": {
+              "type": "object",
+              "properties": {
+                "n": {
+                  "type": "integer"
+                },
+                "median": {
+                  "type": "number"
+                },
+                "ci95": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "positive": {
+                  "type": "integer"
+                },
+                "negative": {
+                  "type": "integer"
+                },
+                "ties": {
+                  "type": "integer"
+                },
+                "p": {
+                  "type": "number"
+                },
+                "holm_p": {
+                  "type": "number"
+                },
+                "decision": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "n",
+                "median",
+                "ci95",
+                "positive",
+                "negative",
+                "ties",
+                "p",
+                "holm_p",
+                "decision"
+              ],
+              "additionalProperties": false
+            },
+            "deit_s16|H3": {
+              "type": "object",
+              "properties": {
+                "n": {
+                  "type": "integer"
+                },
+                "median": {
+                  "type": "number"
+                },
+                "ci95": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "positive": {
+                  "type": "integer"
+                },
+                "negative": {
+                  "type": "integer"
+                },
+                "ties": {
+                  "type": "integer"
+                },
+                "p": {
+                  "type": "number"
+                },
+                "holm_p": {
+                  "type": "number"
+                },
+                "decision": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "n",
+                "median",
+                "ci95",
+                "positive",
+                "negative",
+                "ties",
+                "p",
+                "holm_p",
+                "decision"
+              ],
+              "additionalProperties": false
+            },
+            "deit_s16|H4": {
+              "type": "object",
+              "properties": {
+                "n": {
+                  "type": "integer"
+                },
+                "median": {
+                  "type": "number"
+                },
+                "ci95": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "positive": {
+                  "type": "integer"
+                },
+                "negative": {
+                  "type": "integer"
+                },
+                "ties": {
+                  "type": "integer"
+                },
+                "p": {
+                  "type": "number"
+                },
+                "holm_p": {
+                  "type": "number"
+                },
+                "decision": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "n",
+                "median",
+                "ci95",
+                "positive",
+                "negative",
+                "ties",
+                "p",
+                "holm_p",
+                "decision"
+              ],
+              "additionalProperties": false
+            },
+            "vit_b16|H1": {
+              "type": "object",
+              "properties": {
+                "n": {
+                  "type": "integer"
+                },
+                "median": {
+                  "type": "number"
+                },
+                "ci95": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "positive": {
+                  "type": "integer"
+                },
+                "negative": {
+                  "type": "integer"
+                },
+                "ties": {
+                  "type": "integer"
+                },
+                "p": {
+                  "type": "number"
+                },
+                "holm_p": {
+                  "type": "number"
+                },
+                "decision": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "n",
+                "median",
+                "ci95",
+                "positive",
+                "negative",
+                "ties",
+                "p",
+                "holm_p",
+                "decision"
+              ],
+              "additionalProperties": false
+            },
+            "vit_b16|H2": {
+              "type": "object",
+              "properties": {
+                "n": {
+                  "type": "integer"
+                },
+                "median": {
+                  "type": "number"
+                },
+                "ci95": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "positive": {
+                  "type": "integer"
+                },
+                "negative": {
+                  "type": "integer"
+                },
+                "ties": {
+                  "type": "integer"
+                },
+                "p": {
+                  "type": "number"
+                },
+                "holm_p": {
+                  "type": "number"
+                },
+                "decision": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "n",
+                "median",
+                "ci95",
+                "positive",
+                "negative",
+                "ties",
+                "p",
+                "holm_p",
+                "decision"
+              ],
+              "additionalProperties": false
+            },
+            "vit_b16|H3": {
+              "type": "object",
+              "properties": {
+                "n": {
+                  "type": "integer"
+                },
+                "median": {
+                  "type": "number"
+                },
+                "ci95": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "positive": {
+                  "type": "integer"
+                },
+                "negative": {
+                  "type": "integer"
+                },
+                "ties": {
+                  "type": "integer"
+                },
+                "p": {
+                  "type": "number"
+                },
+                "holm_p": {
+                  "type": "number"
+                },
+                "decision": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "n",
+                "median",
+                "ci95",
+                "positive",
+                "negative",
+                "ties",
+                "p",
+                "holm_p",
+                "decision"
+              ],
+              "additionalProperties": false
+            },
+            "vit_b16|H4": {
+              "type": "object",
+              "properties": {
+                "n": {
+                  "type": "integer"
+                },
+                "median": {
+                  "type": "number"
+                },
+                "ci95": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "positive": {
+                  "type": "integer"
+                },
+                "negative": {
+                  "type": "integer"
+                },
+                "ties": {
+                  "type": "integer"
+                },
+                "p": {
+                  "type": "number"
+                },
+                "holm_p": {
+                  "type": "number"
+                },
+                "decision": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "n",
+                "median",
+                "ci95",
+                "positive",
+                "negative",
+                "ties",
+                "p",
+                "holm_p",
+                "decision"
+              ],
+              "additionalProperties": false
+            },
+            "vit_b16_in1k|H1": {
+              "type": "object",
+              "properties": {
+                "n": {
+                  "type": "integer"
+                },
+                "median": {
+                  "type": "number"
+                },
+                "ci95": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "positive": {
+                  "type": "integer"
+                },
+                "negative": {
+                  "type": "integer"
+                },
+                "ties": {
+                  "type": "integer"
+                },
+                "p": {
+                  "type": "number"
+                },
+                "holm_p": {
+                  "type": "number"
+                },
+                "decision": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "n",
+                "median",
+                "ci95",
+                "positive",
+                "negative",
+                "ties",
+                "p",
+                "holm_p",
+                "decision"
+              ],
+              "additionalProperties": false
+            },
+            "vit_b16_in1k|H2": {
+              "type": "object",
+              "properties": {
+                "n": {
+                  "type": "integer"
+                },
+                "median": {
+                  "type": "number"
+                },
+                "ci95": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "positive": {
+                  "type": "integer"
+                },
+                "negative": {
+                  "type": "integer"
+                },
+                "ties": {
+                  "type": "integer"
+                },
+                "p": {
+                  "type": "number"
+                },
+                "holm_p": {
+                  "type": "number"
+                },
+                "decision": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "n",
+                "median",
+                "ci95",
+                "positive",
+                "negative",
+                "ties",
+                "p",
+                "holm_p",
+                "decision"
+              ],
+              "additionalProperties": false
+            },
+            "vit_b16_in1k|H3": {
+              "type": "object",
+              "properties": {
+                "n": {
+                  "type": "integer"
+                },
+                "median": {
+                  "type": "number"
+                },
+                "ci95": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "positive": {
+                  "type": "integer"
+                },
+                "negative": {
+                  "type": "integer"
+                },
+                "ties": {
+                  "type": "integer"
+                },
+                "p": {
+                  "type": "number"
+                },
+                "holm_p": {
+                  "type": "number"
+                },
+                "decision": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "n",
+                "median",
+                "ci95",
+                "positive",
+                "negative",
+                "ties",
+                "p",
+                "holm_p",
+                "decision"
+              ],
+              "additionalProperties": false
+            },
+            "vit_b16_in1k|H4": {
+              "type": "object",
+              "properties": {
+                "n": {
+                  "type": "integer"
+                },
+                "median": {
+                  "type": "number"
+                },
+                "ci95": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "positive": {
+                  "type": "integer"
+                },
+                "negative": {
+                  "type": "integer"
+                },
+                "ties": {
+                  "type": "integer"
+                },
+                "p": {
+                  "type": "number"
+                },
+                "holm_p": {
+                  "type": "number"
+                },
+                "decision": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "n",
+                "median",
+                "ci95",
+                "positive",
+                "negative",
+                "ties",
+                "p",
+                "holm_p",
+                "decision"
+              ],
+              "additionalProperties": false
+            },
+            "vit_s16_augreg|H1": {
+              "type": "object",
+              "properties": {
+                "n": {
+                  "type": "integer"
+                },
+                "median": {
+                  "type": "number"
+                },
+                "ci95": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "positive": {
+                  "type": "integer"
+                },
+                "negative": {
+                  "type": "integer"
+                },
+                "ties": {
+                  "type": "integer"
+                },
+                "p": {
+                  "type": "number"
+                },
+                "holm_p": {
+                  "type": "number"
+                },
+                "decision": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "n",
+                "median",
+                "ci95",
+                "positive",
+                "negative",
+                "ties",
+                "p",
+                "holm_p",
+                "decision"
+              ],
+              "additionalProperties": false
+            },
+            "vit_s16_augreg|H2": {
+              "type": "object",
+              "properties": {
+                "n": {
+                  "type": "integer"
+                },
+                "median": {
+                  "type": "number"
+                },
+                "ci95": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "positive": {
+                  "type": "integer"
+                },
+                "negative": {
+                  "type": "integer"
+                },
+                "ties": {
+                  "type": "integer"
+                },
+                "p": {
+                  "type": "number"
+                },
+                "holm_p": {
+                  "type": "number"
+                },
+                "decision": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "n",
+                "median",
+                "ci95",
+                "positive",
+                "negative",
+                "ties",
+                "p",
+                "holm_p",
+                "decision"
+              ],
+              "additionalProperties": false
+            },
+            "vit_s16_augreg|H3": {
+              "type": "object",
+              "properties": {
+                "n": {
+                  "type": "integer"
+                },
+                "median": {
+                  "type": "number"
+                },
+                "ci95": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "positive": {
+                  "type": "integer"
+                },
+                "negative": {
+                  "type": "integer"
+                },
+                "ties": {
+                  "type": "integer"
+                },
+                "p": {
+                  "type": "number"
+                },
+                "holm_p": {
+                  "type": "number"
+                },
+                "decision": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "n",
+                "median",
+                "ci95",
+                "positive",
+                "negative",
+                "ties",
+                "p",
+                "holm_p",
+                "decision"
+              ],
+              "additionalProperties": false
+            },
+            "vit_s16_augreg|H4": {
+              "type": "object",
+              "properties": {
+                "n": {
+                  "type": "integer"
+                },
+                "median": {
+                  "type": "number"
+                },
+                "ci95": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "positive": {
+                  "type": "integer"
+                },
+                "negative": {
+                  "type": "integer"
+                },
+                "ties": {
+                  "type": "integer"
+                },
+                "p": {
+                  "type": "number"
+                },
+                "holm_p": {
+                  "type": "number"
+                },
+                "decision": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "n",
+                "median",
+                "ci95",
+                "positive",
+                "negative",
+                "ties",
+                "p",
+                "holm_p",
+                "decision"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "deit_s16|H1",
+            "deit_s16|H2",
+            "deit_s16|H3",
+            "deit_s16|H4",
+            "vit_b16|H1",
+            "vit_b16|H2",
+            "vit_b16|H3",
+            "vit_b16|H4",
+            "vit_b16_in1k|H1",
+            "vit_b16_in1k|H2",
+            "vit_b16_in1k|H3",
+            "vit_b16_in1k|H4",
+            "vit_s16_augreg|H1",
+            "vit_s16_augreg|H2",
+            "vit_s16_augreg|H3",
+            "vit_s16_augreg|H4"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "decision",
+        "source_task_files",
+        "image_checkpoint_tasks",
+        "recomputed_hypothesis_values",
+        "maximum_raw_value_difference",
+        "cohort",
+        "checkpoints",
+        "summary"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

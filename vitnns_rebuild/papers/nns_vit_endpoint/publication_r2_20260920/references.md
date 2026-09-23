@@ -34,7 +34,7 @@ Natural Language Processing*, 8698–8714.
 
 Izadi, A., Banayeeanzade, M., Mirrokni, A., Hasani, H., Bagherian, M., Mehri, F., & Soleymani
 Baghshah, M. (2026). Causal attribution via activation patching. *arXiv preprint
-arXiv:2603.13652v1*.
+arXiv:2603.13652v2*.
 
 Kramár, J., Lieberum, T., Shah, R., & Nanda, N. (2024). AtP*: An efficient and scalable method
 for localizing LLM behaviour to components. *arXiv preprint arXiv:2403.00745*.
@@ -112,3 +112,16 @@ as software documentation rather than peer-reviewed method papers in the final b
 - Wróbel et al. (2026), Żukowska et al. (2026), and Izadi et al. (2026) anchor recent ViT gradient
   decomposition, visual edge circuits, and activation-patching attribution. Their presence rules out
   novelty claims based only on applying gradients, computational edges, or interventions to ViTs.
+
+## 2026 references: live version and publication record
+
+Accessed 23 September 2026 (PRC), 22 September 2026 UTC. Status is the official arXiv record at access; arXiv DOI identifies the preprint and does not establish peer-reviewed publication.
+
+| arXiv | Version | DOI | Publication record |
+| --- | --- | --- | --- |
+| 2602.06613 | [v1](https://arxiv.org/abs/2602.06613v1) | [10.48550/arXiv.2602.06613](https://doi.org/10.48550/arXiv.2602.06613) | No journal/publisher DOI listed; preprint |
+| 2604.14477 | [v1](https://arxiv.org/abs/2604.14477v1) | [10.48550/arXiv.2604.14477](https://doi.org/10.48550/arXiv.2604.14477) | No journal/publisher DOI listed; preprint |
+| 2603.13652 | [v2](https://arxiv.org/abs/2603.13652v2) | [10.48550/arXiv.2603.13652](https://doi.org/10.48550/arXiv.2603.13652) | No journal/publisher DOI listed; preprint |
+| 2609.01282 | [v1](https://arxiv.org/abs/2609.01282v1) | [10.48550/arXiv.2609.01282](https://doi.org/10.48550/arXiv.2609.01282) | No journal/publisher DOI listed; arXiv DOI pending registration |
+| 2607.10365 | [v1](https://arxiv.org/abs/2607.10365v1) | [10.48550/arXiv.2607.10365](https://doi.org/10.48550/arXiv.2607.10365) | No journal/publisher DOI listed; preprint |
+| 2605.23393 | [v2](https://arxiv.org/abs/2605.23393v2) | [10.48550/arXiv.2605.23393](https://doi.org/10.48550/arXiv.2605.23393) | No journal/publisher DOI listed; preprint |

@@ -1,0 +1,74 @@
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "status": {
+      "enum": [
+        "PASS",
+        "FAIL"
+      ]
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "mutation": {
+            "type": "string"
+          },
+          "rejected": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "correct_pass": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "mutation",
+          "rejected",
+          "reason",
+          "correct_pass"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "fanout_maps": {
+      "type": "object",
+      "properties": {
+        "('producer', 'consumer', 0, 0)": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "('producer', 'consumer', 1, 0)": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      },
+      "required": [
+        "('producer', 'consumer', 0, 0)",
+        "('producer', 'consumer', 1, 0)"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "status",
+    "rows",
+    "fanout_maps"
+  ],
+  "additionalProperties": false
+}

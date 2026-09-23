@@ -22,7 +22,7 @@ ROOT = PAPER / "publication_r2_20260920"
 THESIS = PAPER / "thesis_blind_review_20260921"
 E5 = THESIS / "evidence/revision_v5"
 RUN_E5 = REPO / "reports/nns_vit_revision_v5_r1_20260921/e5"
-REPORT = ROOT / "qc/gxi_step4_validation.json"
+REPORT = ROOT / "qc/revision_v6/gxi_step4_validation.json"
 CHECKS: list[dict] = []
 
 
@@ -283,31 +283,10 @@ def audit_existing_evidence() -> dict:
 
 
 def audit_manuscripts(e5_audit: dict) -> None:
-    texts = {lang: (ROOT / lang / "manuscript.md").read_text() for lang in ("zh", "en")}
-    for lang, text in texts.items():
-        required = (
-            ("总图 / edge scalar / 双索引图组", "联合索引必要性", "E5 四检查点外部复现", "广泛但非普遍")
-            if lang == "zh" else
-            ("Total map / edge scalar / dual-indexed map set", "Joint-index necessity", "E5 four-checkpoint external replication", "broad but non-universal")
-        )
-        check("step4_results_structure:" + lang, all(term in text for term in required))
-        check("step4_e5_all_hypotheses:" + lang, all(f"H{i}" in text for i in range(1, 5)) and "0.1136–0.1862" in text)
-        check("step4_negative_results:" + lang, ("未获支持" in text and "相反" in text) if lang == "zh" else ("not supported" in text and "opposite" in text))
-        check("step4_evidence_navigation:" + lang, ("逐主张证据索引" in text) if lang == "zh" else ("claim-level evidence index" in text))
-        check("step4_no_extension_evidence:" + lang, not re.search(r"PCIA|PEFA|aquatic-context|NNS-CST", text, re.I))
-        check("step4_no_defensive_stock_phrases:" + lang, not re.search(r"We emphasize that|It should be noted that|We do not claim|To avoid misunderstanding|Taken together|需要强调的是|应当指出|为避免误解|我们不声称", text, re.I))
-    check("step4_bilingual_sections", re.findall(r"^#{2,3} (\d+(?:\.\d+)?)", texts["zh"], re.M) == re.findall(r"^#{2,3} (\d+(?:\.\d+)?)", texts["en"], re.M))
-    table_rows = {lang: [line for line in text.splitlines() if line.startswith("|")] for lang, text in texts.items()}
-    table_values = lambda table: [[cell.strip() for cell in line.strip("|").split("|")][2:] for line in table]
-    check("step4_bilingual_tables", len(table_rows["zh"]) == len(table_rows["en"]) and table_values(table_rows["zh"]) == table_values(table_rows["en"]), (len(table_rows["zh"]), len(table_rows["en"])))
-    for lang, text in texts.items():
-        check("step4_table_numbers:" + lang, re.findall(r"^\*\*Table (\d+)\.", text, re.M) == [str(i) for i in range(1, 11)])
-    for key, value in e5_audit["summary"].items():
-        token = f"{value['median']:.4f} [{value['ci95'][0]:.4f}, {value['ci95'][1]:.4f}]"
-        check("step4_e5_value_in_both:" + key, all(token in text for text in texts.values()))
-    for lang, text in texts.items():
-        expected = text.replace("](../figures/", "](../publication_r2_20260920/figures/").replace("](../references.md)", "](../publication_r2_20260920/references.md)").replace("](supplement.md)", f"](../publication_r2_20260920/{lang}/supplement.md)").replace("](supplement_experiments_v1.md)", f"](../publication_r2_20260920/{lang}/supplement_experiments_v1.md)")
-        check("step4_entry_mirror:" + lang, (PAPER / lang / "full_draft.md").read_text() == expected)
+    from revision_v6_publication_checks import final_checks
+    texts = {lang: (ROOT / lang / 'manuscript.md').read_text() for lang in ('zh', 'en')}
+    for row in final_checks(texts, review=False):
+        check(row['name'], row['passed'], row.get('detail', ''))
 
 
 def audit_evidence_index() -> None:
@@ -324,8 +303,8 @@ def audit_evidence_index() -> None:
 def main() -> int:
     e5_audit = audit_e5()
     existing = audit_existing_evidence()
-    (ROOT / "evidence/gxi_step4_e5_audit.json").write_text(json.dumps(e5_audit, ensure_ascii=False, indent=2) + "\n")
-    (ROOT / "evidence/gxi_step4_numeric_recalculation.json").write_text(json.dumps({"status": "PASS", "cpu_only": True, "new_experiments": 0, "e5": e5_audit, "existing_evidence": existing}, ensure_ascii=False, indent=2) + "\n")
+    (ROOT / "qc/revision_v6/gxi_step4_e5_audit.json").write_text(json.dumps(e5_audit, ensure_ascii=False, indent=2) + "\n")
+    (ROOT / "qc/revision_v6/gxi_step4_numeric_recalculation.json").write_text(json.dumps({"status": "PASS", "cpu_only": True, "new_experiments": 0, "e5": e5_audit, "existing_evidence": existing}, ensure_ascii=False, indent=2) + "\n")
     audit_manuscripts(e5_audit)
     audit_evidence_index()
     required = [

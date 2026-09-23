@@ -1,0 +1,357 @@
+{
+  "schema_version": 1,
+  "analyses": [
+    {
+      "id": "original_component_and_region",
+      "identity": "confirmatory",
+      "source": "manifests/nns_vit_endpoint/ep0_r1_20260918/statistical_analysis_plan.json",
+      "sha256": "576cd178e205e63483ea0812d9872cc0182429929a797fac11f50932b5129a5e",
+      "freeze_time": "local pre-outcome plan; first committed occurrence below",
+      "first_commit": [
+        "6237ef87a1af0205973b76bee172defe33a0a6da 2026-09-18T09:26:20+08:00"
+      ],
+      "family": "28 tests jointly Holm; 12 component correlations + 16 regional baseline contrasts",
+      "inferential_population": "fixed GT targets; image inference conditional on selected checkpoints and component rosters",
+      "external_registration": false
+    },
+    {
+      "id": "unit_depth",
+      "identity": "confirmatory",
+      "source": "config/nns_vit_endpoint/endpoint_m3.json",
+      "sha256": "f51b2a931db82e7e1b4e174de7cf7d67368edbad55fb30e3e5013a811acdad33",
+      "freeze_time": "local pre-outcome plan; first committed occurrence below",
+      "first_commit": [
+        "f2eba3f60d765e6a9729d9ff12a57bd01f93f952 2026-09-19T13:53:48+08:00"
+      ],
+      "family": "five per model: entropy, locality, distance, cancellation, CLS-patch entropy",
+      "inferential_population": "new images conditional on fixed sampled token-channel set",
+      "external_registration": false
+    },
+    {
+      "id": "attention_residual_depth",
+      "identity": "confirmatory",
+      "source": "config/nns_vit_endpoint/endpoint_m4.json",
+      "sha256": "7dd8b7b8044a22fbe373fb2a0afd4cad6f16acc2167a172ae64e343caf31ea32",
+      "freeze_time": "local pre-outcome plan; first committed occurrence below",
+      "first_commit": [
+        "1a1000bcdd15d8b0e76406f4376a82d60ec79b86 2026-09-19T17:25:17+08:00"
+      ],
+      "family": "four attention tests/model; two residual tests/model/type",
+      "inferential_population": "new images conditional on fixed target and checkpoint",
+      "external_registration": false
+    },
+    {
+      "id": "head_baselines",
+      "identity": "exploratory",
+      "source": "config/nns_vit_endpoint/endpoint_m1.json",
+      "sha256": "a8f192d4aa5f920c1789a048b68564434b4329b19ebb0d578c2566a4227a00c6",
+      "freeze_time": "local pre-outcome plan; first committed occurrence below",
+      "first_commit": [
+        "33c8c320446a631b2e451016b3268eefdd9c926b 2026-09-19T04:20:36+08:00"
+      ],
+      "family": "separate paired and absolute Spearman families; other metrics descriptive",
+      "inferential_population": "within-block heads fixed, image means then image inference",
+      "external_registration": false
+    },
+    {
+      "id": "residual_spatial_tv",
+      "identity": "post-hoc",
+      "source": "reports/nns_vit_endpoint_m4_review_r2_20260919/freeze.json",
+      "sha256": "96ef279060d31bb9f6324c121aa48ccb31885dba19bb5c00ce9712500d2bc12d",
+      "freeze_time": "2026-09-19T10:59:17.569991+00:00",
+      "first_commit": [],
+      "family": "four Holm contrasts across model and residual type",
+      "inferential_population": "image inference for fixed checkpoint and class-target definition",
+      "external_registration": false
+    },
+    {
+      "id": "QKV_spatial",
+      "identity": "prospective robustness",
+      "source": "reports/nns_vit_endpoint_revision_v3_step2_r2_20260921/freeze.json",
+      "sha256": "dd2cc07a780ce825d448c6b250fca401955e77551c92c0319ee823b0dd6cb842",
+      "freeze_time": "2026-09-20T17:14:57.250515+00:00",
+      "first_commit": [],
+      "family": "30 descriptive contrasts; no confirmatory family combined with prior tests",
+      "inferential_population": "400 fixed images/model, B11-B0 contrast",
+      "external_registration": false
+    },
+    {
+      "id": "independent_cohort_checkpoints",
+      "identity": "prospective robustness",
+      "source": "papers/nns_vit_endpoint/thesis_blind_review_20260921/evidence/revision_v5/analysis_estimands.json",
+      "sha256": "2bc3710c035286d8efc341ce110fdb288e679df3a82cc130eb63b50e969eca7b",
+      "freeze_time": "local pre-outcome plan; first committed occurrence below",
+      "first_commit": [
+        "944f54c99c8d83803d461224565b93a779e75915 2026-09-21T11:31:10+08:00"
+      ],
+      "family": "H1-H4 Holm separately within each checkpoint",
+      "inferential_population": "400 independent images, four fixed checkpoints; same team/code/metrics",
+      "external_registration": false
+    },
+    {
+      "id": "training_target_sampling_controls",
+      "identity": "exploratory",
+      "source": "papers/nns_vit_endpoint/publication_r2_20260920/evidence/supplement_v1/freeze.json",
+      "sha256": "27f9de204a89c9035ed2fe488c8f0a0c61a31ce4da21ba00f5076e494d97c22b",
+      "freeze_time": "2026-09-20T00:22:59.620440+00:00",
+      "first_commit": [
+        "395d30b3804983d0e51e99a28d0c3c900aca8fda 2026-09-20T22:41:48+08:00"
+      ],
+      "family": "descriptive 2000 bootstrap; training control resamples image and initialization seed; sampling control resamples target strata and images",
+      "inferential_population": "conditional checks; no training-process causal inference",
+      "external_registration": false
+    },
+    {
+      "id": "coordinate_sensitivity_v6",
+      "identity": "prospective robustness",
+      "source": "reports/nns_vit_endpoint_revision_v6_r1_20260923/protocol.json",
+      "sha256": "0233475cb786f3d8691d3555bbe46e106b563fd239bbe6df0ffac09f7de7bb23",
+      "freeze_time": "2026-09-22T16:43:58.690139+00:00",
+      "first_commit": [],
+      "family": "no significance-based success criterion; report all directions and intervals",
+      "inferential_population": "paired representations within image; fixed original targets and checkpoints",
+      "external_registration": false
+    },
+    {
+      "id": "threshold_sensitivity_v6",
+      "identity": "post-hoc",
+      "source": "reports/nns_vit_endpoint_revision_v6_r1_20260923/protocol.json",
+      "sha256": "0233475cb786f3d8691d3555bbe46e106b563fd239bbe6df0ffac09f7de7bb23",
+      "freeze_time": "2026-09-22T16:43:58.690139+00:00",
+      "first_commit": [],
+      "family": "descriptive thresholds only; original tests and decisions immutable",
+      "inferential_population": "image-level effect distributions",
+      "external_registration": false
+    }
+  ],
+  "original_tests": [
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.vit_b16.normalized_zero.heads",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.vit_b16.normalized_zero.routing_value",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.vit_b16.normalized_zero.residual_branches",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.vit_b16.normalized_zero.head_regions.vs_total_gxi",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.vit_b16.normalized_zero.head_regions.vs_raw_gradient",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.vit_b16.normalized_zero.head_regions.vs_regional_taylor",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.vit_b16.normalized_zero.head_regions.vs_random_regions",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.vit_b16.blur_rgb.heads",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.vit_b16.blur_rgb.routing_value",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.vit_b16.blur_rgb.residual_branches",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.vit_b16.blur_rgb.head_regions.vs_total_gxi",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.vit_b16.blur_rgb.head_regions.vs_raw_gradient",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.vit_b16.blur_rgb.head_regions.vs_regional_taylor",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.vit_b16.blur_rgb.head_regions.vs_random_regions",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.deit_s16.normalized_zero.heads",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.deit_s16.normalized_zero.routing_value",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.deit_s16.normalized_zero.residual_branches",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.deit_s16.normalized_zero.head_regions.vs_total_gxi",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.deit_s16.normalized_zero.head_regions.vs_raw_gradient",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.deit_s16.normalized_zero.head_regions.vs_regional_taylor",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.deit_s16.normalized_zero.head_regions.vs_random_regions",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.deit_s16.blur_rgb.heads",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.deit_s16.blur_rgb.routing_value",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4a.deit_s16.blur_rgb.residual_branches",
+      "type": "exact_two_sided_sign",
+      "value": "image Spearman"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.deit_s16.blur_rgb.head_regions.vs_total_gxi",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.deit_s16.blur_rgb.head_regions.vs_raw_gradient",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.deit_s16.blur_rgb.head_regions.vs_regional_taylor",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    },
+    {
+      "alternative_reported": "two-sided, support requires positive direction",
+      "min_nonzero_n": 300,
+      "null_median": 0.0,
+      "test_id": "C4b.deit_s16.blur_rgb.head_regions.vs_random_regions",
+      "type": "exact_two_sided_sign",
+      "value": "paired image-level S_endpoint minus S_baseline"
+    }
+  ],
+  "threshold_origin": "researcher-selected operational practical-effect thresholds; no external calibration located",
+  "composite": "valid complete attempted coverage; n_valid>=360; n_nonzero>=300; CI width<=0.30 (association) or <=0.50 (regional); median>=delta; positive direction and original Holm p<=0.05; all four regional baselines must meet conditions; CI lower>delta is a separate stronger statement",
+  "intervals": "pointwise percentile intervals, not simultaneous familywise intervals",
+  "local_freeze_not_external_registration": true
+}

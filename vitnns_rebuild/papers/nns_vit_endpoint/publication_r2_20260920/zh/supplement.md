@@ -48,11 +48,11 @@ Models: `vit_base_patch16_224.augreg2_in21k_ft_in1k` and `deit_small_patch16_224
         g <- VJP(s, x) at the observed forward state
         return x * g
 
-    StructuredCut(F, edges):
+    StructuredCut(F, edges, reconstruction_target):
         for each actual use-edge z_k in a valid cut:
             g_k <- downstream cotangent dF/dz_k
             E_k <- x * VJP(z_k, x; vector=g_k)
-        assert sum_k E_k closes to Endpoint(F, x)
+        assert sum_k E_k closes to reconstruction_target # branch contribution or Total Endpoint
 
     SpatialMetrics(E, target_patch):
         M[p] <- sum_rgb abs(E[p, rgb])
@@ -120,7 +120,7 @@ Head rankings use average ranks and Kendall tau-b. Top-K ties are broken by asce
 
 | Method | Primary object | External reference | Propagation / contract |
 | --- | --- | --- | --- |
-| Endpoint | Current-input local dependence | No; normalization origin matters | True local Jacobian; valid cuts close |
+| Endpoint | Normalized-input Total Endpoint | No; normalization origin matters | Global cuts close to total; branch partitions close to branch |
 | Activation-space Taylor | Specified replacement effect | Yes | Clean cotangent × displacement |
 | Integrated Gradients | Baseline-to-input attribution | Yes | Path-average gradient; baseline-difference completeness |
 | Attention rollout | Token flow | No | Accumulated attention / residual flow |
@@ -435,3 +435,161 @@ M4 定量描述当前输入点和冻结 ground-truth logit 下的局部 Jacobian
 
 
 [新增补充实验 S9–S14](supplement_experiments_v1.md)
+
+
+<a id="v6-data"></a>
+## S15. 数据、模型、总体与分析身份
+
+ImageNet 来源为 ILSVRC2012 官方验证集。模型由 timm 0.9.16 标准 Block/Attention 实例化并严格加载权重，所有权重文件已重新核验大小和 SHA-256。AugReg 名称标明 IN21K 预训练后 IN1K 微调或 IN1K 训练；DeiT-S 使用公开 Facebook IN1K 参数。所有结果条件于这些参数状态。
+
+| Model ID | Exact timm name / training | Bytes | SHA-256 |
+| --- | --- | --- | --- |
+| vit_b16 | vit_base_patch16_224.augreg2_in21k_ft_in1k | 346329934 | 489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d |
+| deit_s16 | deit_small_patch16_224.fb_in1k | 88251143 | cd65a15597004d0ce19d7a9daef969903972db5b398e3a5febcd3c4df1d8f59f |
+| vit_b16_in1k | vit_base_patch16_224.augreg_in1k | 346335542 | 69c9a2822a47838f57e522350b10ccc0d89d67fdcee07603e4ae3259b3350336 |
+| vit_s16_augreg | vit_small_patch16_224.augreg_in21k_ft_in1k | 88267574 | 545815b4e770d2fa6ca4b3ccba7c16b035e474354e52d17ca197ea4efecbf4d3 |
+
+原 discovery、calibration、evaluation 分别 64、64、400 类，每类一图。Unit-study 的 100 类各一图是 evaluation 子集。E1 为 100 类各五图，E5 为 400 类各一图。E5 从排除历史曝光和 E1 的候选集中按 class_e5/image_e5 哈希排序选择。以下矩阵报告图像身份重叠；同类别可以跨后续队列出现，图像独立不等于类别独立。E5 的 train/validation/test 标签用于另一个预测分析，不改变此处全部 400 图 H1–H4 检查。
+
+| Cohort | discovery | calibration | evaluation | unit_study | e1 | e5 |
+| --- | --- | --- | --- | --- | --- | --- |
+| discovery | 64 | 0 | 0 | 0 | 0 | 0 |
+| calibration | 0 | 64 | 0 | 0 | 0 | 0 |
+| evaluation | 0 | 0 | 400 | 100 | 0 | 0 |
+| unit_study | 0 | 0 | 100 | 100 | 0 | 0 |
+| e1 | 0 | 0 | 0 | 0 | 500 | 0 |
+| e5 | 0 | 0 | 0 | 0 | 0 | 400 |
+
+预处理使用 Pillow 10.2.0 RGB，不应用 EXIF transpose。Torchvision 0.17.2 先对 PIL 图像以 bicubic 将短边 resize 到 248，antialias=True，再中心 crop 224，转 float32 并除 255。每模型 normalization 使用 Table 2 参数。Blur 在 crop 后 RGB 上使用 31×31 Gaussian kernel、sigma=10、reflect padding=15，再 normalization。Evaluation mode 关闭 dropout 和 drop path。CLS、位置编码与 bias 固定。原 logit 目标为官方 ground-truth，clean-top1 为另一个预先固定读出；它们不参与 cohort 选择。原 registry 每层四 tokens/四 channels 的规则和实际列表由封存 registry 给出。M3 固定 CLS 加 15 个 3×5 分层 tokens，每层 32 channels；跨模型同序号不代表同一语义神经元。结构研究扫描全部 heads 和 12 blocks，区域主任务为 block 5，ViT-B heads 0/6/11、DeiT-S heads 0/3/5。
+
+所有抽样是确定性规则或公开种子。实际 selected IDs 与 targets 由 [cohort bindings](../evidence/revision_v6/cohort_bindings.json) 提供。随机控制的具体派生键与调用顺序保留于原协议，不能把不同分析的种子混用。
+
+| Purpose | Frozen seed / deterministic rule |
+| --- | --- |
+| Original image selection | SHA256(NNS_VIT_ENDPOINT_EP0_R1_20260918 &#124; class &#124; WNID), then namespace &#124; image &#124; filename |
+| Unit cohort | SHA256(ENDPOINT_M3_COHORT_20260919 &#124; sample_id &#124; image_sha256), lowest 100 |
+| Unit channels | SHA256(ENDPOINT_M3_CHANNEL_20260919 &#124; model &#124; block &#124; channel), lowest 32 |
+| Unit tokens | CLS + nearest patch to each of 3×5 strata centers; row-major ties |
+| Original bootstrap | SHA256(namespace &#124; bootstrap &#124; family_id), first 8 bytes big-endian; PCG64 |
+| Unit bootstrap | SHA256(ENDPOINT_M3_BOOTSTRAP_20260919 &#124; M3 &#124; model &#124; metric), first 8 bytes |
+| Structural bootstrap | SHA256(M4 &#124; test &#124; model &#124; test_id), with residual type inserted where applicable |
+| Random initialization | 202609201, 202609202, 202609203 |
+| Independent cohort / target selection | NNS_VIT_REVISION_V5_20260921_R1 namespace; class_e5, image_e5 and post/block/channel/token keys |
+| Independent-cohort bootstrap | ENDPOINT_M1_20260918_V1 &#124; 20260918 &#124; bootstrap &#124; V5 &#124; (model,hypothesis) |
+| Coordinate/threshold bootstrap | SHA256(2026092302 &#124; analysis key), first 8 bytes; 10,000 PCG64 replicates |
+| Analytic directions | NumPy default_rng(2026092301), three normalized Gaussian directions |
+| Regional random orders | Frozen namespace/model/image/reference/head/repeat keys in original intervention registry; 20 repeats |
+
+确认性身份相对于各自分析前的本地冻结计划。外部公开注册未提供。下表保留各 family 的原成员与用途；后续检查不与原 28 项追溯合并。完整 28 个 test IDs 与所有 SHA-256 位于 [analysis identity](../evidence/revision_v6/analysis_identity.json)。0.10/0.05 没有外部效用校准来源，属于研究者操作阈值。原判断要求有效性、完整覆盖、n 和区间精度门，以及点估计和 Holm 检验共同通过；不要求 CI lower > 0.10。阈值敏感性见 [68 行完整结果](../evidence/revision_v6/threshold_sensitivity.csv)。
+
+| Analysis | Identity | Multiplicity family | Local freeze evidence |
+| --- | --- | --- | --- |
+| original_component_and_region | confirmatory | 28 tests jointly Holm; 12 component correlations + 16 regional baseline contrasts | local pre-outcome plan; first committed occurrence below; 6237ef87a1af0205973b76bee172defe33a0a6da 2026-09-18T09:26:20+08:00 |
+| unit_depth | confirmatory | five per model: entropy, locality, distance, cancellation, CLS-patch entropy | local pre-outcome plan; first committed occurrence below; f2eba3f60d765e6a9729d9ff12a57bd01f93f952 2026-09-19T13:53:48+08:00 |
+| attention_residual_depth | confirmatory | four attention tests/model; two residual tests/model/type | local pre-outcome plan; first committed occurrence below; 1a1000bcdd15d8b0e76406f4376a82d60ec79b86 2026-09-19T17:25:17+08:00 |
+| head_baselines | exploratory | separate paired and absolute Spearman families; other metrics descriptive | local pre-outcome plan; first committed occurrence below; 33c8c320446a631b2e451016b3268eefdd9c926b 2026-09-19T04:20:36+08:00 |
+| residual_spatial_tv | post-hoc | four Holm contrasts across model and residual type | 2026-09-19T10:59:17.569991+00:00; protocol timestamp and hashes |
+| QKV_spatial | prospective robustness | 30 descriptive contrasts; no confirmatory family combined with prior tests | 2026-09-20T17:14:57.250515+00:00; protocol timestamp and hashes |
+| independent_cohort_checkpoints | prospective robustness | H1-H4 Holm separately within each checkpoint | local pre-outcome plan; first committed occurrence below; 944f54c99c8d83803d461224565b93a779e75915 2026-09-21T11:31:10+08:00 |
+| training_target_sampling_controls | exploratory | descriptive 2000 bootstrap; training control resamples image and initialization seed; sampling control resamples target strata and images | 2026-09-20T00:22:59.620440+00:00; 395d30b3804983d0e51e99a28d0c3c900aca8fda 2026-09-20T22:41:48+08:00 |
+| coordinate_sensitivity_v6 | prospective robustness | no significance-based success criterion; report all directions and intervals | 2026-09-22T16:43:58.690139+00:00; protocol timestamp and hashes |
+| threshold_sensitivity_v6 | post-hoc | descriptive thresholds only; original tests and decisions immutable | 2026-09-22T16:43:58.690139+00:00; protocol timestamp and hashes |
+
+<a id="v6-intervention"></a>
+## S16. 有限替换变量与可执行伪代码
+
+A 和 V 是前向变量，routing-induced/value-induced 是微分分组。Table 6 的 A/V family 每个 block 各一个全-head A 替换和 V 替换，共 24 成分；head family 为所有 block/head，residual family 每 block attention 与 MLP branch 各一项。Reference activation 来自完整 reference forward。下面的 consumer slot 是替换身份的一部分。
+
+| Replacement | Forward tensor / shape (batch=1) | Consumer input slot | Clean state and recomputation |
+| --- | --- | --- | --- |
+| Attention probability | A [1,H,197,197], after softmax/dropout | left input of A @ V | V, other branches and residual identity clean; recompute AV, concat, output projection, residual suffix |
+| V projection | V [1,H,197,64], qkv projection slice | right input of A @ V | Q/K/A and identity clean; recompute AV and entire suffix |
+| Head output | slice of projection_input [1,197,H×64], head h channels h×64:(h+1)×64 | attn.proj input channels | all other head slices and residual identity clean; recompute projection and suffix |
+| Attention branch | drop_path1 output [1,197,D] | residual1 add branch input | identity u clean; recompute residual sum, MLP and remaining blocks |
+| MLP branch | drop_path2 output [1,197,D] | residual2 add branch input | carry r1 clean; recompute residual sum and remaining blocks |
+
+    clean_rgb = RGB(image) / 255
+    clean_rgb = center_crop(resize_shorter_side(clean_rgb, 248, bicubic, antialias=True), 224)
+    x = (clean_rgb - mu) / sigma
+    reference_zero = zeros_like(x)             # raw RGB equals mu
+    reference_blur = (GaussianBlur(clean_rgb, kernel=31, sigma=10, reflect_padding=15) - mu) / sigma
+    clean = forward_and_capture(x)
+    reference = forward_and_capture(reference_input)
+    for fixed block, component, consumer slot:
+        replacement = reference.tensor_at(component, slot)
+        patched = forward(x, replace_only_this_use=replacement)
+        effect = clean.GT_logit - patched.GT_logit
+        # All sibling heads and bypass inputs remain clean before the replacement.
+        # Every node downstream of the replaced use is recomputed normally.
+
+    for singleton region P in the fixed 4x4 grid of 56x56 pixels:
+        x_P = x.copy(); x_P[P] = reference_input[P]
+        mixed[P] = forward_and_capture(x_P)
+        regional_Taylor[P] = abs(dot(clean_head_cotangent, clean_head - mixed[P].head))
+    rank_regions(score, ties=ascending_region_id)
+    for budget in [1, 2, 4]:
+        selected = top_regions(budget)
+        x_selected = x with selected pixels from reference_input
+        mixed = forward_and_capture(x_selected)
+        full_input_effect = clean.GT_logit - mixed.GT_logit
+        isolated = forward(x, target_head_slice=mixed.head_slice)
+        isolated_effect = clean.GT_logit - isolated.GT_logit
+    AUC = trapezoid(abs(isolated_effect), areas=[0,1/16,2/16,4/16]) / 0.25
+    image_AUC = mean(AUC across the three fixed heads)
+    random_AUC = mean(AUC per random repeat, then heads) # abs before averaging repeats
+
+Full-input effect 改变整条前向计算；isolated-component effect 只将 mixed forward 的目标张量放入 clean forward，其他 head 与 bypass 保持 clean。区域分数的候选集合相同，但 Taylor 需额外 singleton mixed forwards，因此信息预算不同。区域 ties 用编号升序，head ties 用 component ID 升序，Spearman 用平均秩。所谓 candidate-envelope AUC 是在每个面积点从已评价候选中取最大 absolute effect，再积分、平均 heads，可能拼接不同排序的点，因此不是一条可执行的全局最优区域策略。它只用作已评价集合的上界和 regret 分母。
+
+<a id="v6-coordinate"></a>
+## S17. 坐标敏感性与独立解析检查
+
+三种表示均在同一当前输入点、同一固定目标与 checkpoint 上计算。Raw gradient 除去模型 sigma；common-origin weighted gradient 使用原始 RGB 零点，不随模型 mean 改变。以下每格为图像级中位差和 95% bootstrap CI。Unit 每模型 n=100，结构项 n=400；缺失图像为零。每个 coordinate 在图内配对，不作为额外样本。
+
+$$
+E_i^{(x)}=x_i\frac{\partial s}{\partial x_i},\qquad
+G_i^{(r)}=\frac1{\sigma_i}\frac{\partial s}{\partial x_i},\qquad
+E_i^{(0)}=r_i\frac{\partial s}{\partial r_i}
+=\left(x_i+\frac{\mu_i}{\sigma_i}\right)\frac{\partial s}{\partial x_i}.
+$$
+
+| Model | Object / metric | Contrast | Normalized Endpoint | Raw-pixel gradient | Common-origin gradient | n / NA |
+| --- | --- | --- | --- | --- | --- | --- |
+| deit_s16 | K / entropy | block11_minus_block0 | -0.067 [-0.074, -0.059] | -0.066 [-0.073, -0.060] | -0.061 [-0.069, -0.053] | 400 / 0 |
+| deit_s16 | K / entropy | late_minus_early | -0.028 [-0.031, -0.024] | -0.029 [-0.032, -0.026] | -0.027 [-0.031, -0.024] | 400 / 0 |
+| deit_s16 | Q / entropy | block11_minus_block0 | -0.004 [-0.008, 0.0005] | 0.003 [-0.001, 0.006] | 0.002 [-0.003, 0.006] | 400 / 0 |
+| deit_s16 | Q / entropy | late_minus_early | 0.018 [0.013, 0.022] | 0.018 [0.015, 0.022] | 0.015 [0.012, 0.018] | 400 / 0 |
+| deit_s16 | V / entropy | block11_minus_block0 | -0.067 [-0.075, -0.061] | -0.076 [-0.081, -0.068] | -0.070 [-0.077, -0.062] | 400 / 0 |
+| deit_s16 | V / entropy | late_minus_early | -0.013 [-0.016, -0.011] | -0.016 [-0.017, -0.013] | -0.015 [-0.017, -0.013] | 400 / 0 |
+| deit_s16 | attention / output_identity_tv | block11_minus_block0 | 0.078 [0.072, 0.085] | 0.079 [0.070, 0.085] | 0.074 [0.067, 0.081] | 400 / 0 |
+| deit_s16 | attention / output_identity_tv | late_minus_early | 0.028 [0.026, 0.030] | 0.028 [0.026, 0.030] | 0.027 [0.026, 0.029] | 400 / 0 |
+| deit_s16 | mlp / output_identity_tv | block11_minus_block0 | -0.050 [-0.059, -0.040] | -0.044 [-0.057, -0.037] | -0.037 [-0.043, -0.029] | 400 / 0 |
+| deit_s16 | mlp / output_identity_tv | late_minus_early | -0.046 [-0.052, -0.041] | -0.044 [-0.051, -0.039] | -0.039 [-0.044, -0.034] | 400 / 0 |
+| deit_s16 | unit / distance | block11_minus_block0 | 0.163 [0.159, 0.169] | 0.169 [0.164, 0.175] | 0.171 [0.167, 0.178] | 100 / 0 |
+| deit_s16 | unit / distance | late_minus_early | 0.122 [0.120, 0.128] | 0.129 [0.126, 0.132] | 0.127 [0.122, 0.131] | 100 / 0 |
+| deit_s16 | unit / entropy | block11_minus_block0 | 0.397 [0.387, 0.404] | 0.426 [0.412, 0.438] | 0.418 [0.400, 0.427] | 100 / 0 |
+| deit_s16 | unit / entropy | late_minus_early | 0.225 [0.212, 0.228] | 0.245 [0.241, 0.249] | 0.221 [0.217, 0.229] | 100 / 0 |
+| deit_s16 | unit / locality | block11_minus_block0 | -0.455 [-0.467, -0.432] | -0.453 [-0.469, -0.441] | -0.477 [-0.493, -0.455] | 100 / 0 |
+| deit_s16 | unit / locality | late_minus_early | -0.342 [-0.353, -0.333] | -0.359 [-0.366, -0.352] | -0.356 [-0.361, -0.344] | 100 / 0 |
+| vit_b16 | K / entropy | block11_minus_block0 | -0.059 [-0.064, -0.053] | -0.052 [-0.058, -0.048] | -0.046 [-0.054, -0.041] | 400 / 0 |
+| vit_b16 | K / entropy | late_minus_early | -0.021 [-0.024, -0.019] | -0.019 [-0.023, -0.016] | -0.019 [-0.022, -0.016] | 400 / 0 |
+| vit_b16 | Q / entropy | block11_minus_block0 | 0.027 [0.022, 0.031] | 0.026 [0.018, 0.031] | 0.014 [0.009, 0.018] | 400 / 0 |
+| vit_b16 | Q / entropy | late_minus_early | 0.037 [0.033, 0.043] | 0.039 [0.033, 0.044] | 0.034 [0.030, 0.037] | 400 / 0 |
+| vit_b16 | V / entropy | block11_minus_block0 | -0.053 [-0.059, -0.047] | -0.057 [-0.061, -0.049] | -0.055 [-0.060, -0.050] | 400 / 0 |
+| vit_b16 | V / entropy | late_minus_early | -0.010 [-0.012, -0.008] | -0.009 [-0.011, -0.007] | -0.010 [-0.012, -0.007] | 400 / 0 |
+| vit_b16 | attention / output_identity_tv | block11_minus_block0 | 0.166 [0.159, 0.172] | 0.167 [0.159, 0.174] | 0.167 [0.160, 0.175] | 400 / 0 |
+| vit_b16 | attention / output_identity_tv | late_minus_early | 0.052 [0.049, 0.055] | 0.054 [0.051, 0.056] | 0.053 [0.050, 0.055] | 400 / 0 |
+| vit_b16 | mlp / output_identity_tv | block11_minus_block0 | -0.037 [-0.043, -0.031] | -0.034 [-0.038, -0.029] | -0.032 [-0.039, -0.025] | 400 / 0 |
+| vit_b16 | mlp / output_identity_tv | late_minus_early | -0.019 [-0.022, -0.015] | -0.017 [-0.020, -0.013] | -0.018 [-0.021, -0.014] | 400 / 0 |
+| vit_b16 | unit / distance | block11_minus_block0 | 0.197 [0.190, 0.204] | 0.205 [0.200, 0.211] | 0.209 [0.203, 0.214] | 100 / 0 |
+| vit_b16 | unit / distance | late_minus_early | 0.131 [0.129, 0.136] | 0.138 [0.134, 0.141] | 0.134 [0.129, 0.138] | 100 / 0 |
+| vit_b16 | unit / entropy | block11_minus_block0 | 0.398 [0.392, 0.409] | 0.440 [0.426, 0.447] | 0.412 [0.402, 0.426] | 100 / 0 |
+| vit_b16 | unit / entropy | late_minus_early | 0.220 [0.211, 0.227] | 0.240 [0.235, 0.246] | 0.217 [0.209, 0.223] | 100 / 0 |
+| vit_b16 | unit / locality | block11_minus_block0 | -0.526 [-0.534, -0.516] | -0.543 [-0.554, -0.532] | -0.545 [-0.552, -0.538] | 100 / 0 |
+| vit_b16 | unit / locality | late_minus_early | -0.356 [-0.363, -0.350] | -0.367 [-0.373, -0.361] | -0.356 [-0.364, -0.347] | 100 / 0 |
+
+DeiT-S Q 的 B11−B0 在三坐标下的点估计符号不同且三个区间跨零。Phase contrast 与 B11−B0 的差异还说明，终点比较不能替代整个轨迹。主文始终限定 normalized-input Endpoint。其他对象只作这三表示下的方向保持判断，不推出一般参数化不变性。
+
+独立参考以 NumPy float64 显式构造 affine、LayerNorm、softmax diag(a)−aaᵀ、Q/K/V、head concat/output projection、GELU/MLP 和 residual identity Jacobian。参考模块不导入 scanner、hook 或 autograd。独立驱动将其结果与实际主扫描器在单头、双头、pre-LN residual attention/MLP tiny 模型上逐项比较。32 个分量比较和 9 个冻结方向有限差分通过，最大分量绝对误差 1.11e-16；每项 relative L2 和容差见 [analytic results](../evidence/revision_v6/analytic_reference_results.json)。共享 producer 双 slot toy、Q/K slot 交换、提前合并 fan-out 和重复合并项均被拒绝，正确实现先通过。此能力限于这些数值图和故障类型，不等于排除全部 scanner 实现错误。
+
+
+原区域数组键 raw_gradient 记录 ∇x，不是 ∇r。主文已按实际坐标重命名。Random region order 以 NNS_VIT_ENDPOINT_E5_RANDOM_REGIONS_V1、task_seed、model_id、reference_id、head、repeat 拼接字符串作 SHA-256，前八字节 big-endian 作为 PCG64 seed，再 permutation(16)。task_seed 来自 NNS_VIT_ENDPOINT_QUEUE_V1 与 task_id。

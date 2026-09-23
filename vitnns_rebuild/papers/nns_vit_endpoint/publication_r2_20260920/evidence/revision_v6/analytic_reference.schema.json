@@ -1,0 +1,71 @@
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "status": {
+      "enum": [
+        "PASS",
+        "FAIL"
+      ]
+    },
+    "cpu_only": {
+      "const": true
+    },
+    "seconds": {
+      "type": "number"
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "fixture": {
+            "type": "string"
+          },
+          "component": {
+            "type": "string"
+          },
+          "max_abs_error": {
+            "type": "number"
+          },
+          "relative_l2": {
+            "type": "number"
+          },
+          "atol": {
+            "type": "number"
+          },
+          "rtol": {
+            "type": "number"
+          },
+          "passed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "fixture",
+          "component",
+          "max_abs_error",
+          "relative_l2",
+          "atol",
+          "rtol",
+          "passed"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "array_sha256": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "status",
+    "cpu_only",
+    "seconds",
+    "rows",
+    "array_sha256"
+  ],
+  "additionalProperties": false
+}
