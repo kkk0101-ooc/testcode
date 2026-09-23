@@ -1,19 +1,21 @@
 # NNS–ViT Endpoint 论文、实验与图件复现指南
 
+> 本文件是 `vitnns_rebuild/papers/nns_vit_endpoint/publication_r2_20260920/README.md` 的仓库根目录副本。为保证 GitHub 首页导航有效，本副本只调整了 Markdown 链接前缀；论文目录中的源 README 保持不变。
+
 本目录是论文《面向视觉 Transformer 内部目标的双索引局部 Jacobian 扫描与结构审计》的 revision-v6 匿名送审包。本文档说明四件事：论文在讲什么，核心方法是什么，实验代码和证据在哪里，以及怎样从一个最小 CPU demo 开始生成 learning-image 图。
 
 当前正文入口：
 
-- [中文正文](zh/manuscript.md)
-- [English manuscript](en/manuscript.md)
-- [中文补充材料](zh/supplement.md)
-- [English supplement](en/supplement.md)
-- [中文补充控制实验](zh/supplement_experiments_v1.md)
-- [English supplementary controls](en/supplement_experiments_v1.md)
-- [22 张图的网页总览](gallery.html)
-- [论文图 manifest](figure_manifest.json)
-- [revision-v6 证据包](evidence/revision_v6/package_manifest.json)
-- [revision-v6 六维终审](qc/revision_v6/thesis_final_review.md)
+- [中文正文](vitnns_rebuild/papers/nns_vit_endpoint/publication_r2_20260920/zh/manuscript.md)
+- [English manuscript](vitnns_rebuild/papers/nns_vit_endpoint/publication_r2_20260920/en/manuscript.md)
+- [中文补充材料](vitnns_rebuild/papers/nns_vit_endpoint/publication_r2_20260920/zh/supplement.md)
+- [English supplement](vitnns_rebuild/papers/nns_vit_endpoint/publication_r2_20260920/en/supplement.md)
+- [中文补充控制实验](vitnns_rebuild/papers/nns_vit_endpoint/publication_r2_20260920/zh/supplement_experiments_v1.md)
+- [English supplementary controls](vitnns_rebuild/papers/nns_vit_endpoint/publication_r2_20260920/en/supplement_experiments_v1.md)
+- [22 张图的网页总览](vitnns_rebuild/papers/nns_vit_endpoint/publication_r2_20260920/gallery.html)
+- [论文图 manifest](vitnns_rebuild/papers/nns_vit_endpoint/publication_r2_20260920/figure_manifest.json)
+- [revision-v6 证据包](vitnns_rebuild/papers/nns_vit_endpoint/publication_r2_20260920/evidence/revision_v6/package_manifest.json)
+- [revision-v6 六维终审](vitnns_rebuild/papers/nns_vit_endpoint/publication_r2_20260920/qc/revision_v6/thesis_final_review.md)
 
 ## 1. 一句话概括
 
@@ -102,20 +104,20 @@ $$
 
 | 代码 | 作用 |
 | --- | --- |
-| [`src/vitnns/endpoint_nns.py`](../../../src/vitnns/endpoint_nns.py) | 一般 NNS Endpoint 原语。计算当前点局部梯度，并形成 input-weighted local map。 |
-| [`src/vitnns/endpoint_vit.py`](../../../src/vitnns/endpoint_vit.py) | ViT 主实现。注册内部目标，扫描 token/channel/head，捕获 unfused attention use，并实现 `decompose_endpoint_vit` 的 head、Q/K/V、routing/value 和 residual 分解。 |
-| [`src/vitnns/modeling.py`](../../../src/vitnns/modeling.py) | 严格加载 checkpoint、绑定模型身份并生成 canonical preprocessing。 |
-| [`scripts/run_endpoint_vit_scan.py`](../../../scripts/run_endpoint_vit_scan.py) | 单图 CPU demo。输出原始数组、扫描报告和 learning-image/edge-decomposition 图。 |
+| [`src/vitnns/endpoint_nns.py`](vitnns_rebuild/src/vitnns/endpoint_nns.py) | 一般 NNS Endpoint 原语。计算当前点局部梯度，并形成 input-weighted local map。 |
+| [`src/vitnns/endpoint_vit.py`](vitnns_rebuild/src/vitnns/endpoint_vit.py) | ViT 主实现。注册内部目标，扫描 token/channel/head，捕获 unfused attention use，并实现 `decompose_endpoint_vit` 的 head、Q/K/V、routing/value 和 residual 分解。 |
+| [`src/vitnns/modeling.py`](vitnns_rebuild/src/vitnns/modeling.py) | 严格加载 checkpoint、绑定模型身份并生成 canonical preprocessing。 |
+| [`scripts/run_endpoint_vit_scan.py`](vitnns_rebuild/scripts/run_endpoint_vit_scan.py) | 单图 CPU demo。输出原始数组、扫描报告和 learning-image/edge-decomposition 图。 |
 
 ### 3.2 正式 Endpoint 主实验
 
 | 论文问题 | 核心模块 | 执行与验证入口 | 主要证据根 |
 | --- | --- | --- | --- |
-| 注册目标 atlas | [`endpoint_e2_atlas.py`](../../../src/vitnns/endpoint_e2_atlas.py) | [`run_endpoint_e2_atlas.py`](../../../scripts/run_endpoint_e2_atlas.py)、[`validate_endpoint_e2_atlas.py`](../../../scripts/validate_endpoint_e2_atlas.py) | `reports/nns_vit_endpoint_e2_atlas_r4_20260918/` |
-| 结构切面闭合 | [`endpoint_e3_closure.py`](../../../src/vitnns/endpoint_e3_closure.py) | [`run_endpoint_e3_closure.py`](../../../scripts/run_endpoint_e3_closure.py)、[`validate_endpoint_e3_closure.py`](../../../scripts/validate_endpoint_e3_closure.py) | `reports/nns_vit_endpoint_e3_closure_r2_20260918/`，原始 component maps 在 R1 根 |
-| 成分有限替换 | [`endpoint_e4_intervention.py`](../../../src/vitnns/endpoint_e4_intervention.py) | [`run_endpoint_e4_intervention.py`](../../../scripts/run_endpoint_e4_intervention.py)、[`run_endpoint_e4_recovery_r3.py`](../../../scripts/run_endpoint_e4_recovery_r3.py)、[`validate_endpoint_e4_recovery_r3.py`](../../../scripts/validate_endpoint_e4_recovery_r3.py) | `reports/nns_vit_endpoint_e4_intervention_r3_20260918/` |
-| 区域诱导的指定 head 替换 | [`endpoint_e5_spatial.py`](../../../src/vitnns/endpoint_e5_spatial.py) | [`run_endpoint_e5_spatial.py`](../../../scripts/run_endpoint_e5_spatial.py)、[`validate_endpoint_e5_spatial.py`](../../../scripts/validate_endpoint_e5_spatial.py) | `reports/nns_vit_endpoint_e5_spatial_r1_20260918/` |
-| 图像级统计与 Holm | [`endpoint_e6_release.py`](../../../src/vitnns/endpoint_e6_release.py) | [`run_endpoint_e6_release.py`](../../../scripts/run_endpoint_e6_release.py)、[`validate_endpoint_e6_release.py`](../../../scripts/validate_endpoint_e6_release.py) | `reports/nns_vit_endpoint_e6_release_r3_20260918/` |
+| 注册目标 atlas | [`endpoint_e2_atlas.py`](vitnns_rebuild/src/vitnns/endpoint_e2_atlas.py) | [`run_endpoint_e2_atlas.py`](vitnns_rebuild/scripts/run_endpoint_e2_atlas.py)、[`validate_endpoint_e2_atlas.py`](vitnns_rebuild/scripts/validate_endpoint_e2_atlas.py) | `reports/nns_vit_endpoint_e2_atlas_r4_20260918/` |
+| 结构切面闭合 | [`endpoint_e3_closure.py`](vitnns_rebuild/src/vitnns/endpoint_e3_closure.py) | [`run_endpoint_e3_closure.py`](vitnns_rebuild/scripts/run_endpoint_e3_closure.py)、[`validate_endpoint_e3_closure.py`](vitnns_rebuild/scripts/validate_endpoint_e3_closure.py) | `reports/nns_vit_endpoint_e3_closure_r2_20260918/`，原始 component maps 在 R1 根 |
+| 成分有限替换 | [`endpoint_e4_intervention.py`](vitnns_rebuild/src/vitnns/endpoint_e4_intervention.py) | [`run_endpoint_e4_intervention.py`](vitnns_rebuild/scripts/run_endpoint_e4_intervention.py)、[`run_endpoint_e4_recovery_r3.py`](vitnns_rebuild/scripts/run_endpoint_e4_recovery_r3.py)、[`validate_endpoint_e4_recovery_r3.py`](vitnns_rebuild/scripts/validate_endpoint_e4_recovery_r3.py) | `reports/nns_vit_endpoint_e4_intervention_r3_20260918/` |
+| 区域诱导的指定 head 替换 | [`endpoint_e5_spatial.py`](vitnns_rebuild/src/vitnns/endpoint_e5_spatial.py) | [`run_endpoint_e5_spatial.py`](vitnns_rebuild/scripts/run_endpoint_e5_spatial.py)、[`validate_endpoint_e5_spatial.py`](vitnns_rebuild/scripts/validate_endpoint_e5_spatial.py) | `reports/nns_vit_endpoint_e5_spatial_r1_20260918/` |
+| 图像级统计与 Holm | [`endpoint_e6_release.py`](vitnns_rebuild/src/vitnns/endpoint_e6_release.py) | [`run_endpoint_e6_release.py`](vitnns_rebuild/scripts/run_endpoint_e6_release.py)、[`validate_endpoint_e6_release.py`](vitnns_rebuild/scripts/validate_endpoint_e6_release.py) | `reports/nns_vit_endpoint_e6_release_r3_20260918/` |
 
 E2–E6 是带冻结协议、原子队列、资源门和不可变收据的正式工作流，不是快速 demo。历史 FAIL/恢复根属于证据链，不能删除或用新结果覆盖。
 
@@ -123,14 +125,14 @@ E2–E6 是带冻结协议、原子队列、资源门和不可变收据的正式
 
 | 分析 | 计算代码 | 分析代码 | 证据根 |
 | --- | --- | --- | --- |
-| 固定 token-channel 的层深空间轨迹 | [`endpoint_m3_atlas.py`](../../../src/vitnns/endpoint_m3_atlas.py)、[`run_endpoint_m3.py`](../../../scripts/run_endpoint_m3.py) | [`run_endpoint_m3_analysis.py`](../../../scripts/run_endpoint_m3_analysis.py) | `reports/nns_vit_endpoint_m3_r1_20260919/` |
-| Q/K/V、routing/value、residual 轨迹 | [`endpoint_m4.py`](../../../src/vitnns/endpoint_m4.py)、[`run_endpoint_m4.py`](../../../scripts/run_endpoint_m4.py) | [`run_endpoint_m4_analysis.py`](../../../scripts/run_endpoint_m4_analysis.py) | `reports/nns_vit_endpoint_m4_r1_20260919/` |
-| Head/Taylor 排序与跨层区域补充 | [`endpoint_m1_compute.py`](../../../src/vitnns/endpoint_m1_compute.py)、[`endpoint_m2_compute.py`](../../../src/vitnns/endpoint_m2_compute.py) | `scripts/run_endpoint_m1_*`、`scripts/run_endpoint_m2_*` | `reports/nns_vit_endpoint_m1_r1_20260918/`、`reports/nns_vit_endpoint_m2_r1_20260919/` |
-| 独立图像队列、额外 checkpoint 和 H4 | [`revision_v5_extended.py`](../../../src/vitnns/revision_v5_extended.py) | [`run_revision_v5.py`](../../../scripts/run_revision_v5.py)、[`analyze_revision_v5.py`](../../../scripts/analyze_revision_v5.py) | `reports/nns_vit_revision_v5_r1_20260921/` |
-| 三种坐标量敏感性 | [`revision_v6_coordinate.py`](../../../src/vitnns/revision_v6_coordinate.py) | [`prepare_revision_v6.py`](../../../scripts/prepare_revision_v6.py)、[`launch_revision_v6.py`](../../../scripts/launch_revision_v6.py)、[`analyze_revision_v6.py`](../../../scripts/analyze_revision_v6.py) | `reports/nns_vit_endpoint_revision_v6_r1_20260923/` |
-| 独立 float64 解析参考与 mutation | [`revision_v6_analytic.py`](../../../src/vitnns/revision_v6_analytic.py) | [`run_revision_v6_analytic.py`](../../../scripts/run_revision_v6_analytic.py)、[`validate_revision_v6_experiments.py`](../../../scripts/validate_revision_v6_experiments.py) | 同一 revision-v6 根 |
+| 固定 token-channel 的层深空间轨迹 | [`endpoint_m3_atlas.py`](vitnns_rebuild/src/vitnns/endpoint_m3_atlas.py)、[`run_endpoint_m3.py`](vitnns_rebuild/scripts/run_endpoint_m3.py) | [`run_endpoint_m3_analysis.py`](vitnns_rebuild/scripts/run_endpoint_m3_analysis.py) | `reports/nns_vit_endpoint_m3_r1_20260919/` |
+| Q/K/V、routing/value、residual 轨迹 | [`endpoint_m4.py`](vitnns_rebuild/src/vitnns/endpoint_m4.py)、[`run_endpoint_m4.py`](vitnns_rebuild/scripts/run_endpoint_m4.py) | [`run_endpoint_m4_analysis.py`](vitnns_rebuild/scripts/run_endpoint_m4_analysis.py) | `reports/nns_vit_endpoint_m4_r1_20260919/` |
+| Head/Taylor 排序与跨层区域补充 | [`endpoint_m1_compute.py`](vitnns_rebuild/src/vitnns/endpoint_m1_compute.py)、[`endpoint_m2_compute.py`](vitnns_rebuild/src/vitnns/endpoint_m2_compute.py) | `scripts/run_endpoint_m1_*`、`scripts/run_endpoint_m2_*` | `reports/nns_vit_endpoint_m1_r1_20260918/`、`reports/nns_vit_endpoint_m2_r1_20260919/` |
+| 独立图像队列、额外 checkpoint 和 H4 | [`revision_v5_extended.py`](vitnns_rebuild/src/vitnns/revision_v5_extended.py) | [`run_revision_v5.py`](vitnns_rebuild/scripts/run_revision_v5.py)、[`analyze_revision_v5.py`](vitnns_rebuild/scripts/analyze_revision_v5.py) | `reports/nns_vit_revision_v5_r1_20260921/` |
+| 三种坐标量敏感性 | [`revision_v6_coordinate.py`](vitnns_rebuild/src/vitnns/revision_v6_coordinate.py) | [`prepare_revision_v6.py`](vitnns_rebuild/scripts/prepare_revision_v6.py)、[`launch_revision_v6.py`](vitnns_rebuild/scripts/launch_revision_v6.py)、[`analyze_revision_v6.py`](vitnns_rebuild/scripts/analyze_revision_v6.py) | `reports/nns_vit_endpoint_revision_v6_r1_20260923/` |
+| 独立 float64 解析参考与 mutation | [`revision_v6_analytic.py`](vitnns_rebuild/src/vitnns/revision_v6_analytic.py) | [`run_revision_v6_analytic.py`](vitnns_rebuild/scripts/run_revision_v6_analytic.py)、[`validate_revision_v6_experiments.py`](vitnns_rebuild/scripts/validate_revision_v6_experiments.py) | 同一 revision-v6 根 |
 
-当前论文数字与便携证据副本集中在 [`evidence/revision_v6/`](evidence/revision_v6/)。大规模逐任务原始数组仍在上表的 `reports/` 根中。
+当前论文数字与便携证据副本集中在 [`evidence/revision_v6/`](vitnns_rebuild/papers/nns_vit_endpoint/publication_r2_20260920/evidence/revision_v6/)。大规模逐任务原始数组仍在上表的 `reports/` 根中。
 
 ## 4. 环境
 
@@ -150,7 +152,7 @@ E2–E6 是带冻结协议、原子队列、资源门和不可变收据的正式
 | Matplotlib | 3.8.3 |
 | Pillow | 10.2.0 |
 
-Python 依赖锁位于 [`requirements.lock.txt`](../../../requirements.lock.txt)，包定义位于 [`pyproject.toml`](../../../pyproject.toml)。[`environment.yml`](../../../environment.yml) 只建立 Python 3.10 与 pip 的基础环境，不包含完整依赖。
+Python 依赖锁位于 [`requirements.lock.txt`](vitnns_rebuild/requirements.lock.txt)，包定义位于 [`pyproject.toml`](vitnns_rebuild/pyproject.toml)。[`environment.yml`](vitnns_rebuild/environment.yml) 只建立 Python 3.10 与 pip 的基础环境，不包含完整依赖。
 
 ### 4.2 使用当前工作区环境
 
@@ -192,14 +194,14 @@ ImageNet 资产受 ImageNet 许可约束，不随 Git 仓库分发。大模型�
 
 ### 5.1 模型 checkpoint
 
-正式主模型由 [`model_registry.json`](../../../manifests/nns_vit_endpoint/ep0_r1_20260918/model_registry.json) 绑定：
+正式主模型由 [`model_registry.json`](vitnns_rebuild/manifests/nns_vit_endpoint/ep0_r1_20260918/model_registry.json) 绑定：
 
 | Model ID | timm 名称 | 本地路径 | SHA-256 |
 | --- | --- | --- | --- |
 | `vit_b16` | `vit_base_patch16_224.augreg2_in21k_ft_in1k` | `assets/models/vit_base_patch16_224_weights.semantic_candidate.pth` | `489bfa2f1aa3b6781e268a87eb629816b89eebba439420978a794b8e8151565d` |
 | `deit_s16` | `deit_small_patch16_224.fb_in1k` | `assets/models/stage_x_x2/deit_small_patch16_224.fb_in1k.pth` | `cd65a15597004d0ce19d7a9daef969903972db5b398e3a5febcd3c4df1d8f59f` |
 
-额外 checkpoint 的精确名称和哈希在 [`manifests/nns_vit_revision_v5/protocol.json`](../../../manifests/nns_vit_revision_v5/protocol.json) 与补充材料 S15 中。
+额外 checkpoint 的精确名称和哈希在 [`manifests/nns_vit_revision_v5/protocol.json`](vitnns_rebuild/manifests/nns_vit_revision_v5/protocol.json) 与补充材料 S15 中。
 
 ### 5.2 ImageNet 数据
 
@@ -214,11 +216,11 @@ ImageNet 资产受 ImageNet 许可约束，不随 Git 仓库分发。大模型�
 
 数据选择、排除、样本 SHA-256 和 source tar member 位于：
 
-- [`cohort_registry.json`](../../../manifests/nns_vit_endpoint/ep0_r1_20260918/cohort_registry.json)
-- [`target_registry.json`](../../../manifests/nns_vit_endpoint/ep0_r1_20260918/target_registry.json)
-- [`intervention_registry.json`](../../../manifests/nns_vit_endpoint/ep0_r1_20260918/intervention_registry.json)
-- [`statistical_analysis_plan.json`](../../../manifests/nns_vit_endpoint/ep0_r1_20260918/statistical_analysis_plan.json)
-- [`manifests/nns_vit_revision_v5/`](../../../manifests/nns_vit_revision_v5/)
+- [`cohort_registry.json`](vitnns_rebuild/manifests/nns_vit_endpoint/ep0_r1_20260918/cohort_registry.json)
+- [`target_registry.json`](vitnns_rebuild/manifests/nns_vit_endpoint/ep0_r1_20260918/target_registry.json)
+- [`intervention_registry.json`](vitnns_rebuild/manifests/nns_vit_endpoint/ep0_r1_20260918/intervention_registry.json)
+- [`statistical_analysis_plan.json`](vitnns_rebuild/manifests/nns_vit_endpoint/ep0_r1_20260918/statistical_analysis_plan.json)
+- [`manifests/nns_vit_revision_v5/`](vitnns_rebuild/manifests/nns_vit_revision_v5/)
 
 不要按目录顺序重新挑图，也不要用模型正确率或结果选择替换样本。正式 worker 会核验 checkpoint 和 JPEG 的字节数与 SHA-256。
 
@@ -232,7 +234,7 @@ ImageNet 资产受 ImageNet 许可约束，不随 Git 仓库分发。大模型�
 - M3/M4 的 block summary CSV。
 - `reports/nns_vit_endpoint_paper_revision_v1_20260920/analysis.json`。
 
-完整绑定见 [`evidence/figure_sources.json`](evidence/figure_sources.json)。正式重绘器会先校验这些源文件的 SHA-256。
+完整绑定见 [`evidence/figure_sources.json`](vitnns_rebuild/papers/nns_vit_endpoint/publication_r2_20260920/evidence/figure_sources.json)。正式重绘器会先校验这些源文件的 SHA-256。
 
 ## 6. Start demo：一张图生成 Endpoint learning images
 
@@ -295,12 +297,12 @@ OPENBLAS_NUM_THREADS=1 \
 
 ### 7.1 只看已有图片
 
-无需运行代码。打开 [`gallery.html`](gallery.html)，或查看：
+无需运行代码。打开 [`gallery.html`](vitnns_rebuild/papers/nns_vit_endpoint/publication_r2_20260920/gallery.html)，或查看：
 
 - `figures/png/`：网页和 Markdown 使用。
 - `figures/pdf/`：论文排版使用。
 - `figures/svg/`：矢量编辑使用。
-- [`figure_analysis.md`](figure_analysis.md)：逐图用途和证据说明。
+- [`figure_analysis.md`](vitnns_rebuild/papers/nns_vit_endpoint/publication_r2_20260920/figure_analysis.md)：逐图用途和证据说明。
 
 当前包含 22 张图，其中正文引用 11 张。
 
@@ -339,17 +341,17 @@ git status --short
 
 封存版本的 `validate_publication_r2.py` 曾通过 2,678 项检查，并从真实数组重算了 162 个 display panels。当前分支随后扩展了包内 `.gitattributes`，而历史 `artifact_inventory.json` 保留旧哈希；因此直接运行当前验证器可能只报告 `inventory_hash:.gitattributes`。这属于发布清单漂移，不是图件或科学数组失败。不要为消除它而静默改写历史 inventory；正式新发布应生成新的版本化 inventory。
 
-不要使用 [`write_publication_r2.py`](../scripts/write_publication_r2.py) 重写当前稿。它是历史模板生成器，会主动拒绝无意覆盖当前 evidence-bounded 手工修订。
+不要使用 [`write_publication_r2.py`](vitnns_rebuild/papers/nns_vit_endpoint/scripts/write_publication_r2.py) 重写当前稿。它是历史模板生成器，会主动拒绝无意覆盖当前 evidence-bounded 手工修订。
 
 ### 7.3 图件代码分别负责什么
 
 | 脚本 | 作用 |
 | --- | --- |
-| [`compute_publication_r2.py`](../scripts/compute_publication_r2.py) | CPU 重算展示所需的真实 input、Endpoint、Grad-CAM、raw attention、rollout 和部分前向 feature。 |
-| [`render_publication_r2.py`](../scripts/render_publication_r2.py) | 从封存数组和汇总 CSV 生成 22 张基础图及 PNG/PDF/SVG。 |
-| [`render_revision_v6.py`](../scripts/render_revision_v6.py) | 重画全局/分支切面和 attention differential 概念图，并同步 manifest/图注。 |
-| [`render_revision_v6_residual.py`](../scripts/render_revision_v6_residual.py) | 用真实 E3 signed component maps 重画 residual 全局闭合图。 |
-| [`validate_publication_r2.py`](../scripts/validate_publication_r2.py) | 验证图件哈希、显示计算、真实 panel、双语正文链接和便携包完整性。 |
+| [`compute_publication_r2.py`](vitnns_rebuild/papers/nns_vit_endpoint/scripts/compute_publication_r2.py) | CPU 重算展示所需的真实 input、Endpoint、Grad-CAM、raw attention、rollout 和部分前向 feature。 |
+| [`render_publication_r2.py`](vitnns_rebuild/papers/nns_vit_endpoint/scripts/render_publication_r2.py) | 从封存数组和汇总 CSV 生成 22 张基础图及 PNG/PDF/SVG。 |
+| [`render_revision_v6.py`](vitnns_rebuild/papers/nns_vit_endpoint/scripts/render_revision_v6.py) | 重画全局/分支切面和 attention differential 概念图，并同步 manifest/图注。 |
+| [`render_revision_v6_residual.py`](vitnns_rebuild/papers/nns_vit_endpoint/scripts/render_revision_v6_residual.py) | 用真实 E3 signed component maps 重画 residual 全局闭合图。 |
+| [`validate_publication_r2.py`](vitnns_rebuild/papers/nns_vit_endpoint/scripts/validate_publication_r2.py) | 验证图件哈希、显示计算、真实 panel、双语正文链接和便携包完整性。 |
 
 ## 8. 完整实验如何开始
 
@@ -357,8 +359,8 @@ git status --short
 
 如需审计或在新根中复现，请先阅读：
 
-- [`docs/NNS_ViT_Endpoint_Scanner统一研究计划与执行路线_20260918.md`](../../../docs/NNS_ViT_Endpoint_Scanner统一研究计划与执行路线_20260918.md)
-- [`manifests/nns_vit_endpoint/ep0_r1_20260918/README.md`](../../../manifests/nns_vit_endpoint/ep0_r1_20260918/README.md)
+- [`docs/NNS_ViT_Endpoint_Scanner统一研究计划与执行路线_20260918.md`](vitnns_rebuild/docs/NNS_ViT_Endpoint_Scanner统一研究计划与执行路线_20260918.md)
+- [`manifests/nns_vit_endpoint/ep0_r1_20260918/README.md`](vitnns_rebuild/manifests/nns_vit_endpoint/ep0_r1_20260918/README.md)
 - 本 README 第 3 节列出的每阶段 runner、validator 和 terminal receipt。
 
 原则上先运行 validator 复核现有根，而不是直接执行生产 runner。正式 runner 使用固定结果根，可能因根已存在而拒绝，也可能要求显式授权 token、H20 资格检查和全局任务队列。任何真正的全量重跑都应创建前瞻性的新协议与新结果根。
@@ -403,4 +405,4 @@ tests/test_revision_v5.py tests/test_revision_v6.py
 
 revision-v6 包已经完成中英文 Markdown、22 张主图、92 张补充图、封存数值证据和发布验证。作者身份字段按匿名送审要求移除。
 
-后续若执行修改意见 v7，还需要增加中英文 LaTeX/PDF、A/V 与 residual 分层复算，并重新进行四版本一致性审计。v7 工作规程位于仓库的 `修改意见/修改意见v7_两轮评审核验与修改补实验复审工作规程.md`，但它不改变本 README 所述 revision-v6 代码和证据入口。
+后续若执行修改意见 v7，还需要增加中英文 LaTeX/PDF、A/V 与 residual 分层复算，并重新进行四版本一致性审计。v7 工作规程位于仓库的 `vitnns_rebuild/修改意见/修改意见v7_两轮评审核验与修改补实验复审工作规程.md`，但它不改变本 README 所述 revision-v6 代码和证据入口。
