@@ -1,137 +1,6 @@
 {
-  "policy": "positive RGB sum; positive-value P99; blue high-intensity palette; no smoothing for pixel Endpoint",
+  "policy": "positive signed-RGB sum; positive-value P99; square-root display; no smoothing for pixel Endpoint",
   "panels": [
-    {
-      "figure": 1,
-      "label": "$x\\odot\\nabla_xs(x)$",
-      "kind": "score",
-      "source": "concept-total",
-      "raw_sha256": "5e206fb9ab3d6f1f5915b37ca4fb01d0b9bdbfa4bdd02e60f366a59cdbaa40db",
-      "shape": [
-        4,
-        4
-      ],
-      "limit": 0.9624999999999999,
-      "gamma": 1.0,
-      "clipped": 1,
-      "display_sha256": "7b26ee6d692164a23fa4abc6faf322b07fc88d486d8636950270e2409ce71698",
-      "interpolation": "nearest"
-    },
-    {
-      "figure": 1,
-      "label": "",
-      "kind": "score",
-      "source": "concept-edge-0",
-      "raw_sha256": "c7598e3040383aa953b0856eaec0d1ddfcc0456125ab198f0e2f222b3ab45f2b",
-      "shape": [
-        4,
-        4
-      ],
-      "limit": 0.6737499999999998,
-      "gamma": 1.0,
-      "clipped": 1,
-      "display_sha256": "ade95644bd8c8d96250207be9359cb3c1c62709e0b7a1cb1035d00d730be930c",
-      "interpolation": "nearest"
-    },
-    {
-      "figure": 1,
-      "label": "",
-      "kind": "score",
-      "source": "concept-edge-1",
-      "raw_sha256": "028dfd05183407131acf79ec39fabbd4c9fc241c0ecec6c918bcc04dc5035669",
-      "shape": [
-        4,
-        4
-      ],
-      "limit": 0.8567999999999999,
-      "gamma": 1.0,
-      "clipped": 1,
-      "display_sha256": "bf7114748d91a9378f3718d8660b7dc4a38607483c8aa6bd627afa8f39bdeb08",
-      "interpolation": "nearest"
-    },
-    {
-      "figure": 1,
-      "label": "",
-      "kind": "score",
-      "source": "concept-edge-2",
-      "raw_sha256": "7d648adcee10ceb7c3fc0d871e9d97ab64cb2d700f03d72cc53bfc74d2202649",
-      "shape": [
-        4,
-        4
-      ],
-      "limit": 0.22124999999999997,
-      "gamma": 1.0,
-      "clipped": 1,
-      "display_sha256": "b2f6d1bb5db241ceb0a1de5d874574d3c3c21e2a44ce930fa4e0d418f5c6288f",
-      "interpolation": "nearest"
-    },
-    {
-      "figure": 5,
-      "label": "Learning-image support",
-      "kind": "score",
-      "source": "patch-support",
-      "raw_sha256": "d68fb4992ff3ee2e9b2e33626860132b85d9641d2a3234caa5e282b5feb281bf",
-      "shape": [
-        14,
-        14
-      ],
-      "limit": 1.0,
-      "gamma": 1.0,
-      "clipped": 0,
-      "display_sha256": "d68fb4992ff3ee2e9b2e33626860132b85d9641d2a3234caa5e282b5feb281bf",
-      "interpolation": "nearest"
-    },
-    {
-      "figure": 7,
-      "label": "Identity path",
-      "kind": "learning",
-      "source": "identity",
-      "raw_sha256": "b8d0240bdeff82c05e5898bc9a85467b1bbe40a05f9b7b8c1f083b463b9c990d",
-      "shape": [
-        3,
-        224,
-        224
-      ],
-      "limit": 0.02343531373335282,
-      "gamma": 0.5,
-      "clipped": 252,
-      "display_sha256": "855627307371e0326a385a78fbcca8261e8a913503101e998c62f72a13ac2435",
-      "interpolation": "nearest"
-    },
-    {
-      "figure": 7,
-      "label": "Branch path",
-      "kind": "learning",
-      "source": "attention",
-      "raw_sha256": "aec8d27d1d597f979eadc23327b72a1828bfaabbea1ad0d6a296279457b48f5d",
-      "shape": [
-        3,
-        224,
-        224
-      ],
-      "limit": 0.014833228474017237,
-      "gamma": 0.5,
-      "clipped": 254,
-      "display_sha256": "e71829e3706c425ce62a1dd4d19255ae97fefa1979980bd37f0cd6a1c773eb1c",
-      "interpolation": "nearest"
-    },
-    {
-      "figure": 7,
-      "label": "Residual output",
-      "kind": "learning",
-      "source": "L_F",
-      "raw_sha256": "80c30e6ceee5dd09a0adad8ea35b6e6e90f9b92adf891075ae98133e0246f367",
-      "shape": [
-        3,
-        224,
-        224
-      ],
-      "limit": 0.02886274089105428,
-      "gamma": 0.5,
-      "clipped": 254,
-      "display_sha256": "e767650751e56a00ec0523500a0f87e6216be549ee41c92ea777e18177c2f658",
-      "interpolation": "nearest"
-    },
     {
       "figure": 8,
       "label": "Patch embedding",
@@ -2869,6 +2738,176 @@
       "gamma": 0.5,
       "clipped": 502,
       "display_sha256": "f60a4a2a5bce62c9349b2f218b154abd576b9fa89f15ea163075ae5e5649a678",
+      "interpolation": "nearest"
+    },
+    {
+      "figure": 1,
+      "label": "Total Endpoint",
+      "kind": "learning",
+      "source": "L_F",
+      "raw_sha256": "80c30e6ceee5dd09a0adad8ea35b6e6e90f9b92adf891075ae98133e0246f367",
+      "shape": [
+        3,
+        224,
+        224
+      ],
+      "limit": 0.02886274089105428,
+      "gamma": 0.5,
+      "clipped": 254,
+      "display_sha256": "e767650751e56a00ec0523500a0f87e6216be549ee41c92ea777e18177c2f658",
+      "interpolation": "nearest"
+    },
+    {
+      "figure": 1,
+      "label": "Identity",
+      "kind": "learning",
+      "source": "identity",
+      "raw_sha256": "b8d0240bdeff82c05e5898bc9a85467b1bbe40a05f9b7b8c1f083b463b9c990d",
+      "shape": [
+        3,
+        224,
+        224
+      ],
+      "limit": 0.02343531373335282,
+      "gamma": 0.5,
+      "clipped": 252,
+      "display_sha256": "855627307371e0326a385a78fbcca8261e8a913503101e998c62f72a13ac2435",
+      "interpolation": "nearest"
+    },
+    {
+      "figure": 1,
+      "label": "Routing",
+      "kind": "learning",
+      "source": "routing",
+      "raw_sha256": "c4c62af0435b637ee11c4a1defb465821bbd28bef71bdc5f2a97d73b29e68022",
+      "shape": [
+        3,
+        224,
+        224
+      ],
+      "limit": 0.013603033639956207,
+      "gamma": 0.5,
+      "clipped": 255,
+      "display_sha256": "7d8f7c65541cef7d7216da0f5b09130ecc02f7c06f88af90ecd31c5f2f2717ce",
+      "interpolation": "nearest"
+    },
+    {
+      "figure": 1,
+      "label": "Value",
+      "kind": "learning",
+      "source": "value",
+      "raw_sha256": "44c131698311d6f762f27bf731938d95c733a518c64cb50ce85cb75ef5be859b",
+      "shape": [
+        3,
+        224,
+        224
+      ],
+      "limit": 0.007120389913325198,
+      "gamma": 0.5,
+      "clipped": 253,
+      "display_sha256": "1a70f0e0e6c5f9f4599271540ce532f7f0aab1fcff3485584aabe5d93e2991d0",
+      "interpolation": "nearest"
+    },
+    {
+      "figure": 6,
+      "label": "Routing-induced",
+      "kind": "learning",
+      "source": "routing",
+      "raw_sha256": "c4c62af0435b637ee11c4a1defb465821bbd28bef71bdc5f2a97d73b29e68022",
+      "shape": [
+        3,
+        224,
+        224
+      ],
+      "limit": 0.013603033639956207,
+      "gamma": 0.5,
+      "clipped": 255,
+      "display_sha256": "7d8f7c65541cef7d7216da0f5b09130ecc02f7c06f88af90ecd31c5f2f2717ce",
+      "interpolation": "nearest"
+    },
+    {
+      "figure": 6,
+      "label": "Value-induced",
+      "kind": "learning",
+      "source": "value",
+      "raw_sha256": "44c131698311d6f762f27bf731938d95c733a518c64cb50ce85cb75ef5be859b",
+      "shape": [
+        3,
+        224,
+        224
+      ],
+      "limit": 0.007120389913325198,
+      "gamma": 0.5,
+      "clipped": 253,
+      "display_sha256": "1a70f0e0e6c5f9f4599271540ce532f7f0aab1fcff3485584aabe5d93e2991d0",
+      "interpolation": "nearest"
+    },
+    {
+      "figure": 6,
+      "label": "Attention branch",
+      "kind": "learning",
+      "source": "A_F",
+      "raw_sha256": "aec8d27d1d597f979eadc23327b72a1828bfaabbea1ad0d6a296279457b48f5d",
+      "shape": [
+        3,
+        224,
+        224
+      ],
+      "limit": 0.014833228474017237,
+      "gamma": 0.5,
+      "clipped": 254,
+      "display_sha256": "e71829e3706c425ce62a1dd4d19255ae97fefa1979980bd37f0cd6a1c773eb1c",
+      "interpolation": "nearest"
+    },
+    {
+      "figure": 7,
+      "label": "Identity path",
+      "kind": "learning",
+      "source": "identity",
+      "raw_sha256": "b8d0240bdeff82c05e5898bc9a85467b1bbe40a05f9b7b8c1f083b463b9c990d",
+      "shape": [
+        3,
+        224,
+        224
+      ],
+      "limit": 0.02343531373335282,
+      "gamma": 0.5,
+      "clipped": 252,
+      "display_sha256": "855627307371e0326a385a78fbcca8261e8a913503101e998c62f72a13ac2435",
+      "interpolation": "nearest"
+    },
+    {
+      "figure": 7,
+      "label": "Attention branch",
+      "kind": "learning",
+      "source": "attention",
+      "raw_sha256": "aec8d27d1d597f979eadc23327b72a1828bfaabbea1ad0d6a296279457b48f5d",
+      "shape": [
+        3,
+        224,
+        224
+      ],
+      "limit": 0.014833228474017237,
+      "gamma": 0.5,
+      "clipped": 254,
+      "display_sha256": "e71829e3706c425ce62a1dd4d19255ae97fefa1979980bd37f0cd6a1c773eb1c",
+      "interpolation": "nearest"
+    },
+    {
+      "figure": 7,
+      "label": "Total Endpoint",
+      "kind": "learning",
+      "source": "L_F",
+      "raw_sha256": "80c30e6ceee5dd09a0adad8ea35b6e6e90f9b92adf891075ae98133e0246f367",
+      "shape": [
+        3,
+        224,
+        224
+      ],
+      "limit": 0.02886274089105428,
+      "gamma": 0.5,
+      "clipped": 254,
+      "display_sha256": "e767650751e56a00ec0523500a0f87e6216be549ee41c92ea777e18177c2f658",
       "interpolation": "nearest"
     }
   ]

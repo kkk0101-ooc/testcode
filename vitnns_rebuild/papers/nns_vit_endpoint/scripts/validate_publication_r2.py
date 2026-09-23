@@ -55,7 +55,7 @@ def main():
     check('same_table_data',[l for l in texts['zh'].splitlines() if l.startswith('|')]==[l for l in texts['en'].splitlines() if l.startswith('|')])
     paper=ROOT.parent
     active=load(paper/'figure_manifest.json')
-    check('active_binding',active['figure_count']==22 and active['source_revision']=='PUBLICATION-R2-REVISION-V6')
+    check('active_binding',active['figure_count']==22 and active['source_revision']=='PUBLICATION-R2-CONCEPT-V2')
     for source,bound in zip(f['figures'],active['figures']):
         check('active_figure_number:'+str(source['number']),source['number']==bound['figure'])
         for extension in ('png','pdf','svg'):
@@ -112,9 +112,9 @@ def main():
     check('native_method_recomputation',methods['status']=='PASS' and methods['comparison_tasks']==receipt['task_count'] and methods['layer_pair_checks']==4)
     qc=ROOT/'qc/revision_v6/visual_review.json';check('visual_review_exists',qc.is_file())
     if qc.exists():
-        q=load(qc);check('visual_review_all',q['reviewed_current_package_figures']==[1,2,6,7])
+        q=load(qc);check('visual_review_all',q['reviewed_current_package_figures']==[1,2,3,4,5,6,7])
         check('visual_review_current',q['png_hashes']=={str(r['number']):r['files']['png']['sha256'] for r in f['figures']})
-        check('step3_visual_review',q.get('status')=='PASS_VISUAL_REVIEW_V6')
+        check('step3_visual_review',q.get('status')=='PASS_VISUAL_REVIEW_CONCEPT_V2')
     # The original inventory binds publication R2 before the v1 supplemental
     # experiments.  Preserve and verify every historical entry except the
     # documents prospectively superseded by this supplement.
@@ -123,7 +123,7 @@ def main():
                 'figures/png/fig_01_concept_overview.png','figures/pdf/fig_01_concept_overview.pdf','figures/svg/fig_01_concept_overview.svg',
                 'figures/png/fig_02_neuron_learning_image.png','figures/pdf/fig_02_neuron_learning_image.pdf','figures/svg/fig_02_neuron_learning_image.svg',
                 'gallery.html','figure_analysis.md','evidence/display_receipt.json','qc/visual_review.json','qc/completion_audit.md','qc/writing_audit.md'}
-    superseded.update('figures/'+ext+'/fig_'+num+'_'+slug+'.'+ext for ext in ('png','pdf','svg') for num,slug in [('06','attention_differential'),('07','residual_principle')])
+    superseded.update('figures/'+ext+'/fig_'+num+'_'+slug+'.'+ext for ext in ('png','pdf','svg') for num,slug in [('03','coordinate_initialization'),('04','local_derivative_generation'),('05','patch_embedding'),('06','attention_differential'),('07','residual_principle')])
     for record in inventory['files']:
         if record['path'] not in superseded:
             check('inventory_hash:'+record['path'],sha(ROOT/record['path'])==record['sha256'])

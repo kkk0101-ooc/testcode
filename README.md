@@ -327,9 +327,8 @@ $NNS_ENDPOINT_PY papers/nns_vit_endpoint/scripts/compute_publication_r2.py
 # 生成基础 22 图、三种格式、gallery 与 manifest。
 $NNS_ENDPOINT_PY papers/nns_vit_endpoint/scripts/render_publication_r2.py
 
-# 应用 revision-v6 的概念图、切面语义和 residual 图修订。
-$NNS_ENDPOINT_PY papers/nns_vit_endpoint/scripts/render_revision_v6.py
-$NNS_ENDPOINT_PY papers/nns_vit_endpoint/scripts/render_revision_v6_residual.py
+# 应用当前概念图视觉系统，重画 Figures 1--7 并同步图注/manifest。
+$NNS_ENDPOINT_PY papers/nns_vit_endpoint/scripts/render_concept_figures_v2.py
 
 # 从真实数组重新检查显示、数字、双语链接与所有文件哈希。
 $NNS_ENDPOINT_PY papers/nns_vit_endpoint/scripts/validate_publication_r2.py
@@ -349,8 +348,7 @@ git status --short
 | --- | --- |
 | [`compute_publication_r2.py`](vitnns_rebuild/papers/nns_vit_endpoint/scripts/compute_publication_r2.py) | CPU 重算展示所需的真实 input、Endpoint、Grad-CAM、raw attention、rollout 和部分前向 feature。 |
 | [`render_publication_r2.py`](vitnns_rebuild/papers/nns_vit_endpoint/scripts/render_publication_r2.py) | 从封存数组和汇总 CSV 生成 22 张基础图及 PNG/PDF/SVG。 |
-| [`render_revision_v6.py`](vitnns_rebuild/papers/nns_vit_endpoint/scripts/render_revision_v6.py) | 重画全局/分支切面和 attention differential 概念图，并同步 manifest/图注。 |
-| [`render_revision_v6_residual.py`](vitnns_rebuild/papers/nns_vit_endpoint/scripts/render_revision_v6_residual.py) | 用真实 E3 signed component maps 重画 residual 全局闭合图。 |
+| [`render_concept_figures_v2.py`](vitnns_rebuild/papers/nns_vit_endpoint/scripts/render_concept_figures_v2.py) | 使用统一视觉系统重画 Figures 1--7；Figure 1 以懒熊真实 Endpoint 开场，Figures 6--7 使用真实 E3 分项图，并同步 manifest、图注和 display receipt。 |
 | [`validate_publication_r2.py`](vitnns_rebuild/papers/nns_vit_endpoint/scripts/validate_publication_r2.py) | 验证图件哈希、显示计算、真实 panel、双语正文链接和便携包完整性。 |
 
 ## 8. 完整实验如何开始

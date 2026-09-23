@@ -1,44 +1,44 @@
 # 图件逐图说明
 
-**Image #1 — From total Gradient × Input to auditable dual-indexed maps**
+**Image #1 — One image, one target, many auditable local maps**
 
-已有总 Gradient × Input 先按 consumer-use edge 展开为 $[e,i]$ 图组，再由合法 attention、head 或 residual 切面重构同一 signed 总量。最后一列列出该联合对象支持的机制问题；底部直接显示去掉 $i$、$e$、cut contract 或 target registry 后的退化。
+以同一懒熊输入和 ground-truth logit 开场，先展示真实 Total Endpoint，再展示 block 5 的 identity、routing-induced 和 value-induced 局部图。右侧把结构审计与有限替换评价分开，强调闭合不等于干预效用。热图使用正部显示，数值仍绑定原始 signed arrays。
 
 [打开图片](figures/png/fig_01_concept_overview.png)
 
-**Image #2 — Valid differential cuts partition live paths exactly once**
+**Image #2 — Use identity and valid cuts make the decomposition auditable**
 
-左栏用 producer、consumer、input slot 与 invocation 区分同一 producer tensor 的两次实际使用；中栏对齐 Q/K/V、multi-head 与 residual 切面；右栏给出 $\mathcal L_{e,i}$、signed closure 和已封存漏项/重复失败模式。红色虚线标记切面及 residual 的完整路径要求。
+左栏说明同一 producer tensor 的不同 consumer、slot 和 invocation 仍是不同 use。右栏把 attention branch partition 和包含 identity bypass 的 residual global cut 分开；`+ -> target s` 输出边单独水平展示，避免和 global cut 线或 branch 箭头混在一起。
 
 [打开图片](figures/png/fig_02_neuron_learning_image.png)
 
-**Image #3 — Initialization: split the input, then assign one image to each coordinate**
+**Image #3 — Initialization keeps both input value and location**
 
-左栏将输入拆成四张稀疏坐标图，右栏以同色虚线把图分配给输入节点；公式位于步骤底部。RGB 输入对各通道采用相同初始化。
+输入矩阵拆成四张单坐标图，再堆叠为 $\operatorname{diag}(x)$。每张图只在一个坐标保留原输入值，因此同时保留数值和位置。
 
 [打开图片](figures/png/fig_03_coordinate_initialization.png)
 
-**Image #4 — Generation: collect every input path to the selected target**
+**Image #4 — Local Jacobians propagate coordinate maps to the target**
 
-灰色网络表示中间 learning images；红色虚线路径突出首末输入坐标到目标的合成系数，其余系数在目标侧列出。最终矩阵是输入坐标图的加权和。
+每张输入坐标图乘以当前点局部系数 $c_i=\partial s/\partial x_i$，再相加得到目标 learning image。右侧矩阵直接展示 $\mathcal L(s;x)=x\odot\nabla_xs$ 的加权结果。
 
 [打开图片](figures/png/fig_04_local_derivative_generation.png)
 
-**Image #5 — Patch embedding is a local projection and a sparse global linear map**
+**Image #5 — Patch embedding begins with strictly local support**
 
-左栏显示真实图像上的局部 patch projection；右栏把同一运算写为全局输入坐标上的稀疏线性行。橙色 patch、非零权重块和 learning-image support 一一对应。
+左栏展示真实图像上的一个 patch projection；右栏展示等价的全局稀疏输入行。橙色区域在 token、稀疏权重和 learning-image support 中一一对应。
 
 [打开图片](figures/png/fig_05_patch_embedding.png)
 
 **Image #6 — Attention separates routing from value transmission**
 
-Q/K 的变化通过 attention weights 改变 routing；V 的变化通过当前权重传播。两条微分路径相加重构完整 attention 微分，head 下游 cotangent 包含 output projection。
+上方把 Q/K 产生 A、V 单独输入 O 的前向结构拆开，避免把 V 混入 routing。下方用真实 block-5 分项图展示 routing-induced 与 value-induced 相加重构 attention branch contribution；全局目标还需 residual identity。
 
 [打开图片](figures/png/fig_06_attention_differential.png)
 
-**Image #7 — Residual connections preserve an identity path and add a transformed path**
+**Image #7 — Residual closure is visible in the path maps**
 
-上半区展示 residual 的 identity/branch 计算边，下半区保留原图并对齐两条真实路径及输出 learning image。同色虚线连接计算边与图像。
+同一懒熊输入、ground-truth logit 和 block-5 residual 下，identity path 与 attention branch 使用相同 residual 输出 cotangent。完整 signed maps 相加得到 Total Endpoint，图中正部显示只用于空间阅读。
 
 [打开图片](figures/png/fig_07_residual_principle.png)
 

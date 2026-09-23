@@ -1,5 +1,5 @@
 {
-  "revision": "PUBLICATION-R2-REVISION-V6",
+  "revision": "PUBLICATION-R2-CONCEPT-V2",
   "figure_count": 22,
   "main_text_figure_count": 11,
   "main_text_figure_map": [
@@ -53,22 +53,22 @@
       "number": 1,
       "original_number": 1,
       "slug": "concept_overview",
-      "title": "Local differential maps and prescribed replacement",
-      "caption_zh": "左侧为固定目标和输入点的 Total Endpoint。中间保留原生 use 身份与输入坐标，并将 attention 分支内部的微分分组单独定义。右侧分别比较空间分布与规定有限替换效应。全局闭合须包含 residual bypass；分支分组只重构 attention branch contribution。",
-      "caption_en": "Left: Total Endpoint for one fixed target and input point. Middle: retain native-use identity and input coordinates, with a separate definition for differential partitions inside attention. Right: compare spatial distributions and prescribed finite replacement effects. Global closure includes the residual bypass; a branch partition reconstructs only the attention branch contribution.",
+      "title": "One image, one target, many auditable local maps",
+      "caption_zh": "以同一懒熊输入和 ground-truth logit 开门见山展示方法产物。左侧是真实输入与 Total Endpoint，中间是 block 5 的 identity、routing-induced 和 value-induced 局部图，右侧区分结构审计与有限替换评价。所有热图取 signed RGB sum 的正部，按各自正值 P99 截断并开方，仅比较空间形态。",
+      "caption_en": "The method is introduced through one sloth-bear input and its ground-truth logit. The left panels show the real input and Total Endpoint; the middle panels show block-5 identity, routing-induced, and value-induced local maps; the right separates structural audit from finite-replacement evaluation. Heatmaps show the positive signed RGB sum with independent positive-P99 clipping and square-root scaling, so only spatial form is compared.",
       "role": "concept",
       "files": {
         "png": {
           "path": "figures/png/fig_01_concept_overview.png",
-          "sha256": "cbac14407b1b0b1423a8d7bf58da5c4d772834d9c11a58dfc95ca926663cb072"
+          "sha256": "4ac4b8da81ac3c02effa0c9b97de7baed1f8a966e310893703bf06efe2d8e305"
         },
         "pdf": {
           "path": "figures/pdf/fig_01_concept_overview.pdf",
-          "sha256": "34b75f13031917d54c0b3d47405634e4f24b35e14d2f5042f0a7b4569a74aef2"
+          "sha256": "27a90309efa5606d2239311008a0996ebbce87f4177a272a8b7f148152dda0a1"
         },
         "svg": {
           "path": "figures/svg/fig_01_concept_overview.svg",
-          "sha256": "6a86d3f83e1e5305f6e3002df253135abc6d30b6ca69322daf8abd0c1dc5293a"
+          "sha256": "3ee55d3bf09701a4114fd382faef1ac70d38759a6ea39bb77a6faa74bc1f9b35"
         }
       }
     },
@@ -76,22 +76,22 @@
       "number": 2,
       "original_number": 2,
       "slug": "neuron_learning_image",
-      "title": "Residual bypass distinguishes branch and global reconstruction",
-      "caption_zh": "左栏区分共享 producer 的两个 consumer slots。中栏的蓝色下路是 residual identity bypass，上路为 attention branch。绿色虚线框只包含 branch partition，闭合到 attention branch contribution A_F。红色虚线表示全局切面，包含 identity 及完整 branch partition，闭合到 Total Endpoint L_F。右栏列出两种不同的重构目标。",
-      "caption_en": "Left: two consumer slots of a shared producer remain distinct. Middle: the lower blue path is the residual identity bypass; the upper path is attention. The green dashed region contains a branch partition and reconstructs attention branch contribution A_F. The red dashed global cut includes identity and the complete branch partition and reconstructs Total Endpoint L_F. Right: the two reconstruction targets.",
+      "title": "Use identity and valid cuts make the decomposition auditable",
+      "caption_zh": "左侧说明同一 producer tensor 的不同 consumer、slot 和 invocation 必须保留为不同 use。右侧区分 attention branch partition 与包含 identity bypass 的 residual 全局切面：前者重构 attention branch contribution，后者重构 Total Endpoint。",
+      "caption_en": "The left panel shows why different consumers, input slots, and invocations of one producer tensor remain distinct uses. The right distinguishes an attention branch partition from a residual global cut containing the identity bypass: the former reconstructs the attention branch contribution, whereas the latter reconstructs Total Endpoint.",
       "role": "concept",
       "files": {
         "png": {
           "path": "figures/png/fig_02_neuron_learning_image.png",
-          "sha256": "7fe5046e1febbb9fc4f09f99e1dd42ad271d4de44cc529e40dd2f52ee3258689"
+          "sha256": "e8553be2218869159c6dca4197dd29600673bf6d11bb7db2fd21c08f116cf8e6"
         },
         "pdf": {
           "path": "figures/pdf/fig_02_neuron_learning_image.pdf",
-          "sha256": "dd1c3a32816a4ed29d1a0e2265d54ba1e1d43fb9faa01529d08229ec51d3a3af"
+          "sha256": "9f100f7758c1b55056a0e44e73812c5da7e7c751e58d93980720e14c12473aa8"
         },
         "svg": {
           "path": "figures/svg/fig_02_neuron_learning_image.svg",
-          "sha256": "4fe989d1aa5ebe53d50c34de532160ebedcb169e8d4cdfcc944cb9a1bdffc7f9"
+          "sha256": "bed8393ede8ee0512e5c8c6b5cd5a066a1a899e08fe3f76b62dcd4343dd5991b"
         }
       }
     },
@@ -99,22 +99,22 @@
       "number": 3,
       "original_number": 3,
       "slug": "coordinate_initialization",
-      "title": "Initialization: split the input, then assign one image to each coordinate",
-      "caption_zh": "初始化分为拆分与分配两步：输入矩阵被拆成四张稀疏坐标图，并按同色虚线分配给四个输入节点。每张图同时保存输入值与其位置。",
-      "caption_en": "Initialization has two steps: split the input into four sparse coordinate images and assign them to input nodes using matching colored links. Each image preserves both value and position.",
+      "title": "Initialization keeps both input value and location",
+      "caption_zh": "输入坐标初始化。左侧输入矩阵被拆成四张单坐标图；右侧将它们堆叠为 $\\operatorname{diag}(x)$。每张图只在一个坐标保留原输入值，因此同时保留数值与位置。",
+      "caption_en": "Input-coordinate initialization. The input matrix is split into four single-coordinate maps and stacked as $\\operatorname{diag}(x)$. Each map retains the original value at one coordinate and therefore preserves both value and position.",
       "role": "concept",
       "files": {
         "png": {
           "path": "figures/png/fig_03_coordinate_initialization.png",
-          "sha256": "c9e39491c13435b941ce5f1677aac9b6d700d6a4cb8c6ffa765bbefb2940088a"
+          "sha256": "92a38e17be11f311b8f97b2545fcf0ecc3007b180e1eac76bb4b10487c8ac658"
         },
         "pdf": {
           "path": "figures/pdf/fig_03_coordinate_initialization.pdf",
-          "sha256": "184583b9d1a79b0d198c6a4ba296cceca4d35548ddb8c6de8c2b53ec2ec58a1f"
+          "sha256": "bac96c7c67d36fd90b49ddad50bbf4a8c32400c2b3ddda05d772341295b6637e"
         },
         "svg": {
           "path": "figures/svg/fig_03_coordinate_initialization.svg",
-          "sha256": "bc9a137093fed573f03aca6e6e439b43cad8cc9ed3aa5882cec85d2dc68140ae"
+          "sha256": "87a0ec26c6d49fc8d5f7fd0f147541decf7fab18a634988a5acb088c37c5cd0a"
         }
       }
     },
@@ -122,22 +122,22 @@
       "number": 4,
       "original_number": 4,
       "slug": "local_derivative_generation",
-      "title": "Generation: collect every input path to the selected target",
-      "caption_zh": "中间网络以灰色显示，红色虚线路径突出每个输入坐标到目标的合成局部系数。右下矩阵是四张输入 learning images 的加权和，与输入乘目标梯度一致。",
-      "caption_en": "The intermediate graph is muted while red dashed paths highlight composed local coefficients from every input coordinate to the target. The lower-right matrix is the weighted sum of input learning images and equals input times target gradient.",
+      "title": "Local Jacobians propagate coordinate maps to the target",
+      "caption_zh": "局部 Jacobian 将输入坐标图传播到目标。每张基图乘以对应当前点局部系数 $c_i=\\partial s/\\partial x_i$，再相加得到目标 learning image；对标量目标，它等于 $x\\odot\nabla_xs(x)$。",
+      "caption_en": "The local Jacobian propagates input-coordinate maps to the target. Each basis map is multiplied by its current-point coefficient $c_i=\\partial s/\\partial x_i$ and summed into the target learning image; for a scalar target this equals $x\\odot\nabla_xs(x)$.",
       "role": "concept",
       "files": {
         "png": {
           "path": "figures/png/fig_04_local_derivative_generation.png",
-          "sha256": "f328e3dad5f34043ea1023589d5d973ee683585c8f88c2aae20c1212bdcafe9f"
+          "sha256": "aa1356fa6b26b8740f4580047b009dd36aa04586909988a28be4907378fd1bb6"
         },
         "pdf": {
           "path": "figures/pdf/fig_04_local_derivative_generation.pdf",
-          "sha256": "e88490a8df33d1051db9287ac6fc54cd276315e7c52e142740d223ffbd625bad"
+          "sha256": "502f84b8f65c506692894f2ead1cf5fc366376131ba2ea35466511f529c66bf9"
         },
         "svg": {
           "path": "figures/svg/fig_04_local_derivative_generation.svg",
-          "sha256": "703c41758a3fecb4ae630067ae3f8fb69f6161b147af4e223ddf13bab337087d"
+          "sha256": "3cefe7ae7adeaa032b9dafff6501b66e293ece80ded46da26c71e5b8d31b7912"
         }
       }
     },
@@ -145,22 +145,22 @@
       "number": 5,
       "original_number": 5,
       "slug": "patch_embedding",
-      "title": "Patch embedding is a local projection and a sparse global linear map",
-      "caption_zh": "左栏以真实图像说明 patch embedding 的局部投影；右栏将同一运算写成全局输入上的稀疏线性行。橙色区域在 token、稀疏权重与 learning-image support 之间一一对应。",
-      "caption_en": "The left panel shows native patch projection on a real image; the right expresses the same operation as a sparse row over global input coordinates. The orange region corresponds across token support, sparse weights and learning-image support.",
+      "title": "Patch embedding begins with strictly local support",
+      "caption_zh": "Patch embedding 的局部投影与全局稀疏形式。一个 token-channel 只读取对应 $16\times16$ patch；同一权重行嵌入完整输入坐标后仅在该 patch 非零，因此其初始 learning-image support 也是局部的。",
+      "caption_en": "Local and global views of patch embedding. One token-channel reads only its corresponding $16\times16$ patch; after embedding the same weight row into global input coordinates, it is nonzero only on that patch, so its initial learning-image support is local.",
       "role": "concept",
       "files": {
         "png": {
           "path": "figures/png/fig_05_patch_embedding.png",
-          "sha256": "4d64f7c4ddd918c33860a53b6677c981e932184b4f9ac4ce20d6de00a54c46ef"
+          "sha256": "9f7601856417c5884764144dc7f8bcfe5893b3afd18f85f9f0ab74735629013b"
         },
         "pdf": {
           "path": "figures/pdf/fig_05_patch_embedding.pdf",
-          "sha256": "d35208c8b57247e39bbec0c3611535a31ef14a826f9c626d1e2380dd3fb07f2f"
+          "sha256": "f3798b6bf6d0e09bcc7b8cbc90c11494ee1b4ca0610811357e88ab44f188ef90"
         },
         "svg": {
           "path": "figures/svg/fig_05_patch_embedding.svg",
-          "sha256": "20fa6e2ea65aa07f7d14fe3b7927f7966d970e613be553234727dea7f8767b1a"
+          "sha256": "7b1d66c51a7a9282e6f9fb2ec36d8b548744fa4ad55f367f0cda70705fa00615"
         }
       }
     },
@@ -168,22 +168,22 @@
       "number": 6,
       "original_number": 6,
       "slug": "attention_differential",
-      "title": "Attention branch differential partitions",
-      "caption_zh": "上行是单个 head 的前向计算，$A$ 为 attention probability，$V$ 为 value projection。下行在同一前向点分解 $\\mathrm dO_h=(\\mathrm dA)V+A\\mathrm dV$。Q-induced 与 K-induced 合成 routing-induced differential，V-induced 为 value-induced differential。各 head 经 concat 和 output projection 的下游 cotangent 收缩后，分组重构 attention branch contribution。全局目标还需 residual bypass。",
-      "caption_en": "The upper row shows one head's forward computation, with attention probability $A$ and value projection $V$. The lower row decomposes $\\mathrm dO_h=(\\mathrm dA)V+A\\mathrm dV$ at the same forward point. Q-induced and K-induced terms form the routing-induced differential; the V-induced term is the value-induced differential. After contraction with the downstream cotangent through head concatenation and output projection, these terms reconstruct the attention branch contribution. The global target additionally requires the residual bypass.",
+      "title": "Attention separates routing from value transmission",
+      "caption_zh": "同一懒熊输入、ground-truth logit 和 DeiT-S/16 block 5 的真实 attention 微分图。Routing-induced 项对应 $(\\mathrm dA)V$，value-induced 项对应 $A\\mathrm dV$；两张完整 signed 图相加重构 attention branch contribution。全局 Total Endpoint 还需加入 residual identity。",
+      "caption_en": "Real attention differential maps for the same sloth-bear input, ground-truth logit, and DeiT-S/16 block 5. The routing-induced term corresponds to $(\\mathrm dA)V$ and the value-induced term to $A\\mathrm dV$; their complete signed maps sum to the attention branch contribution. The residual identity is additionally required for the global Total Endpoint.",
       "role": "concept",
       "files": {
         "png": {
           "path": "figures/png/fig_06_attention_differential.png",
-          "sha256": "66b9781142fb8ff33fdb87edb64799828f01a0085b46e9559ad08bc52ea24d4f"
+          "sha256": "087e961247c7fdd5414c748c83b6ab3c6858c4cf06d1a47a8fcd92f2b55d65c9"
         },
         "pdf": {
           "path": "figures/pdf/fig_06_attention_differential.pdf",
-          "sha256": "d39183f50d723b2474d6d3e25ad0d6d5e61e1611dc6b8d5d0ba32725ed3a29b7"
+          "sha256": "7c46073a9d55b7567d70ae18c327bce4492140cd3991dea9f4eee56262af0f0f"
         },
         "svg": {
           "path": "figures/svg/fig_06_attention_differential.svg",
-          "sha256": "fa6362cf2151bf603c2fda11894bb75fea4b7d93c51477429646a13b3320cab2"
+          "sha256": "c11ea8ba798896f6fa2b8628e057a59408667a043fe9e41517f459377372e874"
         }
       }
     },
@@ -191,22 +191,22 @@
       "number": 7,
       "original_number": 7,
       "slug": "residual_principle",
-      "title": "Residual global reconstruction of Total Endpoint",
-      "caption_zh": "Residual addition 的 identity 与 branch 输入分别定义局部图。二者使用同一最终类别目标和 addition 输出 cotangent。完整 signed 图之和为 Total Endpoint；蓝底正部视图单独归一化，仅用于空间阅读。",
-      "caption_en": "The identity and branch inputs of a residual addition define separate local maps for the same final class target and the cotangent at the addition output. Complete signed maps sum to Total Endpoint. Independently normalized blue positive displays show spatial structure.",
+      "title": "Residual closure is visible in the path maps",
+      "caption_zh": "同一懒熊输入、ground-truth logit 和 DeiT-S/16 block 5 residual 的真实路径图。Identity 与 attention branch 使用同一个 residual 输出 cotangent；完整 signed 图满足 identity 加 branch 等于 Total Endpoint。正部显示独立归一化，只用于读取空间结构。",
+      "caption_en": "Real path maps for the same sloth-bear input, ground-truth logit, and DeiT-S/16 block-5 residual. Identity and attention branch use the same cotangent at the residual output; complete signed maps satisfy identity plus branch equals Total Endpoint. Positive displays are independently normalized and are used only to read spatial structure.",
       "role": "concept",
       "files": {
         "png": {
           "path": "figures/png/fig_07_residual_principle.png",
-          "sha256": "50a4723fb8145fcfacfa50aba7c214d111a622cddf830fb77d04c416cf42f5d3"
+          "sha256": "e3e82504a9bb2490e9c99d17cd32a5c50556cd14fe64d06176ef248b7afaf561"
         },
         "pdf": {
           "path": "figures/pdf/fig_07_residual_principle.pdf",
-          "sha256": "076ea8c049406c896b3ea607d76b8842d21a9bee7e2c561180620ee15481fa4b"
+          "sha256": "b2597fe181cb93a037ca109c1ff2650076fe84ca6d875fd6b3608ff590f19449"
         },
         "svg": {
           "path": "figures/svg/fig_07_residual_principle.svg",
-          "sha256": "b0c773abad5725cf6c3c4886f06db801bd3af739e48e79fdfe817f1295ae2e3d"
+          "sha256": "cdefa908371a3954995fa41d0d00dfa0bfc409561bcea2e736ea100dd535a989"
         }
       }
     },

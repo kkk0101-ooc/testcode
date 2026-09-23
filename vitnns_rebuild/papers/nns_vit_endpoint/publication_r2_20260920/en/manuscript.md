@@ -21,7 +21,7 @@ Neural Network Scanner (NNS) associates a neuron with a learning image that pres
 
 ![Figure 1](../figures/png/fig_01_concept_overview.png)
 
-**Figure 1.** Left: Total Endpoint for one fixed target and input point. Middle: retain native-use identity and input coordinates, with a separate definition for differential partitions inside attention. Right: compare spatial distributions and prescribed finite replacement effects. Global closure includes the residual bypass; a branch partition reconstructs only the attention branch contribution.
+**Figure 1.** The method is introduced through one sloth-bear input and its ground-truth logit. The left panels show the real input and Total Endpoint; the middle panels show block-5 identity, routing-induced, and value-induced local maps; the right separates structural audit from finite-replacement evaluation. Heatmaps show the positive signed RGB sum with independent positive-P99 clipping and square-root scaling, so only spatial form is compared.
 
 The overarching question is how NNS can represent the local input dependence of an internal ViT target as computable, decomposable, and verifiable structural-path maps, and how these maps vary with depth and rank candidates in prescribed finite-replacement tasks. We address four questions:
 
@@ -160,7 +160,7 @@ One producer tensor may enter several consumers, different slots of one consumer
 
 ![Figure 2](../figures/png/fig_02_neuron_learning_image.png)
 
-**Figure 2.** Left: two consumer slots of a shared producer remain distinct. Middle: the lower blue path is the residual identity bypass; the upper path is attention. The green dashed region contains a branch partition and reconstructs attention branch contribution A_F. The red dashed global cut includes identity and the complete branch partition and reconstructs Total Endpoint L_F. Right: the two reconstruction targets.
+**Figure 2.** The left panel shows why different consumers, input slots, and invocations of one producer tensor remain distinct uses. The right distinguishes an attention branch partition from a residual global cut containing the identity bypass: the former reconstructs the attention branch contribution, whereas the latter reconstructs Total Endpoint.
 
 ### 4.2 Attention branch differentials and residual global cuts
 
@@ -168,11 +168,11 @@ Figure 3 describes differential partitions inside the attention branch. Figure 4
 
 ![Figure 3](../figures/png/fig_06_attention_differential.png)
 
-**Figure 3.** The upper row shows one head's forward computation, with attention probability $A$ and value projection $V$. The lower row decomposes $\mathrm dO_h=(\mathrm dA)V+A\mathrm dV$ at the same forward point. Q-induced and K-induced terms form the routing-induced differential; the V-induced term is the value-induced differential. After contraction with the downstream cotangent through head concatenation and output projection, these terms reconstruct the attention branch contribution. The global target additionally requires the residual bypass.
+**Figure 3.** Real attention differential maps for the same sloth-bear input, ground-truth logit, and DeiT-S/16 block 5. The routing-induced term corresponds to $(\mathrm dA)V$ and the value-induced term to $A\mathrm dV$; their complete signed maps sum to the attention branch contribution. The residual identity is additionally required for the global Total Endpoint.
 
 ![Figure 4](../figures/png/fig_07_residual_principle.png)
 
-**Figure 4.** The identity and branch inputs of a residual addition define separate local maps for the same final class target and the cotangent at the addition output. Complete signed maps sum to Total Endpoint. Independently normalized blue positive displays show spatial structure.
+**Figure 4.** Real path maps for the same sloth-bear input, ground-truth logit, and DeiT-S/16 block-5 residual. Identity and attention branch use the same cotangent at the residual output; complete signed maps satisfy identity plus branch equals Total Endpoint. Positive displays are independently normalized and are used only to read spatial structure.
 
 For each head, $Q=XW_Q+b_Q$, $K=XW_K+b_K$, $V=XW_V+b_V$, and
 
