@@ -1,0 +1,74 @@
+{
+  "architecture": "registered timm 0.9.16 standard pre-LN Block/Attention unfused eval",
+  "graph_stats": {
+    "deit_s16": {
+      "edges": 879,
+      "heads": 6,
+      "nodes": 652
+    },
+    "vit_b16": {
+      "edges": 1599,
+      "heads": 12,
+      "nodes": 1156
+    }
+  },
+  "proof": {
+    "branch_partition": "all partition edges lie in the attention-branch ancestor graph, all input-to-branch paths cross exactly once, and the branch lies upstream of target",
+    "extra_branches": "outside the registered architecture contract are not certified",
+    "full_cut": "all declared cut edges lie in the target ancestor graph and all input-to-target paths cross exactly one cut edge",
+    "method": "topological dynamic programming over possible cut-edge counts, capped at two"
+  },
+  "registries": [
+    {
+      "bytes": 183848,
+      "path": "manifests/nns_vit_endpoint/revision_v8_r2_20260923/scalar_target_registry.json",
+      "sha256": "73457f9ac24f5f08cc36c6978252a2a09665af822e1065e75180ec06cc8477c1"
+    },
+    {
+      "bytes": 2844,
+      "path": "manifests/nns_vit_endpoint/revision_v8_r2_20260923/decomposition_registry.json",
+      "sha256": "40c785b5dc671cec083adf5e094f8094a38e92ec4d0afb9080f020079f72f9d6"
+    },
+    {
+      "bytes": 4400,
+      "path": "manifests/nns_vit_endpoint/revision_v8_r2_20260923/intervention_registry.json",
+      "sha256": "9bda95faa3584220c493ff5b04234efff64e31387068b9707777b51631c3a254"
+    }
+  ],
+  "scalar_target_counts": {
+    "deit_s16": 385,
+    "vit_b16": 457
+  },
+  "schema_version": 1,
+  "status": "PASS_ALL_TARGET_CUT_PAIRS_CLASSIFIED",
+  "status_counts": {
+    "NOT_APPLICABLE_DECLARED_RECONSTRUCTION": 24444,
+    "NOT_APPLICABLE_TARGET_UPSTREAM_OR_OUTSIDE_BRANCH": 14634,
+    "VALID_ATTENTION_BRANCH_PARTITION_ONLY": 15660,
+    "VALID_FULL_TARGET_CUT": 26076,
+    "VALID_FULL_TARGET_CUT_WITHIN_ATTENTION_BRANCH": 18
+  },
+  "target_class_counts": {
+    "deit_s16": {
+      "attention_head_coordinate": 72,
+      "class_logit": 2,
+      "final_cls_coordinate": 1,
+      "module_patch_aggregate": 18,
+      "patch_embedding_aggregate": 4,
+      "post_block_patch_energy": 48,
+      "post_block_patch_sum": 48,
+      "post_block_token_coordinate": 192
+    },
+    "vit_b16": {
+      "attention_head_coordinate": 144,
+      "class_logit": 2,
+      "final_cls_coordinate": 1,
+      "module_patch_aggregate": 18,
+      "patch_embedding_aggregate": 4,
+      "post_block_patch_energy": 48,
+      "post_block_patch_sum": 48,
+      "post_block_token_coordinate": 192
+    }
+  },
+  "target_cut_pair_count": 80832
+}

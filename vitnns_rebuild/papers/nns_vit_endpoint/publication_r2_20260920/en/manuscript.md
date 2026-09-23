@@ -3,7 +3,11 @@
 
 ## Abstract
 
-A scalar Neural Network Scanner (NNS) learning image equals same-target Gradient × Input under exact current-point derivatives without additional redistribution. We define local maps that retain input coordinates and concrete consumer uses, separating structurally valid cuts, pointwise differential closure, and attention-branch differential partitions. Structural audits combine closure checks with an independent CPU float64 analytic reference and prescribed wrong-slot and fan-out faults. A 100-image unit subset and 400-image structural analysis of two fixed checkpoints show distinct block-index trajectories of normalized-input Endpoint spatial mass. Three-coordinate checks retain the main directions of unit broadening, K/V entropy reduction, and residual spatial contrasts. However, the DeiT-S Q term changes point-estimate sign for B11−B0 and its intervals cross zero. On an independent 400-image cohort and four checkpoints, three prespecified directions persist while H4 head-ranking increments over activation × gradient are negative throughout. Continuous component-replacement correlations are positive, but the original all-family claim is not supported; stratified A/V and residual-type diagnostics are reported separately. Reference-aware Taylor better ranks the prescribed region-induced replacement of designated head activations. Dual indexing increases structural resolution and auditability without automatically improving finite-intervention prediction.
+A scalar Neural Network Scanner (NNS) learning image equals same-target Gradient × Input under exact current-point derivatives without additional redistribution; we call this quantity Endpoint in normalized input coordinates. Ordinary Gradient × Input retains input coordinates but does not explicitly distinguish which downstream operator and input slot uses the same intermediate representation. We therefore define local differential maps jointly indexed by input coordinate and concrete tensor use for a fixed Vision Transformer (ViT) graph, separating structurally valid cuts, pointwise differential closure, and differential partitions inside attention. Graph certification of the actual ViT topology is combined with numerical, analytic, and fault-injection checks for omitted, duplicated, or incorrectly merged terms.
+
+Main analyses of two fixed checkpoints show overall spatial broadening for unit targets, decreasing K/V component entropy, stable residual-component spatial differences, and greater model and input-coordinate sensitivity for Q components. The broadening direction persists under low-total-mass stratification and trimming. On an independent image cohort and four public checkpoints, the prespecified spatial, routing, and residual directions persist, whereas path scores under both the original and aggregation-matched definitions do not outperform activation × gradient for ranking finite head replacements.
+
+Associations between local differential scores and replacement effects vary substantially with component type, depth, model, and reference, precluding a unified pooled conclusion; first-order Taylor scores that include the actual reference displacement better rank the prescribed regional replacements. Dual indexing improves structural resolution and auditability on a specified graph, but this advantage does not automatically yield better finite-intervention prediction.
 
 Keywords: Vision Transformer; Neural Network Scanner; Gradient × Input; local Jacobian; structural audit
 
@@ -21,12 +25,12 @@ Neural Network Scanner (NNS) associates a neuron with a learning image that pres
 
 The overarching question is how NNS can represent the local input dependence of an internal ViT target as computable, decomposable, and verifiable structural-path maps, and how these maps vary with depth and rank candidates in prescribed finite-replacement tasks. We address four questions:
 
-1. **RQ1: What is the mathematical object represented by an NNS learning image?** We relate layerwise scale propagation to the Jacobian chain rule and Input × Gradient, including the effects of non-homogeneous operations, fixed tokens, and the input-coordinate origin.
-2. **RQ2: How can NNS be extended to a structured ViT computational graph?** We define internal scalar targets, actual graph edges, complete computational cuts, and additive local differentials for attention, multi-head structure, and residual paths.
-3. **RQ3: How do structural paths vary with depth?** In frozen target samples from two fixed pretrained checkpoints, we analyze spatial broadening, routing/value, and identity/branch trends and compare trained and random parameter states together with target and sampling controls.
-4. **RQ4: To what extent do clean-only local-map scores proxy prescribed finite-replacement effects, and how does ranking change when actual activation displacement is included?** H4 increments over activation × gradient are negative at all four checkpoints; greater structural resolution does not automatically yield predictive gains.
+1. **Mathematical object: what does an NNS learning image represent?** We relate layerwise scale propagation to the Jacobian chain rule and Input × Gradient, including the effects of non-homogeneous operations, fixed tokens, and the input-coordinate origin.
+2. **Structural extension: how can NNS be applied to a ViT computational graph?** We define internal scalar targets, actual graph edges, valid computational cuts, and additive local differentials for attention, multi-head structure, and residual paths.
+3. **Spatial distribution: how do structural components vary with depth?** In frozen target samples from two fixed pretrained checkpoints, we analyze spatial broadening, routing/value, and identity/branch trajectories and compare trained and random parameter states together with target and sampling controls.
+4. **Finite-replacement utility: can local differential scores rank prescribed finite replacement effects?** We compare clean-state path scores, activation × gradient, and first-order Taylor scores that include actual activation displacement.
 
-The method contribution has two parts. First, a target-conditioned dual-index local differential representation specifies distinct reconstruction contracts for global cuts and branch partitions. Second, a structural audit checks ViT use identity, omissions, and duplication and compares component maps with an independent analytic reference. The empirical analysis separately addresses spatial distributions in fixed checkpoints. Total maps describe overall broadening; paired maps describe attention and residual spatial differences. Path maps do not outperform activation × gradient in H4, so increased structural resolution does not imply improved intervention prediction.
+The method contribution has two parts. First, a target-conditioned dual-index local differential representation specifies distinct reconstruction contracts for global cuts and branch partitions. Second, a structural audit checks ViT use identity, omissions, and duplication through architecture-graph certification and an independent analytic reference. The empirical analysis separately addresses spatial distributions and finite-replacement ranking in fixed checkpoints. Total maps describe overall broadening, and paired maps describe attention and residual spatial differences; path maps do not improve finite head-replacement ranking, so structural resolution is distinct from intervention-predictive ability.
 
 We next delimit the related methods and our positioning, derive the general Jacobian representation and ViT structural decomposition, and organize experiments around identity and closure, depth trends, structural paths, and finite intervention.
 
@@ -114,7 +118,7 @@ Endpoint therefore requires no externally selected intervention reference, while
 
 ### 4.1 Target registry and the dual-indexed object
 
-The target registry fixes a scalar readout $s$, graph location, and aggregation rule for each key. Registered objects include token-channel units, channel aggregates, attention heads and Q/K/V terms, routing/value terms, residual identity/branch terms, MLP branches, and class logits. The registry specifies comparable target semantics; it does not enumerate every neuron. For patch activations in channel $c$, an aggregate target can be defined as
+The machine contracts distinguish three registries. The scalar-target registry fixes readout $s$, graph location, and aggregation rule. The local-differential decomposition registry fixes native uses, analytic partitions, cuts, and reconstruction objects. The finite-replacement registry fixes intervenable variables, references, and effects. These object classes are not interchangeable: Q/K/V-induced, routing/value, and residual identity/branch terms are differential components rather than scalar targets; attention probabilities, value projections, head outputs, and residual branch activations are intervention variables rather than scalar readouts. For patch activations in channel $c$, an aggregate target can be defined as
 
 $$
 s_{\mathrm{energy}}=\frac12\sum_{t=1}^{196}h_{t,c}^2,\qquad
@@ -122,7 +126,7 @@ s_{\mathrm{energy}}=\frac12\sum_{t=1}^{196}h_{t,c}^2,\qquad
 E_{\mathrm{energy}}=\sum_th_{t,c}E_{h_{t,c}}.
 $$
 
-This is the Jacobian form of original NNS activation-weighted filter aggregation; energy is an aggregate scalar rather than one neuron. Targets also include patch sums, internal head coordinates, final CLS channels, ground-truth logits, and frozen clean-top1 logits. Equal channel indices across models do not imply semantic correspondence.
+This is the Jacobian form of original NNS activation-weighted filter aggregation; energy is an aggregate scalar rather than one neuron. Per-image scalar targets comprise 192 post-block token-channel coordinates, 48 post-block patch sums, 48 post-block patch energies, 144/72 attention-head coordinates in ViT-B/DeiT-S, 18 module patch aggregates, four patch-embedding aggregates, one final-CLS coordinate, and two class logits, totaling 457/385. They are frozen structural anchors rather than an exhaustive or statistically representative neuron sample. Equal channel indices across models do not imply semantic correspondence.
 
 The registry specifies target location and readout semantics; registration alone does not make every cut applicable. Auditing the module, location, and kind fields of the 457/385 registered targets gives the following rules.
 
@@ -132,6 +136,8 @@ The registry specifies target location and readout semantics; registration alone
 | Internal scalar after a residual output | An upstream residual cut intercepting every input path | Corresponding upstream branch | Cut downstream of the target |
 | Target before a residual or inside a branch | A cut determined by its ancestor subgraph | Only when the target is downstream of that branch | A later residual equality cannot be applied |
 | Energy or patch-sum aggregate | Determined by the actual module/location readout | Determined by actual ancestry | Registry membership does not grant every cut |
+
+The table is also certified entry by entry on a frozen architecture graph. For the two standard 12-block pre-LN ViTs, we explicitly expand patch embedding, Q/K/V, each head use, attention projection, both residual additions, the MLP, final normalization, and classifier, then traverse all 842 scalar targets, 12 blocks, and eight cut declarations, giving 80,832 target--cut pairs. A full target cut requires every declared edge to lie in the target ancestor graph and every input-to-target path to cross it exactly once. A branch partition is certified only for complete interception of the attention-branch contribution and requires that branch to be upstream of the target. This classifies 26,094 pairs as full target cuts, 15,660 as valid branch-only partitions, and 39,078 as upstream or reconstruction-inapplicable. Certification applies to the registry-bound standard unfused pre-LN architecture, not implementations with extra branches or different operator fusion.
 
 Define a concrete use edge as
 
@@ -413,13 +419,13 @@ Results proceed from identity and numerical correctness to normalized-input Endp
 
 ## 6. Depth Patterns of Local Dependence in ViTs
 
-### 6.1 RQ1–RQ2: NNS equivalence and structural-path closure
+### 6.1 NNS equivalence and structural-path closure
 
 The 5,000 original-NNS-compatible comparisons in Table 3 give maximum relative L2 errors of $4.769\times10^{-16}$ in float64 and $2.427\times10^{-7}$ in float32 between layerwise learning-image propagation and same-target Input × Gradient. Structural validation covers 76,800 positive closure checks, 28,800 omission/duplication controls, 6,144 analytic JVP checks, and 88 operator directions. All positive closures and analytic directional checks pass, all negative controls are rejected, and all 36 float32 finite-difference exceedances pass same-coordinate float64 review. These results establish the numerical identity in Proposition 1 and structural accounting in Proposition 2; Section 7 evaluates finite-intervention utility separately.
 
 This revision’s independent analytic reference passes 32 component comparisons and nine central-difference directions, with maximum component absolute error $1.11\times10^{-16}$. All four new use mutations are rejected; Supplement S17 reports the direct evidence.
 
-### 6.2 RQ3: Spatial distributions of fixed targets
+### 6.2 Spatial distributions of fixed targets
 
 Figure 5 shows normalized-input Endpoint for different targets on one image. Forward features describe token-grid responses; local maps describe the scalar’s current-point response to input-coordinate scaling. Population summaries use fixed sampled targets independently of display selection.
 
@@ -429,11 +435,13 @@ Figure 5 shows normalized-input Endpoint for different targets on one image. For
 
 Image-level late-minus-early medians and 95% intervals for 100 images per model are listed in ViT-B/16 / DeiT-S/16 order: entropy 0.220 [0.211, 0.227] / 0.225 [0.212, 0.228]; locality -0.356 [-0.363, -0.350] / -0.342 [-0.353, -0.333]; distance 0.131 [0.129, 0.136] / 0.122 [0.120, 0.128]. Each image takes medians over its fixed units in blocks 8–11 and 0–3 before differencing. Locality and distance exclude CLS. These are normalized-input Endpoint distribution profiles, without a causal interpretation of depth.
 
+A post-hoc low-magnitude sensitivity uses total-L1-mass quantiles defined within each model and block without selecting thresholds from entropy outcomes. After trimming the lowest 1%, 5%, and 10% of mass, median late-minus-early entropy is 0.222, 0.229, and 0.234 in ViT-B and 0.226, 0.230, and 0.233 in DeiT-S; every setting remains positive in 100/100 images. All four mass quartiles have positive median changes in both models, with 0.090 and 0.112 in the lowest quartile. At the same time, median within-image, within-block Spearman association between log1p(total mass) and entropy is −0.729 and −0.760, showing that entropy depends on map quality. The result supports a broadening direction not driven solely by the lowest-mass maps; it does not make normalized entropy magnitude-independent. Supplement S19 reports intervals, valid counts, and eight typed-NA image--quartile cells.
+
 ![Figure 6](../figures/png/fig_12_spatial_broadening.png)
 
 **Figure 6.** Left, middle, and right panels show normalized-input Endpoint spatial entropy, own-token locality, and normalized distance. At each block, medians over the fixed token-channel targets are computed within images and then summarized by the median over 100 images from the evaluation subset. CLS enters entropy only; locality subtracts the equal-area uniform baseline. Shading shows 95% intervals from 10,000 image bootstraps. Curves correspond to two fixed checkpoints and are descriptive block profiles; late-minus-early tests belong to the five-item family frozen before outcome access.
 
-### 6.3 RQ3: Joint-index necessity
+### 6.3 Joint-index necessity
 
 Total Gradient × Input, edge scalars, and dual-indexed map sets retain different information. Table 4 connects these representations to the observed results. Depth-wise spatial broadening requires only the total map and is therefore a background regularity. Routing and identity shares require edge-level absolute masses and serve as supporting scale results. The spatial differences between full and Value-only attention and between residual output and identity require both path identity $e$ and input position $i$; they are the core empirical results for the dual-index representation.
 
@@ -447,7 +455,7 @@ Total Gradient × Input, edge scalars, and dual-indexed map sets retain differen
 
 The alternative-explanation audit uses the same information boundary as the claim. A total map retains $i$ but sums out $e$, so it cannot recover separate routing/value or identity/branch spatial distributions. An edge scalar retains $e$ but sums out $i$, so it cannot compute normalized patch distributions, spatial TV, or signed spatial cancellation. Total absolute mass and activation norm can explain overall scale but cannot reconstruct these position-conditional differences. Both Full–Value and output–identity TV compare normalized spatial distributions, so neither is a restatement of total mass. Spatial reorganization therefore requires $[e,i]$; routing share, identity share, and overall broadening do not independently carry the joint-index necessity claim.
 
-### 6.4 RQ3: Spatial components of the attention branch
+### 6.4 Spatial components of the attention branch
 
 Figure 7 separates Q-induced, K-induced, routing-induced, and value-induced differentials. Complete signed terms reconstruct attention branch contribution; positive maps are displays.
 
@@ -463,7 +471,7 @@ The 400-image Q/K/V contrast is B11−B0 and is distinct from four-block phase m
 
 **Figure 8.** Left panel: routing-induced relative absolute mass. Middle: relative L2 error of the Value-only map against the full attention branch map. Right: JVP discrepancy over frozen directions. Each block takes the within-image median across all heads and then the median across 400 images per checkpoint. Shading shows 95% intervals from 10,000 image bootstraps. Spatial maps use normalized-input coordinates; JVP uses eight frozen directions. Curves describe fixed checkpoints; depth contrasts use each model’s family frozen before outcome access.
 
-### 6.5 RQ3: Residual identity and branch
+### 6.5 Residual identity and branch
 
 Figure 9 shows the two residual additions for one class target. Identity uses different input sites at the two additions and the cotangent at the corresponding addition output.
 
@@ -511,6 +519,8 @@ H1–H3 are positive at all four checkpoints, with within-checkpoint Holm-adjust
 
 Dual indexing increases structural resolution and auditability. H4 does not outperform activation × gradient, so additional structure does not automatically improve finite-intervention prediction.
 
+The original H4 path score takes absolute values before summing over input coordinates, whereas its activation × gradient comparator sums over the complete head tensor before taking an absolute value. An aggregation-matched sensitivity instead uses $M^{\mathrm{sum}}_{jbh}=|\sum_i\mathcal L_{jbh,i}|$ while preserving the target, reference, blocks, effect, and image-level aggregation. Median increments remain negative at all four checkpoints: vit_b16 −0.124 [−0.147, −0.102], deit_s16 −0.114 [−0.157, −0.079], vit_b16_in1k −0.226 [−0.253, −0.205], and vit_s16_augreg −0.171 [−0.200, −0.143]. Aggregation order therefore does not explain the original negative H4 direction. This post-hoc analysis does not replace the registered estimator.
+
 ### 6.7 Coordinate parameterization and controls
 
 This revision compares normalized-input Endpoint, raw-pixel gradient, and RGB-zero-origin weighted gradient at the same input point. Coverage is 100 fixed-unit images and 400 structural images per model, paired by image. All 48 phase-summary groups have complete image coverage and consistent main directions. For B11−B0, however, DeiT-S Q medians are −0.004, 0.003, and 0.002; all three intervals cross zero and point-estimate signs change. All 96 median differences, intervals, and directions appear in [Supplement S17](supplement.md#v6-coordinate). Main conclusions remain restricted to normalized-input Endpoint, with object-specific direction retention reported separately as robustness evidence.
@@ -534,7 +544,7 @@ Trained versus random initialization, GT versus alternative targets, forward-fea
 
 ## 7. Ranking in Prescribed Finite-Replacement Tasks
 
-### 7.1 RQ4: Prescribed component replacement and region-induced designated-head activation replacement
+### 7.1 Prescribed component replacement and region-induced designated-head activation replacement
 
 The original 12 pooled component families remain available as frozen provenance, with continuous correlations, intervals, and Holm-adjusted p values in the supplement. Eleven of twelve met the original composite criterion, while the all-family claim remained unsupported. Table 6 instead prioritizes post-hoc A/V and attention/MLP stratified continuous estimates and type/depth mixing diagnostics, avoiding a single summary for distinct operations.
 
@@ -609,6 +619,8 @@ Cross-reference analysis clarifies this distinction. Endpoint uses the clean obs
 
 Dual-index maps permit direct comparison of spatial distributions for specified uses or differential groups. Total maps describe overall broadening, component scalars describe scale, and Q/K/V entropy and residual output–identity TV require both path labels and input positions. Global cuts include bypass; branch partitions reconstruct only attention contribution. Distinct reconstruction targets keep accounting and interpretation consistent.
 
+Architecture-graph certification applies this contract to actual target--cut pairs instead of inferring graph structure from pointwise numerical closure. The three registries separately constrain scalar readouts, local-differential decompositions, and finite-replacement variables, avoiding one ambiguous category of registered objects.
+
 Empirical conclusions concern normalized-input Endpoint for fixed checkpoints and sampled targets. Main directions of unit broadening, K/V entropy, and residual TV persist across the three tested input representations, while DeiT-S Q B11−B0 shows coordinate and interval sensitivity. Equivalent hidden-coordinate transformations can also change components while preserving total Endpoint. These maps therefore describe the local differential structure of a specified implementation.
 
 H4 is lower than activation × gradient at all four checkpoints. Dual-index maps increase structural resolution and auditability without automatically improving finite-intervention prediction. Taylor directly uses replacement displacement and better ranks the prescribed regional task. Historical pooled component correlations are positive, but the v7 stratification shows that A/V and attention/MLP are not homogeneous families; type-and-block-adjusted correlations depend on model and reference. The original all-family claim remains unsupported, and the behavioral evidence is broad but non-universal.
@@ -621,7 +633,7 @@ A current-point first-order Jacobian describes local response and does not captu
 
 ### 8.3 Conclusion
 
-Under exact current-point derivative propagation, a scalar NNS learning image equals Gradient × Input. The technical contribution is a target-conditioned dual-index representation, distinct branch/global closure contracts, and analytic and mutation audits for concrete-use errors. Normalized-input Endpoint on fixed sampled targets exhibits block-index-associated spatial profiles. Coordinate checks identify object-specific direction retention and DeiT-S Q sensitivity. Independent-cohort H1–H3 directions persist, while H4 head ranking does not outperform activation × gradient. Prescribed replacement association is broad but non-universal and the all-family claim remains unsupported. Greater structural resolution and auditability do not automatically yield finite-intervention prediction gains.
+Under exact current-point derivative propagation, a scalar NNS learning image equals Gradient × Input. The technical contribution is a target-conditioned dual-index representation, distinct branch/global closure contracts, and structural and numerical audits of actual ViT cuts and concrete-use errors. Normalized-input Endpoint on fixed sampled targets exhibits block-index-associated spatial profiles. The broadening direction persists under total-mass stratification and trimming, although entropy values depend on map quality. Q components are more sensitive to model and input coordinates, and path maps under both original and matched aggregation do not outperform activation × gradient for ranking finite head replacements. Prescribed replacement associations are broad but non-universal and do not support a unified pooled conclusion. Greater structural resolution and auditability do not automatically yield finite-intervention prediction gains.
 
 ## References and Supplementary Material
 

@@ -672,3 +672,49 @@ A/V concordance 是 12 层中 $\operatorname{sign}[(m_A-m_V)(|e_A|-|e_V|)]$ 一�
 Residual output–identity TV 的 absolute-mass 四分位诊断以图像为统计单位。Attention 的 Q1→Q4 中位 TV 为 ViT-B 0.107→0.073、DeiT-S 0.071→0.055；MLP 为 ViT-B 0.139→0.105、DeiT-S 0.117→0.090。空间差异不只存在于最低质量组，但这些未调整的事后分层不能排除梯度质量或噪声的影响。
 
 H4 从 1,600 个原始 JSON/NPZ 独立复算；四个 checkpoint 的中位数依次为 vit_b16 -0.114、deit_s16 -0.186、vit_b16_in1k -0.186、vit_s16_augreg -0.136，正/负/平分别为 101/297/2、96/298/6、56/342/2、107/285/8。四项 checkpoint 内 Holm 调整值均小于 $10^{-6}$。原始逐图、block-level 相关、完整 p 值及机器收据见 v7 r4 根。
+
+## S19. 架构切面、空间熵质量与 H4 聚合敏感性
+
+### S19.1 三类 registry 与实际切面认证
+
+机器合同现按对象分为标量目标、局部微分分解和有限替换干预三个只读派生 registry。标量目标数由原 EP0 逐行重算，ViT-B/16 与 DeiT-S/16 分别为 457/385。每个模型均含 192 个 post-block token-channel、48 个 patch sum、48 个 patch energy、18 个 module patch aggregate、4 个 patch-embedding aggregate、1 个 final-CLS coordinate 和 2 个类别 logits；head coordinate 分别为 144 与 72。Q/K/V-induced、routing/value、residual 分项和可替换变量不再混入这一计数。
+
+| Registry | 包含对象 | 明确不包含 |
+| --- | --- | --- |
+| scalar target | 标量 readout、图中位置、聚合规则 | 路径分项、干预变量 |
+| local-differential decomposition | native use、解析分组、cut、重构对象 | 标量目标数量、有限替换效果 |
+| finite-replacement intervention | 可替换 activation、reference、effect 与区域任务 | 局部微分闭合对象 |
+
+冻结的 pre-LN ViT tensor-use DAG 对 842 个 target、12 层与 8 类 cut 的 80,832 个配对逐一检查。算法在目标祖先子图上动态传播每条输入路径经过的 cut-edge 数，并要求完整 cut 的计数集合严格为 $\{1\}$，同时要求 cut 中每条边均属于该祖先子图。26,094 个配对通过完整 target-cut 条件，15,660 个通过 attention branch-only partition 条件，24,444 个因声明重构对象不适用而拒绝，14,634 个因目标位于上游或 branch 不在目标祖先图而拒绝。该证明覆盖 registry 绑定的标准 unfused pre-LN ViT；数值闭合与 mutation 测试继续作为实现层面的独立证据。
+
+### S19.2 空间熵的总质量敏感性
+
+阈值在每个 model--block 内由全部冻结 M3 unit map 的总 L1 mass 分布确定。原始 late-minus-early entropy 从源数组复现的最大误差为 0。下表以图像为单位给出中位数和 95% bootstrap 区间；截尾项保留全部 100 图，四分位项对合法空组传播 NA。
+
+| Model | Analysis | Median [95% CI] | Valid / total |
+| --- | --- | --- | --- |
+| ViT-B/16 | no trimming | 0.220 [0.211, 0.227] | 100 / 100 |
+| ViT-B/16 | trim lowest 1% mass | 0.222 [0.213, 0.230] | 100 / 100 |
+| ViT-B/16 | trim lowest 5% mass | 0.229 [0.221, 0.237] | 100 / 100 |
+| ViT-B/16 | trim lowest 10% mass | 0.234 [0.227, 0.242] | 100 / 100 |
+| DeiT-S/16 | no trimming | 0.225 [0.212, 0.228] | 100 / 100 |
+| DeiT-S/16 | trim lowest 1% mass | 0.226 [0.215, 0.229] | 100 / 100 |
+| DeiT-S/16 | trim lowest 5% mass | 0.230 [0.219, 0.235] | 100 / 100 |
+| DeiT-S/16 | trim lowest 10% mass | 0.233 [0.223, 0.237] | 100 / 100 |
+
+按 model--block mass 四分位分层后，ViT-B 的 Q1--Q4 中位差为 0.090、0.194、0.238、0.266，DeiT-S 为 0.112、0.205、0.222、0.224。八个 image--quartile 组合因 early 或 late 组为空而记为 typed NA，没有删除或替换图像。同图同层 log1p(total mass) 与 entropy 的平均 Spearman 中位数为 ViT-B −0.729 [−0.747, −0.693]、DeiT-S −0.760 [−0.775, −0.723]；late-minus-early log1p mass 则分别为 2.893 [2.829, 2.961] 与 2.183 [2.109, 2.227]。因此熵与质量明显相关，但总体扩展方向不由最低质量图单独产生。
+
+### S19.3 H4 匹配聚合与随机区域精度
+
+匹配聚合将 path score 定义为 $M^{\mathrm{sum}}_{jbh}=|\sum_i\mathcal L_{jbh,i}|$，使其与 activation × gradient 对照都采用“先坐标求和、再取绝对值”。其余 target、normalized-zero reference、四个 blocks、有限替换 effect 与图像级聚合不变。
+
+| Checkpoint | Matched path minus activation × gradient | Positive / negative / tie |
+| --- | --- | --- |
+| vit_b16 | −0.124 [−0.147, −0.102] | 89 / 311 / 0 |
+| deit_s16 | −0.114 [−0.157, −0.079] | 130 / 261 / 9 |
+| vit_b16_in1k | −0.226 [−0.253, −0.205] | 49 / 349 / 2 |
+| vit_s16_augreg | −0.171 [−0.200, −0.143] | 110 / 285 / 5 |
+
+原 H4 从相同数组再次复现，逐图最大误差为 0。匹配聚合下四个 checkpoint 仍为负，因而原结果不由两种分数的 absolute/sum 顺序差异解释。
+
+随机区域基线无需新增模型运行。源复核覆盖 1,600 个 model--reference--image 条件和 32,000 条 repeat 记录；每个条件均有 20 个完整重复。相对 Monte Carlo 标准误中位数为 5.1%--6.9%，q90 为 7.6%--8.9%；5/10/20-repeat 重采样、split-half 与 leave-one-repeat-out 均已保留。该精度支持 cohort-level 比较，单图细小优势不据此判定。

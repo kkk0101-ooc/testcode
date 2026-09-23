@@ -1,4 +1,4 @@
-% Generated from Markdown by scripts/build_revision_v7_publication.py; do not edit numeric content manually.
+% Generated from Markdown by scripts/build_revision_v8_publication.py; do not edit numeric content manually.
 % Options for packages loaded elsewhere
 \PassOptionsToPackage{unicode}{hyperref}
 \PassOptionsToPackage{hyphens}{url}
@@ -127,19 +127,22 @@
 
 当神经网络扫描器（Neural Network
 Scanner，NNS）使用当前点的精确局部导数且不作额外重分配时，标量 learning
-image 等于同目标的 Gradient × Input。本文定义保留输入坐标与具体 consumer
-use 的局部图，并区分结构合法切面、点态微分闭合和 attention
-分支微分分组。结构审计结合闭合检验、独立 CPU float64 解析参考及
-wrong-slot、fan-out 人工故障。两种固定 checkpoint 的 100 图单元子集与
-400 图结构分析表明，normalized-input Endpoint 的空间质量分布随 block
-index 呈现不同轨迹。三坐标检查保留单元空间扩展、K/V 熵下降和 residual
-空间差异的主要方向，但 DeiT-S Q 的 B11−B0 点估计改变符号且区间跨零。独立
-400 图、四 checkpoint 检查中，三项预先规定的方向保持，H4 的路径图 head
-排序增量相对 activation × gradient
-全为负。规定成分替换的连续相关为正，但原 all-family 判断未获支持；A/V 与
-residual 类型的分层诊断另行报告。给定 reference 的区域诱导指定-head
-activation 替换更适合使用包含实际位移的 Taylor
-分数。双索引表示增加结构分辨率与可审计性，未自动转化为有限干预预测增益。
+image 等于同目标的 Gradient × Input；本文将归一化输入坐标下的这一量称为
+Endpoint。普通 Gradient × Input
+保留输入坐标，却不显式区分同一中间表示被哪个后续算子及其哪个输入槽使用。为此，本文面向固定
+Vision
+Transformer（ViT）计算图，定义同时索引输入坐标与具体张量使用位置的局部微分图，并区分结构合法切面、点态微分闭合和
+attention 分支内部微分分组。面向实际 ViT
+拓扑的图结构认证与数值、解析和故障注入检查共同审计分项是否遗漏、重复或错误合并。
+
+两个固定模型检查点上的主分析表明，单元目标的空间质量分布总体趋于扩展，K/V
+分项熵下降，残差分项呈稳定空间差异；Q
+分项则对模型和输入坐标定义更敏感。低总质量分层与截尾分析保留了总体空间扩展方向。在独立图像队列和四个公开模型检查点上，预先规定的空间、路由和残差方向保持一致；路径分数在原聚合及匹配聚合下均未优于
+activation × gradient 的注意力头有限替换排序。
+
+有限替换分析进一步显示，局部微分分数与替换效应的关系随成分类型、层级、模型和参考状态明显变化，不支持统一的合并结论；包含实际参考位移的一阶
+Taylor
+分数更适合规定的区域替换任务。双索引表示提高了指定计算图上的结构分辨率和可审计性，但这种优势不会自动转化为有限干预预测增益。
 
 关键词：视觉 Transformer；Neural Network Scanner；Gradient × Input；局部
 Jacobian；结构审计
@@ -184,30 +187,31 @@ residual bypass；分支分组只重构 attention branch contribution。
 \def\labelenumi{\arabic{enumi}.}
 \tightlist
 \item
-  \textbf{RQ1：NNS 学习图像的数学本质是什么？}
-  明确逐层尺度传播、Jacobian 链式法则与 Input × Gradient
-  的关系，以及非齐次项、固定 token 和输入坐标原点带来的限制。
+  \textbf{数学对象：NNS 学习图像表示什么？} 明确逐层尺度传播、Jacobian
+  链式法则与 Input × Gradient 的关系，以及非齐次项、固定 token
+  和输入坐标原点带来的限制。
 \item
-  \textbf{RQ2：NNS 如何推广到 ViT 的结构化计算图？}
+  \textbf{结构推广：如何将 NNS 用于 ViT 计算图？}
   定义内部标量目标、真实计算边、合法计算切面及 attention、multi-head 和
   residual 的可加局部微分路径。
 \item
-  \textbf{RQ3：结构路径如何随深度变化？} 在两个固定预训练 checkpoint
-  的冻结抽样目标上分析空间扩展、routing/value 与 identity/branch
+  \textbf{空间分布：结构分项如何随深度变化？} 在两个固定预训练
+  checkpoint 的冻结抽样目标上分析空间扩展、routing/value 与
+  identity/branch
   的层深分布轨迹，并比较训练参数状态和随机参数状态以及目标与抽样控制。
 \item
-  \textbf{RQ4：clean-only
-  局部微分图分数在多大程度上代理规定有限替换效应，加入实际 activation
-  displacement 后排序如何变化？} H4 的路径图相对 activation × gradient
-  排序增量在四 checkpoint 上均为负，结构分辨率增加未自动产生预测增益。
+  \textbf{有限替换效用：局部微分分数能否排序规定的有限替换效应？} 比较
+  clean-state 路径分数、activation × gradient 和包含实际 activation
+  displacement 的一阶 Taylor 分数。
 \end{enumerate}
 
 方法贡献有两点。第一，给出目标条件化的双索引局部微分表示，明确全局切面与分支分组各自的闭合对象。第二，建立面向
 ViT use
-身份、遗漏和重复的结构审计，用独立解析参考逐项检查组件图。经验结果另行回答固定
-checkpoint 上的空间分布问题。总图描述整体空间扩展，成对分项图描述
-attention 与 residual 的空间差异。H4 中路径图没有优于 activation ×
-gradient，结构分辨率增加不等于干预预测增益。
+身份、遗漏和重复的结构审计，用架构图认证与独立解析参考逐项检查组件图。经验分析另行回答固定
+checkpoint
+上的空间分布与有限替换排序问题。总图描述整体空间扩展，成对分项图描述
+attention 与 residual 的空间差异；路径图未提高 head
+有限替换排序，结构分辨率不等于干预预测能力。
 
 下文先界定相关方法与本文定位，再给出 NNS 的一般 Jacobian 表示和 ViT
 结构分解。实验按等价性与闭合、层深分布轨迹、结构路径和有限干预组织，最后讨论证据范围。
@@ -420,11 +424,14 @@ reference，但依赖模型输入坐标及 normalization origin。
 \subsection{4.1 Target registry
 与双索引对象}\label{target-registry-ux4e0eux53ccux7d22ux5f15ux5bf9ux8c61}
 
-Target registry 为每个键固定标量读出
-\(s\)、图中位置和聚合规则。注册对象包括
-token-channel、通道聚合、attention head 与 Q/K/V 项、routing/value
-项、residual identity/branch、MLP branch 和类别 logit。Registry
-规定可比较的目标语义，但不表示穷举全部神经元。对于通道 \(c\) 的 patch
+本文将机器合同分成三类。标量目标 registry 固定读出
+\(s\)、图中位置和聚合规则；局部微分分解 registry 固定 native
+use、解析分组、cut 与重构对象；有限替换 registry
+固定可干预变量、reference 和
+effect。三类对象不能互换：Q/K/V-induced、routing/value 和 residual
+identity/branch 是局部微分分项，不计入标量目标数；attention
+probability、value projection、head output 与 residual branch activation
+是干预变量，也不因可替换而成为标量读出。对于通道 \(c\) 的 patch
 activations，聚合目标可定义为
 
 \begin{equation}\label{eq:zh-manuscript-005}
@@ -434,9 +441,13 @@ E_{\mathrm{energy}}=\sum_th_{t,c}E_{h_{t,c}}.
 \end{equation}
 
 这给出原始 NNS activation-weighted filter aggregation 的 Jacobian
-形式；energy 是聚合标量而非单个神经元。目标还包括 patch sum、head
-内部坐标、final CLS channel、ground-truth logit 和 frozen clean-top1
-logit。跨模型同编号 channel 不视为同语义单元。
+形式；energy 是聚合标量而非单个神经元。每图标量目标包括 192 个
+post-block token-channel、48 个 post-block patch sum、48 个 post-block
+patch energy、ViT-B/DeiT-S 各 144/72 个 attention-head coordinate、18 个
+module patch aggregate、4 个 patch-embedding aggregate、1 个 final-CLS
+coordinate 和 2 个类别 logits，合计
+457/385。它们是冻结的结构锚点，不是对全部神经元的穷举或统计代表样本。跨模型同编号
+channel 不视为同语义单元。
 
 Registry
 只声明目标位置和读出语义，不会使某个目标自动获得全部切面。对现有 457/385
@@ -475,6 +486,17 @@ energy 或 patch-sum 聚合目标 & 由实际 module/location 读出位置决定
 \end{longtable}
 \endgroup
 }
+
+该适用表另由冻结架构图逐项认证。对两个标准 12-block pre-LN ViT，显式展开
+patch embedding、Q/K/V、各 head use、attention projection、两次 residual
+addition、MLP、final norm 和 classifier；随后对全部 842 个标量目标、12
+层和 8 类 cut 做图遍历，共 80,832 个 target--cut 配对。完整 target cut
+要求其全部声明边位于目标祖先子图，且每条输入到目标路径恰好穿过一次；branch
+partition 则只认证对 attention branch contribution 的完整截断，并要求该
+branch 位于目标上游。结果将 26,094 个配对认证为完整 target cut、15,660
+个认证为合法 branch-only partition，其余 39,078
+个明确记为目标上游或重构对象不适用。该认证针对 registry 绑定的标准
+unfused pre-LN 架构，不覆盖带额外分支或不同算子融合的实现。
 
 令实际使用边
 
@@ -1176,8 +1198,8 @@ checkpoint 的描述，替换效应则依赖具体 reference 与干预变量。
 \section{6. ViT
 内部局部依赖的层深分布轨迹}\label{vit-ux5185ux90e8ux5c40ux90e8ux4f9dux8d56ux7684ux5c42ux6df1ux5206ux5e03ux8f68ux8ff9}
 
-\subsection{6.1 RQ1--RQ2：NNS
-等价性与结构路径闭合}\label{rq1rq2nns-ux7b49ux4ef7ux6027ux4e0eux7ed3ux6784ux8defux5f84ux95edux5408}
+\subsection{6.1 NNS
+等价性与结构路径闭合}\label{nns-ux7b49ux4ef7ux6027ux4e0eux7ed3ux6784ux8defux5f84ux95edux5408}
 
 Table 3 的 5,000 个原始 NNS 兼容网络比较表明，逐层 learning-image
 propagation 与同目标 Input × Gradient 的最大 relative L2 error 在
@@ -1194,7 +1216,7 @@ float32 有限差分超差点在相同坐标的 float64
 \(1.11\times10^{-16}\)。四类新增 use mutation 均拒绝，详见补充 S17。
 
 \subsection{6.2
-RQ3：固定目标的空间分布}\label{rq3ux56faux5b9aux76eeux6807ux7684ux7a7aux95f4ux5206ux5e03}
+固定目标的空间分布}\label{ux56faux5b9aux76eeux6807ux7684ux7a7aux95f4ux5206ux5e03}
 
 Figure 5 展示同一图像不同目标的 normalized-input Endpoint。前向 feature
 描述 token-grid 响应，局部图描述该 scalar
@@ -1218,6 +1240,16 @@ ViT-B/16 与 DeiT-S/16。entropy 0.220 {[}0.211, 0.227{]} / 0.225
 的固定单元内分别取中位数，再求差。Locality 与 distance 排除 CLS。这是
 normalized-input Endpoint 的分布轨迹，不识别深度的因果效应。
 
+空间熵对低幅值的事后敏感性分析使用每个 model--block 的总 L1 mass
+分位点，不按熵结果选阈值。剔除最低 1\%、5\% 和 10\% mass 后，ViT-B 的
+late-minus-early entropy 中位差依次为 0.222、0.229 和 0.234，DeiT-S 为
+0.226、0.230 和 0.233；各设置仍为 100/100
+图像正向。按质量四分位分层后，两模型四组中位差均为正，最低质量组为 0.090
+和 0.112。与此同时，同图同层 log1p(total mass) 与 entropy 的平均
+Spearman 中位数为 −0.729 和
+−0.760，表明熵确实依赖图质量；因此这里只支持空间扩展方向不由最低质量图单独驱动，而不将归一化熵解释为幅值无关量。完整区间、有效数和
+8 个 typed-NA image--quartile 单元见补充 S19。
+
 \refstepcounter{figure}\label{fig:zh-manuscript-006}
 \pandocbounded{\includegraphics[keepaspectratio,alt={Figure 6}]{../figures/png/fig_12_spatial_broadening.png}}
 
@@ -1230,7 +1262,7 @@ checkpoint。曲线为描述性 block 轨迹，late-minus-early
 检验属于结果访问前冻结的五项 family。
 
 \subsection{6.3
-RQ3：联合索引必要性}\label{rq3ux8054ux5408ux7d22ux5f15ux5fc5ux8981ux6027}
+联合索引必要性}\label{ux8054ux5408ux7d22ux5f15ux5fc5ux8981ux6027}
 
 总 Gradient × Input、edge scalar 和双索引图组保留的信息不同。Table 4
 将三者对应到本文的实际结果。层深空间扩展只需要总图，因此作为背景规律；routing
@@ -1285,8 +1317,8 @@ output--identity TV 均在各自绝对质量归一化后比较空间分布，因
 mass 的重述。由此，空间重组结论依赖 \([e,i]\)；routing share、identity
 share 和总体空间扩展均不单独承担联合索引必要性主张。
 
-\subsection{6.4 RQ3：Attention
-分支的空间分项}\label{rq3attention-ux5206ux652fux7684ux7a7aux95f4ux5206ux9879}
+\subsection{6.4 Attention
+分支的空间分项}\label{attention-ux5206ux652fux7684ux7a7aux95f4ux5206ux9879}
 
 Figure 7 区分 Q-induced、K-induced、routing-induced 与 value-induced
 differential。各项的完整 signed 图重构 attention branch
@@ -1327,8 +1359,8 @@ bootstrap 的 95\% 区间。空间图使用 normalized-input 坐标，JVP
 使用八个冻结方向。曲线描述固定
 checkpoint，层深对比按各模型结果访问前冻结的 family 检验。
 
-\subsection{6.5 RQ3：Residual identity 与
-branch}\label{rq3residual-identity-ux4e0e-branch}
+\subsection{6.5 Residual identity 与
+branch}\label{residual-identity-ux4e0e-branch}
 
 Figure 9 展示两次 residual addition 对同一类别目标的分项。Identity
 的输入位置不同，均使用相应 addition 输出处的 cotangent。
@@ -1455,6 +1487,16 @@ H1--H3 在四个 checkpoint 中均为正，checkpoint 内 Holm 调整后
 双索引增加结构分辨率与可审计性；H4 未优于 activation ×
 gradient，结构分辨率增加不自动转化为有限干预预测增益。
 
+原 H4 的 path score 先对输入坐标取绝对值再求和，而 activation × gradient
+对照先在整个 head tensor 内求和再取绝对值。匹配聚合敏感性将 path score
+改为 \(M^{\mathrm{sum}}_{jbh}=|\sum_i\mathcal L_{jbh,i}|\)，其余
+target、reference、blocks、effect 与图像级聚合不变。四个 checkpoint
+的中位增量仍为负：vit\_b16 −0.124 {[}−0.147, −0.102{]}、deit\_s16 −0.114
+{[}−0.157, −0.079{]}、vit\_b16\_in1k −0.226 {[}−0.253,
+−0.205{]}、vit\_s16\_augreg −0.171 {[}−0.200,
+−0.143{]}。聚合顺序差异因而不能解释原 H4
+的阴性方向；该事后分析不替换原注册估计量。
+
 \subsection{6.7
 坐标参数化与控制分析}\label{ux5750ux6807ux53c2ux6570ux5316ux4e0eux63a7ux5236ux5206ux6790}
 
@@ -1521,8 +1563,8 @@ B11−B0 estimand，二者不可互换。
 \section{7.
 规定有限替换任务中的排序能力}\label{ux89c4ux5b9aux6709ux9650ux66ffux6362ux4efbux52a1ux4e2dux7684ux6392ux5e8fux80fdux529b}
 
-\subsection{7.1 RQ4：规定成分替换与区域诱导的指定-head activation
-替换}\label{rq4ux89c4ux5b9aux6210ux5206ux66ffux6362ux4e0eux533aux57dfux8bf1ux5bfcux7684ux6307ux5b9a-head-activation-ux66ffux6362}
+\subsection{7.1 规定成分替换与区域诱导的指定-head activation
+替换}\label{ux89c4ux5b9aux6210ux5206ux66ffux6362ux4e0eux533aux57dfux8bf1ux5bfcux7684ux6307ux5b9a-head-activation-ux66ffux6362}
 
 成分替换实验的原 12 个 pooled family 作为冻结 provenance
 保留；其连续相关、区间和 Holm 调整后 p 值见补充材料。原复合条件中 11/12
@@ -1870,6 +1912,10 @@ map，而 Taylor 显式使用替换位移。对 163,200 个成分配对，Taylor
 则需要路径标签和输入位置。全局切面包含 bypass，branch partition 只重构
 attention contribution。该区分使闭合目标与后续解释保持一致。
 
+架构图认证把这一合同落实到实际 target--cut
+配对，而不从单点数值闭合反推图结构。三类 registry
+则分别约束标量读出、局部微分分解和有限替换变量，避免用同一个``注册对象''名称混合不同数学对象。
+
 经验结论以固定 checkpoint 和抽样目标上的 normalized-input Endpoint
 为对象。单元扩展、K/V 熵与 residual TV
 的主要方向对三种已测输入表示保持；DeiT-S Q 的 B11−B0
@@ -1903,12 +1949,13 @@ checkpoint
 \subsection{8.3 结论}\label{ux7ed3ux8bba}
 
 精确当前点导数传播下，标量 NNS learning image 等于 Gradient ×
-Input。本文的技术贡献是目标条件化双索引表示、分支与全局闭合合同，以及针对具体
-use 错误的解析和 mutation 审计。固定抽样目标的 normalized-input Endpoint
-呈现与 block index 相关的空间轨迹；坐标检查给出对象级方向保持及 DeiT-S Q
-的敏感性。独立队列 H1--H3 保持方向，H4 的路径图 head 排序未优于
-activation × gradient。规定替换的关联广泛但非普遍，all-family
-未获支持。结构分辨率和可审计性增加不自动转化为有限干预预测增益。
+Input。本文的技术贡献是目标条件化双索引表示、分支与全局闭合合同，以及针对实际
+ViT 切面和具体 use 错误的结构与数值审计。固定抽样目标的 normalized-input
+Endpoint 呈现与 block index
+相关的空间轨迹；该扩展方向在总质量分层与截尾分析中保持，但熵数值具有质量依赖。Q
+分项对模型和输入坐标更敏感，路径图在原聚合与匹配聚合下均未优于
+activation × gradient 的 head
+有限替换排序。规定替换的关联广泛但非普遍，不支持统一合并结论。结构分辨率和可审计性增加不自动转化为有限干预预测增益。
 
 \section{参考文献与补充材料}\label{ux53c2ux8003ux6587ux732eux4e0eux8865ux5145ux6750ux6599}
 

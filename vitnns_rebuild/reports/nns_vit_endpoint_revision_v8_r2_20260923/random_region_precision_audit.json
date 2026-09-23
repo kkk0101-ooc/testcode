@@ -1,0 +1,53 @@
+{
+  "checks": [
+    "20 repeats for every model-reference-image",
+    "relative MC SE",
+    "5/10/20 repeat resampling",
+    "split-half",
+    "leave-one-repeat-out"
+  ],
+  "cohort_repeat_rows": 80,
+  "estimand": "absolute effect before within-repeat AUC, then mean over 20 repeats and heads within image",
+  "image_rows": 1600,
+  "repeat_rows": 32000,
+  "schema_version": 1,
+  "stability": [
+    {
+      "model": "vit_b16",
+      "r10_error": 0.0013665489852428456,
+      "r20_error": 0.0009637465079625424,
+      "r5_error": 0.0019504000743230197,
+      "reference": "normalized_zero",
+      "relative_mc_se_median": 0.05056427718541487,
+      "relative_mc_se_q90": 0.07586634180049676
+    },
+    {
+      "model": "vit_b16",
+      "r10_error": 0.0018016246457894592,
+      "r20_error": 0.0012718769411246,
+      "r5_error": 0.0025679086645444206,
+      "reference": "blur_rgb",
+      "relative_mc_se_median": 0.06649667394928321,
+      "relative_mc_se_q90": 0.08833354092546745
+    },
+    {
+      "model": "deit_s16",
+      "r10_error": 0.0032426918546358775,
+      "r20_error": 0.002294055620829254,
+      "r5_error": 0.004640650749206544,
+      "reference": "normalized_zero",
+      "relative_mc_se_median": 0.062245996487971536,
+      "relative_mc_se_q90": 0.08513371627378526
+    },
+    {
+      "model": "deit_s16",
+      "r10_error": 0.0024377306302388532,
+      "r20_error": 0.0017186456670363805,
+      "r5_error": 0.0034743646780649824,
+      "reference": "blur_rgb",
+      "relative_mc_se_median": 0.06873124573187842,
+      "relative_mc_se_q90": 0.08947467652032254
+    }
+  ],
+  "status": "ALREADY_COMPLETE_AND_SOURCE_VALIDATED"
+}

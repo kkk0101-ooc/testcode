@@ -676,3 +676,49 @@ All three radii retain the direction. Radius 1 remains the prespecified descript
 The absolute-mass quartile diagnostic for residual output–identity TV uses images as statistical units. Median attention TV from Q1 to Q4 is 0.107→0.073 for ViT-B and 0.071→0.055 for DeiT-S; MLP values are 0.139→0.105 and 0.117→0.090. Spatial differences are not confined to the lowest-mass group, but this unadjusted post-hoc stratification does not exclude gradient quality or noise effects.
 
 H4 was independently recomputed from 1,600 raw JSON/NPZ pairs. Medians for vit_b16, deit_s16, vit_b16_in1k, and vit_s16_augreg are -0.114, -0.186, -0.186, and -0.136. Positive/negative/tie counts are 101/297/2, 96/298/6, 56/342/2, and 107/285/8. All within-checkpoint Holm-adjusted values are below $10^{-6}$. The v7 r4 root contains per-image and block-level correlations, full-precision p values, and machine receipts.
+
+## S19. Architecture cuts, entropy quality, and H4 aggregation sensitivity
+
+### S19.1 Three registries and certification of actual cuts
+
+The machine contracts now separate scalar targets, local-differential decompositions, and finite-replacement interventions into three read-only derived registries. Row-level recounting of the original EP0 target registry gives 457/385 scalar targets per image for ViT-B/16 and DeiT-S/16, respectively. Each model has 192 post-block token-channel coordinates, 48 patch sums, 48 patch energies, 18 module patch aggregates, four patch-embedding aggregates, one final-CLS coordinate, and two class logits; head-coordinate counts are 144 and 72. Q/K/V-induced, routing/value, residual components, and intervenable variables are not included in these totals.
+
+| Registry | Contains | Explicitly excludes |
+| --- | --- | --- |
+| scalar target | Scalar readout, graph location, aggregation rule | Path components and intervention variables |
+| local-differential decomposition | Native use, analytic partition, cut, reconstruction object | Scalar-target counts and finite-replacement effects |
+| finite-replacement intervention | Intervenable activation, reference, effect, and regional task | Local-differential closure objects |
+
+The frozen pre-LN ViT tensor-use DAG checks all 80,832 combinations of 842 targets, 12 blocks, and eight cut declarations. Dynamic programming over the target ancestor graph propagates the number of cut edges crossed by every input path. A full cut requires that count set to be exactly $\{1\}$ and every declared edge to belong to the target ancestor graph. Of the pairs, 26,094 pass the full target-cut condition, 15,660 pass the attention branch-only partition condition, 24,444 are rejected because the declared reconstruction object is inapplicable, and 14,634 because the target is upstream or the branch is absent from its ancestor graph. This proof covers the registry-bound standard unfused pre-LN ViT; numerical closure and mutation tests remain separate implementation evidence.
+
+### S19.2 Total-mass sensitivity of spatial entropy
+
+Thresholds are defined by total-L1-mass distributions within each model and block over all frozen M3 unit maps. The original late-minus-early entropy is reproduced from source arrays with maximum error zero. The table reports image-level medians and 95% bootstrap intervals. Trimming retains all 100 images; quartile analyses propagate NA for a legitimately empty cell.
+
+| Model | Analysis | Median [95% CI] | Valid / total |
+| --- | --- | --- | --- |
+| ViT-B/16 | no trimming | 0.220 [0.211, 0.227] | 100 / 100 |
+| ViT-B/16 | trim lowest 1% mass | 0.222 [0.213, 0.230] | 100 / 100 |
+| ViT-B/16 | trim lowest 5% mass | 0.229 [0.221, 0.237] | 100 / 100 |
+| ViT-B/16 | trim lowest 10% mass | 0.234 [0.227, 0.242] | 100 / 100 |
+| DeiT-S/16 | no trimming | 0.225 [0.212, 0.228] | 100 / 100 |
+| DeiT-S/16 | trim lowest 1% mass | 0.226 [0.215, 0.229] | 100 / 100 |
+| DeiT-S/16 | trim lowest 5% mass | 0.230 [0.219, 0.235] | 100 / 100 |
+| DeiT-S/16 | trim lowest 10% mass | 0.233 [0.223, 0.237] | 100 / 100 |
+
+Across model--block mass quartiles, ViT-B Q1--Q4 median differences are 0.090, 0.194, 0.238, and 0.266; DeiT-S values are 0.112, 0.205, 0.222, and 0.224. Eight image--quartile cells have an empty early or late group and are retained as typed NA, without deleting or replacing images. Median within-image, within-block Spearman association between log1p(total mass) and entropy is −0.729 [−0.747, −0.693] in ViT-B and −0.760 [−0.775, −0.723] in DeiT-S. Late-minus-early log1p mass is 2.893 [2.829, 2.961] and 2.183 [2.109, 2.227]. Entropy therefore depends on map quality, while the overall broadening direction is not produced solely by the lowest-mass maps.
+
+### S19.3 H4 matched aggregation and random-region precision
+
+The matched path score is $M^{\mathrm{sum}}_{jbh}=|\sum_i\mathcal L_{jbh,i}|$, giving it the same sum-then-absolute aggregation order as the activation × gradient comparator. The target, normalized-zero reference, four blocks, finite-replacement effect, and image-level aggregation remain unchanged.
+
+| Checkpoint | Matched path minus activation × gradient | Positive / negative / tie |
+| --- | --- | --- |
+| vit_b16 | −0.124 [−0.147, −0.102] | 89 / 311 / 0 |
+| deit_s16 | −0.114 [−0.157, −0.079] | 130 / 261 / 9 |
+| vit_b16_in1k | −0.226 [−0.253, −0.205] | 49 / 349 / 2 |
+| vit_s16_augreg | −0.171 [−0.200, −0.143] | 110 / 285 / 5 |
+
+The original H4 is reproduced again from the same arrays with zero per-image maximum error. All four checkpoints remain negative under matched aggregation, so the absolute/sum ordering difference between scores does not explain the original result.
+
+No additional model run is needed for the random-region baseline. Source validation covers 1,600 model--reference--image conditions and 32,000 repeat records, with all 20 repeats present in every condition. Median relative Monte Carlo standard error is 5.1%--6.9%, with q90 of 7.6%--8.9%; 5/10/20-repeat resampling, split-half, and leave-one-repeat-out diagnostics are retained. This precision supports cohort-level comparisons; small single-image advantages are not decided from it.

@@ -1,6 +1,6 @@
 # NNS–ViT Endpoint 论文、实验与图件复现指南
 
-本目录是论文《面向视觉 Transformer 内部目标的双索引局部 Jacobian 扫描与结构审计》的 revision-v7 匿名送审包。本文档说明四件事：论文在讲什么，核心方法是什么，实验代码和证据在哪里，以及怎样从一个最小 CPU demo 开始生成 learning-image 图。Revision v6 证据仍作为不可变的历史输入保留。
+本目录是论文《面向视觉 Transformer 内部目标的双索引局部 Jacobian 扫描与结构审计》的 revision-v8 匿名送审包。本文档说明四件事：论文在讲什么，核心方法是什么，实验代码和证据在哪里，以及怎样从一个最小 CPU demo 开始生成 learning-image 图。Revision v6/v7 证据仍作为不可变的历史输入保留。
 
 当前正文入口：
 
@@ -15,6 +15,8 @@
 - [revision-v6 证据包](evidence/revision_v6/package_manifest.json)
 - [revision-v7 逐条意见处理](qc/revision_v7/reviewer_comment_disposition.md)
 - [revision-v7 六维终审](qc/revision_v7/adversarial_final_review.md)
+- [revision-v8 结构与敏感性补强证据](../../../reports/nns_vit_endpoint_revision_v8_r2_20260923/terminal_receipt.json)
+- [revision-v8 写作与发布审计](qc/revision_v8/)
 - [中文 LaTeX/PDF](zh/manuscript.tex) / [English LaTeX/PDF](en/manuscript.tex)
 - [共享参考文献数据库](references.bib)
 
@@ -132,8 +134,9 @@ E2–E6 是带冻结协议、原子队列、资源门和不可变收据的正式
 | 独立图像队列、额外 checkpoint 和 H4 | [`revision_v5_extended.py`](../../../src/vitnns/revision_v5_extended.py) | [`run_revision_v5.py`](../../../scripts/run_revision_v5.py)、[`analyze_revision_v5.py`](../../../scripts/analyze_revision_v5.py) | `reports/nns_vit_revision_v5_r1_20260921/` |
 | 三种坐标量敏感性 | [`revision_v6_coordinate.py`](../../../src/vitnns/revision_v6_coordinate.py) | [`prepare_revision_v6.py`](../../../scripts/prepare_revision_v6.py)、[`launch_revision_v6.py`](../../../scripts/launch_revision_v6.py)、[`analyze_revision_v6.py`](../../../scripts/analyze_revision_v6.py) | `reports/nns_vit_endpoint_revision_v6_r1_20260923/` |
 | 独立 float64 解析参考与 mutation | [`revision_v6_analytic.py`](../../../src/vitnns/revision_v6_analytic.py) | [`run_revision_v6_analytic.py`](../../../scripts/run_revision_v6_analytic.py)、[`validate_revision_v6_experiments.py`](../../../scripts/validate_revision_v6_experiments.py) | 同一 revision-v6 根 |
+| 实际 cut 图认证、三 registry、entropy/H4 敏感性 | `scripts/run_revision_v8_r2_analysis.py` | `scripts/validate_revision_v8_r2_analysis.py` | `reports/nns_vit_endpoint_revision_v8_r2_20260923/` |
 
-当前论文数字与便携证据副本集中在 [`evidence/revision_v6/`](evidence/revision_v6/)。大规模逐任务原始数组仍在上表的 `reports/` 根中。
+当前论文数字与便携证据副本集中在 [`evidence/revision_v6/`](evidence/revision_v6/)。v8 增量证据位于上表的新根；大规模逐任务原始数组仍在各 `reports/` 根中。
 
 ## 4. 环境
 

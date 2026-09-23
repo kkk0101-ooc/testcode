@@ -1,0 +1,117 @@
+{
+  "code": {
+    "analysis": {
+      "bytes": 36187,
+      "path": "scripts/run_revision_v8_analysis.py",
+      "sha256": "aa8c8d6a0804f025141ac4102574b34956ffad83268b5f38dec2f76f4abed264"
+    },
+    "tests": {
+      "bytes": 2282,
+      "path": "tests/test_revision_v8.py",
+      "sha256": "d9f663049b570584d5665b9574ba4638f1bbe2aa2852b20b93afb4147ba40bc3"
+    },
+    "validator": {
+      "bytes": 7806,
+      "path": "scripts/validate_revision_v8_analysis.py",
+      "sha256": "c632fef939e9268bd3980eacb479ce26fc95fd8ed19291ff6b2a32a8cde60e82"
+    }
+  },
+  "entropy_sensitivity": {
+    "continuous": "within_image_block_Spearman_log1p_mass_vs_entropy_then_mean_12_blocks",
+    "identity": "post_hoc_sensitivity",
+    "mass_quantiles_percent": [
+      1,
+      5,
+      10,
+      25,
+      50,
+      75
+    ],
+    "quality": "unit_map_total_L1_absolute_mass",
+    "quartiles": [
+      "Q1",
+      "Q2",
+      "Q3",
+      "Q4"
+    ],
+    "statistical_unit": "image",
+    "threshold_scope": "within_model_and_block",
+    "trim_lowest_percent": [
+      0,
+      1,
+      5,
+      10
+    ]
+  },
+  "execution": {
+    "checkpoint_read": false,
+    "cpu_only": true,
+    "cuda_visible_devices": "",
+    "gpu_inference": false,
+    "jpeg_decode": false,
+    "model_load": false
+  },
+  "h4_sensitivity": {
+    "activation_gradient_score": "abs(dot(z,grad_z_s))",
+    "aggregation": "within_block_head_Spearman_difference_then_mean_blocks",
+    "blocks": [
+      0,
+      3,
+      7,
+      11
+    ],
+    "effect": "abs(clean_minus_normalized_zero_head_replacement)",
+    "identity": "post_hoc_sensitivity",
+    "matched_path_score": "abs(sum_i_L_i)",
+    "original_path_score": "sum_i_abs(L_i)",
+    "statistical_unit": "image"
+  },
+  "immutability": {
+    "all_family_decision": "NOT_SUPPORTED_UNCHANGED",
+    "original_h4": "unchanged",
+    "random_region_baseline": "validate_existing_S9_only",
+    "revision_v7_roots": "read_only"
+  },
+  "live_plan_at_freeze": {
+    "bytes": 5594,
+    "path": "修改意见/修改意见v8_盲审前结构与敏感性补强工作规程.md",
+    "sha256": "ca05ac1fbd72d3227e2db12f36344f86dafbe22974f708425be1440f5775dbd1"
+  },
+  "namespace": "NNS_VIT_REVISION_V8_R1_20260923",
+  "registry_split": [
+    "scalar_target_registry",
+    "decomposition_registry",
+    "intervention_registry"
+  ],
+  "schema_version": 1,
+  "sources_sha256": "59ce09140f47e291d9bae9d379599711a90e689f46b4e4b3d2ef94e1f8bbae56",
+  "statistics": {
+    "bootstrap_replicates": 10000,
+    "interval": "pointwise_95_percentile_median",
+    "new_confirmatory_tests": 0
+  },
+  "status": "FROZEN_BEFORE_V8_RESULTS",
+  "structural_graph": {
+    "blocks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "branch_scope": "branch partitions are not relabeled as global cuts",
+    "criterion": "declared edges lie in target ancestor subgraph and every path crosses exactly once",
+    "models": [
+      "vit_b16",
+      "deit_s16"
+    ],
+    "target_cut_pairs": "all scalar targets x all 12 blocks x 8 cut declarations"
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "cut_blocks": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+  ],
+  "cut_scopes": {
+    "A_F": "attention input-edge component using fixed downstream cotangent for F",
+    "L_F": "complete input endpoint of F only if all input paths pass registered add"
+  },
+  "cuts": [
+    {
+      "bypass": false,
+      "components": "head_0..H-1",
+      "cut_id": "heads_branch",
+      "reconstruction": "A_F"
+    },
+    {
+      "bypass": true,
+      "components": "identity + head_0..H-1",
+      "cut_id": "heads_total",
+      "reconstruction": "L_F"
+    },
+    {
+      "bypass": false,
+      "components": "Q+K+V",
+      "cut_id": "qkv_branch",
+      "reconstruction": "A_F"
+    },
+    {
+      "bypass": false,
+      "components": "routing+V",
+      "cut_id": "routing_value_branch",
+      "reconstruction": "A_F"
+    },
+    {
+      "bypass": true,
+      "components": "identity+Q+K+V",
+      "cut_id": "qkv_total",
+      "reconstruction": "L_F"
+    },
+    {
+      "bypass": true,
+      "components": "identity+routing+V",
+      "cut_id": "routing_value_total",
+      "reconstruction": "L_F"
+    },
+    {
+      "bypass": true,
+      "components": "identity+attention",
+      "cut_id": "residual1",
+      "reconstruction": "L_F"
+    },
+    {
+      "bypass": true,
+      "components": "carry+MLP",
+      "cut_id": "residual2",
+      "reconstruction": "L_F"
+    }
+  ],
+  "hook_edges": [
+    "QKV projection output split before attention reshape",
+    "row-wise softmax output",
+    "AV output before concat",
+    "attn.proj input",
+    "attn.proj output",
+    "drop_path1 output",
+    "norm1 input identity edge copy",
+    "norm2 input first add output and carry edge copy",
+    "drop_path2 output",
+    "block output second add"
+  ],
+  "object_classes": {
+    "aggregate_score": [
+      "map absolute mass",
+      "signed sum",
+      "spatial entropy"
+    ],
+    "analytic_differential_partition": [
+      "Q-induced",
+      "K-induced",
+      "routing-induced",
+      "value-induced"
+    ],
+    "native_consumer_use": [
+      "head-to-concat",
+      "Q projection slot",
+      "K projection slot",
+      "V projection slot",
+      "residual identity input",
+      "residual branch input"
+    ]
+  },
+  "registry_type": "local_differential_decomposition",
+  "schema_version": 1,
+  "source": {
+    "bytes": 185629,
+    "path": "manifests/nns_vit_endpoint/ep0_r1_20260918/target_registry.json",
+    "sha256": "c2f8a5075d1bae28ae122ad9190731a675cc21774f3eb0f5b6a37c9019c2b626"
+  },
+  "status": "DERIVED_FROM_EP0_CUT_CONTRACT",
+  "terminology": {
+    "branch_partition": "reconstructs a branch contribution only",
+    "global_cut": "includes every bypass and reconstructs the same-target total differential",
+    "path_map": "local differential term indexed by a concrete consumer use, not a unique causal path"
+  }
+}
