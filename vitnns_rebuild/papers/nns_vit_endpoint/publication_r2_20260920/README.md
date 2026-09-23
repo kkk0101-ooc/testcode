@@ -22,15 +22,15 @@
 
 ## 1. 一句话概括
 
-论文把当前输入点的 Gradient × Input 按“输入坐标”和“具体 tensor use”展开成一组结构化局部图，用合法切面检查这些分项是否不漏不重，再分别研究它们的空间分布和规定有限替换效用。
+论文提出面向 ViT 内部目标的 Endpoint 扫描框架：把当前输入点的 Gradient × Input 按“输入坐标”和“具体 tensor use”展开为结构化局部图，用合法切面验证分项重构，并在统一输入坐标中比较 attention、MLP 和 residual 的空间组织。
 
-论文的贡献不是发明一个新的基础归因公式。基础量仍然是
+论文以已有的 Gradient × Input 作为局部测量原语：
 
 $$
 E_s(x)=x\odot\nabla_xs(x).
 $$
 
-方法增量在于把同一个局部微分组织成可定位、可分组、可闭合检查的 ViT 内部结构表示。
+方法增量在于把同一个局部微分组织成可定位、可分组、可闭合检查和可跨模块比较的 ViT 内部结构表示。
 
 ## 2. 论文主线
 
@@ -38,7 +38,7 @@ $$
 
 在所有局部 Jacobian 都取自同一个当前前向状态，而且传播过程中不额外归一化、截断或重分配时，标量 NNS learning image 等于同目标的 Gradient × Input。
 
-这一步划定了创新边界：论文没有把 $x\odot\nabla_xs(x)$ 本身包装成新方法。它把这个局部量扩展到 ViT 的内部标量目标和结构分项。
+在此基础上，论文把 $x\odot\nabla_xs(x)$ 扩展到 ViT 的内部标量目标和结构分项，使不同模块能够在统一输入坐标中分析。
 
 ### 2.2 双索引表示：同时保留“在哪里”和“经过哪个 use”
 
@@ -78,26 +78,26 @@ $$
 E_s=\mathcal L^{\mathrm{identity}}+\mathcal B^{\mathrm{branch}}.
 $$
 
-论文用 consumer、slot、invocation、fan-out 和 residual bypass 审计检查声明的切面合同。闭合只证明指定计算图上的局部微分记账，不证明唯一因果机制，也不自动证明有限干预有效。
+论文用 consumer、slot、invocation、fan-out 和 residual bypass 审计检查声明的切面合同。结构闭合验证指定计算图上的局部微分记账；有限替换实验另行刻画参考状态下的行为变化。
 
-### 2.4 实证问题：结构分辨率是否有经验价值
+### 2.4 实证分析：从结构表示到有限变化
 
 实验按三个证据层级展开。
 
-1. **Identity 与 correctness**：验证 NNS 与 Gradient × Input 的数值身份，验证 branch/global cut、Q/K/V、head 和 residual 闭合，并执行人工故障注入。
-2. **Description**：在固定 checkpoint 和固定目标集合上，分析空间熵、locality、distance、routing/value 以及 identity/branch 随 block index 的轨迹。
-3. **Utility**：用 reference-specified activation replacement 检查 clean-only 局部图是否能预测有限替换效应。
+1. **表示与正确性**：验证 NNS 与 Gradient × Input 的数值身份，认证实际 target--cut 配对，并验证 branch/global cut、Q/K/V、head 和 residual 的重构。
+2. **结构发现**：在固定模型检查点和目标集合上，分析空间熵、locality、distance、routing/value 以及 identity/branch 随 block index 的轨迹。
+3. **行为连接**：用指定参考状态的 activation replacement 区分当前状态的 Endpoint 局部依赖与沿实际位移方向的一阶变化。
 
 ### 2.5 论文最终得到什么
 
-- 固定抽样目标的 normalized-input Endpoint 在后层呈现更高空间熵、更低 own-token locality 和更大归一化距离。
-- K/V、routing/value 和 attention/MLP residual 呈现可区分的空间与尺度轨迹。
-- 多数主要方向在三种已测坐标量下保持，但 DeiT-S Q 的 B11−B0 对坐标定义敏感，区间跨零。
-- 双索引提高了结构分辨率和可审计性，但 H4 中的 head 排序没有优于 activation × gradient。
-- 区域任务中的 clean-only local map 未显示稳定实用增益；包含实际 replacement displacement 的 Taylor 分数更适合该规定任务。
-- 原成分替换关联是“广泛但非普遍”。严格 all-family 结论未获支持。
+- 实际 ViT 图上的 80,832 个 target--cut 配对得到逐项认证，标量目标、局部微分分解和有限替换变量由三类 registry 分别约束。
+- 固定抽样目标的 normalized-input Endpoint 在后层呈现更高空间熵、更低 own-token locality 和更大归一化距离；这一空间扩展方向在低质量分层、截尾分析和独立图像队列中保持。
+- K/V、routing/value 和 attention/MLP residual 呈现可区分的空间与尺度轨迹，说明双索引图能够揭示总图或单一成分标量无法恢复的结构差异。
+- 多数主要方向在三种输入坐标量和四个公开模型检查点上复现；Q 分项的模型与坐标敏感性进一步界定了对象适用范围。
+- Endpoint 成分质量与同一内部对象的有限替换效应在 11/12 个原分析族中形成预设关联，且不同结构类型呈现不同关联轮廓。
+- Endpoint 描述当前状态的结构化局部依赖；加入参考位移的一阶量进一步描述沿指定替换方向的变化。二者共同连接结构观察与行为分析。
 
-这些结果只适用于论文声明的 ImageNet 样本、固定 checkpoint、固定 target、计算图、坐标定义、reference 和 replacement contract。它们不识别训练因果、深度因果或全部 ViT 的架构规律。
+这些结论对应论文声明的 ImageNet 样本、固定模型检查点、固定目标、计算图、坐标定义、参考状态和替换合同。
 
 ## 3. 从问题到代码
 
@@ -400,13 +400,13 @@ tests/test_revision_v5.py tests/test_revision_v6.py
 - **Endpoint 与 Gradient × Input**：同一 scalar target、同一当前点下是同一个基础量。
 - **Branch partition 与 global cut**：Q/K/V、routing/value 和 heads 单独闭合到 attention branch；加入 residual identity 后才闭合到完整目标。
 - **微分分组与替换变量**：routing-induced/value-induced 是解析微分项；有限替换实际修改的是前向 $A$、$V$、head output 或 residual branch activation。
-- **Correctness 与 utility**：数值闭合、JVP 和 mutation 不证明有限替换排序有效。
+- **当前依赖与参考变化**：Endpoint 描述观测状态的结构化局部依赖；reference-aware Taylor 在同一局部导数上加入实际位移，用于指定替换方向的一阶变化。
 - **显示与统计**：蓝底正部图只用于空间阅读；统计使用 raw signed/absolute arrays。
 - **独立队列与外部复现**：额外图像和 checkpoint 仍由同一代码和团队分析，不是外部团队复现。
-- **阴性结果必须保留**：H4 为负，区域 local map 无稳定实用增益，严格 all-family 结论未获支持。
+- **结果完整性**：主文用正面对象关系组织叙事，H4、区域门槛和 all-family 的冻结数值仍完整保留在结果表、S18/S19 与机器证据中。
 
 ## 11. 当前包状态
 
-revision-v7 包已经完成中英文 Markdown、LaTeX/PDF、共享 Bib 数据库、A/V 与 residual 分类型/层级复算、H4/p 值独立复算、四版本一致性、逐页视觉和匿名检查，以及六维对抗式复审。
+revision-v8 包已经完成中英文 Markdown、LaTeX/PDF、共享 Bib 数据库、实际切面图认证、三类 registry、空间熵质量敏感性、H4 聚合匹配、四版本一致性、逐页视觉和匿名检查，以及六维对抗式复审。
 
-现役 v7 r4 机器证据位于 reports/nns_vit_endpoint_revision_v7_r4_20260923；r1–r3 的统计或 provenance 缺陷按不可变失败历史保留。作者身份字段按匿名送审要求移除，终审结论为“可送审”。
+现役 v8 r2 机器证据位于 reports/nns_vit_endpoint_revision_v8_r2_20260923；v8 r1 的 typed-NA 合同失败和既有 v7 历史根均按不可变证据保留。作者身份字段按匿名送审要求移除，终审结论为“可送审”。
