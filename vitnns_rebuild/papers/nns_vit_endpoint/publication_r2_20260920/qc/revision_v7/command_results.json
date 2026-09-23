@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "status": "PASS_CURRENT_V7_WITH_RECORDED_LEGACY_INCOMPATIBILITIES",
+  "note": "Final commands were run against the current workspace. Legacy v3-v6 validators were also run as required; their failures are version-specific assertions documented in legacy_validator_compatibility.md and did not modify preserved v6 receipts after restoration.",
+  "commands": [
+    {"command": "python3 scripts/build_revision_v7_publication.py --pandoc <pinned-pandoc-3.8.2.1> --tectonic <pinned-tectonic-0.15.0>", "exit_code": 0, "result": "PASS_TWO_CONSECUTIVE_CLEAN_BUILDS"},
+    {"command": "CUDA_VISIBLE_DEVICES='' python3 scripts/validate_revision_v7_analysis.py", "exit_code": 0, "result": "REVISION_V7_REANALYSIS_PASS_WITH_ALL_STRATA_REPORTED; 4 independent checks"},
+    {"command": "python3 scripts/validate_revision_v7_publication.py", "exit_code": 0, "result": "PASS; 5 checks; 119 PDF pages"},
+    {"command": "CUDA_VISIBLE_DEVICES='' python3 -m pytest -q tests/test_revision_v5.py tests/test_revision_v6.py tests/test_revision_v7.py", "exit_code": 0, "result": "18 passed"},
+    {"command": "python3 -m py_compile <all revision-v7 Python files>", "exit_code": 0, "result": "PASS"},
+    {"command": "git diff --check", "exit_code": 0, "result": "PASS"},
+    {"command": "validate_gxi_step3.py", "exit_code": 1, "result": "legacy v6 Table 6 and mirror assertions superseded by v7"},
+    {"command": "validate_gxi_step4.py", "exit_code": 1, "result": "legacy v6 table, formatting and S18 anonymity assertions superseded by v7"},
+    {"command": "validate_publication_r2.py", "exit_code": 1, "result": "aggregates superseded v6 assertions and old inventory hash"},
+    {"command": "validate_gxi_step5.py", "exit_code": 1, "result": "aggregates superseded v6 assertions and old entry mirror"}
+  ]
+}

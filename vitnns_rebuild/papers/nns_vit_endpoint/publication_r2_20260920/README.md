@@ -1,6 +1,6 @@
 # NNS–ViT Endpoint 论文、实验与图件复现指南
 
-本目录是论文《面向视觉 Transformer 内部目标的双索引局部 Jacobian 扫描与结构审计》的 revision-v6 匿名送审包。本文档说明四件事：论文在讲什么，核心方法是什么，实验代码和证据在哪里，以及怎样从一个最小 CPU demo 开始生成 learning-image 图。
+本目录是论文《面向视觉 Transformer 内部目标的双索引局部 Jacobian 扫描与结构审计》的 revision-v7 匿名送审包。本文档说明四件事：论文在讲什么，核心方法是什么，实验代码和证据在哪里，以及怎样从一个最小 CPU demo 开始生成 learning-image 图。Revision v6 证据仍作为不可变的历史输入保留。
 
 当前正文入口：
 
@@ -13,7 +13,10 @@
 - [22 张图的网页总览](gallery.html)
 - [论文图 manifest](figure_manifest.json)
 - [revision-v6 证据包](evidence/revision_v6/package_manifest.json)
-- [revision-v6 六维终审](qc/revision_v6/thesis_final_review.md)
+- [revision-v7 逐条意见处理](qc/revision_v7/reviewer_comment_disposition.md)
+- [revision-v7 六维终审](qc/revision_v7/adversarial_final_review.md)
+- [中文 LaTeX/PDF](zh/manuscript.tex) / [English LaTeX/PDF](en/manuscript.tex)
+- [共享参考文献数据库](references.bib)
 
 ## 1. 一句话概括
 
@@ -401,6 +404,6 @@ tests/test_revision_v5.py tests/test_revision_v6.py
 
 ## 11. 当前包状态
 
-revision-v6 包已经完成中英文 Markdown、22 张主图、92 张补充图、封存数值证据和发布验证。作者身份字段按匿名送审要求移除。
+revision-v7 包已经完成中英文 Markdown、LaTeX/PDF、共享 Bib 数据库、A/V 与 residual 分类型/层级复算、H4/p 值独立复算、四版本一致性、逐页视觉和匿名检查，以及六维对抗式复审。
 
-后续若执行修改意见 v7，还需要增加中英文 LaTeX/PDF、A/V 与 residual 分层复算，并重新进行四版本一致性审计。v7 工作规程位于仓库的 `修改意见/修改意见v7_两轮评审核验与修改补实验复审工作规程.md`，但它不改变本 README 所述 revision-v6 代码和证据入口。
+现役 v7 r4 机器证据位于 reports/nns_vit_endpoint_revision_v7_r4_20260923；r1–r3 的统计或 provenance 缺陷按不可变失败历史保留。作者身份字段按匿名送审要求移除，终审结论为“可送审”。

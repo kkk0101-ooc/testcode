@@ -74,6 +74,17 @@ CLS has no natural target patch, so locality and target-relative distance are de
 
 C4a: BROAD_BUT_NON_UNIVERSAL_FAMILY_LEVEL_SUPPORT; original all-family omnibus NOT_SUPPORTED. C4b: NOT_SUPPORTED. The numerical atlas status is PASS_FLOAT64_RECOVERY_WITH_RETAINED_FLOAT32_FAILURE: 36/57,600 float32 failures are retained and 36/36 same-coordinate float64 checks pass. These fields are not interchangeable.
 
+**Table S2.1. Historical pooled C4a provenance; image-level median [95% CI].** Holm p values belong to the original joint family of 28 component and regional tests.
+
+| Model | Reference | Heads | A/V pooled | Residual pooled |
+| --- | --- | --- | --- | --- |
+| vit_b16 | normalized-zero | 0.291 [0.281, 0.298] | 0.0996 [0.075, 0.123] | 0.177 [0.155, 0.195] |
+| vit_b16 | blur | 0.306 [0.296, 0.318] | 0.157 [0.131, 0.177] | 0.209 [0.182, 0.237] |
+| deit_s16 | normalized-zero | 0.191 [0.177, 0.205] | 0.107 [0.078, 0.129] | 0.135 [0.113, 0.164] |
+| deit_s16 | blur | 0.182 [0.168, 0.195] | 0.160 [0.128, 0.185] | 0.229 [0.204, 0.251] |
+
+All 12 original Holm-adjusted p values are below $10^{-6}$. Eleven of twelve families met the original composite operational threshold, while all-family C4a remained `NOT_SUPPORTED`. This table preserves the historical decision identity; the S18 stratification does not revise it retrospectively.
+
 ## S3. Reference sensitivity
 
 Change uses atol=1e-12 and rtol=0. Relative change is abs(q0-qblur)/max(abs(q0),abs(qblur)); both-zero denominators are NA. Component quantiles describe the pooled records, not independent inferential samples.
@@ -127,6 +138,35 @@ Head rankings use average ranks and Kendall tau-b. Top-K ties are broken by asce
 | Grad-CAM | Class-conditioned coarse localization | No | Gradient-weighted feature maps |
 | Chefer / AttnLRP | Transformer relevance | Implementation-specific | Method-specific relevance rules |
 | Raw attention | Token allocation | No | Forward attention weights |
+
+**Table S5a. Complete nearest-method matrix.** “Not reported” is limited to the versions listed in the references; closure objects are not interchangeable across methods.
+
+| Method family | Explained object | Consumer edge/use | Spatial component map | Closure object | Finite intervention |
+| --- | --- | --- | --- | --- | --- |
+| Gradient × Input | Current-point input-weighted gradient | Not reported | One input map | Generally no function-value completeness | No |
+| Integrated Gradients | Reference-to-input path attribution | Not reported | One input map | Output difference | No |
+| Conductance | Path attribution through hidden units | Hidden-unit set | Optional input resolution | Layerwise output difference | No |
+| GlobEnc / ALTI | Cross-layer token contribution/mixing | Operator-level | Token map | Local forward decomposition | No |
+| DecompX | Token components of representations and logits | Component-level | Token components | Recomposition under a bias rule | No |
+| AttnLRP / HiLRP / GradSkip | Transformer relevance | Operator links | Relevance map | Relevance conservation | No |
+| EAP / AtP* / Vi-CD | Reference-specific component or edge effect | Yes | Usually not the input-coordinate components used here | Patching effect or circuit fidelity | Yes |
+| Activation patching / CAAP | Internal-activation replacement effect | Node or specified activation | Patch score | Generally nonadditive | Yes |
+| DAVE | ViT input-gradient decomposition | No consumer-use index reported | Pixel map | Effective input-output map | No |
+| Unpack | Component interactions, named paths, and token credit | Component/path identity | Token attribution | Method-specific credit decomposition | No |
+| NNS–ViT | Same current-point local differential by use and input position | Consumer, slot, invocation | Component input map | Same signed differential for the declared branch or global cut | Evaluated separately |
+
+## S4.1 Bilingual terminology contract
+
+| Chinese term | English term | Definition boundary |
+| --- | --- | --- |
+| 结构合法切面 | structurally valid cut | Every structural input-to-target use-path crosses exactly once; independent of current values |
+| 点态微分闭合 | pointwise differential closure | Sum of use-specific Jacobian/cotangent terms at a fixed input |
+| 分支微分分组 | branch differential partition | Reconstructs only an attention or MLP branch contribution |
+| 全局切面 | global cut | Includes bypass and reconstructs same-target Total Endpoint |
+| 路径图 | path map | Local differential term for a specified tensor use, not a unique causal path |
+| 局部微分绝对质量比 | local-differential absolute-mass ratio | Routing/identity scale; not a causal contribution fraction |
+| 区域诱导的指定-head activation 替换 | region-induced replacement of designated head activations | Two-stage task: obtain a head activation from a mixed input, then insert it into a clean forward |
+| 候选集合遗憾率 | candidate-set regret | Relative to the evaluated candidate-set envelope, not a globally optimal policy |
 
 ## S5. Corrected absolute random AUC and oracle
 
@@ -593,7 +633,46 @@ $$
 
 DeiT-S Q changes B11−B0 point-estimate sign across coordinates and all three intervals cross zero. Differences between phase and endpoint contrasts also show why an endpoint comparison cannot replace a trajectory. Main claims remain restricted to normalized-input Endpoint. Other objects support direction retention for these three representations, not general parameterization invariance.
 
-The independent NumPy float64 reference explicitly constructs affine, LayerNorm, softmax diag(a)−aaᵀ, Q/K/V, head concatenation/output projection, GELU/MLP, and residual-identity Jacobians. It imports no scanner, hooks, or autograd. A separate driver compares reference maps with the actual main scanner on single-head, double-head, and pre-LN residual attention/MLP tiny models. All 32 component comparisons and nine frozen-direction finite differences pass, with maximum component absolute error 1.11e-16. Per-component relative L2 errors and tolerances appear in [analytic results](../evidence/revision_v6/analytic_reference_results.json). Shared-producer wrong-slot, attention Q/K-slot exchange, premature fan-out merging, and duplicated merged terms are rejected after the correct implementation passes. Coverage is limited to these numerical graphs and fault types, rather than all possible scanner errors.
+The independent NumPy float64 reference explicitly constructs affine, LayerNorm, softmax $\operatorname{diag}(a)-aa^{\mathsf T}$, Q/K/V, head concatenation/output projection, GELU/MLP, and residual-identity Jacobians. It imports no scanner, hooks, or autograd. A separate driver compares reference maps with the actual main scanner on single-head, double-head, and pre-LN residual attention/MLP tiny models. All 32 component comparisons and nine frozen-direction finite differences pass, with maximum component absolute error $1.11\times10^{-16}$. Per-component relative L2 errors and tolerances appear in [analytic results](../evidence/revision_v6/analytic_reference_results.json). Shared-producer wrong-slot, attention Q/K-slot exchange, premature fan-out merging, and duplicated merged terms are rejected after the correct implementation passes. Coverage is limited to these numerical graphs and fault types, rather than all possible scanner errors.
 
 
-The legacy regional key raw_gradient stores ∇x, not ∇r; the main text names its actual coordinates. Random region order hashes the joined NNS_VIT_ENDPOINT_E5_RANDOM_REGIONS_V1, task_seed, model_id, reference_id, head, and repeat string with SHA-256, uses its first eight big-endian bytes as the PCG64 seed, then applies permutation(16). task_seed derives from NNS_VIT_ENDPOINT_QUEUE_V1 and task_id.
+The legacy regional key raw_gradient stores $\nabla_xs$, not $\nabla_rs$; the main text names its actual coordinates. Random region order hashes the joined NNS_VIT_ENDPOINT_E5_RANDOM_REGIONS_V1, task_seed, model_id, reference_id, head, and repeat string with SHA-256, uses its first eight big-endian bytes as the PCG64 seed, then applies permutation(16). task_seed derives from NNS_VIT_ENDPOINT_QUEUE_V1 and task_id.
+
+## S18. Revision-v7 type, depth, and quality diagnostics
+
+This section uses the active CPU-only nns_vit_endpoint_revision_v7_r4_20260923 root. R1–R3 retain their statistical or provenance failures. R4 restores the R2 bootstrap seed, keeps concordance descriptive, aggregates residual-TV quality strata within images, and binds the final analysis, validator, and test hashes before execution. Historical pooled families, the 28-test Holm family, and all sealed decisions remain unchanged.
+
+**Table S18.1. Type-specific correlation; image-level median [95% CI].** Each value is computed across 12 blocks within an image and is a post-hoc diagnostic.
+
+| Model | Reference | A only | V only | Attention branch only | MLP branch only |
+| --- | --- | --- | --- | --- | --- |
+| vit_b16 | normalized-zero | 0.049 [0.007, 0.091] | 0.224 [0.192, 0.259] | -0.028 [-0.056, -0.003] | 0.287 [0.266, 0.318] |
+| vit_b16 | blur | 0.073 [0.028, 0.112] | 0.311 [0.266, 0.350] | 0.000 [-0.021, 0.042] | 0.378 [0.336, 0.402] |
+| deit_s16 | normalized-zero | 0.091 [0.049, 0.119] | 0.035 [-0.021, 0.087] | -0.157 [-0.189, -0.119] | 0.378 [0.346, 0.406] |
+| deit_s16 | blur | 0.101 [0.056, 0.133] | 0.147 [0.112, 0.182] | -0.024 [-0.070, 0.014] | 0.371 [0.332, 0.395] |
+
+**Table S18.2. Type/depth-adjusted rank correlation and within-block head correlation.** O, B, and O+B denote adjustment for operation, block, and both. Within each image, $m$ and $|e|$ receive average ranks before least-squares residualization on an intercept and reference-coded one-hot fixed effects. Head correlations are computed within each block, clipped to $[-1+10^{-12},1-10^{-12}]$, averaged on the Fisher-z scale, and transformed back.
+
+| Model | Reference | A/V O | A/V B | A/V O+B | Residual O | Residual B | Residual O+B | Head within-block | A/V concordance |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| vit_b16 | normalized-zero | 0.122 | -0.044 | 0.030 | 0.168 | -0.010 | -0.128 | 0.321 | 0.500 |
+| vit_b16 | blur | 0.164 | -0.015 | -0.018 | 0.184 | 0.134 | 0.042 | 0.303 | 0.500 |
+| deit_s16 | normalized-zero | 0.077 | 0.167 | 0.089 | 0.110 | 0.019 | -0.091 | 0.245 | 0.583 |
+| deit_s16 | blur | 0.139 | 0.186 | 0.095 | 0.161 | 0.280 | 0.142 | 0.183 | 0.583 |
+
+A/V concordance is the fraction of 12 blocks with positive $\operatorname{sign}[(m_A-m_V)(|e_A|-|e_V|)]$; zero products are excluded as ties. It is not Spearman and is reported descriptively without a sign test against zero. The v7 r4 root contains complete intervals, quantiles, per-block results, residual degrees of freedom, condition numbers, and independent validation. Every required correlation has 400/400 valid images.
+
+The historical pooled association does not establish uniform within-type ranking. V-only is stronger in ViT-B, while the DeiT-S normalized-zero interval includes zero. MLP branches are positive in all four settings, whereas attention branches are negative or near zero. After joint type and block adjustment, A/V is near zero under both ViT-B references and residual correlations are negative under normalized zero; DeiT-S adjusted results change with reference.
+
+**Table S18.3. Own-token locality radius sensitivity; late-minus-early median [95% CI].**
+
+| Model | Radius 0 | Radius 1 | Radius 2 |
+| --- | --- | --- | --- |
+| vit_b16 | -0.302 [-0.310, -0.298] | -0.356 [-0.363, -0.350] | -0.335 [-0.344, -0.322] |
+| deit_s16 | -0.260 [-0.263, -0.253] | -0.342 [-0.353, -0.333] | -0.315 [-0.323, -0.303] |
+
+All three radii retain the direction. Radius 1 remains the prespecified descriptive metric; this sensitivity analysis does not select a new primary metric.
+
+The absolute-mass quartile diagnostic for residual output–identity TV uses images as statistical units. Median attention TV from Q1 to Q4 is 0.107→0.073 for ViT-B and 0.071→0.055 for DeiT-S; MLP values are 0.139→0.105 and 0.117→0.090. Spatial differences are not confined to the lowest-mass group, but this unadjusted post-hoc stratification does not exclude gradient quality or noise effects.
+
+H4 was independently recomputed from 1,600 raw JSON/NPZ pairs. Medians for vit_b16, deit_s16, vit_b16_in1k, and vit_s16_augreg are -0.114, -0.186, -0.186, and -0.136. Positive/negative/tie counts are 101/297/2, 96/298/6, 56/342/2, and 107/285/8. All within-checkpoint Holm-adjusted values are below $10^{-6}$. The v7 r4 root contains per-image and block-level correlations, full-precision p values, and machine receipts.

@@ -35,6 +35,10 @@ def test_merged_and_duplicated_fanout_rejected():
 
 def test_publication_checker_rejects_wrong_reconstruction():
  texts={lang:(R/'papers/nns_vit_endpoint/publication_r2_20260920'/lang/'manuscript.md').read_text() for lang in ['zh','en']}
- assert all(r['passed'] for r in contracts(texts))
+ # Revision v7 intentionally replaces the pooled A/V Table 6 and permits
+ # translated table cells, so those legacy publication-layout assertions are
+ # superseded. The v6 cut/reconstruction contract remains mandatory.
+ superseded={'zh:regional_table_forward_names','en:regional_table_forward_names','bilingual_table_rows'}
+ assert all(r['passed'] for r in contracts(texts) if r['name'] not in superseded)
  bad=dict(texts);bad['en']=bad['en'].replace('| heads_branch | All head maps | Attention branch contribution', '| heads_branch | All head maps | Full target contribution').replace('($A_F$ in code)','($L_F$ in code)')
  assert any(not r['passed'] and 'branch_target' in r['name'] for r in contracts(bad))

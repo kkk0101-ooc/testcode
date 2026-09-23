@@ -74,6 +74,17 @@ CLS 没有自然的目标 patch，因此 locality 与 target-relative distance �
 
 C4a: BROAD_BUT_NON_UNIVERSAL_FAMILY_LEVEL_SUPPORT; original all-family omnibus NOT_SUPPORTED. C4b: NOT_SUPPORTED. The numerical atlas status is PASS_FLOAT64_RECOVERY_WITH_RETAINED_FLOAT32_FAILURE: 36/57,600 float32 failures are retained and 36/36 same-coordinate float64 checks pass. These fields are not interchangeable.
 
+**Table S2.1. 原 pooled C4a provenance；图像级中位数 [95% CI]。** Holm p 来自原成分和区域合计 28 项的冻结 family。
+
+| Model | Reference | Heads | A/V pooled | Residual pooled |
+| --- | --- | --- | --- | --- |
+| vit_b16 | normalized-zero | 0.291 [0.281, 0.298] | 0.0996 [0.075, 0.123] | 0.177 [0.155, 0.195] |
+| vit_b16 | blur | 0.306 [0.296, 0.318] | 0.157 [0.131, 0.177] | 0.209 [0.182, 0.237] |
+| deit_s16 | normalized-zero | 0.191 [0.177, 0.205] | 0.107 [0.078, 0.129] | 0.135 [0.113, 0.164] |
+| deit_s16 | blur | 0.182 [0.168, 0.195] | 0.160 [0.128, 0.185] | 0.229 [0.204, 0.251] |
+
+12 项原 Holm 调整后 p 均小于 $10^{-6}$。原 composite 中 11/12 family 达到操作门槛，但 all-family C4a 仍为 `NOT_SUPPORTED`。这张表保存历史判定身份；S18 的分层诊断不追溯改变它。
+
 ## S3. Reference sensitivity
 
 Change uses atol=1e-12 and rtol=0. Relative change is abs(q0-qblur)/max(abs(q0),abs(qblur)); both-zero denominators are NA. Component quantiles describe the pooled records, not independent inferential samples.
@@ -127,6 +138,35 @@ Head rankings use average ranks and Kendall tau-b. Top-K ties are broken by asce
 | Grad-CAM | Class-conditioned coarse localization | No | Gradient-weighted feature maps |
 | Chefer / AttnLRP | Transformer relevance | Implementation-specific | Method-specific relevance rules |
 | Raw attention | Token allocation | No | Forward attention weights |
+
+**Table S5a. 完整近邻差分矩阵。** “未报告”限于参考文献表所列核验版本；不同方法的 closure 对象不可互换。
+
+| Method family | Explained object | Consumer edge/use | Spatial component map | Closure object | Finite intervention |
+| --- | --- | --- | --- | --- | --- |
+| Gradient × Input | 当前点输入加权梯度 | 未报告 | 单一输入图 | 一般不满足函数值完整性 | 否 |
+| Integrated Gradients | reference-to-input 路径归因 | 未报告 | 单一输入图 | 输出差 | 否 |
+| Conductance | 经过隐藏单元的路径归因 | 隐藏单元集合 | 可选输入分辨率 | 层级输出差 | 否 |
+| GlobEnc / ALTI | 跨层 token contribution/mixing | 算子级 | token 图 | 局部前向分解 | 否 |
+| DecompX | representation 与 logit 的 token components | 组件级 | token 分项 | 依 bias 分配规则重组 | 否 |
+| AttnLRP / HiLRP / GradSkip | Transformer relevance | 算子连接 | relevance 图 | relevance conservation | 否 |
+| EAP / AtP* / Vi-CD | reference-specific component/edge effect | 是 | 通常不保留本文的输入坐标分项 | patching effect 或 circuit fidelity | 是 |
+| Activation patching / CAAP | 内部 activation 替换效应 | node 或指定 activation | patch score | 一般不加和 | 是 |
+| DAVE | ViT input-gradient 分解 | 未报告 consumer-use 索引 | 像素图 | effective input-output map | 否 |
+| Unpack | component interaction、命名路径与 token credit | 组件/路径身份 | token attribution | 方法特定 credit decomposition | 否 |
+| NNS–ViT | 指定 use 与输入位置的同一当前点局部微分 | consumer、slot、invocation | 分项输入图 | 声明 branch 或 global cut 的同一 signed differential | 分开评价 |
+
+## S4.1 中英术语合同
+
+| 中文 | English | 定义边界 |
+| --- | --- | --- |
+| 结构合法切面 | structurally valid cut | 每条输入到目标的结构 use-path 恰穿一次，与当前点数值无关 |
+| 点态微分闭合 | pointwise differential closure | 固定输入处 use-specific Jacobian/cotangent 分组之和 |
+| 分支微分分组 | branch differential partition | 仅重构 attention 或 MLP branch contribution |
+| 全局切面 | global cut | 包含 bypass 并重构同目标 Total Endpoint |
+| 路径图 | path map | 指定 tensor use 的局部微分分项，不是唯一因果路径 |
+| 局部微分绝对质量比 | local-differential absolute-mass ratio | routing/identity scale；不是因果贡献率 |
+| 区域诱导的指定-head activation 替换 | region-induced replacement of designated head activations | 混合输入产生 head activation，再插入 clean forward 的两阶段任务 |
+| 候选集合遗憾率 | candidate-set regret | 相对已评价候选集合包络，不是全局最优策略 regret |
 
 ## S5. Corrected absolute random AUC and oracle
 
@@ -589,7 +629,46 @@ $$
 
 DeiT-S Q 的 B11−B0 在三坐标下的点估计符号不同且三个区间跨零。Phase contrast 与 B11−B0 的差异还说明，终点比较不能替代整个轨迹。主文始终限定 normalized-input Endpoint。其他对象只作这三表示下的方向保持判断，不推出一般参数化不变性。
 
-独立参考以 NumPy float64 显式构造 affine、LayerNorm、softmax diag(a)−aaᵀ、Q/K/V、head concat/output projection、GELU/MLP 和 residual identity Jacobian。参考模块不导入 scanner、hook 或 autograd。独立驱动将其结果与实际主扫描器在单头、双头、pre-LN residual attention/MLP tiny 模型上逐项比较。32 个分量比较和 9 个冻结方向有限差分通过，最大分量绝对误差 1.11e-16；每项 relative L2 和容差见 [analytic results](../evidence/revision_v6/analytic_reference_results.json)。共享 producer 双 slot toy、Q/K slot 交换、提前合并 fan-out 和重复合并项均被拒绝，正确实现先通过。此能力限于这些数值图和故障类型，不等于排除全部 scanner 实现错误。
+独立参考以 NumPy float64 显式构造 affine、LayerNorm、softmax $\operatorname{diag}(a)-aa^{\mathsf T}$、Q/K/V、head concat/output projection、GELU/MLP 和 residual identity Jacobian。参考模块不导入 scanner、hook 或 autograd。独立驱动将其结果与实际主扫描器在单头、双头、pre-LN residual attention/MLP tiny 模型上逐项比较。32 个分量比较和 9 个冻结方向有限差分通过，最大分量绝对误差 $1.11\times10^{-16}$；每项 relative L2 和容差见 [analytic results](../evidence/revision_v6/analytic_reference_results.json)。共享 producer 双 slot toy、Q/K slot 交换、提前合并 fan-out 和重复合并项均被拒绝，正确实现先通过。此能力限于这些数值图和故障类型，不等于排除全部 scanner 实现错误。
 
 
-原区域数组键 raw_gradient 记录 ∇x，不是 ∇r。主文已按实际坐标重命名。Random region order 以 NNS_VIT_ENDPOINT_E5_RANDOM_REGIONS_V1、task_seed、model_id、reference_id、head、repeat 拼接字符串作 SHA-256，前八字节 big-endian 作为 PCG64 seed，再 permutation(16)。task_seed 来自 NNS_VIT_ENDPOINT_QUEUE_V1 与 task_id。
+原区域数组键 raw_gradient 记录 $\nabla_xs$，不是 $\nabla_rs$。主文已按实际坐标重命名。Random region order 以 NNS_VIT_ENDPOINT_E5_RANDOM_REGIONS_V1、task_seed、model_id、reference_id、head、repeat 拼接字符串作 SHA-256，前八字节 big-endian 作为 PCG64 seed，再 permutation(16)。task_seed 来自 NNS_VIT_ENDPOINT_QUEUE_V1 与 task_id。
+
+## S18. Revision v7 分类型、层级与质量诊断
+
+本节结果来自现役 nns_vit_endpoint_revision_v7_r4_20260923 CPU-only 根。R1–R3 的统计或 provenance 问题按递增根保留；R4 恢复 R2 冻结的 bootstrap seed，限定 concordance 为描述性比例，在 residual-TV 质量分层中先按图聚合，并在执行前绑定最终 analysis/validator/test 哈希。旧 pooled family、28 项 Holm 和全部 sealed 结论均未改变。
+
+**Table S18.1. 分类型相关；图像级中位数 [95% CI]。** 每项在一张图的 12 个 blocks 间计算；这是事后诊断。
+
+| Model | Reference | A only | V only | Attention branch only | MLP branch only |
+| --- | --- | --- | --- | --- | --- |
+| vit_b16 | normalized-zero | 0.049 [0.007, 0.091] | 0.224 [0.192, 0.259] | -0.028 [-0.056, -0.003] | 0.287 [0.266, 0.318] |
+| vit_b16 | blur | 0.073 [0.028, 0.112] | 0.311 [0.266, 0.350] | 0.000 [-0.021, 0.042] | 0.378 [0.336, 0.402] |
+| deit_s16 | normalized-zero | 0.091 [0.049, 0.119] | 0.035 [-0.021, 0.087] | -0.157 [-0.189, -0.119] | 0.378 [0.346, 0.406] |
+| deit_s16 | blur | 0.101 [0.056, 0.133] | 0.147 [0.112, 0.182] | -0.024 [-0.070, 0.014] | 0.371 [0.332, 0.395] |
+
+**Table S18.2. 类型/层级残差化 rank correlation 与 head 内相关。** O、B 和 O+B 分别表示控制 operation、block、二者；逐图先对 $m$ 与 $|e|$ 取平均秩，再以带截距的 one-hot 固定效应最小二乘残差化。Head 列先在每层 heads 内计算 Spearman，截断至 $[-1+10^{-12},1-10^{-12}]$ 后作 Fisher-z 平均并反变换。
+
+| Model | Reference | A/V O | A/V B | A/V O+B | Residual O | Residual B | Residual O+B | Head within-block | A/V concordance |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| vit_b16 | normalized-zero | 0.122 | -0.044 | 0.030 | 0.168 | -0.010 | -0.128 | 0.321 | 0.500 |
+| vit_b16 | blur | 0.164 | -0.015 | -0.018 | 0.184 | 0.134 | 0.042 | 0.303 | 0.500 |
+| deit_s16 | normalized-zero | 0.077 | 0.167 | 0.089 | 0.110 | 0.019 | -0.091 | 0.245 | 0.583 |
+| deit_s16 | blur | 0.139 | 0.186 | 0.095 | 0.161 | 0.280 | 0.142 | 0.183 | 0.583 |
+
+A/V concordance 是 12 层中 $\operatorname{sign}[(m_A-m_V)(|e_A|-|e_V|)]$ 一致的比例；零乘积作为 tie 排除。它不是 Spearman，仅作描述性报告，不做以 0 为原假设的符号检验。完整置信区间、分位数、单层结果、自由度、condition number 与独立验证位于 v7 r4 根。所有必需相关都有 400/400 个有效图像。
+
+结果说明旧 pooled family 的正相关不能解释为类型内部统一排序能力。V-only 在 ViT-B 较强，DeiT-S normalized-zero 的区间跨零；MLP branch 在四种设置中为正，attention branch 为负或接近零。类型和 block 同时控制后，A/V 在 ViT-B 两种 reference 下接近零，residual 在 normalized-zero 下为负；DeiT-S 的调整结果随 reference 改变。
+
+**Table S18.3. Own-token locality 半径敏感性；late-minus-early 中位差 [95% CI]。**
+
+| Model | Radius 0 | Radius 1 | Radius 2 |
+| --- | --- | --- | --- |
+| vit_b16 | -0.302 [-0.310, -0.298] | -0.356 [-0.363, -0.350] | -0.335 [-0.344, -0.322] |
+| deit_s16 | -0.260 [-0.263, -0.253] | -0.342 [-0.353, -0.333] | -0.315 [-0.323, -0.303] |
+
+三个半径的方向一致。半径 1 仍是预先定义的主描述量；该敏感性不用于选择新主指标。
+
+Residual output–identity TV 的 absolute-mass 四分位诊断以图像为统计单位。Attention 的 Q1→Q4 中位 TV 为 ViT-B 0.107→0.073、DeiT-S 0.071→0.055；MLP 为 ViT-B 0.139→0.105、DeiT-S 0.117→0.090。空间差异不只存在于最低质量组，但这些未调整的事后分层不能排除梯度质量或噪声的影响。
+
+H4 从 1,600 个原始 JSON/NPZ 独立复算；四个 checkpoint 的中位数依次为 vit_b16 -0.114、deit_s16 -0.186、vit_b16_in1k -0.186、vit_s16_augreg -0.136，正/负/平分别为 101/297/2、96/298/6、56/342/2、107/285/8。四项 checkpoint 内 Holm 调整值均小于 $10^{-6}$。原始逐图、block-level 相关、完整 p 值及机器收据见 v7 r4 根。

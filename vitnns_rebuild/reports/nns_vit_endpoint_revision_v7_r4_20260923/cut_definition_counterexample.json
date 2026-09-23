@@ -1,0 +1,25 @@
+{
+  "graph": {
+    "edges": [
+      "x->linear_branch",
+      "x->square_branch",
+      "linear_branch->sum_target",
+      "square_branch->sum_target"
+    ],
+    "nodes": [
+      "x",
+      "linear_branch",
+      "square_branch",
+      "sum_target"
+    ],
+    "target": "s(x)=x+x^2"
+  },
+  "input": 0.0,
+  "interpretation": "The omitted branch exists structurally but has zero derivative at x=0, so numerical closure cannot certify structural completeness.",
+  "omitted_edge": "square_branch->sum_target",
+  "pointwise_closure_error_after_omission": 0.0,
+  "pointwise_derivative_on_omitted_branch": 0.0,
+  "schema_version": 1,
+  "status": "PASS_DISTINGUISHES_STRUCTURE_FROM_POINTWISE_DERIVATIVE",
+  "structural_cut_valid": false
+}

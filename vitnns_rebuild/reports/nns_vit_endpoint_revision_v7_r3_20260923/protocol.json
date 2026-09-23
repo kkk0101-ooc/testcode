@@ -1,0 +1,154 @@
+{
+  "amendment": {
+    "attempt": "r3",
+    "other_estimands_unchanged": true,
+    "predecessor_terminal_sha256": "fe9328b699808513592ef3aaf68dbb9d905ea2886de8fc55cebc55c0a23a320e",
+    "reason": "R2 results and estimands are retained, but a post-freeze validator-only manifest de-duplication changed the frozen validator hash. R3 rebinds the final validator before execution. No grouping, threshold, exclusion, or scientific statistic changed."
+  },
+  "analysis_schema_sha256": "e7ef67f5ea3470be487bd29a335da33c087a0c43f3b4cc6fcc12c5aec2ff08f3",
+  "cpu_only": true,
+  "cuda_visible_devices": "",
+  "failure": {
+    "h4_reproduction": "BLOCKED_H4_REPRODUCTION",
+    "source_drift": "BLOCKED_SOURCE_BINDING_DRIFT",
+    "table6_reproduction": "BLOCKED_TABLE6_REPRODUCTION"
+  },
+  "gpu_inference_allowed": false,
+  "h4": {
+    "activation_gradient_score": "abs(dot(attn.proj_input_head_slice, gradient))",
+    "aggregation": "within block path rho minus activation-gradient rho; arithmetic mean over blocks 0,3,7,11",
+    "blocks": [
+      0,
+      3,
+      7,
+      11
+    ],
+    "correlation": "Spearman average ranks within heads; fewer than4, nonfinite, or constant vector is NA",
+    "effect": "abs(clean_score-normalized_zero_head_replacement_score)",
+    "inference": "10000 image bootstrap percentile median CI; two-sided exact sign; Holm H1-H4 within each checkpoint",
+    "path_score": "sum_abs(path_local_map)",
+    "reference": "normalized_zero",
+    "target": "ground_truth_logit"
+  },
+  "image_decode_allowed": false,
+  "locality": {
+    "contrasts": [
+      "late_minus_early",
+      "block11_minus_block0"
+    ],
+    "grid": [
+      14,
+      14
+    ],
+    "identity": "post-hoc descriptive",
+    "metric": "Chebyshev-neighborhood mass minus equal-area uniform baseline; CLS excluded",
+    "radii": [
+      0,
+      1,
+      2
+    ],
+    "status": "RUN_EXISTING_ARRAYS"
+  },
+  "model_load_allowed": false,
+  "namespace": "NNS_VIT_REVISION_V7_R3_20260923",
+  "old_results_read_only": true,
+  "residual_quality": {
+    "groups": "within-model and residual-type empirical quartiles frozen as Q1-Q4 rule",
+    "identity": "post-hoc descriptive",
+    "outcome": "normalized-input output-identity patch total variation pooled across blocks",
+    "quality": "identity component total absolute mass",
+    "status": "RUN_EXISTING_ARRAYS"
+  },
+  "schema_version": 1,
+  "scripts": {
+    "analysis": {
+      "bytes": 41529,
+      "path": "scripts/run_revision_v7_analysis.py",
+      "sha256": "c9bf04893e310b4b6e9609acf49dd4302550f4c82c5d433ca82cdf63352ea501"
+    },
+    "tests": {
+      "bytes": 2708,
+      "path": "tests/test_revision_v7.py",
+      "sha256": "e441d933a10c89a04a70fb47e5eaad4b7c0e80a70a2096e52ba32b26bfa76396"
+    },
+    "validator": {
+      "bytes": 11253,
+      "path": "scripts/validate_revision_v7_analysis.py",
+      "sha256": "b67ef98eae573c46ceeef7a3fa44d403402e9a3f25d968fdbbf9d1491a08a06a"
+    }
+  },
+  "source_bindings_sha256": "c303f63afdc1966d662f53808a8eeb5e6ed7db011b6d2a9de0dfc01c4f836211",
+  "statistics": {
+    "bootstrap_level": 0.95,
+    "bootstrap_quantile": "linear",
+    "bootstrap_replicates": 10000,
+    "posthoc_holm": "all nonhistorical Table6 image-level summary tests in one separate family",
+    "sign_test": "two-sided exact binomial on nonzero signs",
+    "zero_rule": "abs(value-null)<=1e-12 is tie excluded from binomial but retained in N and interval"
+  },
+  "status": "FROZEN_BEFORE_NEW_STRATIFIED_RESULTS",
+  "table6": {
+    "av_concordance": "mean over 12 blocks of indicator sign((m_A-m_V)*(abs_effect_A-abs_effect_V)) positive; zero products are ties and excluded",
+    "blocks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "effect": "abs(clean_ground_truth_logit_minus_single_component_reference_replacement)",
+    "head_aggregation": "clip each block rho to [-1+1e-12,1-1e-12], Fisher z, arithmetic mean over 12 blocks, tanh",
+    "historical_families": {
+      "heads": [
+        "head"
+      ],
+      "residual_branches": [
+        "attention",
+        "mlp"
+      ],
+      "routing_value": [
+        "routing",
+        "value"
+      ]
+    },
+    "identity": "post-hoc diagnostic; historical pooled families and original 28-test family remain immutable",
+    "minimum_components": 4,
+    "models": [
+      "deit_s16",
+      "vit_b16"
+    ],
+    "new_strata": [
+      "A_only_across_blocks",
+      "V_only_across_blocks",
+      "attention_branch_only_across_blocks",
+      "mlp_branch_only_across_blocks",
+      "heads_within_block_fisher_mean"
+    ],
+    "predictor": "component_map_absolute_mass_m",
+    "rank_ties": "average",
+    "references": [
+      "normalized_zero",
+      "blur_rgb"
+    ],
+    "residualization": {
+      "diagnostic": "report residual df and design condition number; NA if df<3 or condition>1e12",
+      "fit": "OLS with intercept and reference-coded fixed effects",
+      "models": [
+        "operation",
+        "block",
+        "operation_and_block"
+      ],
+      "predictor": "average_rank(m)",
+      "response": "average_rank(abs_effect)"
+    },
+    "scale_diagnostics": "model-reference-operation-block summaries of log1p(m) and log1p(abs_effect)",
+    "unit": "image"
+  }
+}

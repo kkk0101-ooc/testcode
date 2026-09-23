@@ -1,0 +1,431 @@
+{
+  "all_json_objects_closed": true,
+  "csv": {
+    "h4_recomputed_image_values.csv": {
+      "additional_columns": false,
+      "header": [
+        "model",
+        "image",
+        "block",
+        "path_map_mass_rho",
+        "activation_gradient_rho",
+        "difference",
+        "h4_image_mean",
+        "valid_heads",
+        "path_ties",
+        "activation_gradient_ties",
+        "effect_ties",
+        "na_reason"
+      ]
+    },
+    "h4_recomputed_summary.csv": {
+      "additional_columns": false,
+      "header": [
+        "model",
+        "hypothesis",
+        "n_total",
+        "n_valid",
+        "n_na",
+        "median",
+        "ci95_low",
+        "ci95_high",
+        "positive",
+        "negative",
+        "ties",
+        "raw_p",
+        "holm_p",
+        "decision"
+      ]
+    },
+    "locality_radius_sensitivity.csv": {
+      "additional_columns": false,
+      "header": [
+        "model",
+        "radius",
+        "contrast",
+        "n",
+        "median",
+        "ci95_low",
+        "ci95_high",
+        "q10",
+        "q90",
+        "analysis_identity"
+      ]
+    },
+    "pvalue_audit.csv": {
+      "additional_columns": false,
+      "header": [
+        "claim_id",
+        "source_rows",
+        "statistic",
+        "null",
+        "alternative",
+        "unit",
+        "ties",
+        "raw_p",
+        "family",
+        "holm_p",
+        "display",
+        "recalculation"
+      ]
+    },
+    "residual_tv_quality_diagnostics.csv": {
+      "additional_columns": false,
+      "header": [
+        "model",
+        "residual_type",
+        "mass_quartile",
+        "n",
+        "median_tv",
+        "ci95_low",
+        "ci95_high",
+        "q10",
+        "q90",
+        "analysis_identity"
+      ]
+    },
+    "table6_scale_diagnostics.csv": {
+      "additional_columns": false,
+      "header": [
+        "model",
+        "reference",
+        "family",
+        "operation",
+        "block",
+        "quantity",
+        "n",
+        "median",
+        "ci95_low",
+        "ci95_high",
+        "q10",
+        "q90"
+      ]
+    },
+    "table6_stratified_image_values.csv": {
+      "additional_columns": false,
+      "header": [
+        "model",
+        "reference",
+        "image",
+        "metric",
+        "block",
+        "value",
+        "n_components",
+        "residual_df",
+        "condition_number",
+        "na_reason",
+        "analysis_identity"
+      ]
+    },
+    "table6_stratified_summary.csv": {
+      "additional_columns": false,
+      "header": [
+        "model",
+        "reference",
+        "metric",
+        "block",
+        "n_total",
+        "n_valid",
+        "n_na",
+        "median",
+        "ci95_low",
+        "ci95_high",
+        "q10",
+        "q25",
+        "q75",
+        "q90",
+        "positive",
+        "negative",
+        "ties",
+        "raw_p",
+        "holm_p",
+        "analysis_identity"
+      ]
+    }
+  },
+  "json": {
+    "cut_definition_counterexample.json": {
+      "additionalProperties": false,
+      "properties": {
+        "graph": {
+          "additionalProperties": false,
+          "properties": {
+            "edges": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "nodes": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "target": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "nodes",
+            "edges",
+            "target"
+          ],
+          "type": "object"
+        },
+        "input": {
+          "type": "number"
+        },
+        "interpretation": {
+          "type": "string"
+        },
+        "omitted_edge": {
+          "type": "string"
+        },
+        "pointwise_closure_error_after_omission": {
+          "type": "number"
+        },
+        "pointwise_derivative_on_omitted_branch": {
+          "type": "number"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "structural_cut_valid": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "schema_version",
+        "status",
+        "graph",
+        "input",
+        "omitted_edge",
+        "structural_cut_valid",
+        "pointwise_derivative_on_omitted_branch",
+        "pointwise_closure_error_after_omission",
+        "interpretation"
+      ],
+      "type": "object"
+    },
+    "stage1_receipt.json": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_schema_sha256": {
+          "type": "string"
+        },
+        "counterexample_sha256": {
+          "type": "string"
+        },
+        "cpu_only": {
+          "type": "boolean"
+        },
+        "manuscripts": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "bytes": {
+                "type": "integer"
+              },
+              "path": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "bytes",
+              "sha256"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "new_results_accessed": {
+          "type": "boolean"
+        },
+        "old_families_unchanged": {
+          "type": "boolean"
+        },
+        "protocol_sha256": {
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "script_sha256": {
+          "type": "string"
+        },
+        "source_bindings_sha256": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "test_sha256": {
+          "type": "string"
+        },
+        "validator_sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "status",
+        "cpu_only",
+        "protocol_sha256",
+        "source_bindings_sha256",
+        "analysis_schema_sha256",
+        "counterexample_sha256",
+        "script_sha256",
+        "validator_sha256",
+        "test_sha256",
+        "manuscripts",
+        "old_families_unchanged",
+        "new_results_accessed"
+      ],
+      "type": "object"
+    },
+    "terminal_receipt.json": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_manifest_sha256": {
+          "type": "string"
+        },
+        "cpu_only": {
+          "type": "boolean"
+        },
+        "gpu_inference_runs": {
+          "type": "integer"
+        },
+        "h4_images": {
+          "type": "integer"
+        },
+        "next": {
+          "type": "string"
+        },
+        "old_sealed_roots_modified": {
+          "type": "boolean"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "table6_images": {
+          "type": "integer"
+        },
+        "validation_report_sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "status",
+        "cpu_only",
+        "gpu_inference_runs",
+        "table6_images",
+        "h4_images",
+        "artifact_manifest_sha256",
+        "validation_report_sha256",
+        "old_sealed_roots_modified",
+        "next"
+      ],
+      "type": "object"
+    },
+    "validation_report.json": {
+      "additionalProperties": false,
+      "properties": {
+        "checks": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "detail": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "status",
+              "detail"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "cpu_only": {
+          "type": "boolean"
+        },
+        "errors": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "gpu_model_imports": {
+          "type": "integer"
+        },
+        "h4_max_abs_error": {
+          "type": "number"
+        },
+        "old_family_max_abs_error": {
+          "type": "number"
+        },
+        "output_sha256": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "bytes": {
+                "type": "integer"
+              },
+              "path": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "bytes",
+              "sha256"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "status",
+        "checks",
+        "errors",
+        "cpu_only",
+        "gpu_model_imports",
+        "old_family_max_abs_error",
+        "h4_max_abs_error",
+        "output_sha256"
+      ],
+      "type": "object"
+    }
+  },
+  "schema_version": 1
+}
