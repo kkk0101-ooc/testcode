@@ -275,11 +275,11 @@ def figure_2():
     # definitions are separated into the formula boxes below the graph.
     rounded(ax, (.465, .45), .095, .15, face=PALE_BLUE, edge=BLUE)
     ax.text(.513, .525, r"$u$", ha="center", va="center", fontsize=15)
-    rounded(ax, (.590, .675), .145, .095, face=PALE_TEAL, edge=TEAL)
-    ax.text(.662, .738, "attention branch", ha="center", va="center", fontsize=10.2, weight="semibold")
+    rounded(ax, (.590, .660), .145, .118, face=PALE_TEAL, edge=TEAL)
+    ax.text(.662, .755, "attention branch", ha="center", va="center", fontsize=10.2, weight="semibold")
     for xx, label in [(.622, "Q"), (.662, "K"), (.702, "V")]:
-        rounded(ax, (xx - .016, .693), .032, .032, face="white", edge=TEAL, radius=.007, lw=1.0)
-        ax.text(xx, .709, label, ha="center", va="center", fontsize=8.8, color=TEAL, weight="semibold")
+        rounded(ax, (xx - .016, .685), .032, .032, face="white", edge=TEAL, radius=.007, lw=1.0)
+        ax.text(xx, .701, label, ha="center", va="center", fontsize=8.8, color=TEAL, weight="semibold")
     ax.add_patch(Circle((.755, .525), .032, facecolor=PALE_ORANGE, edgecolor=ORANGE, lw=1.8, zorder=3))
     ax.text(.755, .525, "+", ha="center", va="center", fontsize=22, weight="bold", zorder=4)
     rounded(ax, (.865, .452), .102, .146, face=PALE_TEAL, edge=TEAL)
