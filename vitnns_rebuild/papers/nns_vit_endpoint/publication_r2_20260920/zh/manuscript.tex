@@ -177,10 +177,11 @@ use 与输入位置之间重新分配，并检查声明的切面合同。
 \refstepcounter{figure}\label{fig:zh-manuscript-001}
 \pandocbounded{\includegraphics[keepaspectratio,alt={Figure 1}]{../figures/png/fig_01_concept_overview.png}}
 
-\textbf{Figure 1.} 左侧为固定目标和输入点的 Total Endpoint。中间保留原生
-use 身份与输入坐标，并将 attention
-分支内部的微分分组单独定义。右侧分别比较空间分布与规定有限替换效应。全局闭合须包含
-residual bypass；分支分组只重构 attention branch contribution。
+\textbf{Figure 1.} 以同一懒熊输入和 ground-truth logit
+开门见山展示方法产物。左侧是真实输入与 Total Endpoint，中间是 block 5 的
+identity、routing-induced 和 value-induced
+局部图，右侧区分结构审计与有限替换评价。所有热图取 signed RGB sum
+的正部，按各自正值 P99 截断并开方，仅比较空间形态。
 
 本文的总体问题是：如何在 NNS 框架下，将 ViT
 内部目标对输入的局部依赖表示为可计算、可分解和可验证的结构路径图，并评价其层深分布轨迹及在规定有限替换任务中的排序能力？具体研究四个问题：
@@ -535,11 +536,10 @@ consumer、slot 与 invocation。Figure 2 将这一合同与 ViT 切面实例并
 \refstepcounter{figure}\label{fig:zh-manuscript-002}
 \pandocbounded{\includegraphics[keepaspectratio,alt={Figure 2}]{../figures/png/fig_02_neuron_learning_image.png}}
 
-\textbf{Figure 2.} 左栏区分共享 producer 的两个 consumer
-slots。中栏的蓝色下路是 residual identity bypass，上路为 attention
-branch。绿色虚线框只包含 branch partition，闭合到 attention branch
-contribution A\_F。红色虚线表示全局切面，包含 identity 及完整 branch
-partition，闭合到 Total Endpoint L\_F。右栏列出两种不同的重构目标。
+\textbf{Figure 2.} 左侧说明同一 producer tensor 的不同 consumer、slot 和
+invocation 必须保留为不同 use。右侧区分 attention branch partition
+与包含 identity bypass 的 residual 全局切面：前者重构 attention branch
+contribution，后者重构 Total Endpoint。
 
 \subsection{4.2 Attention 分支微分与 residual
 全局切面}\label{attention-ux5206ux652fux5faeux5206ux4e0e-residual-ux5168ux5c40ux5207ux9762}
@@ -550,21 +550,19 @@ branch 两条 residual 输入 use。
 \refstepcounter{figure}\label{fig:zh-manuscript-003}
 \pandocbounded{\includegraphics[keepaspectratio,alt={Figure 3}]{../figures/png/fig_06_attention_differential.png}}
 
-\textbf{Figure 3.} 上行是单个 head 的前向计算，\(A\) 为 attention
-probability，\(V\) 为 value projection。下行在同一前向点分解
-\(\mathrm dO_h=(\mathrm dA)V+A\mathrm dV\)。Q-induced 与 K-induced 合成
-routing-induced differential，V-induced 为 value-induced
-differential。各 head 经 concat 和 output projection 的下游 cotangent
-收缩后，分组重构 attention branch contribution。全局目标还需 residual
-bypass。
+\textbf{Figure 3.} 同一懒熊输入、ground-truth logit 和 DeiT-S/16 block 5
+的真实 attention 微分图。Routing-induced 项对应
+\((\mathrm dA)V\)，value-induced 项对应 \(A\mathrm dV\)；两张完整 signed
+图相加重构 attention branch contribution。全局 Total Endpoint 还需加入
+residual identity。
 
 \refstepcounter{figure}\label{fig:zh-manuscript-004}
 \pandocbounded{\includegraphics[keepaspectratio,alt={Figure 4}]{../figures/png/fig_07_residual_principle.png}}
 
-\textbf{Figure 4.} Residual addition 的 identity 与 branch
-输入分别定义局部图。二者使用同一最终类别目标和 addition 输出
-cotangent。完整 signed 图之和为 Total
-Endpoint；蓝底正部视图单独归一化，仅用于空间阅读。
+\textbf{Figure 4.} 同一懒熊输入、ground-truth logit 和 DeiT-S/16 block 5
+residual 的真实路径图。Identity 与 attention branch 使用同一个 residual
+输出 cotangent；完整 signed 图满足 identity 加 branch 等于 Total
+Endpoint。正部显示独立归一化，只用于读取空间结构。
 
 对每个 head，\(Q=XW_Q+b_Q\)、\(K=XW_K+b_K\)、\(V=XW_V+b_V\)，且
 
