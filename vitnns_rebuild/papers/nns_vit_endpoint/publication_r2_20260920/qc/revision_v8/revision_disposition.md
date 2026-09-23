@@ -8,4 +8,5 @@
 | H4 聚合匹配 | 增加 sum-then-absolute path score；四 checkpoint 仍负 | COMPLETE |
 | 随机区域基线精度 | 独立复核现有 1,600 条件、32,000 repeats、MC SE 与稳定性诊断 | ALREADY_COMPLETE_AND_VALIDATED |
 | 正文 RQ 标签 | 删除正文 RQ1--RQ4，改为描述性研究问题和章节标题 | COMPLETE |
-| 摘要细节分配 | 改为三段式研究问题、方法、主要结果与边界，移除内部标签和执行细节 | COMPLETE |
+| 摘要细节分配 | 改为三段式 Endpoint 主线，突出结构认证、空间组织和扫描框架；移除内部标签、执行细节及 mixed-family 次要诊断 | COMPLETE |
+| 摘要方法主角 | Taylor 数值留在结果与补充；摘要仅将参考位移作为 Endpoint 框架的效用边界 | COMPLETE |

@@ -130,32 +130,39 @@ Gradient × Input under exact current-point derivatives without
 additional redistribution; we call this quantity Endpoint in normalized
 input coordinates. Ordinary Gradient × Input retains input coordinates
 but does not explicitly distinguish which downstream operator and input
-slot uses the same intermediate representation. We therefore define
-local differential maps jointly indexed by input coordinate and concrete
-tensor use for a fixed Vision Transformer (ViT) graph, separating
-structurally valid cuts, pointwise differential closure, and
-differential partitions inside attention. Graph certification of the
-actual ViT topology is combined with numerical, analytic, and
-fault-injection checks for omitted, duplicated, or incorrectly merged
-terms.
+slot uses the same intermediate representation. We therefore introduce a
+local differential representation jointly indexed by input coordinate
+and concrete tensor use for a fixed Vision Transformer (ViT) graph. It
+decomposes a scalar target into attention-head, Q/K/V, routing/value,
+and residual identity/branch components, with separate branch-cut and
+global-cut reconstruction contracts. Graph certification of the actual
+ViT topology, numerical closure, an independent analytic implementation,
+and fault injection jointly validate completeness and implementation
+correctness.
 
-Main analyses of two fixed checkpoints show overall spatial broadening
-for unit targets, decreasing K/V component entropy, stable
-residual-component spatial differences, and greater model and
-input-coordinate sensitivity for Q components. The broadening direction
-persists under low-total-mass stratification and trimming. On an
-independent image cohort and four public checkpoints, the prespecified
-spatial, routing, and residual directions persist, whereas path scores
-under both the original and aggregation-matched definitions do not
-outperform activation × gradient for ranking finite head replacements.
+Across two fixed checkpoints, the dual-indexed maps reveal clear
+depth-associated spatial organization. Input dependence for unit targets
+becomes spatially broader, K/V component entropy decreases with depth,
+and attention and MLP residuals exhibit distinct spatial reorganization
+and scale trajectories. Spatial broadening persists under low-total-mass
+stratification and trimming, while three input-coordinate measures
+retain most major trends. An independent image cohort and four public
+checkpoints further reproduce unit broadening, routing allocation, and
+residual trajectories. Dual indexing thereby supports spatial comparison
+across internal modules in common input coordinates and exposes
+structural differences unavailable from either a total map or a
+component scalar alone.
 
-Associations between local differential scores and replacement effects
-vary substantially with component type, depth, model, and reference,
-precluding a unified pooled conclusion; first-order Taylor scores that
-include the actual reference displacement better rank the prescribed
-regional replacements. Dual indexing improves structural resolution and
-auditability on a specified graph, but this advantage does not
-automatically yield better finite-intervention prediction.
+These results establish an Endpoint scanning framework for internal ViT
+targets. It represents local dependence in common input coordinates,
+retains the structural identity of attention, MLP, and residual tensor
+uses, and reconstructs the same target through valid cuts.
+Internal-target visualization thus becomes a decomposable,
+closure-tested, and cross-module structural analysis. Finite-replacement
+experiments further define its use: Endpoint describes structured local
+dependence at the observed state, while intervention ranking for a
+specified reference can incorporate the corresponding displacement
+within the same analytical framework.
 
 Keywords: Vision Transformer; Neural Network Scanner; Gradient × Input;
 local Jacobian; structural audit

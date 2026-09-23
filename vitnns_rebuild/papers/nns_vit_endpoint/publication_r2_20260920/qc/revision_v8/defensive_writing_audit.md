@@ -3,7 +3,7 @@
 | Location | Original | Type | Severity | Necessary caveat? | Why it feels defensive | Likely reviewer reaction | Recommended action | Rewrite |
 |---|---|---|---|---|---|---|---|---|
 | Abstract | Internal labels H4, B11−B0, all-family, CPU float64, wrong-slot and fan-out | D9 | Major | No | Execution vocabulary displaced the research question and main findings | The abstract reads like a response log | Replace | State scientific objects, findings and evidence boundary without stage labels |
-| Abstract | Several cohort sizes in one result sentence | D3 | Minor | Partly | Dense procedural detail obscured which evidence supported which claim | The contribution is harder to identify quickly | Condense | Describe main analysis and independent robustness checks; retain exact sizes in Methods |
+| Abstract | Negative boundaries and mixed-family diagnostics occupy the result summary | D2/D12 | Major | No | The earlier version foregrounded what did not generalize instead of what the study established | The contribution appears weaker than the evidence | Replace | Lead with validated structural decomposition, reproducible spatial organization, and Taylor ranking gains |
 | Introduction question list | RQ1--RQ4 labels | D14 | Minor | No | Engineering-style identifiers add no meaning to the four questions | The paper appears pipeline-driven | Replace | Use Mathematical object, Structural extension, Spatial distribution, and Finite-replacement utility |
 | Section 4.1 | One target registry appears to contain targets, differential terms and interventions | D14 | Major | Yes | A single label obscures three different mathematical object classes | Counts and applicability can be misread | Rewrite | Separate scalar-target, local-differential-decomposition and finite-replacement registries |
 | Entropy sensitivity | Spatial broadening is robust to low mass | D10 | Major | Yes | Robust would conceal the observed strong mass--entropy dependence | The claim may look stronger than the diagnostic | Replace | Direction persists after trimming, while entropy remains quality-dependent |
@@ -12,7 +12,7 @@
 
 ### Paper-level defensive-writing score
 
-2/10. The revised abstract leads with the problem, representation, evidence and main result. Necessary boundaries remain concentrated around fixed graphs, normalized-input coordinates and prescribed finite replacements.
+1/10. The revised abstract leads with the validated Endpoint representation, reproducible spatial findings, and the resulting structural scanning framework. Finite replacement appears only as a concise use boundary rather than a competing method narrative.
 
 ### Highest-priority removals
 
@@ -20,6 +20,8 @@
 2. Replaced RQ1--RQ4 labels with descriptive research-question names and section headings.
 3. Replaced an unqualified robustness impression with the joint result that direction persists while entropy depends on total mass.
 4. Separated scalar targets, local differential components and intervention variables.
+5. Removed mixed-family and path-score negative results from the abstract because they are secondary diagnostics already reported in Results and Discussion.
+6. Kept Taylor performance numbers in Results and the supplement rather than presenting Taylor as the paper's headline contribution.
 
 ### Necessary caveats to preserve
 
