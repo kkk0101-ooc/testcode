@@ -15,6 +15,8 @@ Four final PDFs were parsed and representative pages were rendered after the las
 
 - Titles and abstracts are readable with no clipping or overlapping blocks.
 - The final abstract centers Endpoint structural decomposition, spatial organization, and the scanning framework; Taylor is not presented as the paper's headline contribution.
+- The revised Section 7 table fits within the page after removing the main-text decision column.
+- Discussion and conclusion pages lead with Endpoint capabilities and observations, then state reference-aware change as a complementary analysis.
 - S19 tables remain inside page margins and preserve row/column alignment.
 - Equations and minus signs render correctly.
 - Chinese and English references begin after the S19 result text without orphaned headings.

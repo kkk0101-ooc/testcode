@@ -9,10 +9,11 @@
 | Entropy sensitivity | Spatial broadening is robust to low mass | D10 | Major | Yes | Robust would conceal the observed strong mass--entropy dependence | The claim may look stronger than the diagnostic | Replace | Direction persists after trimming, while entropy remains quality-dependent |
 | H4 sensitivity | Matched aggregation proves path maps are worse | D13 | Major | Yes | A post-hoc sensitivity cannot establish universal superiority | The claim overgeneralizes beyond the fixed task | Scope | All four tested checkpoints retain a negative median increment under the matched definition |
 | Discussion | Repeated statements that structural resolution does not imply utility | D2 | Minor | Yes, once | Repetition can sound like pre-emptive defense | The negative result is already clear | Keep once per abstract/discussion/conclusion | Structural resolution and finite-intervention prediction are distinct outcomes |
+| Section 7 and conclusion | Unmet, did not outperform, unsupported, and no unified conclusion repeated across the narrative | D2/D8 | Major | Only in result records | Repeated gate language makes an Endpoint study read like a failed benchmark against Taylor | The reader may miss what Endpoint establishes | Reframe | Endpoint describes current structured dependence; displacement-aware first-order quantities describe directional change toward a reference |
 
 ### Paper-level defensive-writing score
 
-1/10. The revised abstract leads with the validated Endpoint representation, reproducible spatial findings, and the resulting structural scanning framework. Finite replacement appears only as a concise use boundary rather than a competing method narrative.
+1/10. The abstract, discussion, and conclusion now lead with the validated Endpoint representation, reproducible spatial findings, and the resulting structural scanning framework. Finite replacement is organized as a complementary current-state versus reference-conditioned analysis rather than a winner/loser narrative.
 
 ### Highest-priority removals
 
@@ -22,6 +23,8 @@
 4. Separated scalar targets, local differential components and intervention variables.
 5. Removed mixed-family and path-score negative results from the abstract because they are secondary diagnostics already reported in Results and Discussion.
 6. Kept Taylor performance numbers in Results and the supplement rather than presenting Taylor as the paper's headline contribution.
+7. Removed the Unmet decision column from the main regional table and retained the frozen gate in supplementary provenance.
+8. Rewrote the conclusion in the original NNS paper's method-to-observation sequence while preserving the narrower ViT evidence scope.
 
 ### Necessary caveats to preserve
 

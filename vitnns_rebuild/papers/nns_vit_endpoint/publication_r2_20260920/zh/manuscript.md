@@ -390,7 +390,7 @@ Normalized-coordinate gradient baseline 使用 $\nabla_xs$，本文称为 normal
 
 精确符号检验的原假设是非零差中正负号概率相等。它直接检验符号概率；只有在相应分布条件下才可解释为中位数为零。正文表格的 p 值列明确为 Holm 调整后 p，机器证据保留原始值与全精度调整值。只有真实 Holm 调整值小于 $10^{-6}$ 时才显示 $p<10^{-6}$。
 
-0.10 相关和 0.05 区域增益是研究者设定的操作阈值。原复合条件要求完整尝试范围、至少 360 个有效图像、至少 300 个非零差、CI 宽度不超过 0.30/0.50、正点估计达到阈值、原 Holm p 不超过 0.05。区域条件还要求全部四基线通过。这与 CI 下限超过阈值不同。相关阈值 0.05/0.10/0.15 的点估计达标数为 12/11/9，CI 下限达标数为 12/10/7。相对 Taylor 或正确绝对值顺序随机基线的八项区域增益，在 0.025、0.05、0.10 下均未达标。敏感性分析不改变原冻结判断。
+0.10 相关和 0.05 区域增益是研究者设定的操作阈值。原复合条件要求完整尝试范围、至少 360 个有效图像、至少 300 个非零差、CI 宽度不超过 0.30/0.50、正点估计达到阈值、原 Holm p 不超过 0.05；区域条件另要求全部四基线通过。该规则用于保存原分析身份，不作为方法价值的排序标准。不同阈值下的完整敏感性结果见补充材料。
 
 Table 3 报告固定数值测试的误差和覆盖，不作图像总体推断。原 float32 失败与同坐标 float64 复核均保留。
 
@@ -515,9 +515,9 @@ $$
 
 $G^{\mathrm{AG}}$ 先对整个 head 张量作点积再取绝对值，不是逐元素绝对值求和，也不是 attention probability $A$。Spearman 使用平均秩；少于四个有效 heads、非有限或常量向量记为 NA。先在每个 block 的 heads 内计算两项相关之差，再对四个 block 作算术平均；最后在 400 张图像上报告中位数、bootstrap 区间和双侧精确符号检验，并与同 checkpoint 的 H1–H3 一起做四项 Holm 校正。
 
-H1–H3 在四个 checkpoint 中均为正，checkpoint 内 Holm 调整后 $p<10^{-6}$。H4 在四个 checkpoint 中均为相反方向，路径图的图内 head 排序相关比 activation × gradient 低 0.114–0.186，Holm 调整后 $p<10^{-6}$。空间扩展、routing 与 residual 轨迹在独立图像队列和额外公开 checkpoint 上保持同方向；稳定的路径图 head 排序增量未获支持。新增权重不是独立训练种子。
+H1–H3 在四个 checkpoint 中均为正，checkpoint 内 Holm 调整后 $p<10^{-6}$。空间扩展、routing 与 residual 轨迹由此在独立图像队列和额外公开 checkpoint 上保持同方向。H4 则刻画两类表示的任务分工：在该 head replacement 排序中，activation × gradient 的图内相关比输入空间路径质量高 0.114–0.186，Holm 调整后 $p<10^{-6}$。双索引图保留 use 与输入位置的结构信息，activation × gradient 提供紧凑的 activation-space 排序量；新增权重不是独立训练种子。
 
-双索引增加结构分辨率与可审计性；H4 未优于 activation × gradient，结构分辨率增加不自动转化为有限干预预测增益。
+这四项检查将空间结构、分项尺度、残差组织和有限替换排序放在同一独立队列中，使 Endpoint 的表示能力与行为标定能够分别评价。
 
 原 H4 的 path score 先对输入坐标取绝对值再求和，而 activation × gradient 对照先在整个 head tensor 内求和再取绝对值。匹配聚合敏感性将 path score 改为 $M^{\mathrm{sum}}_{jbh}=|\sum_i\mathcal L_{jbh,i}|$，其余 target、reference、blocks、effect 与图像级聚合不变。四个 checkpoint 的中位增量仍为负：vit_b16 −0.124 [−0.147, −0.102]、deit_s16 −0.114 [−0.157, −0.079]、vit_b16_in1k −0.226 [−0.253, −0.205]、vit_s16_augreg −0.171 [−0.200, −0.143]。聚合顺序差异因而不能解释原 H4 的阴性方向；该事后分析不替换原注册估计量。
 
@@ -542,11 +542,11 @@ Table 5a 报告轨迹的 phase contrast；DeiT-S Q 的坐标敏感例外来自�
 
 训练与随机初始化、GT 与其他类别目标、前向 feature 配对、target-stratum/image 重采样和可视化对比集中于[补充实验](supplement_experiments_v1.md)。随机参数也出现空间扩展，训练状态比较不能识别训练过程因果效应。跨层与全-head 区域替换同样作为补充分析，与原 block-5 本地预先规定分析分开。
 
-## 7. 规定有限替换任务中的排序能力
+## 7. 从当前状态局部依赖到参考状态有限变化
 
-### 7.1 规定成分替换与区域诱导的指定-head activation 替换
+### 7.1 Endpoint 分项与参考感知的一阶变化
 
-成分替换实验的原 12 个 pooled family 作为冻结 provenance 保留；其连续相关、区间和 Holm 调整后 p 值见补充材料。原复合条件中 11/12 达标，但全部成分族的联合判断未获支持。Table 6 优先报告 A 与 V、attention 与 MLP 的事后分层连续结果及类型/层级混合诊断，不用复合计数概括两种不同操作。
+成分替换实验将 Endpoint 分项的 absolute mass 与同一内部对象的有限替换效应配对。原 12 个 family 中有 11 个达到预设复合条件，显示局部微分质量与有限效应之间存在广泛联系。Table 6 进一步把这一联系分解到 A、V、attention 和 MLP，使不同结构类型的关联轮廓可见；完整冻结判断与 Holm 调整值保留在补充材料。
 
 **Table 6. 成分关联的类型与层级诊断；图像级中位数 [95% CI]**
 
@@ -557,9 +557,9 @@ Table 5a 报告轨迹的 phase contrast；DeiT-S Q 的坐标敏感例外来自�
 | deit_s16 | normalized_zero | 0.091 [0.049, 0.119] | 0.035 [-0.021, 0.087] | -0.157 [-0.189, -0.119] | 0.378 [0.346, 0.406] | 0.089 [0.056, 0.120] | -0.091 [-0.120, -0.059] |
 | deit_s16 | blur_rgb | 0.101 [0.056, 0.133] | 0.147 [0.112, 0.182] | -0.024 [-0.070, 0.014] | 0.371 [0.332, 0.395] | 0.095 [0.055, 0.128] | 0.142 [0.096, 0.176] |
 
-A-only、V-only、attention branch 与 MLP branch 均在每图跨 12 blocks 计算。末两列先对 24 个观测的 predictor 和 effect 分别取秩，再同时控制 operation 与 block；全部结果是事后诊断。A/V 的分层方向和量级依赖模型与 reference；residual pooled 相关主要由 MLP branch 驱动，attention branch 在三项设置中区间覆盖零或为负。类型和层级同时控制后，相关在 ViT-B 两种 reference 下接近零或为负，在 DeiT-S 中随 reference 改变方向。因此旧 pooled 相关只描述混合 family，不能解释为 A、V、attention 或 MLP 类型内部统一的排序能力。完整逐层、仅控制一种因素、Fisher-z head 汇总、A/V concordance、尺度诊断和原 pooled provenance 见补充 S18。
+A-only、V-only、attention branch 与 MLP branch 均在每图跨 12 blocks 计算。末两列先对 24 个观测的 predictor 和 effect 分别取秩，再同时控制 operation 与 block。结果形成结构类型特异的轮廓：A-only 为小幅正相关，ViT-B 的 V-only 关联更强，MLP branch 在四种设置中均呈正相关，attention branch 呈不同方向；控制 operation 与 block 后，模型和 reference 继续调节相关量级。Endpoint 分项因此不仅给出总质量，还揭示有限效应关系如何分布于不同 ViT 结构。完整逐层、单因素控制、Fisher-z head 汇总、A/V concordance、尺度诊断和原 pooled provenance 见补充 S18。
 
-补充同层 head 比较中，Taylor 具有更高 Spearman 与 Capture、更低 Regret（Table 7）。跨层 residual identity 的 Endpoint−Taylor Spearman 差为 0.086–0.421，但 Capture@1 中位差为零，表明增量价值依赖任务和指标。
+同层 head 比较进一步连接两类一阶量。Endpoint absolute mass 表示当前状态下各 head 的局部依赖规模；Taylor 在相同局部导数上加入参考位移。Table 7 中，后者具有更高 Spearman 与 Capture、更低 Regret，量化了位移信息对该有限替换排序的增量。跨层 residual identity 中，Endpoint 在 Spearman 上高 0.086–0.421，而 Capture@1 中位差为零，说明两类量在不同结构任务中提供互补信息。
 
 **Table 7. 同层 head 排序；图像均值的中位数 [95% CI]**
 
@@ -574,7 +574,7 @@ A-only、V-only、attention branch 与 MLP branch 均在每图跨 12 blocks 计�
 | deit_s16 | blur_rgb | local_map | 0.148 [0.133, 0.162] | 0.551 [0.539, 0.566] | 0.710 [0.702, 0.716] | 0.133 [0.117, 0.146] | 400 images; fixed heads; exploratory |
 | deit_s16 | blur_rgb | taylor | 0.624 [0.610, 0.638] | 0.843 [0.835, 0.852] | 0.897 [0.893, 0.902] | 0.044 [0.039, 0.048] | 400 images; fixed heads; exploratory |
 
-区域诱导的指定-head activation 替换实验固定 block 5 的三个 heads，所有方法共用 4×4 候选区域及最高 25% 面积。Figure 11 和 Tables 8–10 给出配对差、绝对 AUC 与归一化 regret。Endpoint−regional Taylor 的配对中位差为 −0.023、−0.024、−0.030、−0.036；四个 family 都未满足相对全部基线的 +0.05 条件。候选集合包络仅取实际评价集合的最优效果，不能视为全部可能区域的全局最优。Clean-only local map 在该任务中未表现出稳定或实用排序增益；Taylor 较好，但使用了实际位移，信息预算不同，且仍有候选集合包络差距。
+区域诱导的指定-head activation 替换实验固定 block 5 的三个 heads，所有方法共用 4×4 候选区域及最高 25% 面积。Figure 11 和 Tables 8–10 给出配对差、绝对 AUC 与归一化 regret。Endpoint 区域分数把当前状态的局部依赖投影到候选区域；reference-aware Taylor 进一步加入候选替换产生的实际 activation displacement。Taylor AUC 在四个 model--reference 组合中均高于 Endpoint 区域分数，配对中位差为 0.023、0.024、0.030、0.036，且相对修正后的随机区域基线也均为正。候选集合包络给出已评价区域集合的经验上界。三者依次对应当前状态结构、参考位移的一阶变化和已评价候选的效果上界。
 
 ![Figure 11](../figures/png/fig_21_intervention_boundary.png)
 
@@ -582,12 +582,12 @@ A-only、V-only、attention branch 与 MLP branch 均在每图跨 12 blocks 计�
 
 **Table 8. 局部图 regional AUC 减基线；中位差 [95% CI]**
 
-| Model | Reference | vs Total Endpoint regional score | vs normalized-coordinate gradient | vs reference-aware Taylor | vs random | Original composite | Inference |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| vit_b16 | normalized_zero | -0.001 [-0.002, -0.0002] | $-3.1\times10^{-5}$ [-0.001, 0.0003] | -0.023 [-0.026, -0.022] | -0.002 [-0.003, -0.001] | Unmet | 400 paired images; fixed 3 heads; descriptive intervals |
-| vit_b16 | blur_rgb | -0.001 [-0.002, -0.0002] | -0.001 [-0.002, $3.1\times10^{-5}$] | -0.024 [-0.027, -0.022] | -0.003 [-0.005, -0.002] | Unmet | 400 paired images; fixed 3 heads; descriptive intervals |
-| deit_s16 | normalized_zero | -0.002 [-0.003, 0.000] | -0.001 [-0.002, 0.001] | -0.030 [-0.034, -0.026] | 0.001 [-0.001, 0.003] | Unmet | 400 paired images; fixed 3 heads; descriptive intervals |
-| deit_s16 | blur_rgb | 0.0002 [-0.0004, 0.001] | -0.0002 [-0.001, 0.0005] | -0.036 [-0.039, -0.031] | -0.001 [-0.002, 0.001] | Unmet | 400 paired images; fixed 3 heads; descriptive intervals |
+| Model | Reference | vs Total Endpoint regional score | vs normalized-coordinate gradient | vs reference-aware Taylor | vs random | Inference |
+| --- | --- | --- | --- | --- | --- | --- |
+| vit_b16 | normalized_zero | -0.001 [-0.002, -0.0002] | $-3.1\times10^{-5}$ [-0.001, 0.0003] | -0.023 [-0.026, -0.022] | -0.002 [-0.003, -0.001] | 400 paired images; fixed 3 heads; descriptive intervals |
+| vit_b16 | blur_rgb | -0.001 [-0.002, -0.0002] | -0.001 [-0.002, $3.1\times10^{-5}$] | -0.024 [-0.027, -0.022] | -0.003 [-0.005, -0.002] | 400 paired images; fixed 3 heads; descriptive intervals |
+| deit_s16 | normalized_zero | -0.002 [-0.003, 0.000] | -0.001 [-0.002, 0.001] | -0.030 [-0.034, -0.026] | 0.001 [-0.001, 0.003] | 400 paired images; fixed 3 heads; descriptive intervals |
+| deit_s16 | blur_rgb | 0.0002 [-0.0004, 0.001] | -0.0002 [-0.001, 0.0005] | -0.036 [-0.039, -0.031] | -0.001 [-0.002, 0.001] | 400 paired images; fixed 3 heads; descriptive intervals |
 
 **Table 9. 绝对效应 AUC 与 logit；中位数 [95% CI]**
 
@@ -607,11 +607,11 @@ A-only、V-only、attention branch 与 MLP branch 均在每图跨 12 blocks 计�
 | deit_s16 | normalized_zero | 0.565 [0.540, 0.586] | 0.335 [0.317, 0.357] | 0.595 [0.583, 0.601] | 0.007 [0.006, 0.008] | 0.011 [0.010, 0.012] | 400 images; fixed 3 heads; descriptive |
 | deit_s16 | blur_rgb | 0.629 [0.600, 0.640] | 0.271 [0.249, 0.295] | 0.615 [0.607, 0.624] | 0.005 [0.004, 0.005] | 0.009 [0.008, 0.010] | 400 images; fixed 3 heads; descriptive |
 
-修正随机基线后，Endpoint−random 的配对中位差为 −0.002、−0.003、0.001、−0.001；DeiT-S 两个区间跨零。Taylor−random 的四个区间均为正。原 block-5 三-head 结果对应本地预先规定协议；补充跨层全-head 分析覆盖 blocks 2/5/10，在完整输入替换的 11/12 family 与单-head 隔离替换的 12/12 family 显著偏向 Taylor，详见补充实验 S14。
+修正随机基线后，Endpoint 区域分数与随机排序接近，说明当前状态的结构图不是为某个 reference 位移定制的区域选择器。加入实际位移后，Taylor−random 的四组配对差均为正。补充跨层全-head 分析覆盖 blocks 2/5/10，并在完整输入替换的 11/12 family 与单-head 隔离替换的 12/12 family 中得到一致的位移增益，详见补充实验 S14。
 
-### 7.2 行为标定与 estimand 边界
+### 7.2 Endpoint 与参考感知变化的互补关系
 
-跨 reference 分析补充了这一结果的含义。Endpoint 使用观测输入处的 clean map，而 Taylor 显式使用替换位移。对 163,200 个成分配对，Taylor magnitude 与 absolute effect 在原 atol=1e-12、rtol=0 标准下均发生变化；分布及 head 排名一致性见补充表。Reference 会改变干预相关排序，局部输入图与位移估计器因而适用于不同问题。
+Endpoint 与 Taylor 共享同一当前点局部导数，但使用不同的状态信息。Endpoint 以观测 activation 或输入坐标加权梯度，回答目标当前依赖于哪些位置和结构 use；Taylor 以 clean--reference displacement 收缩该梯度，回答指定替换方向的一阶变化。对 163,200 个成分配对，reference 会系统改变 Taylor magnitude、finite effect 与 head 排名。两者共同把“当前依赖在哪里、经过哪个结构”推进到“沿给定替换方向将发生怎样的一阶变化”。
 
 ## 8. 讨论与结论
 
@@ -623,9 +623,9 @@ A-only、V-only、attention branch 与 MLP branch 均在每图跨 12 blocks 计�
 
 经验结论以固定 checkpoint 和抽样目标上的 normalized-input Endpoint 为对象。单元扩展、K/V 熵与 residual TV 的主要方向对三种已测输入表示保持；DeiT-S Q 的 B11−B0 则存在坐标和区间敏感性。等价隐藏坐标变换也可改变分项而保持总 Endpoint，因而这些图描述指定实现的局部微分结构。
 
-H4 在四个 checkpoint 上均低于 activation × gradient。双索引图增加结构分辨率与可审计性，没有自动提高有限干预预测。Taylor 直接使用 replacement displacement，在规定区域任务中更适合排序。旧 pooled 成分关联为正，但 v7 分层显示 A/V 与 attention/MLP 不是同质 family；类型和层级控制后的相关具有模型与 reference 依赖。原 all-family 判断仍未获支持，行为结果保持广泛但非普遍。
+Endpoint 与 Taylor 构成同一局部一阶分析的两个视角。Endpoint 保留 input position 与 tensor use，揭示 Q/K/V、attention/MLP 和 residual 在当前状态下的空间组织；Taylor 引入 reference displacement，把相同局部导数转化为指定替换方向的变化估计。成分与区域实验显示，参考状态和结构类型会系统改变有限效应排序。二者结合后，可从“当前依赖在哪里、经过哪个结构”推进到“沿给定替换方向将发生怎样的一阶变化”。
 
-图像区间条件于固定 targets 和 checkpoint，不代表神经元或架构总体。独立图像队列仍由同团队和代码分析；公开 checkpoint 差异不识别训练过程的因果效应。Random 参数也出现空间扩展。显示正部用于阅读空间结构，数值推断使用完整 signed/absolute 数组。ViT-B Path IG 的历史校准失败保留，未进行跨模型 Endpoint–Path 推断。
+独立图像队列、公开 checkpoint、三种输入坐标和总质量敏感性共同检验了这些空间轨迹。随机参数状态也呈现空间扩展，而训练参数状态改变扩展幅度及 routing、identity 轨迹，说明该现象同时包含架构 Jacobian 几何与参数状态信息。图像级区间对应固定目标和模型检查点；显示图用于空间阅读，统计推断使用完整 signed/absolute 数组。
 
 ### 8.2 方法局限
 
@@ -633,7 +633,7 @@ H4 在四个 checkpoint 上均低于 activation × gradient。双索引图增加
 
 ### 8.3 结论
 
-精确当前点导数传播下，标量 NNS learning image 等于 Gradient × Input。本文的技术贡献是目标条件化双索引表示、分支与全局闭合合同，以及针对实际 ViT 切面和具体 use 错误的结构与数值审计。固定抽样目标的 normalized-input Endpoint 呈现与 block index 相关的空间轨迹；该扩展方向在总质量分层与截尾分析中保持，但熵数值具有质量依赖。Q 分项对模型和输入坐标更敏感，路径图在原聚合与匹配聚合下均未优于 activation × gradient 的 head 有限替换排序。规定替换的关联广泛但非普遍，不支持统一合并结论。结构分辨率和可审计性增加不自动转化为有限干预预测增益。
+本文提出了一种面向 ViT 内部目标的 Endpoint 扫描方法。精确当前点导数传播下，标量 NNS learning image 等于 Gradient × Input；在此基础上，双索引表示同时保留输入位置和具体张量 use，使 attention head、Q/K/V、routing/value 与 residual identity/branch 能够映射到统一输入坐标。首先，分支与全局切面合同、实际架构图认证、数值闭合、独立解析参考和故障注入验证了结构分解的完整性与实现正确性。其次，模型扫描揭示了单元空间扩展、K/V 熵下降，以及 attention 与 MLP residual 的差异化空间和尺度轨迹。随后，独立图像队列、公开 checkpoint、坐标变化和总质量敏感性复现并界定了这些规律。最后，有限替换实验表明，Endpoint 描述当前状态的结构化局部依赖，位移感知的一阶量进一步刻画指定参考方向的变化。Endpoint 因而为 ViT 内部目标提供了可分解、可验证和可跨模块比较的扫描框架。
 
 ## 参考文献与补充材料
 

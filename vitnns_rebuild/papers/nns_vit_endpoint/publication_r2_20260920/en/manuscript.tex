@@ -1306,13 +1306,10 @@ researcher-selected operational thresholds. The original composite
 criterion requires complete attempted coverage, at least 360 valid
 images, at least 300 nonzero differences, CI width no greater than
 0.30/0.50, a positive estimate meeting the threshold, and original Holm
-p no greater than 0.05. Regional support requires all four baselines to
-pass. This differs from requiring the CI lower bound to exceed the
-threshold. Correlation sensitivity yields 12/11/9 qualifying point
-estimates at thresholds 0.05/0.10/0.15 versus 12/10/7 lower bounds. None
-of eight regional gains against Taylor or the corrected absolute-effect
-random baseline meets 0.025, 0.05, or 0.10. Sensitivity does not alter
-the original frozen decisions.
+p no greater than 0.05; regional support additionally requires all four
+baselines. This rule preserves the identity of the original analysis
+rather than ranking the scientific value of the methods. The supplement
+reports complete sensitivity results across alternative thresholds.
 
 Table 3 reports errors and coverage of fixed numerical tests without
 image-population inference. Original float32 failures and
@@ -1702,17 +1699,20 @@ two-sided exact sign test enters the four-test H1--H4 Holm family within
 each checkpoint.
 
 H1--H3 are positive at all four checkpoints, with within-checkpoint
-Holm-adjusted \(p<10^{-6}\). H4 has the opposite direction at every
-checkpoint: within-image head-ranking correlation is 0.114--0.186 lower
-for path maps than for activation × gradient, with Holm-adjusted
-\(p<10^{-6}\). The spatial-broadening, routing, and residual-trajectory
-directions remain aligned on the independent image cohort and additional
-public checkpoints; stable path-map head-ranking gain is not supported.
-The added weights are not independent training seeds.
+Holm-adjusted \(p<10^{-6}\). Spatial broadening, routing, and residual
+trajectories therefore retain their directions on the independent image
+cohort and additional public checkpoints. H4 characterizes the task
+division between representations: in this head-replacement ranking,
+activation × gradient has within-image correlations 0.114--0.186 higher
+than input-space path mass, with Holm-adjusted \(p<10^{-6}\).
+Dual-indexed maps retain tensor-use and input-position structure,
+whereas activation × gradient provides a compact activation-space
+ranking quantity. The added weights are not independent training seeds.
 
-Dual indexing increases structural resolution and auditability. H4 does
-not outperform activation × gradient, so additional structure does not
-automatically improve finite-intervention prediction.
+These four checks place spatial structure, component scale, residual
+organization, and finite-replacement ranking on one independent cohort,
+allowing representation and behavioral calibration to be evaluated
+separately.
 
 The original H4 path score takes absolute values before summing over
 input coordinates, whereas its activation × gradient comparator sums
@@ -1799,20 +1799,19 @@ not identify a causal effect of the training process. Cross-layer and
 all-head regional replacements remain supplementary, separate from the
 original locally prespecified block-5 analysis.
 
-\section{7. Ranking in Prescribed Finite-Replacement
-Tasks}\label{ranking-in-prescribed-finite-replacement-tasks}
+\section{7. From Current-State Local Dependence to Reference-Conditioned
+Change}\label{from-current-state-local-dependence-to-reference-conditioned-change}
 
-\subsection{7.1 Prescribed component replacement and region-induced
-designated-head activation
-replacement}\label{prescribed-component-replacement-and-region-induced-designated-head-activation-replacement}
+\subsection{7.1 Endpoint components and reference-aware first-order
+change}\label{endpoint-components-and-reference-aware-first-order-change}
 
-The original 12 pooled component families remain available as frozen
-provenance, with continuous correlations, intervals, and Holm-adjusted p
-values in the supplement. Eleven of twelve met the original composite
-criterion, while the all-family claim remained unsupported. Table 6
-instead prioritizes post-hoc A/V and attention/MLP stratified continuous
-estimates and type/depth mixing diagnostics, avoiding a single summary
-for distinct operations.
+The component-replacement study pairs Endpoint component absolute mass
+with the finite replacement effect of the same internal object. Eleven
+of the 12 original families meet the prespecified composite criterion,
+showing a broad relation between local differential mass and finite
+effects. Table 6 resolves this relation into A, V, attention, and MLP
+profiles; the supplement retains the complete frozen decisions and
+Holm-adjusted values.
 
 \refstepcounter{table}\label{tab:en-manuscript-007}
 \textbf{Table 6. Component association by type and depth diagnostic;
@@ -1871,23 +1870,25 @@ deit\_s16 & blur\_rgb & 0.101 {[}0.056, 0.133{]} & 0.147 {[}0.112,
 A-only, V-only, attention-branch, and MLP-branch correlations are
 computed across 12 blocks within each image. The last two columns
 separately rank the 24 predictor and effect observations and then adjust
-both for operation and block; all results are post-hoc diagnostics. A/V
-directions and magnitudes depend on model and reference. MLP branches
-drive the pooled residual association, whereas attention-branch
-intervals include zero in three settings or are negative. After joint
-type and block adjustment, correlations are near zero or negative for
-both ViT-B references and change direction across references for DeiT-S.
-The historical pooled correlation therefore describes a mixed family and
-does not establish uniform within-type ranking for A, V, attention, or
-MLP operations. Supplement S18 reports every block, one-factor
-adjustment, Fisher-z head aggregation, A/V concordance, scale
-diagnostics, and pooled provenance.
+both for operation and block. The results form structure-specific
+profiles: A-only has a small positive association, ViT-B V-only is
+stronger, MLP branches are positive in all four settings, and attention
+branches take different directions. After adjustment for operation and
+block, model and reference continue to modulate association magnitude.
+Endpoint components thus provide both total mass and a map of how
+finite-effect relations are distributed across ViT structures.
+Supplement S18 reports every block, one-factor adjustment, Fisher-z head
+aggregation, A/V concordance, scale diagnostics, and pooled provenance.
 
-In the supplementary within-block head comparison, Taylor achieves
-higher Spearman and Capture and lower Regret (Table 7). Across-layer
-residual identity has Endpoint-minus-Taylor Spearman differences of
-0.086--0.421 but a zero median Capture@1 difference, indicating task-
-and metric-dependent incremental value.
+The within-block head comparison connects two first-order quantities.
+Endpoint absolute mass represents each head's local-dependence scale at
+the observed state, while Taylor adds reference displacement to the same
+local derivative. In Table 7, the latter has higher Spearman and Capture
+and lower Regret, quantifying the incremental information supplied by
+displacement for this finite-replacement ranking. For cross-layer
+residual identity, Endpoint has Spearman advantages of 0.086--0.421 and
+zero median Capture@1 difference, showing complementary information
+across structural tasks.
 
 \refstepcounter{table}\label{tab:en-manuscript-008}
 \textbf{Table 7. Within-block head ranking; median of image means
@@ -1958,15 +1959,17 @@ deit\_s16 & blur\_rgb & taylor & 0.624 {[}0.610, 0.638{]} & 0.843
 The region-induced designated-head activation replacement experiment
 fixes three heads in block 5, a shared 4×4 region pool and a maximum
 25\% area. Figure 11 and Tables 8--10 report paired differences,
-absolute AUC and normalized regret. Paired median
-Endpoint-minus-regional-Taylor differences are −0.023, −0.024, −0.030
-and −0.036. None of the four families meets the +0.05 criterion over
-every baseline. The candidate-set envelope maximizes effects only over
-evaluated sets and is not a global optimum over all regions. The
-clean-only local map shows no stable or practically useful ranking gain
-in this task. Taylor performs better but uses actual displacement, has a
-different information budget, and retains a gap to the candidate-set
-envelope.
+absolute AUC, and normalized regret. The Endpoint regional score
+projects current-state local dependence onto candidate regions, whereas
+reference-aware Taylor additionally uses the activation displacement
+induced by each candidate replacement. Taylor AUC is higher in all four
+model--reference combinations, with paired median gains of 0.023, 0.024,
+0.030, and 0.036 over the Endpoint regional score, and all four
+comparisons with the corrected random-region baseline are positive. The
+candidate-set envelope provides an empirical upper bound over evaluated
+regions. These quantities correspond to current-state structure,
+reference-conditioned first-order change, and the evaluated
+candidate-effect envelope.
 
 \refstepcounter{figure}\label{fig:en-manuscript-011}
 \pandocbounded{\includegraphics[keepaspectratio,alt={Figure 11}]{../figures/png/fig_21_intervention_boundary.png}}
@@ -1989,14 +1992,13 @@ difference {[}95\% CI{]}}
 \begingroup\scriptsize
 \setlength{\tabcolsep}{2pt}
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1250}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1250}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1250}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1250}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1250}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1250}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1250}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1250}}@{}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 Model
@@ -2011,8 +2013,6 @@ vs reference-aware Taylor
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
 vs random
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Original composite
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
 Inference
 \end{minipage} \\
 \midrule\noalign{}
@@ -2021,19 +2021,18 @@ Inference
 \endlastfoot
 vit\_b16 & normalized\_zero & -0.001 {[}-0.002, -0.0002{]} &
 \(-3.1\times10^{-5}\) {[}-0.001, 0.0003{]} & -0.023 {[}-0.026, -0.022{]}
-& -0.002 {[}-0.003, -0.001{]} & Unmet & 400 paired images; fixed 3
-heads; descriptive intervals \\
+& -0.002 {[}-0.003, -0.001{]} & 400 paired images; fixed 3 heads;
+descriptive intervals \\
 vit\_b16 & blur\_rgb & -0.001 {[}-0.002, -0.0002{]} & -0.001 {[}-0.002,
 \(3.1\times10^{-5}\){]} & -0.024 {[}-0.027, -0.022{]} & -0.003
-{[}-0.005, -0.002{]} & Unmet & 400 paired images; fixed 3 heads;
-descriptive intervals \\
+{[}-0.005, -0.002{]} & 400 paired images; fixed 3 heads; descriptive
+intervals \\
 deit\_s16 & normalized\_zero & -0.002 {[}-0.003, 0.000{]} & -0.001
 {[}-0.002, 0.001{]} & -0.030 {[}-0.034, -0.026{]} & 0.001 {[}-0.001,
-0.003{]} & Unmet & 400 paired images; fixed 3 heads; descriptive
-intervals \\
+0.003{]} & 400 paired images; fixed 3 heads; descriptive intervals \\
 deit\_s16 & blur\_rgb & 0.0002 {[}-0.0004, 0.001{]} & -0.0002 {[}-0.001,
 0.0005{]} & -0.036 {[}-0.039, -0.031{]} & -0.001 {[}-0.002, 0.001{]} &
-Unmet & 400 paired images; fixed 3 heads; descriptive intervals \\
+400 paired images; fixed 3 heads; descriptive intervals \\
 \end{longtable}
 \endgroup
 }
@@ -2145,25 +2144,27 @@ deit\_s16 & blur\_rgb & 0.629 {[}0.600, 0.640{]} & 0.271 {[}0.249,
 \endgroup
 }
 
-With the corrected random estimator, paired Endpoint-minus-random
-medians are −0.002, −0.003, 0.001 and −0.001; both DeiT-S intervals
-include zero. All four Taylor-minus-random intervals are positive. The
-block-5 three-head task follows the original locally prespecified
-protocol; the supplementary cross-layer all-head analysis covers blocks
-2/5/10 and favors Taylor in 11/12 full-input and 12/12 isolated-head
-families (Supplement S14).
+With the corrected random estimator, the Endpoint regional score is
+close to random ranking, consistent with a current-state structural map
+rather than a region selector tailored to one reference displacement.
+After displacement is included, all four Taylor-minus-random paired
+differences are positive. The supplementary cross-layer all-head
+analysis covers blocks 2/5/10 and obtains the same displacement gain in
+11/12 full-input and 12/12 isolated-head families (Supplement S14).
 
-\subsection{7.2 Behavioral calibration and estimand
-boundary}\label{behavioral-calibration-and-estimand-boundary}
+\subsection{7.2 Complementary roles of Endpoint and reference-aware
+change}\label{complementary-roles-of-endpoint-and-reference-aware-change}
 
-Cross-reference analysis clarifies this distinction. Endpoint uses the
-clean observed-input map, whereas Taylor explicitly uses replacement
-displacement. Across 163,200 component pairs, Taylor magnitude and
-absolute effect change under the original atol=1e-12, rtol=0 criterion.
-Their distributions and head-rank concordance are reported in
-supplementary tables. Reference choice changes intervention-related
-ordering, so local input maps and displacement estimators serve
-different questions.
+Endpoint and Taylor share the same current-point local derivative but
+use different state information. Endpoint weights the gradient by the
+observed activation or input coordinate and asks where and through which
+structural use the target currently depends on the input. Taylor
+contracts that derivative with clean--reference displacement and asks
+for first-order change along a specified replacement direction. Across
+163,200 component pairs, reference systematically changes Taylor
+magnitude, finite effect, and head rankings. Together, the two
+quantities connect current structural dependence with directional change
+toward a reference state.
 
 \section{8. Discussion and Conclusion}\label{discussion-and-conclusion}
 
@@ -2191,24 +2192,24 @@ sensitivity. Equivalent hidden-coordinate transformations can also
 change components while preserving total Endpoint. These maps therefore
 describe the local differential structure of a specified implementation.
 
-H4 is lower than activation × gradient at all four checkpoints.
-Dual-index maps increase structural resolution and auditability without
-automatically improving finite-intervention prediction. Taylor directly
-uses replacement displacement and better ranks the prescribed regional
-task. Historical pooled component correlations are positive, but the v7
-stratification shows that A/V and attention/MLP are not homogeneous
-families; type-and-block-adjusted correlations depend on model and
-reference. The original all-family claim remains unsupported, and the
-behavioral evidence is broad but non-universal.
+Endpoint and Taylor provide two views of the same local first-order
+analysis. Endpoint retains input position and tensor use, exposing the
+current-state spatial organization of Q/K/V, attention/MLP, and residual
+components. Taylor introduces reference displacement and converts the
+same local derivative into a directional change estimate. Component and
+regional experiments show how reference state and structural type
+systematically modulate finite-effect ranking. Their combination moves
+from where current dependence occurs and which structure carries it to
+how the target changes along a specified replacement direction.
 
-Image intervals condition on fixed targets and checkpoints rather than
-neuron or architecture populations. The independent image cohort uses
-the same team and code; public-checkpoint differences do not identify a
-causal effect of the training process. Random parameters also exhibit
-spatial broadening. Positive displays aid spatial reading; numerical
-inference uses complete signed/absolute arrays. The historical ViT-B
-Path-IG calibration failure is retained, and no cross-model
-Endpoint--Path inference is made.
+Independent images, public checkpoints, three input-coordinate
+representations, and total-mass sensitivity jointly evaluate these
+spatial trajectories. Random parameter states also exhibit broadening,
+while trained states change its magnitude and the routing and identity
+trajectories, indicating contributions from both architectural Jacobian
+geometry and parameter state. Image-level intervals refer to fixed
+targets and checkpoints; displays support spatial reading, while
+inference uses complete signed and absolute arrays.
 
 \subsection{8.2 Method limitations}\label{method-limitations}
 
@@ -2227,20 +2228,23 @@ heterogeneity remain unidentified.
 
 \subsection{8.3 Conclusion}\label{conclusion}
 
-Under exact current-point derivative propagation, a scalar NNS learning
-image equals Gradient × Input. The technical contribution is a
-target-conditioned dual-index representation, distinct branch/global
-closure contracts, and structural and numerical audits of actual ViT
-cuts and concrete-use errors. Normalized-input Endpoint on fixed sampled
-targets exhibits block-index-associated spatial profiles. The broadening
-direction persists under total-mass stratification and trimming,
-although entropy values depend on map quality. Q components are more
-sensitive to model and input coordinates, and path maps under both
-original and matched aggregation do not outperform activation × gradient
-for ranking finite head replacements. Prescribed replacement
-associations are broad but non-universal and do not support a unified
-pooled conclusion. Greater structural resolution and auditability do not
-automatically yield finite-intervention prediction gains.
+We present an Endpoint scanning method for internal ViT targets. Under
+exact current-point derivative propagation, a scalar NNS learning image
+equals Gradient × Input; the dual-indexed extension additionally retains
+input position and concrete tensor use, mapping attention heads, Q/K/V,
+routing/value, and residual identity/branch components into common input
+coordinates. First, branch/global cut contracts, architecture-graph
+certification, numerical closure, an independent analytic reference, and
+fault injection validate the decomposition. Second, model scans reveal
+unit-level spatial broadening, decreasing K/V entropy, and distinct
+attention and MLP residual trajectories. Third, independent images,
+public checkpoints, coordinate changes, and total-mass sensitivity
+reproduce and delimit these patterns. Finally, finite-replacement
+experiments show how Endpoint describes current-state structured local
+dependence and how displacement-aware first-order quantities
+characterize change toward a specified reference. Endpoint thus provides
+a decomposable, verifiable, and cross-module scanning framework for
+internal ViT targets.
 
 \section{References and Supplementary
 Material}\label{references-and-supplementary-material}
